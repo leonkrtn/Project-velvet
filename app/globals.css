@@ -1,0 +1,139 @@
+/* styles/globals.css — Velvet · Black / White / Gold */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* ── Core palette (light) ── */
+  --black:      #0A0A0A;
+  --black3:     #F2F2F2;
+  --grey3:      #888888;
+  --grey4:      #555555;
+  --white:      #FFFFFF;
+
+  /* ── Gold ── */
+  --gold:       #C9A84C;
+  --gold-lt:    #E2C97E;
+  --gold-pale:  #F9F3E3;   /* light gold tint */
+  --gold-pale2: #F5EDD6;
+
+  /* ── Semantic ── */
+  --bg:         #F5F5F5;
+  --surface:    var(--white);
+  --surface2:   #F2F2F2;
+  --border:     rgba(0,0,0,0.08);
+  --border2:    rgba(0,0,0,0.14);
+  --text:       var(--black);
+  --text-mid:   #333333;
+  --text-light: #666666;
+  --text-dim:   #999999;
+
+  /* ── Status ── */
+  --green:      #3D7A56;
+  --green-pale: #EAF5EE;
+  --red:        #A04040;
+  --red-pale:   #FDEAEA;
+
+  /* ── Radius ── */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+
+  /* ── Display settings (overridable via JS) ── */
+  --heading-font: 'Playfair Display', serif;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  color-scheme: light only;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100dvh;
+}
+
+* { -webkit-tap-highlight-color: transparent; }
+
+
+:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+input, select, textarea, button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* ── Hover effects ── */
+a, button { transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease; }
+
+a:hover { opacity: 0.8; }
+
+button:hover:not(:disabled) { opacity: 0.85; }
+
+/* Feature grid links (dashboard nav tiles) */
+.feature-grid a:hover {
+  color: var(--gold) !important;
+  opacity: 1;
+}
+
+
+/* Pill / ghost buttons (back, add-row, etc.) */
+button[style*="border"]:hover:not(:disabled) {
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+  opacity: 1;
+}
+
+/* Gold primary buttons */
+button[style*="var(--gold)"]:hover:not(:disabled):not(.tab-btn) {
+  background: #b8963e !important;
+  color: #ffffff !important;
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(201,168,76,0.35);
+}
+
+/* Icon-only / trash buttons */
+button[style*="background:none"]:hover,
+button[style*="background: none"]:hover {
+  color: var(--gold) !important;
+  opacity: 1;
+}
+
+/* Tab bar — no hover effects, active state via JS is sufficient */
+.tab-bar button:hover {
+  opacity: 1 !important;
+  background: none !important;
+  border-color: transparent !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideUp {
+  from { transform: translate(-50%, 16px); opacity: 0; }
+  to   { transform: translate(-50%, 0);    opacity: 1; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}

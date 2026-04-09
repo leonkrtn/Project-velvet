@@ -1,0 +1,553 @@
+'use client'
+import React, { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { v4 as uuid } from 'uuid'
+import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel } from 'lucide-react'
+import {
+  loadEvent, saveEvent, getGuestByToken,
+  type Event, type Guest, type MealChoice, type AllergyTag, type TransportMode, type AltersKategorie, type Begleitperson,
+} from '@/lib/store'
+import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle, Input } from '@/components/ui'
+
+type Step = 'intro'|'rsvp'|'details'|'hotel'|'confirmation'
+
+interface CompanionDraft {
+  id: string
+  name: string
+  ageCategory: AltersKategorie
+  trinkAlkohol: boolean | undefined
+  meal: MealChoice | undefined
+  allergies: AllergyTag[]
+  allergyCustom: string
+}
+
+const AGE_CATS: { value: AltersKategorie; label: string }[] = [
+  { value: 'erwachsen', label: 'Erwachsen' },
+  { value: '13-17',     label: '13–17 Jahre' },
+  { value: '6-12',      label: '6–12 Jahre' },
+  { value: '0-6',       label: '0–6 Jahre' },
+]
+
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function blankCompanion(): CompanionDraft {
+  return { id: uuid(), name: '', ageCategory: 'erwachsen', trinkAlkohol: undefined, meal: undefined, allergies: [], allergyCustom: '' }
+}
+
+export default function RSVPPage() {
+  const params = useParams()
+  const router = useRouter()
+  const token  = params?.token as string
+
+  const [event, setEvent] = useState<Event | null>(null)
+  const [guest, setGuest] = useState<Guest | null>(null)
+  const [step,  setStep]  = useState<Step>('intro')
+  const [toast, setToast] = useState<string | null>(null)
+
+  // RSVP step state
+  const [attending,    setAttending]    = useState<boolean | null>(null)
+  const [trinkAlkohol, setTrinkAlkohol] = useState<boolean | undefined>()
+  const [companions,   setCompanions]   = useState<CompanionDraft[]>([])
+  const [message,      setMessage]      = useState('')
+
+  // Details step
+  const [meal,         setMeal]         = useState<MealChoice | undefined>()
+  const [allergies,    setAllergies]    = useState<AllergyTag[]>([])
+  const [allergyCustom,setAllergyCustom]= useState('')
+
+  // Arrival
+  const [arrivalDate,  setArrivalDate]  = useState('')
+  const [arrivalTime,  setArrivalTime]  = useState('')
+  const [transport,    setTransport]    = useState<TransportMode | ''>('')
+
+  // Hotel
+  const [hotelRoomId,  setHotelRoomId]  = useState('')
+
+  useEffect(() => {
+    const e = loadEvent(); setEvent(e)
+    const g = getGuestByToken(e, token)
+    if (!g) return; setGuest(g)
+    // Pre-fill if already responded
+    if (g.status !== 'eingeladen') {
+      setAttending(g.status === 'zugesagt')
+      setTrinkAlkohol(g.trinkAlkohol)
+      setMeal(g.meal)
+      setAllergies(g.allergies)
+      setAllergyCustom(g.allergyCustom ?? '')
+      setArrivalDate(g.arrivalDate ?? '')
+      setArrivalTime(g.arrivalTime ?? '')
+      setTransport((g.transport ?? '') as TransportMode)
+      setHotelRoomId(g.hotelRoomId ?? '')
+      setMessage(g.message ?? '')
+      setCompanions(g.begleitpersonen.map(bp => ({
+        id: bp.id,
+        name: bp.name,
+        ageCategory: bp.ageCategory,
+        trinkAlkohol: bp.trinkAlkohol,
+        meal: bp.meal,
+        allergies: bp.allergies,
+        allergyCustom: bp.allergyCustom ?? '',
+      })))
+    }
+  }, [token])
+
+  if (!event || !guest) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--bg)', flexDirection: 'column', gap: 12 }}>
+      <span style={{ fontFamily: "'DM Serif Display',serif", fontSize: 28, color: 'var(--gold)' }}>Velvet.</span>
+      <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>Einladung nicht gefunden.</p>
+    </div>
+  )
+
+  const allRooms = (event?.hotels ?? []).flatMap(h => h.rooms)
+
+  const setCompanionCount = (count: number) => {
+    setCompanions(prev => {
+      if (count > prev.length) {
+        return [...prev, ...Array.from({ length: count - prev.length }, blankCompanion)]
+      }
+      return prev.slice(0, count)
+    })
+  }
+
+  const updateCompanion = (idx: number, patch: Partial<CompanionDraft>) => {
+    setCompanions(prev => prev.map((c, i) => i === idx ? { ...c, ...patch } : c))
+  }
+
+  const save = () => {
+    if (!event || !guest) return
+    const updatedHotels = (event.hotels ?? []).map(h => ({
+      ...h,
+      rooms: h.rooms.map(r => {
+        const wasBooked = guest.hotelRoomId && guest.hotelRoomId !== 'none' && r.id === guest.hotelRoomId
+        const isNew     = hotelRoomId && hotelRoomId !== 'none' && r.id === hotelRoomId && guest.hotelRoomId !== hotelRoomId
+        if (wasBooked && !isNew) return { ...r, bookedRooms: Math.max(0, r.bookedRooms - 1) }
+        if (isNew && !wasBooked) return { ...r, bookedRooms: r.bookedRooms + 1 }
+        return r
+      })
+    }))
+
+    const begleitpersonen: Begleitperson[] = attending
+      ? companions.map(c => ({
+          id: c.id,
+          name: c.name,
+          ageCategory: c.ageCategory,
+          trinkAlkohol: c.ageCategory === 'erwachsen' ? c.trinkAlkohol : undefined,
+          meal: c.meal,
+          allergies: c.allergies,
+          allergyCustom: c.allergyCustom,
+        }))
+      : []
+
+    const updatedGuest: Guest = {
+      ...guest,
+      status:          attending ? 'zugesagt' : 'abgesagt',
+      trinkAlkohol:    attending ? trinkAlkohol : undefined,
+      meal:            attending ? meal : undefined,
+      allergies:       attending ? allergies : [],
+      allergyCustom:   attending ? allergyCustom : '',
+      begleitpersonen,
+      arrivalDate:     attending ? arrivalDate : undefined,
+      arrivalTime:     attending ? arrivalTime : undefined,
+      transport:       attending ? (transport as TransportMode) : undefined,
+      hotelRoomId:     attending ? (hotelRoomId || 'none') : undefined,
+      message,
+      respondedAt: new Date().toISOString(),
+    }
+    const updated: Event = { ...event, guests: event.guests.map(g => g.id === guest.id ? updatedGuest : g), hotels: updatedHotels }
+    saveEvent(updated); window.dispatchEvent(new Event('velvet-saved')); setEvent(updated); setGuest(updatedGuest); setStep('confirmation')
+  }
+
+  const progressSteps: Step[] = attending === false
+    ? ['intro', 'rsvp', 'confirmation']
+    : ['intro', 'rsvp', 'details', 'hotel', 'confirmation']
+  const progress = progressSteps.indexOf(step) / (progressSteps.length - 1) * 100
+
+  const optBtn = (active: boolean): React.CSSProperties => ({
+    padding: '16px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
+    border: `1.5px solid ${active ? 'var(--gold)' : 'var(--border)'}`,
+    background: active ? 'var(--gold-pale)' : 'var(--surface)',
+    display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', textAlign: 'left',
+    transition: 'all 0.15s', color: active ? 'var(--gold)' : 'var(--grey4)', width: '100%',
+  })
+
+  const yesNoBtn = (val: boolean, current: boolean | undefined): React.CSSProperties => ({
+    flex: 1, padding: '11px', borderRadius: 'var(--r-sm)', fontFamily: 'inherit',
+    border: `1.5px solid ${current === val ? 'var(--gold)' : 'var(--border)'}`,
+    background: current === val ? 'var(--gold-pale)' : 'var(--surface)',
+    color: current === val ? 'var(--gold)' : 'var(--grey4)',
+    fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+  })
+
+  const maxComp = event.maxBegleitpersonen ?? 2
+
+  // details disabled if no meal for guest or any companion without meal
+  const detailsOk = !!meal && companions.every(c => !!c.meal)
+
+  return (
+    <div style={{ background: 'var(--bg)', minHeight: '100dvh', paddingBottom: 40 }}>
+      {/* Top bar */}
+      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '14px 20px', paddingTop: 'calc(14px + env(safe-area-inset-top))' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: step !== 'intro' && step !== 'confirmation' ? 10 : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {step !== 'intro' && step !== 'confirmation' && (
+                <button onClick={() => {
+                  const prev: Record<Step, Step> = { intro: 'intro', rsvp: 'intro', details: 'rsvp', hotel: 'details', confirmation: 'hotel' }
+                  setStep(prev[step])
+                }} style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: 'var(--text-light)', display: 'flex' }}>
+                  <ChevronLeft size={20} />
+                </button>
+              )}
+              <span style={{ fontFamily: "'DM Serif Display',serif", fontSize: 18, color: 'var(--gold)' }}>Velvet.</span>
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{event.coupleName}</span>
+          </div>
+          {step !== 'intro' && step !== 'confirmation' && (
+            <div style={{ height: 2, background: 'var(--black3)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progress}%`, background: 'var(--gold)', borderRadius: 2, transition: 'width 0.4s ease' }} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 20px' }}>
+
+        {/* ──────────── INTRO ──────────── */}
+        {step === 'intro' && (
+          <div style={{ animation: 'fadeUp 0.5s ease' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '32px 24px', marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(201,168,76,0.04)' }} />
+              <div style={{ height: 1, background: 'linear-gradient(to right,var(--gold),transparent)', marginBottom: 20, opacity: 0.4 }} />
+              <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.16em', color: 'var(--gold)', marginBottom: 10 }}>Herzliche Einladung</p>
+              <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 400, color: 'var(--text)', lineHeight: 1.2, marginBottom: 8 }}>{event.coupleName}</h1>
+              <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 15, fontStyle: 'italic', color: 'var(--text-light)', marginBottom: 0 }}>
+                Liebe/r <strong style={{ fontStyle: 'normal', color: 'var(--text)' }}>{guest.name.split(' ')[0]}</strong>, wir freuen uns auf deine Antwort.
+              </p>
+            </div>
+
+            <Card style={{ marginBottom: 14 }}>
+              {[
+                { icon: <Clock size={13} color="var(--gold)" />,  label: 'Datum',     value: fmtDate(event.date) },
+                { icon: <MapPin size={13} color="var(--gold)" />, label: 'Ort',       value: `${event.venue}, ${event.venueAddress}` },
+                { icon: <Shirt size={13} color="var(--gold)" />,  label: 'Dresscode', value: event.dresscode },
+                { icon: <Hotel size={13} color="var(--gold)" />,  label: 'Hotel',     value: (event.hotels ?? []).map(h => h.name).filter(Boolean).join(', ') || undefined },
+                { icon: <span style={{ fontSize: 13 }}>👶</span>, label: 'Kinder',
+                  value: (event as any).childrenAllowed === false
+                    ? ((event as any).childrenNote || 'Wir feiern ohne Kinder')
+                    : ((event as any).childrenNote || 'Kinder herzlich willkommen') },
+              ].filter(x => x.value).map(item => (
+                <div key={item.label} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
+                  <div style={{ marginTop: 1, flexShrink: 0 }}>{item.icon}</div>
+                  <div>
+                    <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 2 }}>{item.label}</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-mid)' }}>{item.value}</p>
+                  </div>
+                </div>
+              ))}
+            </Card>
+
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 14 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-light)', marginBottom: 5 }}>Lieber telefonisch antworten?</p>
+              <p style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 8 }}>Ruf uns gerne an — wir nehmen deine Antwort auch persönlich entgegen:</p>
+              <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 500, color: 'var(--gold)' }}>1234 567 78910</p>
+            </div>
+
+            {event.childrenAllowed !== undefined && (
+              <div style={{ background: event.childrenAllowed ? 'var(--green-pale)' : 'var(--red-pale)', border: `1px solid ${event.childrenAllowed ? 'rgba(61,122,86,0.2)' : 'rgba(160,64,64,0.15)'}`, borderRadius: 'var(--r-md)', padding: '12px 16px', marginBottom: 14 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: event.childrenAllowed ? 'var(--green)' : 'var(--red)', marginBottom: event.childrenNote ? 4 : 0 }}>
+                  {event.childrenAllowed ? 'Kinder herzlich willkommen' : 'Erwachsenenfeier — ohne Kinder'}
+                </p>
+                {event.childrenNote && <p style={{ fontSize: 12, color: 'var(--text-light)' }}>{event.childrenNote}</p>}
+              </div>
+            )}
+
+            {guest.status !== 'eingeladen' && (
+              <div style={{ background: 'var(--gold-pale)', borderRadius: 'var(--r-md)', padding: '12px 16px', marginBottom: 14, border: '1px solid rgba(201,168,76,0.2)', fontSize: 13, color: 'var(--gold)' }}>
+                Du hast bereits geantwortet. Du kannst deine Antwort hier ändern.
+              </div>
+            )}
+
+            <Button fullWidth size="lg" variant="gold" onClick={() => setStep('rsvp')}>Jetzt antworten</Button>
+            <button onClick={() => router.push('/dashboard')} style={{ width: '100%', marginTop: 12, padding: '12px', background: 'none', border: 'none', fontSize: 13, color: 'var(--text-dim)', cursor: 'pointer', fontFamily: 'inherit' }}>Zurück zum Dashboard</button>
+          </div>
+        )}
+
+        {/* ──────────── RSVP ──────────── */}
+        {step === 'rsvp' && (
+          <div style={{ animation: 'fadeUp 0.4s ease' }}>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Kannst du kommen?</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>{event.coupleName} · {new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+
+            {/* Yes / No */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+              {[
+                { v: true,  icon: <CheckCircle size={20} />, title: 'Ja, ich bin dabei!',  sub: 'Ich freue mich auf diesen besonderen Tag.' },
+                { v: false, icon: <XCircle size={20} />,     title: 'Leider nicht',         sub: 'Ich kann leider nicht teilnehmen.' },
+              ].map(opt => (
+                <button key={String(opt.v)} onClick={() => setAttending(opt.v)} style={optBtn(attending === opt.v)}>
+                  {opt.icon}
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{opt.title}</p>
+                    <p style={{ fontSize: 12, opacity: 0.65, fontWeight: 400 }}>{opt.sub}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {attending && (
+              <>
+                {/* Alcohol — main guest */}
+                <Card style={{ marginBottom: 14 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Trinkst du Alkohol?</p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setTrinkAlkohol(true)}  style={yesNoBtn(true,  trinkAlkohol)}>Ja, gerne</button>
+                    <button onClick={() => setTrinkAlkohol(false)} style={yesNoBtn(false, trinkAlkohol)}>Nein, danke</button>
+                  </div>
+                </Card>
+
+                {/* Companion count */}
+                <Card style={{ marginBottom: 14 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>
+                    Wie viele Personen bringst du mit?
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {Array.from({ length: maxComp + 1 }, (_, i) => (
+                      <button key={i} onClick={() => setCompanionCount(i)} style={{
+                        width: 48, height: 48, borderRadius: 'var(--r-sm)', fontFamily: 'inherit',
+                        border: `1.5px solid ${companions.length === i ? 'var(--gold)' : 'var(--border)'}`,
+                        background: companions.length === i ? 'var(--gold-pale)' : 'var(--surface)',
+                        color: companions.length === i ? 'var(--gold)' : 'var(--grey4)',
+                        fontSize: 16, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
+                      }}>
+                        {i}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Companion details */}
+                  {companions.map((c, idx) => (
+                    <div key={c.id} style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 12 }}>
+                        Begleitperson {idx + 1}
+                      </p>
+                      {/* Name */}
+                      <div style={{ marginBottom: 10 }}>
+                        <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Name</label>
+                        <input value={c.name} onChange={e => updateCompanion(idx, { name: e.target.value })}
+                          placeholder="Vorname Nachname"
+                          style={{ width: '100%', padding: '10px 13px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                      </div>
+                      {/* Age */}
+                      <div style={{ marginBottom: 10 }}>
+                        <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Altersgruppe</label>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {AGE_CATS.map(a => (
+                            <button key={a.value} onClick={() => updateCompanion(idx, { ageCategory: a.value })} style={{
+                              padding: '7px 12px', borderRadius: 8, fontFamily: 'inherit',
+                              border: `1.5px solid ${c.ageCategory === a.value ? 'var(--gold)' : 'var(--border)'}`,
+                              background: c.ageCategory === a.value ? 'var(--gold-pale)' : 'var(--surface)',
+                              color: c.ageCategory === a.value ? 'var(--gold)' : 'var(--grey4)',
+                              fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                            }}>
+                              {a.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Alcohol — only for adults */}
+                      {c.ageCategory === 'erwachsen' && (
+                        <div>
+                          <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>
+                            Trinkt {c.name || 'diese Person'} Alkohol?
+                          </label>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button onClick={() => updateCompanion(idx, { trinkAlkohol: true })}  style={yesNoBtn(true,  c.trinkAlkohol)}>Ja, gerne</button>
+                            <button onClick={() => updateCompanion(idx, { trinkAlkohol: false })} style={yesNoBtn(false, c.trinkAlkohol)}>Nein, danke</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </Card>
+              </>
+            )}
+
+            <Textarea label="Nachricht (optional)" value={message} onChange={setMessage} placeholder="Herzliche Glückwünsche …" />
+
+            <Button fullWidth size="lg" variant="gold" disabled={attending === null}
+              onClick={() => { if (attending === false) { save() } else { setStep('details') } }}>
+              {attending === false ? 'Absage senden' : 'Weiter'}
+            </Button>
+          </div>
+        )}
+
+        {/* ──────────── DETAILS ──────────── */}
+        {step === 'details' && (
+          <div style={{ animation: 'fadeUp 0.4s ease' }}>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Deine Details</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>Damit wir alles perfekt vorbereiten können.</p>
+
+            <Card style={{ marginBottom: 10 }}>
+              <MealPicker label="Deine Menüwahl" value={meal} onChange={setMeal} />
+            </Card>
+
+            {companions.map((c, idx) => (
+              <Card key={c.id} style={{ marginBottom: 10 }}>
+                <MealPicker
+                  label={`Menüwahl: ${c.name || `Begleitperson ${idx + 1}`}`}
+                  value={c.meal}
+                  onChange={v => updateCompanion(idx, { meal: v })}
+                />
+              </Card>
+            ))}
+
+            <Card style={{ marginBottom: 10 }}>
+              <AllergyPicker label="Deine Allergien" tags={allergies} onTagsChange={setAllergies} custom={allergyCustom} onCustomChange={setAllergyCustom} />
+            </Card>
+
+            {companions.map((c, idx) => (
+              <Card key={`allergy-${c.id}`} style={{ marginBottom: 10 }}>
+                <AllergyPicker
+                  label={`Allergien: ${c.name || `Begleitperson ${idx + 1}`}`}
+                  tags={c.allergies}
+                  onTagsChange={v => updateCompanion(idx, { allergies: v })}
+                  custom={c.allergyCustom}
+                  onCustomChange={v => updateCompanion(idx, { allergyCustom: v })}
+                />
+              </Card>
+            ))}
+
+            <Card style={{ marginBottom: 20 }}>
+              <SectionTitle>Anreise</SectionTitle>
+              <Input label="Ankunftsdatum" type="date" value={arrivalDate} onChange={setArrivalDate} />
+              <Input label="Ungefähre Uhrzeit" type="time" value={arrivalTime} onChange={setArrivalTime} />
+              <div>
+                <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 8 }}>Transportmittel</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+                  {[{ v: 'auto', l: 'Auto' }, { v: 'bahn', l: 'Bahn' }, { v: 'flugzeug', l: 'Flug' }, { v: 'andere', l: 'Andere' }].map(opt => (
+                    <button key={opt.v} type="button" onClick={() => setTransport(opt.v as TransportMode)} style={{
+                      padding: '9px 6px', borderRadius: 'var(--r-sm)', fontFamily: 'inherit',
+                      border: `1.5px solid ${transport === opt.v ? 'var(--gold)' : 'var(--border)'}`,
+                      background: transport === opt.v ? 'var(--gold-pale)' : 'var(--surface)',
+                      color: transport === opt.v ? 'var(--gold)' : 'var(--grey4)',
+                      fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    }}>
+                      {opt.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </Card>
+
+            <Button fullWidth size="lg" variant="gold" disabled={!detailsOk} onClick={() => setStep('hotel')}>Weiter</Button>
+          </div>
+        )}
+
+        {/* ──────────── HOTEL ──────────── */}
+        {step === 'hotel' && (
+          <div style={{ animation: 'fadeUp 0.4s ease' }}>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Hotelzimmer</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 20, lineHeight: 1.5 }}>Möchtet ihr ein Zimmer reservieren?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              <button onClick={() => setHotelRoomId('none')} style={{
+                padding: '16px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
+                border: `1.5px solid ${hotelRoomId === 'none' ? 'var(--gold)' : 'var(--border)'}`,
+                background: hotelRoomId === 'none' ? 'var(--gold-pale)' : 'var(--surface)',
+                display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', textAlign: 'left',
+                color: hotelRoomId === 'none' ? 'var(--gold)' : 'var(--grey4)', width: '100%',
+              }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${hotelRoomId === 'none' ? 'var(--gold)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {hotelRoomId === 'none' && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--gold)' }} />}
+                </div>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>Kein Zimmer benötigt</p>
+                  <p style={{ fontSize: 11, opacity: 0.65, fontWeight: 400 }}>Ich reise täglich an oder habe selbst gebucht.</p>
+                </div>
+              </button>
+
+              {(event.hotels ?? []).map(hotel => (
+                <div key={hotel.id}>
+                  {(event.hotels ?? []).length > 1 && (
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '10px 0 8px' }}>{hotel.name}</p>
+                  )}
+                  {hotel.rooms.map(room => {
+                    const avail  = room.totalRooms - room.bookedRooms
+                    const full   = avail === 0
+                    const active = hotelRoomId === room.id
+                    return (
+                      <button key={room.id} onClick={() => !full && setHotelRoomId(active ? '' : room.id)} disabled={full} style={{
+                        padding: '16px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
+                        border: `1.5px solid ${active ? 'var(--gold)' : 'var(--border)'}`,
+                        background: active ? 'var(--gold-pale)' : 'var(--surface)',
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        cursor: full ? 'not-allowed' : 'pointer', opacity: full ? 0.4 : 1,
+                        textAlign: 'left', color: active ? 'var(--gold)' : 'var(--grey4)', width: '100%', marginBottom: 8,
+                      }}>
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${active ? 'var(--gold)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {active && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--gold)' }} />}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{room.type}</p>
+                          <p style={{ fontSize: 11, opacity: 0.65, fontWeight: 400 }}>€ {room.pricePerNight} / Nacht · {full ? 'Ausgebucht' : `${avail} verfügbar`}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+            <Button fullWidth size="lg" variant="gold" disabled={!hotelRoomId} onClick={save}>Antwort absenden</Button>
+          </div>
+        )}
+
+        {/* ──────────── CONFIRMATION ──────────── */}
+        {step === 'confirmation' && (
+          <div style={{ animation: 'fadeUp 0.5s ease', textAlign: 'center', paddingTop: 40 }}>
+            <div style={{ width: 68, height: 68, borderRadius: '50%', background: attending ? 'var(--gold-pale)' : 'var(--black3)', border: `1px solid ${attending ? 'rgba(201,168,76,0.3)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: attending ? 'var(--gold)' : 'var(--grey3)' }}>
+              {attending ? <CheckCircle size={28} /> : <XCircle size={28} />}
+            </div>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 8 }}>
+              {attending ? 'Danke für deine Zusage!' : 'Schade, dass du nicht kommen kannst.'}
+            </h2>
+            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 28, lineHeight: 1.6 }}>
+              {attending
+                ? `Wir freuen uns auf dich am ${new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })} in ${event.venue}.`
+                : `${event.coupleName} wurden informiert.`}
+            </p>
+
+            {attending && (
+              <Card style={{ textAlign: 'left', marginBottom: 20 }}>
+                <SectionTitle>Deine Angaben</SectionTitle>
+                {meal && <Row label="Menü" value={{ fleisch: 'Fleisch', fisch: 'Fisch', vegetarisch: 'Vegetarisch', vegan: 'Vegan' }[meal]} />}
+                {trinkAlkohol !== undefined && <Row label="Alkohol" value={trinkAlkohol ? 'Ja' : 'Nein'} />}
+                {companions.length > 0 && (
+                  <Row label="Begleitpersonen" value={companions.map(c => c.name || '—').join(', ')} />
+                )}
+                {hotelRoomId && hotelRoomId !== 'none' && <Row label="Hotel" value={allRooms.find(r => r.id === hotelRoomId)?.type ?? '—'} />}
+                {hotelRoomId === 'none' && <Row label="Hotel" value="Kein Zimmer" />}
+                {arrivalDate && <Row label="Ankunft" value={`${new Date(arrivalDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}${arrivalTime ? ` · ${arrivalTime}` : ''}`} />}
+              </Card>
+            )}
+
+            <Button fullWidth variant="secondary" onClick={() => setStep('rsvp')}>Antwort ändern</Button>
+            <button onClick={() => router.push('/dashboard')} style={{ width: '100%', marginTop: 12, padding: '12px', background: 'none', border: 'none', fontSize: 13, color: 'var(--text-dim)', cursor: 'pointer', fontFamily: 'inherit' }}>Zurück zum Dashboard</button>
+          </div>
+        )}
+      </div>
+
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes slideUp{from{transform:translate(-50%,16px);opacity:0}to{transform:translate(-50%,0);opacity:1}}`}</style>
+    </div>
+  )
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, gap: 12, marginBottom: 8 }}>
+      <span style={{ color: 'var(--text-dim)', flexShrink: 0 }}>{label}</span>
+      <span style={{ color: 'var(--text-mid)', fontWeight: 500, textAlign: 'right' }}>{value}</span>
+    </div>
+  )
+}
