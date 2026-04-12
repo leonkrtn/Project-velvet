@@ -4,8 +4,10 @@ import { type Event, type Guest } from '@/lib/store'
 import { useEvent } from '@/lib/event-context'
 import { PageShell, Card, SectionTitle, Toast, Button, Input } from '@/components/ui'
 import { Mail, FileText, Phone, Copy, Check } from 'lucide-react'
+import { useFeatureEnabled, FeatureDisabledScreen } from '@/components/FeatureGate'
 
 export default function InvitePage() {
+  const enabled = useFeatureEnabled('invite')
   const { event, updateEvent } = useEvent()
   const [mode,setMode]     = useState<'choose'|'letter'|'email'>('choose')
   const [selected,setSel]  = useState<Guest|null>(null)
@@ -14,6 +16,7 @@ export default function InvitePage() {
   const [copied,setCopied] = useState(false)
 
   if(!event) return null
+  if(!enabled) return <PageShell title="Einladen" back="/dashboard"><FeatureDisabledScreen /></PageShell>
 
   const base   = typeof window!=='undefined'?window.location.origin:'https://velvet.app'
   const rsvpUrl = (t:string) => `${base}/rsvp/${t}`
@@ -100,7 +103,7 @@ ${event.coupleName}`
             <SectionTitle>Gast auswählen</SectionTitle>
             <div style={{display:'flex',flexDirection:'column',gap:7}}>
               {invitable.map(g=>(
-                <button key={g.id} onClick={()=>setSel(g)} style={{padding:'11px 14px',borderRadius:10,fontFamily:'inherit',border:`1.5px solid ${selected?.id===g.id?'var(--gold)':'var(--border)'}`,background:selected?.id===g.id?'var(--gold-pale)':'var(--bg)',display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer',transition:'all 0.15s'}}>
+                <button key={g.id} onClick={()=>setSel(g)} data-sel={selected?.id===g.id?'':undefined} style={{padding:'11px 14px',borderRadius:10,fontFamily:'inherit',border:`1.5px solid ${selected?.id===g.id?'var(--gold)':'var(--border)'}`,background:selected?.id===g.id?'var(--gold-pale)':'var(--bg)',display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer',transition:'all 0.15s'}}>
                   <div style={{textAlign:'left'}}>
                     <p style={{fontSize:13,fontWeight:600,color:selected?.id===g.id?'var(--gold)':'var(--white)'}}>{g.name}</p>
                     <p style={{fontSize:11,color:'var(--text-dim)'}}>{g.email||'Keine E-Mail'}</p>

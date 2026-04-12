@@ -239,7 +239,7 @@ export default function EinstellungenPage() {
               <SecSub>Diese Information erscheint auf den Einladungen deiner Gäste.</SecSub>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
                 {[{v:true,l:'Ja, Kinder willkommen'},{v:false,l:'Nein, nur Erwachsene'}].map(opt=>(
-                  <button key={String(opt.v)} onClick={()=>setChildrenAllowed(opt.v)} style={{padding:'14px 12px',borderRadius:12,fontFamily:'inherit',border:`1.5px solid ${childrenAllowed===opt.v?'var(--gold)':'var(--border)'}`,background:childrenAllowed===opt.v?'var(--gold-pale)':'var(--bg)',color:childrenAllowed===opt.v?'var(--gold)':'var(--text-mid)',fontSize:13,fontWeight:600,cursor:'pointer',textAlign:'left'}}>
+                  <button key={String(opt.v)} onClick={()=>setChildrenAllowed(opt.v)} data-sel={childrenAllowed===opt.v?'':undefined} style={{padding:'14px 12px',borderRadius:12,fontFamily:'inherit',border:`1.5px solid ${childrenAllowed===opt.v?'var(--gold)':'var(--border)'}`,background:childrenAllowed===opt.v?'var(--gold-pale)':'var(--bg)',color:childrenAllowed===opt.v?'var(--gold)':'var(--text-mid)',fontSize:13,fontWeight:600,cursor:'pointer',textAlign:'left'}}>
                     {opt.l}
                   </button>
                 ))}
@@ -423,7 +423,7 @@ export default function EinstellungenPage() {
                   </div>
                   <div style={{display:'flex',gap:6}}>
                     {(['angefragt','bestätigt','abgesagt'] as VendorStatus[]).map(s=>(
-                      <button key={s} onClick={()=>{const a=[...vendors];a[i]={...a[i],status:s};setVendors(a)}} style={{flex:1,padding:'6px 4px',borderRadius:100,fontFamily:'inherit',border:`1.5px solid ${v.status===s?'var(--gold)':'var(--border)'}`,background:v.status===s?'var(--gold-pale)':'none',color:v.status===s?'var(--gold)':'var(--text-dim)',fontSize:10,fontWeight:700,cursor:'pointer'}}>
+                      <button key={s} onClick={()=>{const a=[...vendors];a[i]={...a[i],status:s};setVendors(a)}} data-sel={v.status===s?'':undefined} style={{flex:1,padding:'6px 4px',borderRadius:100,fontFamily:'inherit',border:`1.5px solid ${v.status===s?'var(--gold)':'var(--border)'}`,background:v.status===s?'var(--gold-pale)':'none',color:v.status===s?'var(--gold)':'var(--text-dim)',fontSize:10,fontWeight:700,cursor:'pointer'}}>
                         {s.charAt(0).toUpperCase()+s.slice(1)}
                       </button>
                     ))}

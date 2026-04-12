@@ -4,10 +4,12 @@ import { type Event, type SubEvent } from '@/lib/store'
 import { useEvent } from '@/lib/event-context'
 import { PageShell, Card, SectionTitle, Toast, Button, Input, Textarea, Avatar } from '@/components/ui'
 import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { useFeatureEnabled, FeatureDisabledScreen } from '@/components/FeatureGate'
 
 function uid() { return Math.random().toString(36).slice(2,9) }
 
 export default function SubEventsPage() {
+  const enabled = useFeatureEnabled('sub-events')
   const { event, updateEvent } = useEvent()
   const [toast,setToast] = useState<string|null>(null)
   const [expanded,setExp] = useState<string|null>(null)
@@ -16,6 +18,7 @@ export default function SubEventsPage() {
 
   useEffect(()=>{ if(event && expanded===null && event.subEvents.length>0) setExp(event.subEvents[0].id) },[event])
   if (!event) return null
+  if (!enabled) return <PageShell title="Sub-Events" back="/dashboard"><FeatureDisabledScreen /></PageShell>
 
   const addSubEvent = () => {
     if (!draft.name||!draft.date) return
@@ -73,7 +76,7 @@ export default function SubEventsPage() {
                       const included = se.guestIds.includes(g.id)
                       return (
                         <div key={g.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
-                          <button onClick={()=>toggleGuest(se.id,g.id)} style={{width:20,height:20,borderRadius:5,border:`1.5px solid ${included?'var(--gold)':'var(--border)'}`,background:included?'var(--gold-pale)':'none',cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}>
+                          <button onClick={()=>toggleGuest(se.id,g.id)} data-sel={included?'':undefined} style={{width:20,height:20,borderRadius:5,border:`1.5px solid ${included?'var(--gold)':'var(--border)'}`,background:included?'var(--gold-pale)':'none',cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}>
                             {included&&<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-5" stroke="var(--gold)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                           </button>
                           <Avatar name={g.name} size={24}/>

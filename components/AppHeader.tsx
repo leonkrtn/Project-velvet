@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEvent } from '@/lib/event-context'
+import { DEFAULT_FEATURE_TOGGLES } from '@/lib/store'
+import type { FeatureKey } from '@/lib/store'
 
 const ORBS = [
   {x:3,  s:5, dur:6.0, delay:0,   o:0.55, blur:2},
@@ -23,14 +25,32 @@ const ORBS = [
 ]
 
 const PAGE_TITLES: Record<string, string> = {
-  '/seating':    'Sitzplan',
-  '/budget':     'Budget',
-  '/vendors':    'Dienstleister',
-  '/tasks':      'Aufgaben',
-  '/reminders':  'Erinnerungen',
-  '/sub-events': 'Sub-Events',
-  '/invite':     'Einladen',
-  '/catering':   'Catering & Menü',
+  '/seating':       'Sitzplan',
+  '/budget':        'Budget',
+  '/vendors':       'Dienstleister',
+  '/tasks':         'Aufgaben',
+  '/reminders':     'Erinnerungen',
+  '/sub-events':    'Sub-Events',
+  '/invite':        'Einladen',
+  '/catering':      'Catering & Menü',
+  '/veranstalter':  'Veranstalter',
+  '/deko':          'Dekoration',
+  '/gaeste-fotos':  'Gäste-Fotos',
+  '/login':         'Anmelden',
+  '/signup':        'Registrieren',
+}
+
+const FEATURE_ROUTES: Record<FeatureKey, string> = {
+  budget:          '/budget',
+  vendors:         '/vendors',
+  tasks:           '/tasks',
+  reminders:       '/reminders',
+  seating:         '/seating',
+  catering:        '/catering',
+  'sub-events':    '/sub-events',
+  invite:          '/invite',
+  deko:            '/deko',
+  'gaeste-fotos':  '/gaeste-fotos',
 }
 
 const COLOR_PRESETS = [
@@ -64,9 +84,16 @@ const MENU_ITEMS = [
   { section: 'Hochzeit', items: [
     { label: 'Hochzeit bearbeiten', href: '/einstellungen', icon: '✎' },
   ]},
+  { section: 'Planung', items: [
+    { label: 'Dekoration',          href: '/deko',          icon: '❀', featureKey: 'deko' as FeatureKey },
+    { label: 'Gäste-Fotos',         href: '/gaeste-fotos',  icon: '◻', featureKey: 'gaeste-fotos' as FeatureKey },
+  ]},
   { section: 'Konto', items: [
+    { label: 'Anmelden',            href: '/login',         icon: '→' },
     { label: 'Kontakt & Support',   href: '#',              icon: '◎' },
-    { label: 'Mein Konto',          href: '#',              icon: '○' },
+  ]},
+  { section: 'Veranstalter', items: [
+    { label: 'Verwaltung',          href: '/veranstalter',  icon: '⊞' },
   ]},
   { section: 'Rechtliches', items: [
     { label: 'Allgemeine Geschäftsbedingungen', href: '#',  icon: '§' },
@@ -80,6 +107,11 @@ export default function AppHeader() {
   const router      = useRouter()
   const { event }   = useEvent()
   const coupleName  = event?.coupleName ?? ''
+  const featureToggles = { ...DEFAULT_FEATURE_TOGGLES, ...event?.organizer?.featureToggles }
+  const isRouteEnabled = (href: string) => {
+    const key = Object.entries(FEATURE_ROUTES).find(([, route]) => route === href)?.[0] as FeatureKey | undefined
+    return key ? featureToggles[key] : true
+  }
   const [menuOpen,      setMenuOpen]      = useState(false)
   const [showAnim,      setShowAnim]      = useState(false)
   const [animOut,       setAnimOut]       = useState(false)
@@ -204,39 +236,46 @@ export default function AppHeader() {
 
         {/* Menu sections */}
         <div style={{ flex: 1, padding: '8px 0 24px' }}>
-          {MENU_ITEMS.map(section => (
-            <div key={section.section} style={{ marginTop: 16 }}>
-              <p style={{
-                fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
-                letterSpacing: '0.12em', color: 'var(--text-dim)',
-                padding: '0 20px', marginBottom: 4,
-              }}>{section.section}</p>
-              {section.items.map(item => (
-                <button
-                  key={item.label}
-                  onClick={() => handleNav(item.href)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    width: '100%', padding: '11px 20px',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    fontFamily: 'inherit', textAlign: 'left',
-                    fontSize: 14, color: item.href === '#' ? 'var(--text-dim)' : 'var(--text)',
-                    transition: 'background 0.15s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                >
-                  <span style={{ fontSize: 13, color: 'var(--gold)', width: 18, textAlign: 'center', flexShrink: 0 }}>
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                  {item.href === '#' && (
-                    <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>bald</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          ))}
+          {MENU_ITEMS.map(section => {
+            const visibleItems = section.items.filter(item => {
+          if ((item as any).featureKey) return featureToggles[(item as any).featureKey as FeatureKey]
+          return isRouteEnabled(item.href)
+        })
+            if (visibleItems.length === 0) return null
+            return (
+              <div key={section.section} style={{ marginTop: 16 }}>
+                <p style={{
+                  fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.12em', color: 'var(--text-dim)',
+                  padding: '0 20px', marginBottom: 4,
+                }}>{section.section}</p>
+                {visibleItems.map(item => (
+                  <button
+                    key={item.label}
+                    onClick={() => handleNav(item.href)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      width: '100%', padding: '11px 20px',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontFamily: 'inherit', textAlign: 'left',
+                      fontSize: 14, color: item.href === '#' ? 'var(--text-dim)' : 'var(--text)',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                  >
+                    <span style={{ fontSize: 13, color: 'var(--gold)', width: 18, textAlign: 'center', flexShrink: 0 }}>
+                      {item.icon}
+                    </span>
+                    <span>{item.label}</span>
+                    {item.href === '#' && (
+                      <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-dim)', fontStyle: 'italic' }}>bald</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )
+          })}
         </div>
 
         {/* ── Anzeigeeinstellungen ── */}

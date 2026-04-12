@@ -4,6 +4,7 @@ import { type Event, type BudgetItem, type BudgetCategory, type PaymentStatus } 
 import { useEvent } from "@/lib/event-context"
 import { PageShell, Card, SectionTitle, ProgressBar, Toast, Button, Select, Input } from '@/components/ui'
 import { Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { useFeatureEnabled, FeatureDisabledScreen } from '@/components/FeatureGate'
 
 function uid() { return Math.random().toString(36).slice(2,9) }
 function fmtMoney(n:number) { return new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n) }
@@ -13,6 +14,7 @@ const STATUS_LABELS: Record<PaymentStatus,string> = { offen:'Offen', anzahlung:'
 const STATUS_COLORS: Record<PaymentStatus,string> = { offen:'var(--text-dim)', anzahlung:'var(--gold)', bezahlt:'#7BC99A' }
 
 export default function BudgetPage() {
+  const enabled = useFeatureEnabled('budget')
   const [toast, setToast] = useState<string|null>(null)
   const [expanded, setExpanded] = useState<string|null>(null)
   const [adding, setAdding] = useState(false)
@@ -21,6 +23,7 @@ export default function BudgetPage() {
   const { event, updateEvent } = useEvent()
 
   if (!event) return null
+  if (!enabled) return <PageShell title="Budget" back="/dashboard"><FeatureDisabledScreen /></PageShell>
 
   const total    = event.budget.reduce((a,b)=>a+b.planned,0)
   const spent    = event.budget.reduce((a,b)=>a+b.actual,0)

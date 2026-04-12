@@ -211,7 +211,7 @@ ${event.coupleName}`
       {/* ── Tab bar ── */}
       <div style={{display:'flex',gap:4,marginBottom:20,background:'var(--surface)',borderRadius:'var(--r-md)',border:'1px solid var(--border)',padding:4}}>
         {(['anlegen','einladen','liste'] as Tab[]).map(t=>(
-          <button key={t} onClick={()=>setTab(t)} style={{
+          <button key={t} onClick={()=>setTab(t)} data-sel={tab===t?'':undefined} style={{
             flex:1,padding:'9px 4px',borderRadius:10,
             background:tab===t?'var(--gold-pale)':'none',
             border:`1.5px solid ${tab===t?'rgba(201,168,76,0.3)':'transparent'}`,
@@ -422,7 +422,7 @@ ${event.coupleName}`
           {/* Status filter pills */}
           <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:16}}>
             {(['alle','angelegt','eingeladen','zugesagt','abgesagt'] as const).map(s=>(
-              <button key={s} onClick={()=>setStatusFilter(s)} style={{
+              <button key={s} onClick={()=>setStatusFilter(s)} data-sel={statusFilter===s?'':undefined} style={{
                 padding:'5px 11px',borderRadius:100,
                 background:statusFilter===s?'var(--gold-pale)':'var(--surface)',
                 border:`1.5px solid ${statusFilter===s?'rgba(201,168,76,0.4)':'var(--border)'}`,

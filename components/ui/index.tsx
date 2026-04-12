@@ -175,7 +175,7 @@ export function MealPicker({ value, onChange, label }: { value:MealChoice|undefi
       {label && <FieldLabel required>{label}</FieldLabel>}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
         {MEALS.map(m => (
-          <button key={m.value} type="button" onClick={()=>onChange(m.value)} style={{
+          <button key={m.value} type="button" onClick={()=>onChange(m.value)} data-sel={value===m.value?'':undefined} style={{
             padding:'11px 10px', borderRadius:'var(--r-sm)', fontFamily:'inherit',
             border:`1.5px solid ${value===m.value?'var(--gold)':'var(--border)'}`,
             background: value===m.value?'var(--gold-pale)':'var(--bg)',
@@ -205,7 +205,7 @@ export function AllergyPicker({ label, tags, onTagsChange, custom, onCustomChang
         {ALLERGY_TAGS.map(tag => {
           const active = tags.includes(tag)
           return (
-            <button key={tag} type="button" onClick={()=>toggle(tag)} style={{
+            <button key={tag} type="button" onClick={()=>toggle(tag)} data-sel={active?'':undefined} style={{
               padding:'5px 12px', borderRadius:100, fontFamily:'inherit',
               border:`1.5px solid ${active?'var(--gold)':'var(--border)'}`,
               background: active?'var(--gold-pale)':'var(--bg)',
@@ -239,7 +239,7 @@ export function Toast({ message, onClose }: { message:string; onClose:()=>void }
 // ── Page shell (content wrapper only — header is provided by ClientLayout) ─
 export function PageShell({ title, back, children }: { title:string; back?:string; children:React.ReactNode }) {
   return (
-    <div style={{ background:'var(--bg)', minHeight:'100dvh', paddingBottom:40 }}>
+    <div style={{ background:'var(--bg)', minHeight:'100dvh', paddingBottom:88 }}>
       <div style={{ padding:'20px 16px', maxWidth:1200, margin:'0 auto' }}>
         {children}
       </div>

@@ -4,6 +4,7 @@ import { type Event, type SeatingTable, type Guest } from '@/lib/store'
 import { useEvent } from '@/lib/event-context'
 import { Toast } from '@/components/ui'
 import { Plus, Trash2, RefreshCw, SlidersHorizontal, X } from 'lucide-react'
+import { useFeatureEnabled, FeatureDisabledScreen } from '@/components/FeatureGate'
 
 function uid() { return Math.random().toString(36).slice(2, 9) }
 
@@ -112,9 +113,11 @@ export default function SeatingPage() {
     setSideNames(names)
   }, [ctxEvent === null])  // only run on initial load
 
+  const enabled = useFeatureEnabled('seating')
   const persist = (e: Event) => { setEvent(e); updateEvent(e) }
   const closePopup = () => { setSeatPopup(null); setPopupSearch('') }
   if (!event) return null
+  if (!enabled) return <div style={{maxWidth:600,margin:'0 auto',padding:'24px 16px'}}><FeatureDisabledScreen /></div>
 
   const roomL    = event.roomLength  ?? 12
   const roomW    = event.roomWidth   ?? 8
@@ -690,6 +693,7 @@ export default function SeatingPage() {
                         onClick={e => onSeatClick(table.id, i, e)}
                         title={guest ? `${guest.name} — klicken zum Entfernen` : 'Leer — klicken zum Zuweisen'}
                         onMouseEnter={e => {
+                          if (guest) return
                           const el = e.currentTarget as HTMLDivElement
                           el.style.background = 'var(--gold-pale2)'
                           el.style.borderColor = 'var(--gold)'

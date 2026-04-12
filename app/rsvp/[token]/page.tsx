@@ -286,7 +286,7 @@ export default function RSVPPage() {
                 { v: true,  icon: <CheckCircle size={20} />, title: 'Ja, ich bin dabei!',  sub: 'Ich freue mich auf diesen besonderen Tag.' },
                 { v: false, icon: <XCircle size={20} />,     title: 'Leider nicht',         sub: 'Ich kann leider nicht teilnehmen.' },
               ].map(opt => (
-                <button key={String(opt.v)} onClick={() => setAttending(opt.v)} style={optBtn(attending === opt.v)}>
+                <button key={String(opt.v)} onClick={() => setAttending(opt.v)} data-sel={attending === opt.v ? '' : undefined} style={optBtn(attending === opt.v)}>
                   {opt.icon}
                   <div>
                     <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{opt.title}</p>
@@ -302,8 +302,8 @@ export default function RSVPPage() {
                 <Card style={{ marginBottom: 14 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Trinkst du Alkohol?</p>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setTrinkAlkohol(true)}  style={yesNoBtn(true,  trinkAlkohol)}>Ja, gerne</button>
-                    <button onClick={() => setTrinkAlkohol(false)} style={yesNoBtn(false, trinkAlkohol)}>Nein, danke</button>
+                    <button onClick={() => setTrinkAlkohol(true)}  data-sel={trinkAlkohol === true  ? '' : undefined} style={yesNoBtn(true,  trinkAlkohol)}>Ja, gerne</button>
+                    <button onClick={() => setTrinkAlkohol(false)} data-sel={trinkAlkohol === false ? '' : undefined} style={yesNoBtn(false, trinkAlkohol)}>Nein, danke</button>
                   </div>
                 </Card>
 
@@ -314,7 +314,7 @@ export default function RSVPPage() {
                   </p>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {Array.from({ length: maxComp + 1 }, (_, i) => (
-                      <button key={i} onClick={() => setCompanionCount(i)} style={{
+                      <button key={i} onClick={() => setCompanionCount(i)} data-sel={companions.length === i ? '' : undefined} style={{
                         width: 48, height: 48, borderRadius: 'var(--r-sm)', fontFamily: 'inherit',
                         border: `1.5px solid ${companions.length === i ? 'var(--gold)' : 'var(--border)'}`,
                         background: companions.length === i ? 'var(--gold-pale)' : 'var(--surface)',
@@ -344,7 +344,7 @@ export default function RSVPPage() {
                         <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Altersgruppe</label>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                           {AGE_CATS.map(a => (
-                            <button key={a.value} onClick={() => updateCompanion(idx, { ageCategory: a.value })} style={{
+                            <button key={a.value} onClick={() => updateCompanion(idx, { ageCategory: a.value })} data-sel={c.ageCategory === a.value ? '' : undefined} style={{
                               padding: '7px 12px', borderRadius: 8, fontFamily: 'inherit',
                               border: `1.5px solid ${c.ageCategory === a.value ? 'var(--gold)' : 'var(--border)'}`,
                               background: c.ageCategory === a.value ? 'var(--gold-pale)' : 'var(--surface)',
@@ -363,8 +363,8 @@ export default function RSVPPage() {
                             Trinkt {c.name || 'diese Person'} Alkohol?
                           </label>
                           <div style={{ display: 'flex', gap: 8 }}>
-                            <button onClick={() => updateCompanion(idx, { trinkAlkohol: true })}  style={yesNoBtn(true,  c.trinkAlkohol)}>Ja, gerne</button>
-                            <button onClick={() => updateCompanion(idx, { trinkAlkohol: false })} style={yesNoBtn(false, c.trinkAlkohol)}>Nein, danke</button>
+                            <button onClick={() => updateCompanion(idx, { trinkAlkohol: true })}  data-sel={c.trinkAlkohol === true  ? '' : undefined} style={yesNoBtn(true,  c.trinkAlkohol)}>Ja, gerne</button>
+                            <button onClick={() => updateCompanion(idx, { trinkAlkohol: false })} data-sel={c.trinkAlkohol === false ? '' : undefined} style={yesNoBtn(false, c.trinkAlkohol)}>Nein, danke</button>
                           </div>
                         </div>
                       )}
@@ -427,7 +427,7 @@ export default function RSVPPage() {
                 <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 8 }}>Transportmittel</p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
                   {[{ v: 'auto', l: 'Auto' }, { v: 'bahn', l: 'Bahn' }, { v: 'flugzeug', l: 'Flug' }, { v: 'andere', l: 'Andere' }].map(opt => (
-                    <button key={opt.v} type="button" onClick={() => setTransport(opt.v as TransportMode)} style={{
+                    <button key={opt.v} type="button" onClick={() => setTransport(opt.v as TransportMode)} data-sel={transport === opt.v ? '' : undefined} style={{
                       padding: '9px 6px', borderRadius: 'var(--r-sm)', fontFamily: 'inherit',
                       border: `1.5px solid ${transport === opt.v ? 'var(--gold)' : 'var(--border)'}`,
                       background: transport === opt.v ? 'var(--gold-pale)' : 'var(--surface)',
@@ -451,7 +451,7 @@ export default function RSVPPage() {
             <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Hotelzimmer</h2>
             <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 20, lineHeight: 1.5 }}>Möchtet ihr ein Zimmer reservieren?</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-              <button onClick={() => setHotelRoomId('none')} style={{
+              <button onClick={() => setHotelRoomId('none')} data-sel={hotelRoomId === 'none' ? '' : undefined} style={{
                 padding: '16px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
                 border: `1.5px solid ${hotelRoomId === 'none' ? 'var(--gold)' : 'var(--border)'}`,
                 background: hotelRoomId === 'none' ? 'var(--gold-pale)' : 'var(--surface)',
@@ -477,7 +477,7 @@ export default function RSVPPage() {
                     const full   = avail === 0
                     const active = hotelRoomId === room.id
                     return (
-                      <button key={room.id} onClick={() => !full && setHotelRoomId(active ? '' : room.id)} disabled={full} style={{
+                      <button key={room.id} onClick={() => !full && setHotelRoomId(active ? '' : room.id)} disabled={full} data-sel={active ? '' : undefined} style={{
                         padding: '16px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
                         border: `1.5px solid ${active ? 'var(--gold)' : 'var(--border)'}`,
                         background: active ? 'var(--gold-pale)' : 'var(--surface)',
