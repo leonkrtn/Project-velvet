@@ -79,7 +79,7 @@ a, button { transition: opacity 0.15s ease, background 0.15s ease, border-color 
 
 a:hover { opacity: 0.8; }
 
-button:hover:not(:disabled) { opacity: 0.85; }
+button:hover:not(:disabled):not([data-sel]) { opacity: 0.85; }
 
 /* Feature grid links (dashboard nav tiles) */
 .feature-grid a:hover {
@@ -89,14 +89,14 @@ button:hover:not(:disabled) { opacity: 0.85; }
 
 
 /* Pill / ghost buttons (back, add-row, etc.) */
-button[style*="border"]:hover:not(:disabled) {
+button[style*="border"]:hover:not(:disabled):not([data-sel]) {
   border-color: var(--gold) !important;
   color: var(--gold) !important;
   opacity: 1;
 }
 
 /* Gold primary buttons */
-button[style*="var(--gold)"]:hover:not(:disabled):not(.tab-btn) {
+button[style*="var(--gold)"]:hover:not(:disabled):not(.tab-btn):not([data-sel]) {
   background: #b8963e !important;
   color: #ffffff !important;
   opacity: 1;
@@ -105,8 +105,8 @@ button[style*="var(--gold)"]:hover:not(:disabled):not(.tab-btn) {
 }
 
 /* Icon-only / trash buttons */
-button[style*="background:none"]:hover,
-button[style*="background: none"]:hover {
+button[style*="background:none"]:hover:not([data-sel]),
+button[style*="background: none"]:hover:not([data-sel]) {
   color: var(--gold) !important;
   opacity: 1;
 }

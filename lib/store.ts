@@ -112,6 +112,86 @@ export interface CateringPlan {
   cateringNotes:           string
 }
 
+// ── Organizer / Veranstalter ───────────────────────────────────────────────
+export type OrganizerSuggestionStatus = 'vorschlag' | 'angenommen' | 'abgelehnt'
+
+export interface OrganizerVendorSuggestion {
+  id: string
+  name: string
+  category: VendorCategory
+  description: string
+  priceEstimate: number
+  contactEmail?: string
+  contactPhone?: string
+  status: OrganizerSuggestionStatus
+}
+
+export interface OrganizerHotelSuggestion {
+  id: string
+  name: string
+  address: string
+  distanceKm: number
+  pricePerNight: number
+  totalRooms: number
+  description: string
+  status: OrganizerSuggestionStatus
+}
+
+export interface OrganizerCateringSuggestion {
+  id: string
+  name: string
+  style: CateringPlan['serviceStyle']
+  pricePerPerson: number
+  description: string
+  contactEmail?: string
+  status: OrganizerSuggestionStatus
+  // Felder, die das Brautpaar nicht bearbeiten darf (nach Übernehmen gesperrt)
+  lockedFields?: Partial<Record<keyof CateringPlan, boolean>>
+}
+
+export type FeatureKey =
+  | 'budget' | 'vendors' | 'tasks' | 'reminders'
+  | 'seating' | 'catering' | 'sub-events' | 'invite' | 'deko' | 'gaeste-fotos'
+
+export const DEFAULT_FEATURE_TOGGLES: Record<FeatureKey, boolean> = {
+  budget: true, vendors: true, tasks: true, reminders: true,
+  seating: true, catering: true, 'sub-events': true, invite: true,
+  deko: true, 'gaeste-fotos': true,
+}
+
+// ── Deko ──────────────────────────────────────────────────────────────────
+export interface DekoSuggestion {
+  id: string
+  title: string
+  description: string
+  imageUrl?: string  // base64 in localStorage-Modus, Storage URL in Supabase-Modus
+  status: OrganizerSuggestionStatus
+}
+
+export interface DekoWish {
+  id: string
+  title: string
+  notes: string
+  imageUrl?: string
+}
+
+// ── Gäste-Fotos ───────────────────────────────────────────────────────────
+export interface GuestPhoto {
+  id: string
+  uploaderName: string
+  dataUrl: string  // base64 in localStorage-Modus, Storage URL in Supabase-Modus
+  uploadedAt: string
+}
+
+export interface OrganizerSettings {
+  vendorSuggestions: OrganizerVendorSuggestion[]
+  hotelSuggestions: OrganizerHotelSuggestion[]
+  cateringSuggestions: OrganizerCateringSuggestion[]
+  dekoSuggestions: DekoSuggestion[]
+  featureToggles: Record<FeatureKey, boolean>
+  locationImages: string[]
+}
+
 // ── Main Event ─────────────────────────────────────────────────────────────
 export interface Event {
   id: string; coupleName: string; date: string
@@ -130,6 +210,11 @@ export interface Event {
   roomLength?: number   // meters, default 12
   roomWidth?: number    // meters, default 8
   catering?: CateringPlan
+  // Locked catering fields (set when organizer suggestion is accepted)
+  cateringLockedFields?: Partial<Record<keyof CateringPlan, boolean>>
+  organizer?: OrganizerSettings
+  dekoWishes: DekoWish[]
+  guestPhotos: GuestPhoto[]
 }
 
 // ── Seed ───────────────────────────────────────────────────────────────────
@@ -243,6 +328,34 @@ const SEED_SEATING: SeatingTable[] = [
   { id:'tbl3', name:'Ehrentisch', capacity:6, guestIds:[],          x:5.0, y:5.5, tableLength:1.4, tableWidth:1.4, rotation:0,  shape:'round'        },
 ]
 
+const SEED_ORGANIZER: OrganizerSettings = {
+  featureToggles: { ...DEFAULT_FEATURE_TOGGLES },
+  locationImages: [],
+  vendorSuggestions: [
+    { id:'ov1', name:'Studio Lichtblick', category:'Fotograf', description:'Preisgekröntes Foto- & Videoteam mit 10 Jahren Hochzeitserfahrung. Reportage-Stil, natürlich & emotional.', priceEstimate:3500, contactEmail:'jana@lichtblick.photo', contactPhone:'0173 4567890', status:'vorschlag' },
+    { id:'ov2', name:'Küche & Kunst GmbH', category:'Catering', description:'Regionale Küche, saisonale Zutaten. Komplettservice inkl. Personal, Geschirr & Auf­bau.', priceEstimate:12000, contactEmail:'info@kuechekunst.de', contactPhone:'06221 98765', status:'vorschlag' },
+    { id:'ov3', name:'Floral Dreams', category:'Floristik', description:'Exklusive Blumendeko für Tische, Altar & Brautstrauß. Beratungsgespräch vor Ort möglich.', priceEstimate:2200, contactEmail:'info@floraldreams.de', contactPhone:'06221 55443', status:'vorschlag' },
+    { id:'ov4', name:'Blue Note Jazz Trio', category:'Musik / Band', description:'Elegantes Jazztrio für Sektempfang & Dinner. Repertoire: Jazz, Bossa Nova, leichte Klassik.', priceEstimate:1800, contactEmail:'bluenote@mail.de', contactPhone:'0152 9876543', status:'vorschlag' },
+    { id:'ov5', name:'DJ Schneider', category:'DJ', description:'Professioneller Hochzeits-DJ mit 15 Jahren Erfahrung. Eigene Licht- & Soundanlage inklusive.', priceEstimate:1000, contactEmail:'dj@schneider-events.de', contactPhone:'0171 1234567', status:'vorschlag' },
+    { id:'ov6', name:'Oldtimer-Service König', category:'Transport', description:'Klassischer Rolls-Royce Silver Shadow für Brautpaar-Transfer. Dekoration inklusive.', priceEstimate:500, contactEmail:'info@oldtimer-koenig.de', contactPhone:'06221 77001', status:'vorschlag' },
+  ],
+  hotelSuggestions: [
+    { id:'oh1', name:'Schlosshotel Neuhof', address:'Schlossweg 3, 69115 Heidelberg', distanceKm:0.2, pricePerNight:149, totalRooms:15, description:'Direkt an der Location. Exklusiv für Hochzeitsgesellschaft buchbar. Frühstück inklusive.', status:'vorschlag' },
+    { id:'oh2', name:'Hotel Zum Ritter', address:'Hauptstraße 178, 69117 Heidelberg', distanceKm:3.5, pricePerNight:109, totalRooms:20, description:'Historisches Hotel in der Altstadt. 10 Minuten zur Location. Parkplätze vorhanden.', status:'vorschlag' },
+    { id:'oh3', name:'Ibis Heidelberg', address:'Bergheimer Str. 91, 69115 Heidelberg', distanceKm:4.2, pricePerNight:79, totalRooms:30, description:'Budget-Option, zentral gelegen. Zimmer modern & sauber. Gruppenrabatt verfügbar.', status:'vorschlag' },
+  ],
+  cateringSuggestions: [
+    { id:'oc1', name:'Küche & Kunst GmbH', style:'klassisch', pricePerPerson:85, description:'Mehrgängiges Menü, regional & saisonal. Vegetarische & vegane Optionen standard. Service Personal inklusive.', contactEmail:'info@kuechekunst.de', status:'vorschlag', lockedFields: { serviceStyle: true, budgetPerPerson: true } },
+    { id:'oc2', name:'Taste of the World', style:'buffet', pricePerPerson:65, description:'Internationales Buffet mit 40+ Gerichten. Live-Cooking-Station optional zubuchbar. Ideal für große Gruppen.', contactEmail:'info@tasteoftheworld.de', status:'vorschlag' },
+    { id:'oc3', name:'StreetFood Kollektiv', style:'foodtruck', pricePerPerson:45, description:'2 Food Trucks: Burger & Tacos. Casual & jung. Perfekt als Mitternachtssnack oder lockere After-Party.', contactEmail:'hallo@streetfood-kollektiv.de', status:'vorschlag' },
+  ],
+  dekoSuggestions: [
+    { id:'od1', title:'Romantische Tischblumen', description:'Üppige Blumenarrangements in Creme und Gold. Rosen, Pfingstrosen, Eukalyptus. Perfekt für elegante Tafelrunden.', status:'vorschlag' },
+    { id:'od2', title:'Lichterketten & Kerzen', description:'Warmes Kerzenlicht und Lichterketten an Holzbalken. Schafft eine märchenhafte Atmosphäre am Abend.', status:'vorschlag' },
+    { id:'od3', title:'Vintage Fensterrahmen', description:'Antike Fensterrahmen als Fotowand und Menü-Display. Dekoration mit Trockenblumen und Baumwollband.', status:'vorschlag' },
+  ],
+}
+
 export const SEED_EVENT: Event = {
   id:'evt-demo', coupleName:'Julia & Thomas', date:'2026-06-14',
   venue:'Schloss Neuhof', venueAddress:'Schlossweg 1, 69115 Heidelberg',
@@ -250,13 +363,7 @@ export const SEED_EVENT: Event = {
   roomLength: 12, roomWidth: 8,
   childrenAllowed: true, childrenNote:'Kinder ab 6 Jahren herzlich willkommen',
   mealOptions: ['fleisch','fisch','vegetarisch','vegan'],
-  hotels:[{
-    id:'hotel1', name:'Schlosshotel Neuhof', address:'Schlossweg 3, 69115 Heidelberg',
-    rooms:[
-      { id:'room1', type:'Doppelzimmer', totalRooms:10, bookedRooms:2, pricePerNight:149 },
-      { id:'room2', type:'Einzelzimmer', totalRooms:5,  bookedRooms:1, pricePerNight:99  },
-    ]
-  }],
+  hotels:[],
   timeline:[
     { time:'11:00', title:'Standesamt',   location:'Rathaus Heidelberg'       },
     { time:'13:00', title:'Sektempfang',  location:'Schlosspark · Terrasse'   },
@@ -265,10 +372,13 @@ export const SEED_EVENT: Event = {
   ],
   guests:SEED_GUESTS, subEvents:SEED_SUB_EVENTS,
   seatingTables:SEED_SEATING, budget:SEED_BUDGET,
-  vendors:SEED_VENDORS, tasks:SEED_TASKS, reminders:SEED_REMINDERS,
+  vendors:[], tasks:SEED_TASKS, reminders:SEED_REMINDERS,
   createdAt:'2026-02-01T10:00:00Z',
   onboardingComplete: true,
   maxBegleitpersonen: 2,
+  organizer: SEED_ORGANIZER,
+  dekoWishes: [],
+  guestPhotos: [],
 }
 
 // ── Storage ────────────────────────────────────────────────────────────────
@@ -334,12 +444,25 @@ export function loadEvent(): Event {
         }
       })
       p.budget        = p.budget        ?? SEED_BUDGET
-      p.vendors       = p.vendors       ?? SEED_VENDORS
+      p.vendors       = p.vendors       ?? []
       p.tasks         = p.tasks         ?? SEED_TASKS
       p.reminders     = p.reminders     ?? SEED_REMINDERS
       p.childrenAllowed    = p.childrenAllowed    ?? true
       p.mealOptions        = p.mealOptions        ?? ['fleisch','fisch','vegetarisch','vegan']
       p.onboardingComplete = p.onboardingComplete ?? true
+      // migrate: add organizer with seed suggestions if missing
+      if (!p.organizer) {
+        p.organizer = SEED_ORGANIZER
+      } else {
+        p.organizer.featureToggles = { ...DEFAULT_FEATURE_TOGGLES, ...p.organizer.featureToggles }
+        if (!p.organizer.vendorSuggestions?.length)   p.organizer.vendorSuggestions = SEED_ORGANIZER.vendorSuggestions
+        if (!p.organizer.hotelSuggestions?.length)    p.organizer.hotelSuggestions = SEED_ORGANIZER.hotelSuggestions
+        if (!p.organizer.cateringSuggestions?.length) p.organizer.cateringSuggestions = SEED_ORGANIZER.cateringSuggestions
+        if (!p.organizer.dekoSuggestions)             p.organizer.dekoSuggestions = SEED_ORGANIZER.dekoSuggestions
+        if (!p.organizer.locationImages)              p.organizer.locationImages = []
+      }
+      p.dekoWishes  = p.dekoWishes   ?? []
+      p.guestPhotos = p.guestPhotos  ?? []
       // migrate legacy single-hotel fields → hotels array
       if (!p.hotels) {
         p.hotels = [{
@@ -432,5 +555,7 @@ export function createEmptyEvent(): Event {
     reminders: [], createdAt: new Date().toISOString(),
     onboardingComplete: false,
     maxBegleitpersonen: 1,
+    dekoWishes: [],
+    guestPhotos: [],
   }
 }

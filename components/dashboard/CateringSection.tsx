@@ -44,7 +44,7 @@ export function CateringForm({catering, onChange}: {catering: CateringPlan; onCh
         <p style={{fontSize:13, fontWeight:500, color:'var(--text)', marginBottom:8}}>Servicestil</p>
         <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:12}}>
           {[['klassisch','Klassisches Menü'],['buffet','Buffet'],['family','Family Style'],['foodtruck','Food Trucks'],['live','Live-Cooking']].map(([v,l])=>(
-            <button key={v} onClick={()=>onChange({serviceStyle:v as CateringPlan['serviceStyle']})} style={{padding:'6px 12px', borderRadius:100, border:'1px solid', borderColor:catering.serviceStyle===v?'var(--gold)':'var(--border)', background:catering.serviceStyle===v?'rgba(201,168,76,0.08)':'none', color:catering.serviceStyle===v?'var(--gold)':'var(--text)', fontSize:12, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s'}}>{l}</button>
+            <button key={v} onClick={()=>onChange({serviceStyle:v as CateringPlan['serviceStyle']})} data-sel={catering.serviceStyle===v?'':undefined} style={{padding:'6px 12px', borderRadius:100, border:'1px solid', borderColor:catering.serviceStyle===v?'var(--gold)':'var(--border)', background:catering.serviceStyle===v?'rgba(201,168,76,0.08)':'none', color:catering.serviceStyle===v?'var(--gold)':'var(--text)', fontSize:12, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s'}}>{l}</button>
           ))}
         </div>
         <CateringToggle value={catering.locationHasKitchen} onChange={v=>onChange({locationHasKitchen:v})} label="Location hat eigene Küche"/>
@@ -59,14 +59,14 @@ export function CateringForm({catering, onChange}: {catering: CateringPlan; onCh
         <p style={{fontSize:13, fontWeight:500, color:'var(--text)', marginBottom:8}}>Abrechnung</p>
         <div style={{display:'flex', gap:8, marginBottom:12}}>
           {[['pauschale','Pauschale'],['einzeln','Einzeln']].map(([v,l])=>(
-            <button key={v} onClick={()=>onChange({drinksBilling:v as 'pauschale'|'einzeln'})} style={{flex:1, padding:'9px', borderRadius:'var(--r-sm)', border:'1px solid', borderColor:catering.drinksBilling===v?'var(--gold)':'var(--border)', background:catering.drinksBilling===v?'rgba(201,168,76,0.08)':'none', color:catering.drinksBilling===v?'var(--gold)':'var(--text)', fontSize:12, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s'}}>{l}</button>
+            <button key={v} onClick={()=>onChange({drinksBilling:v as 'pauschale'|'einzeln'})} data-sel={catering.drinksBilling===v?'':undefined} style={{flex:1, padding:'9px', borderRadius:'var(--r-sm)', border:'1px solid', borderColor:catering.drinksBilling===v?'var(--gold)':'var(--border)', background:catering.drinksBilling===v?'rgba(201,168,76,0.08)':'none', color:catering.drinksBilling===v?'var(--gold)':'var(--text)', fontSize:12, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s'}}>{l}</button>
           ))}
         </div>
         <p style={{fontSize:13, fontWeight:500, color:'var(--text)', marginBottom:6}}>Sortiment</p>
         <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:12}}>
           {drinkOpts.map(([v,l])=>{
             const active=catering.drinksSelection.includes(v)
-            return <button key={v} onClick={()=>toggleArr('drinksSelection',v)} style={{padding:'6px 12px', borderRadius:100, border:'1px solid', borderColor:active?'var(--gold)':'var(--border)', background:active?'rgba(201,168,76,0.08)':'none', color:active?'var(--gold)':'var(--text)', fontSize:12, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s'}}>{l}</button>
+            return <button key={v} onClick={()=>toggleArr('drinksSelection',v)} data-sel={active?'':undefined} style={{padding:'6px 12px', borderRadius:100, border:'1px solid', borderColor:active?'var(--gold)':'var(--border)', background:active?'rgba(201,168,76,0.08)':'none', color:active?'var(--gold)':'var(--text)', fontSize:12, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s'}}>{l}</button>
           })}
         </div>
         <CateringToggle value={catering.champagneFingerFood} onChange={v=>onChange({champagneFingerFood:v})} label="Häppchen zum Sektempfang"/>
@@ -82,7 +82,7 @@ export function CateringForm({catering, onChange}: {catering: CateringPlan; onCh
         <div style={{display:'flex', flexWrap:'wrap', gap:6, marginBottom:6}}>
           {equipOpts.map(([v,l])=>{
             const active=catering.equipmentNeeded.includes(v)
-            return <button key={v} onClick={()=>toggleArr('equipmentNeeded',v)} style={{padding:'6px 12px', borderRadius:100, border:'1px solid', borderColor:active?'var(--gold)':'var(--border)', background:active?'rgba(201,168,76,0.08)':'none', color:active?'var(--gold)':'var(--text)', fontSize:12, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s'}}>{l}</button>
+            return <button key={v} onClick={()=>toggleArr('equipmentNeeded',v)} data-sel={active?'':undefined} style={{padding:'6px 12px', borderRadius:100, border:'1px solid', borderColor:active?'var(--gold)':'var(--border)', background:active?'rgba(201,168,76,0.08)':'none', color:active?'var(--gold)':'var(--text)', fontSize:12, cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s'}}>{l}</button>
           })}
         </div>
       </Card>

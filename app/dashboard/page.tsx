@@ -4,11 +4,11 @@ import { DndContext, DragOverlay, closestCenter, PointerSensor, TouchSensor, use
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { Users, Hotel, Utensils, LayoutDashboard, RefreshCw, FileText, Download, X } from 'lucide-react'
-import { getStats, type Event, type CateringPlan } from '@/lib/store'
+import { getStats, DEFAULT_FEATURE_TOGGLES, type Event, type CateringPlan, type FeatureKey } from '@/lib/store'
 import { useEvent } from '@/lib/event-context'
 import { Toast } from '@/components/ui'
 import { SortableWidget, type WidgetId } from '@/components/dashboard/SortableWidget'
-import { CountdownWidget, RsvpWidget, BudgetWidget, TasksWidget, SeatingWidget, VendorsWidget, RemindersWidget, SubEventsWidget, ArrivalWidget, TimelineWidget } from '@/components/dashboard/DashboardWidgets'
+import { CountdownWidget, RsvpWidget, BudgetWidget, TasksWidget, SeatingWidget, VendorsWidget, RemindersWidget, SubEventsWidget, ArrivalWidget, TimelineWidget, DekoWidget } from '@/components/dashboard/DashboardWidgets'
 import { GuestTabContent } from '@/components/dashboard/GuestTab'
 import { HotelTabContent } from '@/components/dashboard/HotelTab'
 import { CateringForm, CateringSummary } from '@/components/dashboard/CateringSection'
@@ -26,13 +26,19 @@ function daysUntil(d: string) { return Math.ceil((new Date(d).getTime()-new Date
 
 type Tab = 'overview'|'guests'|'hotel'|'catering'
 const PINNED_WIDGETS: WidgetId[] = ['countdown','rsvp','tasks']
-const DEFAULT_WIDGET_ORDER: WidgetId[] = ['budget','seating','vendors','reminders','sub-events','arrival','timeline']
+const DEFAULT_WIDGET_ORDER: WidgetId[] = ['budget','seating','vendors','reminders','sub-events','arrival','deko','timeline']
 
 export default function DashboardPage() {
   const { event, updateEvent } = useEvent()
   const [toast, setToast]   = useState<string|null>(null)
   const [del, setDel]       = useState<string|null>(null)
-  const [tab, setTab]       = useState<Tab>('overview')
+  const [tab, setTab]       = useState<Tab>(() => {
+    if (typeof window !== 'undefined') {
+      const t = sessionStorage.getItem('velvet_dashboard_tab') as Tab | null
+      if (t && ['overview','guests','hotel','catering'].includes(t)) return t
+    }
+    return 'overview'
+  })
   const [search, setSearch] = useState('')
   const [catering, setCatering]       = useState<CateringPlan>(DEFAULT_CATERING)
   const [showSummary, setShowSummary] = useState(false)
@@ -60,6 +66,21 @@ export default function DashboardPage() {
   useEffect(()=>{
     if(event && !cateringInit.current) { cateringInit.current=true; setCatering(event.catering??DEFAULT_CATERING) }
   },[event])
+
+  // Sync tab with sessionStorage + listen for BottomNav tab switches
+  const switchTab = (t: Tab) => {
+    setTab(t)
+    sessionStorage.setItem('velvet_dashboard_tab', t)
+    window.dispatchEvent(new Event('velvet-tab-change'))
+  }
+  useEffect(() => {
+    const handler = () => {
+      const t = sessionStorage.getItem('velvet_dashboard_tab') as Tab | null
+      if (t && ['overview','guests','hotel','catering'].includes(t)) setTab(t)
+    }
+    window.addEventListener('velvet-tab-change', handler)
+    return () => window.removeEventListener('velvet-tab-change', handler)
+  }, [])
   useEffect(()=>{ localStorage.setItem('velvet-widget-order',JSON.stringify(widgetOrder)) },[widgetOrder])
 
   const deleteGuest = (id: string) => {
@@ -103,6 +124,12 @@ export default function DashboardPage() {
     updateEvent({...event,catering,budget:newBudget})
   },[catering])
 
+  // Redirect away from disabled feature tabs
+  const cateringEnabled = event?.organizer?.featureToggles?.catering ?? DEFAULT_FEATURE_TOGGLES.catering
+  useEffect(() => {
+    if (tab === 'catering' && !cateringEnabled) switchTab('overview')
+  }, [cateringEnabled, tab])
+
   if(!event) return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100dvh',background:'var(--bg)'}}>
       <span style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:'var(--gold)'}}>Velvet.</span>
@@ -126,9 +153,17 @@ export default function DashboardPage() {
   const filteredGuests = event.guests.filter(g=>
     !search || g.name.toLowerCase().includes(search.toLowerCase()) || g.email.toLowerCase().includes(search.toLowerCase())
   )
-  const visibleWidgets = widgetOrder.filter(id=>
-    id==='timeline' || id!=='arrival' || Object.keys(stats.arrivalDays).length>0
-  )
+  const featureToggles = { ...DEFAULT_FEATURE_TOGGLES, ...event.organizer?.featureToggles }
+  const WIDGET_FEATURE: Partial<Record<WidgetId, FeatureKey>> = {
+    budget: 'budget', vendors: 'vendors', tasks: 'tasks',
+    reminders: 'reminders', seating: 'seating', 'sub-events': 'sub-events',
+    deko: 'deko',
+  }
+  const visibleWidgets = widgetOrder.filter(id => {
+    const fk = WIDGET_FEATURE[id]
+    if (fk && !featureToggles[fk]) return false
+    return id === 'timeline' || id !== 'arrival' || Object.keys(stats.arrivalDays).length > 0
+  })
   const pinnedWidgets = PINNED_WIDGETS
 
   const renderWidget = (id: WidgetId) => {
@@ -143,6 +178,7 @@ export default function DashboardPage() {
       case 'sub-events': return <SubEventsWidget count={event.subEvents.length}/>
       case 'arrival':    return <ArrivalWidget arrivalDays={stats.arrivalDays} confirmed={stats.confirmed}/>
       case 'timeline':   return <TimelineWidget event={event} onUpdate={updateEvent}/>
+      case 'deko':       return <DekoWidget event={event}/>
       default: return null
     }
   }
@@ -210,7 +246,7 @@ export default function DashboardPage() {
 
         {tab==='hotel'&&<HotelTabContent event={event} stats={stats}/>}
 
-        {tab==='catering'&&(
+        {tab==='catering'&&featureToggles.catering&&(
           <div style={{animation:'fadeUp 0.3s ease'}}>
             <div style={{display:'flex', gap:8, marginBottom:14}}>
               <button onClick={()=>setShowSummary(true)} style={{flex:1, padding:'10px', borderRadius:'var(--r-md)', border:'1px solid var(--border)', background:'var(--surface)', fontSize:12, fontWeight:600, color:'var(--text)', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6}}>
@@ -225,21 +261,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* ── BOTTOM NAV ── */}
-      <div style={{position:'fixed', bottom:0, left:0, right:0, background:'var(--surface)', borderTop:'1px solid var(--border)', zIndex:50, paddingBottom:'env(safe-area-inset-bottom)'}}>
-        <div className="tab-bar" style={{display:'flex', justifyContent:'space-around', padding:'10px 0', maxWidth:480, margin:'0 auto'}}>
-          {([
-            {icon:<LayoutDashboard size={19}/>, label:'Übersicht', view:'overview' as Tab},
-            {icon:<Users size={19}/>,           label:'Gäste',     view:'guests'   as Tab},
-            {icon:<Hotel size={19}/>,           label:'Hotel',     view:'hotel'    as Tab},
-            {icon:<Utensils size={19}/>,        label:'Catering',  view:'catering' as Tab},
-          ]).map(item=>(
-            <button key={item.label} onClick={()=>setTab(item.view)} className="tab-btn" style={{display:'flex', flexDirection:'column', alignItems:'center', gap:3, background:'none', border:'none', cursor:'pointer', color:tab===item.view?'var(--gold)':'var(--text-dim)', fontSize:10, fontWeight:600, padding:'4px 16px', transition:'color 0.15s', fontFamily:'inherit'}}>
-              {item.icon}{item.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Bottom nav now global — rendered by ClientLayout/BottomNav */}
 
       {showSummary&&(
         <>

@@ -4,6 +4,7 @@ import { type Event, type Reminder, type ReminderType } from "@/lib/store"
 import { useEvent } from "@/lib/event-context"
 import { PageShell, Card, SectionTitle, Toast, Button, Input, Select } from '@/components/ui'
 import { Plus, Trash2, Send, Bell, CreditCard, Clock } from 'lucide-react'
+import { useFeatureEnabled, FeatureDisabledScreen } from '@/components/FeatureGate'
 
 function uid() { return Math.random().toString(36).slice(2,9) }
 
@@ -29,6 +30,7 @@ const TYPE_BG: Record<ReminderType,string> = {
 }
 
 export default function RemindersPage() {
+  const enabled = useFeatureEnabled('reminders')
   const [toast,setToast] = useState<string|null>(null)
   const [adding,setAdding] = useState(false)
   const [draft,setDraft] = useState<Partial<Reminder>>({type:'deadline',sent:false})
@@ -36,6 +38,7 @@ export default function RemindersPage() {
   const { event, updateEvent } = useEvent()
 
   if (!event) return null
+  if (!enabled) return <PageShell title="Erinnerungen" back="/dashboard"><FeatureDisabledScreen /></PageShell>
 
   const markSent = (id:string) => {
     updateEvent({...event,reminders:event.reminders.map(r=>r.id===id?{...r,sent:true}:r)})

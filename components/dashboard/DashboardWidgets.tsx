@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Plus } from 'lucide-react'
+import { ChevronRight, Plus, Flower2 } from 'lucide-react'
 import { Card, SectionTitle } from '@/components/ui'
 import { getStats, type Event } from '@/lib/store'
 
@@ -256,5 +256,34 @@ function TimelineEditor({event, onUpdate}: {event: Event; onUpdate: (e: Event) =
         <Plus size={12}/> Eintrag hinzufügen
       </button>
     </div>
+  )
+}
+
+export function DekoWidget({ event }: { event: Event }) {
+  const suggestions = event.organizer?.dekoSuggestions ?? []
+  const accepted = suggestions.filter(s => s.status === 'angenommen').length
+  const wishes   = (event.dekoWishes ?? []).length
+
+  return (
+    <Card>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14}}>
+        <SectionTitle>Dekoration</SectionTitle>
+        <Flower2 size={14} style={{color:'var(--gold)', opacity:0.7}}/>
+      </div>
+      <div style={{display:'flex', gap:12, marginBottom:14}}>
+        <div style={{flex:1, textAlign:'center', background:'var(--bg)', borderRadius:'var(--r-sm)', padding:'12px 8px', border:'1px solid var(--border)'}}>
+          <div style={{fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:500, color:'var(--gold)', lineHeight:1}}>{accepted}</div>
+          <div style={{fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginTop:5}}>Vorschläge</div>
+        </div>
+        <div style={{flex:1, textAlign:'center', background:'var(--bg)', borderRadius:'var(--r-sm)', padding:'12px 8px', border:'1px solid var(--border)'}}>
+          <div style={{fontFamily:"'Playfair Display',serif", fontSize:28, fontWeight:500, color:'var(--text)', lineHeight:1}}>{wishes}</div>
+          <div style={{fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginTop:5}}>Wünsche</div>
+        </div>
+      </div>
+      <Link href="/deko" style={{display:'flex', alignItems:'center', justifyContent:'space-between', background:'none', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', padding:'9px 12px', fontSize:12, color:'var(--text)', textDecoration:'none', fontWeight:500}}>
+        <span>Zur Deko-Planung</span>
+        <ChevronRight size={14} style={{color:'var(--text-dim)'}}/>
+      </Link>
+    </Card>
   )
 }

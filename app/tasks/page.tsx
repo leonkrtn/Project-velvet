@@ -4,12 +4,14 @@ import { type Event, type Task, type TaskPhase } from "@/lib/store"
 import { useEvent } from "@/lib/event-context"
 import { PageShell, Card, SectionTitle, ProgressBar, Toast, Button, Input } from '@/components/ui'
 import { Plus, Trash2 } from 'lucide-react'
+import { useFeatureEnabled, FeatureDisabledScreen } from '@/components/FeatureGate'
 
 function uid() { return Math.random().toString(36).slice(2,9) }
 
 const PHASES: TaskPhase[] = ['12+ Monate','6–12 Monate','3–6 Monate','1–3 Monate','Letzte Woche','Hochzeitstag']
 
 export default function TasksPage() {
+  const enabled = useFeatureEnabled('tasks')
   const [toast,setToast] = useState<string|null>(null)
   const [addingPhase,setAddingPhase] = useState<TaskPhase|null>(null)
   const [newTitle,setNewTitle] = useState('')
@@ -17,6 +19,7 @@ export default function TasksPage() {
   const { event, updateEvent } = useEvent()
 
   if (!event) return null
+  if (!enabled) return <PageShell title="Aufgaben" back="/dashboard"><FeatureDisabledScreen /></PageShell>
 
   const toggleTask = (id:string) => {
     updateEvent({...event,tasks:event.tasks.map(t=>t.id===id?{...t,done:!t.done}:t)})
@@ -75,7 +78,7 @@ export default function TasksPage() {
                 {tasks.map(task=>(
                   <div key={task.id} style={{display:'flex',alignItems:'center',gap:12,padding:'9px 0',borderBottom:'1px solid var(--border)'}}>
                     {/* Custom checkbox */}
-                    <button onClick={()=>toggleTask(task.id)} style={{width:20,height:20,borderRadius:5,border:`1.5px solid ${task.done?'var(--gold)':'var(--border)'}`,background:task.done?'var(--gold-pale)':'none',cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}>
+                    <button onClick={()=>toggleTask(task.id)} data-sel={task.done?'':undefined} style={{width:20,height:20,borderRadius:5,border:`1.5px solid ${task.done?'var(--gold)':'var(--border)'}`,background:task.done?'var(--gold-pale)':'none',cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}>
                       {task.done&&<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-5" stroke="var(--gold)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                     </button>
                     <span style={{flex:1,fontSize:13,color:task.done?'var(--text-dim)':'var(--text-mid)',textDecoration:task.done?'line-through':'none',lineHeight:1.4}}>{task.title}</span>
