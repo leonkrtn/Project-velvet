@@ -37,7 +37,8 @@ export async function middleware(request: NextRequest) {
   // Check if route is public (including /rsvp/* paths)
   const isPublic =
     PUBLIC_ROUTES.some(r => pathname === r) ||
-    pathname.startsWith('/rsvp/')
+    pathname.startsWith('/rsvp/') ||
+    pathname.startsWith('/api/')
 
   // Redirect unauthenticated users to /login (only when DB is configured)
   if (!user && !isPublic) {
