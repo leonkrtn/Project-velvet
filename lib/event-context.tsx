@@ -10,6 +10,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { loadEvent, saveEvent, SEED_EVENT, type Event } from '@/lib/store'
+import type { UserRole, TrauzeugePermissions } from '@/lib/types/roles'
 
 type Ctx = {
   event: Event | null
@@ -17,6 +18,13 @@ type Ctx = {
   isDemo: boolean
   isSyncing: boolean
   syncError: string | null
+  // Role & permissions
+  currentRole: UserRole | null
+  currentUserId: string | null
+  trauzeugePerm: TrauzeugePermissions | null
+  isVeranstalter: boolean
+  isBrautpaar: boolean
+  isEventFrozen: boolean
 }
 
 const EventContext = createContext<Ctx>({
@@ -25,6 +33,12 @@ const EventContext = createContext<Ctx>({
   isDemo: true,
   isSyncing: false,
   syncError: null,
+  currentRole: null,
+  currentUserId: null,
+  trauzeugePerm: null,
+  isVeranstalter: false,
+  isBrautpaar: false,
+  isEventFrozen: false,
 })
 
 function isSupabaseConfigured(): boolean {
@@ -45,11 +59,21 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   const [isDemo, setIsDemo] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [currentRole, setCurrentRole] = useState<UserRole | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [trauzeugePerm, setTrauzeugePerm] = useState<TrauzeugePermissions | null>(null)
 
   const syncInProgress = useRef(false)
   const dbInitialized = useRef(false)
   const isDemoRef = useRef(true)
   useEffect(() => { isDemoRef.current = isDemo }, [isDemo])
+
+  // Derived state
+  const isVeranstalter = currentRole === 'veranstalter'
+  const isBrautpaar = currentRole === 'brautpaar'
+  const isEventFrozen = Boolean(
+    event?.dataFreezeAt && new Date(event.dataFreezeAt) <= new Date()
+  )
 
   async function ensureTablesExist() {
     if (dbInitialized.current) return
@@ -57,6 +81,22 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       await fetch('/api/init-db', { method: 'POST' })
       dbInitialized.current = true
     } catch { /* nicht fatal */ }
+  }
+
+  async function loadRoleAndPermissions(userId: string, eventId: string) {
+    try {
+      const { fetchUserRole, fetchTrauzeugePermissions } = await getDB()
+      const role = await fetchUserRole(eventId, userId)
+      setCurrentRole(role)
+      if (role === 'trauzeuge') {
+        const perms = await fetchTrauzeugePermissions(eventId, userId)
+        setTrauzeugePerm(perms)
+      } else {
+        setTrauzeugePerm(null)
+      }
+    } catch (err) {
+      console.error('[EventContext] Role load failed:', err)
+    }
   }
 
   async function loadFromSupabase(userId: string): Promise<Event | null> {
@@ -101,12 +141,14 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
+      setCurrentUserId(session.user.id)
       setIsDemo(false)
       setIsSyncing(true)
       const dbEvent = await loadFromSupabase(session.user.id)
       if (dbEvent) {
         setEvent(dbEvent)
         saveEvent(dbEvent)
+        await loadRoleAndPermissions(session.user.id, dbEvent.id)
       } else {
         const lsEvent = loadEvent()
         setEvent(lsEvent.id === 'evt-demo' ? SEED_EVENT : lsEvent)
@@ -115,13 +157,21 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
 
       supabase.auth.onAuthStateChange(async (authEvent, newSession) => {
         if (authEvent === 'SIGNED_IN' && newSession) {
+          setCurrentUserId(newSession.user.id)
           setIsDemo(false)
           setIsSyncing(true)
           const dbEvent = await loadFromSupabase(newSession.user.id)
-          if (dbEvent) { setEvent(dbEvent); saveEvent(dbEvent) }
+          if (dbEvent) {
+            setEvent(dbEvent)
+            saveEvent(dbEvent)
+            await loadRoleAndPermissions(newSession.user.id, dbEvent.id)
+          }
           setIsSyncing(false)
         } else if (authEvent === 'SIGNED_OUT') {
           setIsDemo(true)
+          setCurrentUserId(null)
+          setCurrentRole(null)
+          setTrauzeugePerm(null)
           setEvent(SEED_EVENT)
         }
       })
@@ -165,7 +215,11 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <EventContext.Provider value={{ event, updateEvent, isDemo, isSyncing, syncError }}>
+    <EventContext.Provider value={{
+      event, updateEvent, isDemo, isSyncing, syncError,
+      currentRole, currentUserId, trauzeugePerm,
+      isVeranstalter, isBrautpaar, isEventFrozen,
+    }}>
       {children}
     </EventContext.Provider>
   )

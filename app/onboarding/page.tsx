@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   saveEvent, createEmptyEvent,
@@ -56,6 +56,27 @@ export default function OnboardingPage() {
   const [step,setStep] = useState(1)
   const [toast,setToast] = useState<string|null>(null)
 
+  // Check if user is approved veranstalter (server validates too, but show UI early)
+  useEffect(() => {
+    async function checkApproval() {
+      try {
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { router.push('/login'); return }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_approved_organizer')
+          .eq('id', user.id)
+          .maybeSingle()
+        if (profile && !profile.is_approved_organizer) {
+          router.push('/bewerbung?status=pending')
+        }
+      } catch { /* no Supabase — allow demo mode */ }
+    }
+    checkApproval()
+  }, [])
+
   // Step 1
   const [coupleName,setCoupleName] = useState('')
   const [date,setDate] = useState('')
@@ -86,7 +107,7 @@ export default function OnboardingPage() {
     return true
   }
 
-  const finish = () => {
+  const finish = async () => {
     const base = createEmptyEvent()
     const ev: Event = {
       ...base,
@@ -106,6 +127,20 @@ export default function OnboardingPage() {
       })),
       onboardingComplete: true,
     }
+    // Try API-based event creation (server validates is_approved_organizer)
+    try {
+      const res = await fetch('/api/events/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: ev }),
+      })
+      if (res.ok) {
+        const { eventId } = await res.json()
+        router.push(`/dashboard`)
+        return
+      }
+    } catch { /* no Supabase or API unavailable — fall through to localStorage */ }
+    // Fallback: localStorage only (demo mode)
     saveEvent(ev)
     router.push('/dashboard')
   }

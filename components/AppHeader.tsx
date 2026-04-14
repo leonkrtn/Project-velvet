@@ -51,6 +51,7 @@ const FEATURE_ROUTES: Record<FeatureKey, string> = {
   invite:          '/invite',
   deko:            '/deko',
   'gaeste-fotos':  '/gaeste-fotos',
+  messaging:       '/nachrichten',
 }
 
 const COLOR_PRESETS = [

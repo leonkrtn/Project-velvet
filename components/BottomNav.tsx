@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
-import { LayoutDashboard, Users, Hotel, Utensils } from 'lucide-react'
+import { LayoutDashboard, Users, Hotel, Utensils, MessageCircle } from 'lucide-react'
 import { useEvent } from '@/lib/event-context'
 import { DEFAULT_FEATURE_TOGGLES } from '@/lib/store'
 import type { FeatureKey } from '@/lib/store'
@@ -18,10 +18,11 @@ type NavItem = {
 }
 
 const ITEMS: NavItem[] = [
-  { label: 'Übersicht', icon: LayoutDashboard, href: '/dashboard',  dashTab: 'overview' },
+  { label: 'Übersicht', icon: LayoutDashboard, href: '/dashboard',    dashTab: 'overview' },
   { label: 'Gäste',     icon: Users,           href: '/gaeste' },
-  { label: 'Hotel',     icon: Hotel,           href: '/dashboard',  dashTab: 'hotel' },
-  { label: 'Catering',  icon: Utensils,        href: '/dashboard',  dashTab: 'catering', featureKey: 'catering' },
+  { label: 'Hotel',     icon: Hotel,           href: '/dashboard',    dashTab: 'hotel' },
+  { label: 'Catering',  icon: Utensils,        href: '/dashboard',    dashTab: 'catering', featureKey: 'catering' },
+  { label: 'Nachrichten', icon: MessageCircle, href: '/nachrichten',  featureKey: 'messaging' },
 ]
 
 export default function BottomNav() {

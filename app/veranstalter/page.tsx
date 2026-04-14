@@ -72,6 +72,7 @@ const FEATURE_LABELS: Record<FeatureKey, string> = {
   invite:          'Einladen',
   deko:            'Dekoration',
   'gaeste-fotos':  'Gäste-Fotos',
+  messaging:       'Nachrichten',
 }
 
 const STATUS_COLORS: Record<OrganizerSuggestionStatus, string> = {
@@ -887,6 +888,18 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function VeranstalterPage() {
   const [tab, setTab] = useState<Tab>('dienstleister')
+  const { currentRole } = useEvent()
+
+  if (currentRole !== null && currentRole !== 'veranstalter') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: 24, textAlign: 'center' }}>
+        <div>
+          <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Kein Zugriff</p>
+          <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>Dieser Bereich ist nur für Veranstalter zugänglich.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '24px 16px 48px' }}>
