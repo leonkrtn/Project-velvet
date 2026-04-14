@@ -11,6 +11,10 @@ import type {
   DEFAULT_FEATURE_TOGGLES, FeatureKey,
 } from '@/lib/store'
 import { SEED_EVENT, DEFAULT_FEATURE_TOGGLES as DEFAULTS } from '@/lib/store'
+import type { UserRole, EventDienstleister, TrauzeugePermissions } from '@/lib/types/roles'
+import type { Conversation, Message } from '@/lib/types/messaging'
+import type { PendingChange, ChangeArea, ChangeData } from '@/lib/types/approvals'
+import type { AuditEntry } from '@/lib/types/audit'
 
 // ── UUID-Hilfsfunktion ─────────────────────────────────────────────────────────
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -248,6 +252,7 @@ export async function fetchEventFromDB(userId: string): Promise<Event | null> {
     roomLength: ev.room_length ?? 12,
     roomWidth: ev.room_width ?? 8,
     onboardingComplete: ev.onboarding_complete ?? false,
+    dataFreezeAt: ev.data_freeze_at ?? undefined,
     createdAt: ev.created_at ?? new Date().toISOString(),
     guests: mappedGuests,
     hotels: mappedHotels,
@@ -309,11 +314,12 @@ export async function upsertEventToDB(event: Event, userId: string): Promise<voi
 
   if (evErr) throw evErr
 
-  // 2. Event-Mitgliedschaft sicherstellen (insert-only, ignoriert Duplikate)
+  // 2. Event-Mitgliedschaft sicherstellen (insert-only, bestehende Rolle NICHT überschreiben)
   await supabase.from('event_members').upsert(
     { event_id: eventId, user_id: userId, role: 'brautpaar' },
     { onConflict: 'event_id,user_id', ignoreDuplicates: true }
   )
+  // Note: ignoreDuplicates=true means if a row already exists, we don't overwrite the role
 
   // 3. Gäste (delete + insert, CASCADE löscht begleitpersonen/sub_event_guests/seating_assignments)
   await supabase.from('guests').delete().eq('event_id', eventId)
@@ -556,7 +562,7 @@ export async function upsertEventToDB(event: Event, userId: string): Promise<voi
   }
 }
 
-// ── Neues Event anlegen + User als Mitglied hinzufügen ────────────────────────
+// ── Neues Event anlegen + User als Veranstalter hinzufügen ───────────────────
 export async function createNewEvent(userId: string): Promise<string> {
   const supabase = createBrowserClient()
   const eventId = crypto.randomUUID()
@@ -567,8 +573,292 @@ export async function createNewEvent(userId: string): Promise<string> {
   })
 
   await supabase.from('event_members').insert({
-    event_id: eventId, user_id: userId, role: 'brautpaar',
+    event_id: eventId, user_id: userId, role: 'veranstalter',
   })
 
   return eventId
+}
+
+// ── Rolle des Users im Event abrufen ──────────────────────────────────────────
+export async function fetchUserRole(eventId: string, userId: string): Promise<UserRole | null> {
+  const supabase = createBrowserClient()
+  const { data } = await supabase
+    .from('event_members')
+    .select('role')
+    .eq('event_id', eventId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  return (data?.role as UserRole) ?? null
+}
+
+// ── Event-Dienstleister ───────────────────────────────────────────────────────
+export async function fetchEventDienstleister(eventId: string): Promise<EventDienstleister[]> {
+  const supabase = createBrowserClient()
+  const { data } = await supabase
+    .from('event_dienstleister')
+    .select('*, dienstleister_profiles(*)')
+    .eq('event_id', eventId)
+  return (data ?? []).map(row => ({
+    id: row.id,
+    eventId: row.event_id,
+    dienstleisterId: row.dienstleister_id,
+    userId: row.user_id ?? undefined,
+    category: row.category,
+    scopes: row.scopes ?? [],
+    status: row.status as EventDienstleister['status'],
+    invitedBy: row.invited_by ?? undefined,
+    invitedAt: row.invited_at,
+    acceptedAt: row.accepted_at ?? undefined,
+    profile: row.dienstleister_profiles ? {
+      id: row.dienstleister_profiles.id,
+      name: row.dienstleister_profiles.name,
+      companyName: row.dienstleister_profiles.company_name ?? undefined,
+      category: row.dienstleister_profiles.category,
+      email: row.dienstleister_profiles.email ?? undefined,
+      phone: row.dienstleister_profiles.phone ?? undefined,
+      website: row.dienstleister_profiles.website ?? undefined,
+      description: row.dienstleister_profiles.description ?? undefined,
+    } : undefined,
+  }))
+}
+
+export async function upsertEventDienstleister(data: EventDienstleister): Promise<void> {
+  const supabase = createBrowserClient()
+  await supabase.from('event_dienstleister').upsert({
+    id: data.id,
+    event_id: data.eventId,
+    dienstleister_id: data.dienstleisterId,
+    user_id: data.userId ?? null,
+    category: data.category,
+    scopes: data.scopes,
+    status: data.status,
+    invited_by: data.invitedBy ?? null,
+    accepted_at: data.acceptedAt ?? null,
+  }, { onConflict: 'id' })
+}
+
+export async function removeEventDienstleister(id: string): Promise<void> {
+  const supabase = createBrowserClient()
+  await supabase.from('event_dienstleister').delete().eq('id', id)
+}
+
+// ── Trauzeuge-Permissions ─────────────────────────────────────────────────────
+export async function fetchTrauzeugePermissions(eventId: string, userId: string): Promise<TrauzeugePermissions | null> {
+  const supabase = createBrowserClient()
+  const { data } = await supabase
+    .from('trauzeuge_permissions')
+    .select('*')
+    .eq('event_id', eventId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!data) return null
+  return {
+    eventId: data.event_id,
+    userId: data.user_id,
+    canViewGuests: data.can_view_guests ?? true,
+    canEditGuests: data.can_edit_guests ?? false,
+    canViewSeating: data.can_view_seating ?? true,
+    canEditSeating: data.can_edit_seating ?? true,
+    canViewBudget: data.can_view_budget ?? false,
+    canViewCatering: data.can_view_catering ?? false,
+    canViewTimeline: data.can_view_timeline ?? true,
+    canEditTimeline: data.can_edit_timeline ?? false,
+    canViewVendors: data.can_view_vendors ?? false,
+    canManageDeko: data.can_manage_deko ?? true,
+  }
+}
+
+export async function upsertTrauzeugePermissions(perms: TrauzeugePermissions): Promise<void> {
+  const supabase = createBrowserClient()
+  await supabase.from('trauzeuge_permissions').upsert({
+    event_id: perms.eventId,
+    user_id: perms.userId,
+    can_view_guests: perms.canViewGuests,
+    can_edit_guests: perms.canEditGuests,
+    can_view_seating: perms.canViewSeating,
+    can_edit_seating: perms.canEditSeating,
+    can_view_budget: perms.canViewBudget,
+    can_view_catering: perms.canViewCatering,
+    can_view_timeline: perms.canViewTimeline,
+    can_edit_timeline: perms.canEditTimeline,
+    can_view_vendors: perms.canViewVendors,
+    can_manage_deko: perms.canManageDeko,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'event_id,user_id' })
+}
+
+// ── Pending Changes (Freigabesystem) ──────────────────────────────────────────
+export async function submitPendingChange(change: {
+  eventId: string; area: ChangeArea; proposedBy: string
+  proposerRole: string; changeData: ChangeData
+}): Promise<string> {
+  const supabase = createBrowserClient()
+  const { data, error } = await supabase
+    .from('pending_changes')
+    .insert({
+      event_id: change.eventId,
+      area: change.area,
+      proposed_by: change.proposedBy,
+      proposer_role: change.proposerRole,
+      change_data: change.changeData as any,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return data.id
+}
+
+export async function fetchPendingChanges(eventId: string): Promise<PendingChange[]> {
+  const supabase = createBrowserClient()
+  const { data } = await supabase
+    .from('pending_changes')
+    .select('*')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: false })
+  return (data ?? []).map(row => ({
+    id: row.id,
+    eventId: row.event_id,
+    area: row.area as ChangeArea,
+    proposedBy: row.proposed_by,
+    proposerRole: row.proposer_role,
+    changeData: row.change_data as ChangeData,
+    status: row.status as PendingChange['status'],
+    reviewedBy: row.reviewed_by ?? undefined,
+    reviewNote: row.review_note ?? undefined,
+    createdAt: row.created_at,
+    resolvedAt: row.resolved_at ?? undefined,
+  }))
+}
+
+export async function resolvePendingChange(
+  id: string,
+  status: 'approved' | 'rejected',
+  note?: string
+): Promise<void> {
+  const supabase = createBrowserClient()
+  await supabase.from('pending_changes').update({
+    status,
+    review_note: note ?? null,
+    resolved_at: new Date().toISOString(),
+  }).eq('id', id)
+}
+
+// ── Messaging ─────────────────────────────────────────────────────────────────
+export async function fetchConversations(eventId: string): Promise<Conversation[]> {
+  const supabase = createBrowserClient()
+  const { data } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: true })
+  return (data ?? []).map(row => ({
+    id: row.id,
+    eventId: row.event_id,
+    title: row.title ?? undefined,
+    participantRoles: row.participant_roles ?? [],
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+  }))
+}
+
+export async function fetchMessages(conversationId: string): Promise<Message[]> {
+  const supabase = createBrowserClient()
+  const { data } = await supabase
+    .from('messages')
+    .select('*, profiles(name)')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true })
+  return (data ?? []).map(row => ({
+    id: row.id,
+    conversationId: row.conversation_id,
+    senderId: row.sender_id,
+    senderName: (row.profiles as any)?.name ?? undefined,
+    content: row.content,
+    createdAt: row.created_at,
+    editedAt: row.edited_at ?? undefined,
+  }))
+}
+
+export async function sendMessage(conversationId: string, content: string): Promise<void> {
+  const supabase = createBrowserClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  await supabase.from('messages').insert({
+    conversation_id: conversationId,
+    sender_id: user.id,
+    content,
+  })
+}
+
+export function subscribeToMessages(
+  conversationId: string,
+  callback: (msg: Message) => void
+): () => void {
+  const supabase = createBrowserClient()
+  const channel = supabase
+    .channel(`messages:${conversationId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `conversation_id=eq.${conversationId}`,
+      },
+      (payload) => {
+        const row = payload.new as any
+        callback({
+          id: row.id,
+          conversationId: row.conversation_id,
+          senderId: row.sender_id,
+          content: row.content,
+          createdAt: row.created_at,
+          editedAt: row.edited_at ?? undefined,
+        })
+      }
+    )
+    .subscribe()
+  return () => { supabase.removeChannel(channel) }
+}
+
+export async function createConversation(eventId: string, title: string, participantRoles: string[] = []): Promise<string> {
+  const supabase = createBrowserClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+  const { data, error } = await supabase
+    .from('conversations')
+    .insert({
+      event_id: eventId,
+      title,
+      participant_roles: participantRoles,
+      created_by: user.id,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return data.id
+}
+
+// ── Audit-Log ─────────────────────────────────────────────────────────────────
+export async function fetchAuditLog(eventId: string): Promise<AuditEntry[]> {
+  const supabase = createBrowserClient()
+  const { data } = await supabase
+    .from('audit_log')
+    .select('*, profiles(name)')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: false })
+    .limit(200)
+  return (data ?? []).map(row => ({
+    id: row.id,
+    eventId: row.event_id,
+    actorId: row.actor_id,
+    actorName: (row.profiles as any)?.name ?? undefined,
+    actorRole: row.actor_role,
+    action: row.action,
+    tableName: row.table_name,
+    recordId: row.record_id ?? undefined,
+    oldData: row.old_data ?? undefined,
+    newData: row.new_data ?? undefined,
+    createdAt: row.created_at,
+  }))
 }

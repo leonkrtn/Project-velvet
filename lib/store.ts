@@ -152,11 +152,12 @@ export interface OrganizerCateringSuggestion {
 export type FeatureKey =
   | 'budget' | 'vendors' | 'tasks' | 'reminders'
   | 'seating' | 'catering' | 'sub-events' | 'invite' | 'deko' | 'gaeste-fotos'
+  | 'messaging'
 
 export const DEFAULT_FEATURE_TOGGLES: Record<FeatureKey, boolean> = {
   budget: true, vendors: true, tasks: true, reminders: true,
   seating: true, catering: true, 'sub-events': true, invite: true,
-  deko: true, 'gaeste-fotos': true,
+  deko: true, 'gaeste-fotos': true, messaging: false,
 }
 
 // ── Deko ──────────────────────────────────────────────────────────────────
@@ -215,6 +216,7 @@ export interface Event {
   organizer?: OrganizerSettings
   dekoWishes: DekoWish[]
   guestPhotos: GuestPhoto[]
+  dataFreezeAt?: string  // ISO timestamp; set = data frozen (read-only)
 }
 
 // ── Seed ───────────────────────────────────────────────────────────────────

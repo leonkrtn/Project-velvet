@@ -2,6 +2,8 @@
 const nextConfig = {
   // postgres-Paket läuft nur server-seitig (DDL-Migrationen),
   // nicht im Browser-Bundle
-  serverExternalPackages: ['postgres'],
+  experimental: {
+    serverExternalPackages: ['postgres'],
+  },
 }
 module.exports = nextConfig

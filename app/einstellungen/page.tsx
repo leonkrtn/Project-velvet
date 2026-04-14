@@ -9,6 +9,8 @@ import {
 } from '@/lib/store'
 import { Toast } from '@/components/ui'
 import { Plus, Trash2, ChevronRight, ChevronLeft, Check, X } from 'lucide-react'
+import { useEvent } from '@/lib/event-context'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 
 function uid() { return Math.random().toString(36).slice(2,9) }
 
@@ -72,7 +74,10 @@ const PETALS = [
 
 export default function EinstellungenPage() {
   const router = useRouter()
+  const { event, currentRole, isEventFrozen } = useEvent()
   const [step,setStep] = useState(1)
+  const [freezeConfirm, setFreezeConfirm] = useState(false)
+  const [freezing, setFreezing] = useState(false)
   const [toast,setToast] = useState<string|null>(null)
   const [isEdit,setIsEdit] = useState(false)
   const [showAnimation,setShowAnimation] = useState(false)
@@ -162,6 +167,17 @@ export default function EinstellungenPage() {
     if(!canNext()){setToast('Bitte alle Pflichtfelder ausfüllen');return}
     if(step===STEPS.length){finish();return}
     setStep(s=>s+1)
+  }
+
+  async function toggleFreeze() {
+    if (!event?.id) return
+    setFreezing(true)
+    const supabase = createBrowserSupabaseClient()
+    const newValue = isEventFrozen ? null : new Date().toISOString()
+    await supabase.from('events').update({ data_freeze_at: newValue }).eq('id', event.id)
+    setFreezeConfirm(false)
+    setFreezing(false)
+    window.location.reload()
   }
 
   return (
@@ -433,6 +449,54 @@ export default function EinstellungenPage() {
               <button onClick={()=>setVendors([...vendors,{id:uid(),name:'',category:'Sonstiges',status:'angefragt',contactName:'',phone:'',email:'',price:undefined}])} style={{display:'flex',alignItems:'center',gap:6,padding:'10px 18px',borderRadius:100,border:'1px dashed var(--border)',background:'none',fontSize:12,fontWeight:600,color:'var(--text-dim)',cursor:'pointer',fontFamily:'inherit',alignSelf:'flex-start'}}>
                 <Plus size={12}/> Dienstleister hinzufügen
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Freeze section — only for veranstalter/brautpaar in edit mode */}
+        {isEdit && (currentRole === 'veranstalter' || currentRole === 'brautpaar') && (
+          <div style={{marginTop:24,padding:'18px 20px',background:isEventFrozen?'#1a1a2e':'var(--surface)',border:`1px solid ${isEventFrozen?'#e2b96f44':'var(--border)'}`,borderRadius:'var(--r-lg)'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div>
+                <p style={{fontSize:14,fontWeight:600,color:isEventFrozen?'#e2b96f':'var(--text)',margin:'0 0 3px'}}>
+                  {isEventFrozen ? 'Daten eingefroren' : 'Daten einfrieren'}
+                </p>
+                <p style={{fontSize:12,color:'var(--text-dim)',margin:0}}>
+                  {isEventFrozen ? 'Keine Änderungen möglich. Zum Auftauen erneut klicken.' : 'Nach dem Einfrieren sind keine Änderungen mehr möglich.'}
+                </p>
+              </div>
+              <button
+                onClick={() => isEventFrozen ? toggleFreeze() : setFreezeConfirm(true)}
+                disabled={freezing}
+                style={{
+                  padding:'8px 16px',background:isEventFrozen?'#e2b96f':'transparent',
+                  color:isEventFrozen?'#fff':'var(--text-dim)',
+                  border:`1px solid ${isEventFrozen?'#e2b96f':'var(--border)'}`,
+                  borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap',marginLeft:12,
+                }}
+              >
+                {isEventFrozen ? 'Auftauen' : 'Einfrieren'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Freeze confirm modal */}
+        {freezeConfirm && (
+          <div style={{position:'fixed',inset:0,background:'#00000070',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+            <div style={{background:'var(--surface)',borderRadius:'var(--r-lg)',padding:28,maxWidth:340,width:'100%'}}>
+              <p style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:600,color:'var(--text)',marginBottom:10}}>Daten einfrieren?</p>
+              <p style={{fontSize:13,color:'var(--text-dim)',marginBottom:20,lineHeight:1.6}}>
+                Nach dem Einfrieren können keine Änderungen mehr vorgenommen werden. Dieser Schritt kann rückgängig gemacht werden.
+              </p>
+              <div style={{display:'flex',gap:10}}>
+                <button onClick={toggleFreeze} disabled={freezing} style={{flex:1,padding:'10px',background:'#1a1a2e',color:'#e2b96f',border:'1px solid #e2b96f44',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>
+                  {freezing ? 'Einfrieren…' : 'Einfrieren'}
+                </button>
+                <button onClick={()=>setFreezeConfirm(false)} style={{flex:1,padding:'10px',background:'none',color:'var(--text-dim)',border:'1px solid var(--border)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
+                  Abbrechen
+                </button>
+              </div>
             </div>
           </div>
         )}

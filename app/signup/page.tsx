@@ -3,21 +3,14 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-type Role = 'brautpaar' | 'trauzeuge' | 'caterer' | 'organizer'
-
-const ROLE_OPTIONS: { value: Role; label: string; desc: string }[] = [
-  { value: 'brautpaar',  label: 'Brautpaar',   desc: 'Ihr plant eure Hochzeit' },
-  { value: 'trauzeuge',  label: 'Trauzeuge/in', desc: 'Helft bei der Organisation' },
-  { value: 'caterer',    label: 'Caterer',       desc: 'Verantwortlich für Speisen & Getränke' },
-  { value: 'organizer',  label: 'Veranstalter',  desc: 'Professionelle Hochzeitsplanung' },
-]
+type Path = 'invite' | null
 
 export default function SignupPage() {
   const router = useRouter()
+  const [path, setPath] = useState<Path>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<Role>('brautpaar')
   const [inviteCode, setInviteCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -28,13 +21,14 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     if (password.length < 8) { setError('Passwort muss mindestens 8 Zeichen haben.'); return }
+    if (!inviteCode.trim()) { setError('Einladungscode ist erforderlich.'); return }
     setLoading(true); setError('')
     try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { name, role, invite_code: inviteCode || null },
+          data: { name, invite_code: inviteCode.trim() },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       })
@@ -81,110 +75,127 @@ export default function SignupPage() {
           <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 8 }}>Konto erstellen</p>
         </div>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 28 }}>
-          <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Path selection */}
+        {path === null && (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 28 }}>
+            <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 16 }}>Wie möchtest du beitreten?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button
+                type="button"
+                onClick={() => setPath('invite')}
+                style={{
+                  padding: '16px', borderRadius: 'var(--r-sm)', textAlign: 'left',
+                  border: '1.5px solid var(--border)', background: 'var(--bg)',
+                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { (e.currentTarget.style.borderColor = 'var(--gold)'); (e.currentTarget.style.background = 'var(--gold-pale)') }}
+                onMouseLeave={e => { (e.currentTarget.style.borderColor = 'var(--border)'); (e.currentTarget.style.background = 'var(--bg)') }}
+              >
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Ich habe einen Einladungscode</p>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3 }}>Brautpaar, Trauzeuge oder Dienstleister — registriere dich mit deinem Code</p>
+              </button>
 
-            {/* Name */}
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Dein Name</label>
-              <input
-                required value={name} onChange={e => setName(e.target.value)}
-                placeholder="Max Mustermann"
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-              />
+              <a
+                href="/bewerbung"
+                style={{
+                  display: 'block', padding: '16px', borderRadius: 'var(--r-sm)', textAlign: 'left',
+                  border: '1.5px solid var(--border)', background: 'var(--bg)',
+                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={(e: any) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.background = 'var(--gold-pale)' }}
+                onMouseLeave={(e: any) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg)' }}
+              >
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Ich bin Veranstalter</p>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3 }}>Bewirb dich als Hochzeitsplaner — nach Prüfung erhältst du Zugang</p>
+              </a>
             </div>
 
-            {/* Email */}
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>E-Mail-Adresse</label>
-              <input
-                type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="deine@email.de"
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-              />
+            <div style={{ marginTop: 20, textAlign: 'center' }}>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+                Bereits registriert?{' '}
+                <a href="/login" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Anmelden</a>
+              </p>
             </div>
+          </div>
+        )}
 
-            {/* Password */}
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Passwort (mind. 8 Zeichen)</label>
-              <input
-                type="password" required autoComplete="new-password"
-                value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-              />
-            </div>
-
-            {/* Role selection */}
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 8 }}>Ich bin …</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {ROLE_OPTIONS.map(r => (
-                  <button
-                    key={r.value}
-                    type="button"
-                    onClick={() => setRole(r.value)}
-                    data-sel={role === r.value ? '' : undefined}
-                    style={{
-                      padding: '11px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left',
-                      border: `1.5px solid ${role === r.value ? 'var(--gold)' : 'var(--border)'}`,
-                      background: role === r.value ? 'var(--gold-pale)' : 'var(--bg)',
-                      cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                    }}
-                  >
-                    <p style={{ fontSize: 13, fontWeight: 600, color: role === r.value ? 'var(--gold)' : 'var(--text)' }}>{r.label}</p>
-                    <p style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>{r.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Invite code (not for organizer) */}
-            {role !== 'organizer' && (
+        {/* Invite code signup form */}
+        {path === 'invite' && (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 28 }}>
+            <button
+              type="button"
+              onClick={() => { setPath(null); setError('') }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, padding: 0, marginBottom: 20, fontFamily: 'inherit' }}
+            >
+              ← Zurück
+            </button>
+            <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Einladungscode (vom Veranstalter)</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Dein Name</label>
                 <input
-                  value={inviteCode} onChange={e => setInviteCode(e.target.value)}
-                  placeholder="Optional — falls du eingeladen wurdest"
+                  required value={name} onChange={e => setName(e.target.value)}
+                  placeholder="Max Mustermann"
                   style={inputStyle}
                   onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
                   onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
                 />
               </div>
-            )}
 
-            {error && (
-              <p style={{ fontSize: 13, color: 'var(--red)', background: 'rgba(160,64,64,0.08)', padding: '10px 14px', borderRadius: 8 }}>{error}</p>
-            )}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>E-Mail-Adresse</label>
+                <input
+                  type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="deine@email.de"
+                  style={inputStyle}
+                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                />
+              </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                padding: '14px', borderRadius: 'var(--r-sm)', border: 'none',
-                background: 'var(--gold)', color: '#fff',
-                fontSize: 15, fontWeight: 600, fontFamily: 'inherit',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.6 : 1, transition: 'opacity 0.15s',
-              }}
-            >
-              {loading ? 'Wird erstellt …' : 'Konto erstellen'}
-            </button>
-          </form>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Passwort (mind. 8 Zeichen)</label>
+                <input
+                  type="password" required autoComplete="new-password"
+                  value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  style={inputStyle}
+                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                />
+              </div>
 
-          <div style={{ marginTop: 20, textAlign: 'center' }}>
-            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-              Bereits registriert?{' '}
-              <a href="/login" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Anmelden</a>
-            </p>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Einladungscode</label>
+                <input
+                  required value={inviteCode} onChange={e => setInviteCode(e.target.value)}
+                  placeholder="Von deinem Veranstalter oder Brautpaar"
+                  style={inputStyle}
+                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                />
+              </div>
+
+              {error && (
+                <p style={{ fontSize: 13, color: 'var(--red)', background: 'rgba(160,64,64,0.08)', padding: '10px 14px', borderRadius: 8 }}>{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  padding: '14px', borderRadius: 'var(--r-sm)', border: 'none',
+                  background: 'var(--gold)', color: '#fff',
+                  fontSize: 15, fontWeight: 600, fontFamily: 'inherit',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.6 : 1, transition: 'opacity 0.15s',
+                }}
+              >
+                {loading ? 'Wird erstellt …' : 'Konto erstellen'}
+              </button>
+            </form>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
