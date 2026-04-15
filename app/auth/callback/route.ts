@@ -30,7 +30,7 @@ export async function GET(request: Request) {
           .from('invite_codes')
           .select('*')
           .eq('code', inviteCode)
-          .eq('used', false)
+          .eq('status', 'offen')
           .gt('expires_at', new Date().toISOString())
           .maybeSingle()
 
@@ -85,15 +85,16 @@ export async function GET(request: Request) {
               await admin.from('event_dienstleister').update({
                 user_id: userId,
                 accepted_at: new Date().toISOString(),
-                status: 'aktiv',
+                status: 'akzeptiert',
               }).eq('id', edId)
             }
           }
 
           // Invite-Code als verwendet markieren
           await admin.from('invite_codes').update({
-            used: true,
+            status: 'verwendet',
             used_by: userId,
+            used_at: new Date().toISOString(),
           }).eq('id', codeRow.id)
         }
       }

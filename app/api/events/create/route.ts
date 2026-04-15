@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     p_event_id: eventId,
     p_actor_id: user.id,
     p_actor_role: 'veranstalter',
-    p_action: 'create',
+    p_action: 'INSERT',
     p_table_name: 'events',
     p_record_id: eventId,
   })

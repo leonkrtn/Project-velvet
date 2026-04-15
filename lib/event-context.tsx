@@ -18,6 +18,7 @@ type Ctx = {
   isDemo: boolean
   isSyncing: boolean
   syncError: string | null
+  hasLoaded: boolean
   // Role & permissions
   currentRole: UserRole | null
   currentUserId: string | null
@@ -33,6 +34,7 @@ const EventContext = createContext<Ctx>({
   isDemo: true,
   isSyncing: false,
   syncError: null,
+  hasLoaded: false,
   currentRole: null,
   currentUserId: null,
   trauzeugePerm: null,
@@ -59,6 +61,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   const [isDemo, setIsDemo] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+  const [hasLoaded, setHasLoaded] = useState(false)
   const [currentRole, setCurrentRole] = useState<UserRole | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [trauzeugePerm, setTrauzeugePerm] = useState<TrauzeugePermissions | null>(null)
@@ -127,6 +130,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     if (!isSupabaseConfigured()) {
       setEvent(SEED_EVENT)
       setIsDemo(true)
+      setHasLoaded(true)
       return
     }
 
@@ -138,6 +142,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
         const lsEvent = loadEvent()
         setEvent(lsEvent.id === 'evt-demo' ? SEED_EVENT : lsEvent)
         setIsDemo(true)
+        setHasLoaded(true)
         return
       }
 
@@ -154,6 +159,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
         setEvent(lsEvent.id === 'evt-demo' ? SEED_EVENT : lsEvent)
       }
       setIsSyncing(false)
+      setHasLoaded(true)
 
       supabase.auth.onAuthStateChange(async (authEvent, newSession) => {
         if (authEvent === 'SIGNED_IN' && newSession) {
@@ -167,6 +173,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
             await loadRoleAndPermissions(newSession.user.id, dbEvent.id)
           }
           setIsSyncing(false)
+          setHasLoaded(true)
         } else if (authEvent === 'SIGNED_OUT') {
           setIsDemo(true)
           setCurrentUserId(null)
@@ -178,6 +185,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {
       setEvent(SEED_EVENT)
       setIsDemo(true)
+      setHasLoaded(true)
     })
 
     const reload = () => { if (isDemoRef.current) setEvent(loadEvent()) }
@@ -216,7 +224,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <EventContext.Provider value={{
-      event, updateEvent, isDemo, isSyncing, syncError,
+      event, updateEvent, isDemo, isSyncing, syncError, hasLoaded,
       currentRole, currentUserId, trauzeugePerm,
       isVeranstalter, isBrautpaar, isEventFrozen,
     }}>
