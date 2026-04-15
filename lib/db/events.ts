@@ -569,6 +569,7 @@ export async function createNewEvent(userId: string): Promise<string> {
 
   await supabase.from('events').insert({
     id: eventId,
+    created_by: userId,
     onboarding_complete: false,
   })
 
