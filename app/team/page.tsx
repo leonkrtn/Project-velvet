@@ -237,11 +237,11 @@ export default function TeamPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{
                   fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
-                  background: dl.status === 'aktiv' ? '#d4edda' : '#fff3cd',
-                  color: dl.status === 'aktiv' ? '#15803d' : '#92400e',
+                  background: dl.status === 'akzeptiert' ? '#d4edda' : '#fff3cd',
+                  color: dl.status === 'akzeptiert' ? '#15803d' : '#92400e',
                   padding: '3px 8px', borderRadius: 6,
                 }}>
-                  {dl.status === 'aktiv' ? 'Aktiv' : dl.status === 'eingeladen' ? 'Eingeladen' : 'Beendet'}
+                  {dl.status === 'akzeptiert' ? 'Aktiv' : dl.status === 'eingeladen' ? 'Eingeladen' : 'Beendet'}
                 </span>
                 <button
                   onClick={async () => {
