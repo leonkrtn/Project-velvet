@@ -35,16 +35,23 @@ function toUUID(id: string): string {
 }
 
 // ── Event aus Supabase laden ───────────────────────────────────────────────────
-export async function fetchEventFromDB(userId: string): Promise<Event | null> {
+// Optionales eventId: wenn angegeben, wird genau dieses Event geladen (für Event-Switch).
+export async function fetchEventFromDB(userId: string, specificEventId?: string): Promise<Event | null> {
   const supabase = createBrowserClient()
 
   // 1. Event-Member suchen
-  const { data: member, error: memberErr } = await supabase
+  let memberQuery = supabase
     .from('event_members')
     .select('event_id, role')
     .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle()
+
+  if (specificEventId) {
+    memberQuery = memberQuery.eq('event_id', specificEventId)
+  } else {
+    memberQuery = memberQuery.limit(1)
+  }
+
+  const { data: member, error: memberErr } = await memberQuery.maybeSingle()
 
   if (memberErr || !member) return null
   const eventId = member.event_id
@@ -569,6 +576,7 @@ export async function createNewEvent(userId: string): Promise<string> {
 
   await supabase.from('events').insert({
     id: eventId,
+    created_by: userId,
     onboarding_complete: false,
   })
 
@@ -578,6 +586,46 @@ export async function createNewEvent(userId: string): Promise<string> {
 
   return eventId
 }
+
+// ── Alle Events eines Veranstalters (lightweight) ─────────────────────────────
+export type EventSummary = {
+  id: string
+  title: string
+  coupleName: string | null
+  date: string | null
+  venue: string | null
+  onboardingComplete: boolean
+  createdAt: string
+}
+
+export async function fetchEventSummariesForVeranstalter(userId: string): Promise<EventSummary[]> {
+  const supabase = createBrowserClient()
+  const { data, error } = await supabase
+    .from('event_members')
+    .select('event_id, events(id, title, couple_name, date, venue, onboarding_complete, created_at)')
+    .eq('user_id', userId)
+    .eq('role', 'veranstalter')
+    .order('event_id')
+
+  if (error || !data) return []
+
+  return data
+    .map((row: any) => {
+      const ev = row.events
+      if (!ev) return null
+      return {
+        id: ev.id,
+        title: ev.title ?? 'Unbenanntes Event',
+        coupleName: ev.couple_name ?? null,
+        date: ev.date ?? null,
+        venue: ev.venue ?? null,
+        onboardingComplete: ev.onboarding_complete ?? false,
+        createdAt: ev.created_at,
+      }
+    })
+    .filter(Boolean) as EventSummary[]
+}
+
 
 // ── Rolle des Users im Event abrufen ──────────────────────────────────────────
 export async function fetchUserRole(eventId: string, userId: string): Promise<UserRole | null> {

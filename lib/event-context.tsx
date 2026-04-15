@@ -15,6 +15,7 @@ import type { UserRole, TrauzeugePermissions } from '@/lib/types/roles'
 type Ctx = {
   event: Event | null
   updateEvent: (e: Event) => void
+  switchEvent: (eventId: string) => Promise<void>
   isDemo: boolean
   isSyncing: boolean
   syncError: string | null
@@ -31,6 +32,7 @@ type Ctx = {
 const EventContext = createContext<Ctx>({
   event: null,
   updateEvent: () => {},
+  switchEvent: async () => {},
   isDemo: true,
   isSyncing: false,
   syncError: null,
@@ -197,6 +199,21 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const switchEvent = useCallback(async (eventId: string) => {
+    if (!currentUserId) return
+    try {
+      const { fetchEventFromDB } = await getDB()
+      const dbEvent = await fetchEventFromDB(currentUserId, eventId)
+      if (dbEvent) {
+        setEvent(dbEvent)
+        saveEvent(dbEvent)
+        await loadRoleAndPermissions(currentUserId, dbEvent.id)
+      }
+    } catch (err) {
+      console.error('[EventContext] switchEvent failed:', err)
+    }
+  }, [currentUserId])
+
   const updateEvent = useCallback(async (e: Event) => {
     setEvent(e)
     saveEvent(e)
@@ -224,7 +241,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <EventContext.Provider value={{
-      event, updateEvent, isDemo, isSyncing, syncError, hasLoaded,
+      event, updateEvent, switchEvent, isDemo, isSyncing, syncError, hasLoaded,
       currentRole, currentUserId, trauzeugePerm,
       isVeranstalter, isBrautpaar, isEventFrozen,
     }}>

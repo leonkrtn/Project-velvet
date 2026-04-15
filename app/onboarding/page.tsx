@@ -136,13 +136,13 @@ export default function OnboardingPage() {
       })
       if (res.ok) {
         const { eventId } = await res.json()
-        router.push(`/dashboard`)
+        router.push(`/veranstalter`)
         return
       }
     } catch { /* no Supabase or API unavailable — fall through to localStorage */ }
     // Fallback: localStorage only (demo mode)
     saveEvent(ev)
-    router.push('/dashboard')
+    router.push('/veranstalter')
   }
 
   const next = () => {
