@@ -106,7 +106,7 @@ const MENU_ITEMS = [
 export default function AppHeader() {
   const pathname    = usePathname()
   const router      = useRouter()
-  const { event }   = useEvent()
+  const { event, isVeranstalter }   = useEvent()
   const coupleName  = event?.coupleName ?? ''
   const featureToggles = { ...DEFAULT_FEATURE_TOGGLES, ...event?.organizer?.featureToggles }
   const isRouteEnabled = (href: string) => {
@@ -238,6 +238,7 @@ export default function AppHeader() {
         {/* Menu sections */}
         <div style={{ flex: 1, padding: '8px 0 24px' }}>
           {MENU_ITEMS.map(section => {
+            if (section.section === 'Veranstalter' && !isVeranstalter) return null
             const visibleItems = section.items.filter(item => {
           if ((item as any).featureKey) return featureToggles[(item as any).featureKey as FeatureKey]
           return isRouteEnabled(item.href)
