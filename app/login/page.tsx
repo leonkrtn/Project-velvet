@@ -24,7 +24,12 @@ export default function LoginPage() {
         router.push('/dashboard')
         router.refresh()
       } else {
-        const { error } = await supabase.auth.signInWithOtp({ email })
+        const { error } = await supabase.auth.signInWithOtp({
+            email,
+            options: {
+              emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
+          })
         if (error) throw error
         setMagicSent(true)
       }
