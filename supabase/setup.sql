@@ -783,7 +783,7 @@ CREATE INDEX idx_guest_photos_guest ON guest_photos(uploader_guest_id)
 
 CREATE TABLE organizer_applications (
   id           UUID                              PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      UUID                              NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id      UUID                              REFERENCES profiles(id) ON DELETE SET NULL,
   company_name TEXT,
   contact_name TEXT                              NOT NULL,
   email        TEXT                              NOT NULL,
