@@ -1,11 +1,10 @@
 -- ============================================================
--- Velvet Wedding Platform — Production-Ready Database Setup v5
+-- Velvet Wedding Platform — Production-Ready Database Setup v6
 -- Supabase-kompatibel | Einmalig auf leerer Datenbank ausführen
 -- Voraussetzung: DROP SCHEMA public CASCADE; CREATE SCHEMA public;
 -- ============================================================
 
 CREATE SCHEMA IF NOT EXISTS public;
-
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 
@@ -63,11 +62,7 @@ CREATE TABLE profiles (
 
 CREATE INDEX idx_profiles_email ON profiles(email) WHERE email <> '';
 
-
--- ════════════════════════════════════════════════════════════════════════════
--- HANDLE NEW USER
--- ════════════════════════════════════════════════════════════════════════════
-
+-- Auto-Profil bei neuem Auth-User
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -150,7 +145,7 @@ CREATE INDEX idx_event_members_event_role ON event_members(event_id, role);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
--- HELPER-FUNKTIONEN
+-- HELPER-FUNKTIONEN (alle NACH den Tabellen die sie referenzieren)
 -- ════════════════════════════════════════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION public.is_event_member(
@@ -222,37 +217,11 @@ AS $$
   );
 $$;
 
--- Audit-Log Hilfsfunktion — audit_log-Tabelle wird weiter unten erstellt.
--- In Postgres werden Funktionsrümpfe erst zur Laufzeit aufgelöst (kein
--- Forward-Reference-Problem bei plpgsql/sql-Funktionen).
-CREATE OR REPLACE FUNCTION public.write_audit_log(
-  p_event_id   UUID,
-  p_actor_id   UUID,
-  p_actor_role user_role,
-  p_action     audit_action_enum,
-  p_table_name TEXT,
-  p_record_id  UUID  DEFAULT NULL,
-  p_old_data   JSONB DEFAULT NULL,
-  p_new_data   JSONB DEFAULT NULL
-)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  INSERT INTO audit_log (
-    event_id, actor_id, actor_role, action,
-    table_name, record_id, old_data, new_data
-  ) VALUES (
-    p_event_id, p_actor_id, p_actor_role, p_action,
-    p_table_name, p_record_id, p_old_data, p_new_data
-  );
-END;
-$$;
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- INVITE CODES
+-- (Muss vor get_invite_preview stehen, da diese Funktion LANGUAGE sql ist
+--  und invite_codes zur Definitionszeit auflöst)
 -- ════════════════════════════════════════════════════════════════════════════
 
 CREATE TABLE invite_codes (
@@ -279,7 +248,8 @@ CREATE INDEX idx_invite_codes_code_status ON invite_codes(code) WHERE status = '
 
 
 -- ════════════════════════════════════════════════════════════════════════════
--- ATOMARE INVITE-EINLÖSE-FUNKTION (RPC)
+-- INVITE RPCs (LANGUAGE plpgsql → Runtime-Auflösung → Reihenfolge egal,
+--              aber hier trotzdem nach den Tabellen zur Klarheit)
 -- ════════════════════════════════════════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION public.redeem_invite_code(p_code TEXT)
@@ -358,11 +328,6 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
-
--- ════════════════════════════════════════════════════════════════════════════
--- INVITE CODE ERSTELLEN (RPC)
--- ════════════════════════════════════════════════════════════════════════════
-
 CREATE OR REPLACE FUNCTION public.create_invite_code(
   p_event_id   UUID,
   p_role       user_role,
@@ -407,8 +372,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- Sichere Invite-Vorschau für unauthentifizierte Signup-Seite.
--- Gibt nur event_id, role, expires_at und status zurück — keine Metadaten.
+-- LANGUAGE sql → Tabelle muss VOR dieser Funktion existieren (s.o.)
 CREATE OR REPLACE FUNCTION public.get_invite_preview(p_code TEXT)
 RETURNS TABLE(
   event_id   UUID,
@@ -911,6 +875,7 @@ CREATE INDEX idx_tz_perm_event_user ON trauzeuge_permissions(event_id, user_id);
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- AUDIT LOG
+-- (wird nach write_audit_log-Funktion erstellt — plpgsql löst runtime auf)
 -- ════════════════════════════════════════════════════════════════════════════
 
 CREATE TABLE audit_log (
@@ -931,6 +896,33 @@ CREATE INDEX idx_audit_event_time ON audit_log(event_id, created_at DESC)
 CREATE INDEX idx_audit_record     ON audit_log(record_id)   WHERE record_id IS NOT NULL;
 CREATE INDEX idx_audit_actor      ON audit_log(actor_id)    WHERE actor_id  IS NOT NULL;
 CREATE INDEX idx_audit_table      ON audit_log(table_name, created_at DESC);
+
+-- write_audit_log NACH audit_log definieren (auch plpgsql — zur Sicherheit)
+CREATE OR REPLACE FUNCTION public.write_audit_log(
+  p_event_id   UUID,
+  p_actor_id   UUID,
+  p_actor_role user_role,
+  p_action     audit_action_enum,
+  p_table_name TEXT,
+  p_record_id  UUID  DEFAULT NULL,
+  p_old_data   JSONB DEFAULT NULL,
+  p_new_data   JSONB DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO audit_log (
+    event_id, actor_id, actor_role, action,
+    table_name, record_id, old_data, new_data
+  ) VALUES (
+    p_event_id, p_actor_id, p_actor_role, p_action,
+    p_table_name, p_record_id, p_old_data, p_new_data
+  );
+END;
+$$;
 
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -965,7 +957,7 @@ CREATE INDEX idx_messages_event_time ON messages(event_id, created_at DESC);
 CREATE INDEX idx_messages_sender     ON messages(sender_id)  WHERE sender_id IS NOT NULL;
 CREATE INDEX idx_messages_event_conv ON messages(event_id, conversation_id);
 
--- Setzt event_id immer aus der conversation ab (verhindert falsche event_id)
+-- Setzt event_id immer aus der Conversation (verhindert falsche event_id)
 CREATE OR REPLACE FUNCTION public.messages_set_event_id()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -1018,7 +1010,7 @@ CREATE TABLE pending_changes (
 
 CREATE INDEX idx_pending_changes_event_status ON pending_changes(event_id, status);
 
--- Auto-Fill proposer_role aus event_members (verhindert manuelle Manipulation)
+-- Auto-Fill proposer_role aus event_members
 CREATE OR REPLACE FUNCTION public.set_pending_change_proposer_role()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -1158,8 +1150,6 @@ ALTER TABLE pending_changes                ENABLE ROW LEVEL SECURITY;
 -- ── Profiles ─────────────────────────────────────────────────────────────────
 CREATE POLICY "profiles_select" ON profiles
   FOR SELECT USING (id = auth.uid());
--- INSERT: handle_new_user() ist SECURITY DEFINER und braucht keine Policy.
--- Diese Policy erlaubt zusätzlich direkte Inserts durch den eigenen User.
 CREATE POLICY "profiles_insert" ON profiles
   FOR INSERT WITH CHECK (id = auth.uid());
 CREATE POLICY "profiles_update" ON profiles
@@ -1312,6 +1302,7 @@ CREATE POLICY "hotels_delete" ON hotels
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
+
 CREATE POLICY "hotel_rooms_select" ON hotel_rooms
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM hotels h
@@ -1849,9 +1840,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE conversations;
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
--- anon: Minimum für unauthentifizierte Flows.
--- invite_codes-Tabelle bleibt für anon geschlossen (RLS blockiert via is_event_member).
--- get_invite_preview() SECURITY DEFINER gibt nur sichere Felder zurück.
+-- anon: Minimum für unauthentifizierte Flows
 GRANT INSERT ON TABLE organizer_applications TO anon;
 GRANT EXECUTE ON FUNCTION public.get_invite_preview(TEXT) TO anon;
 
