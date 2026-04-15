@@ -251,28 +251,6 @@ BEGIN
 END;
 $$;
 
--- Sichere Invite-Vorschau für unauthentifizierte Signup-Seite.
--- Gibt nur event_id, role, expires_at und status zurück — keine Metadaten.
-CREATE OR REPLACE FUNCTION public.get_invite_preview(p_code TEXT)
-RETURNS TABLE(
-  event_id   UUID,
-  role       user_role,
-  expires_at TIMESTAMPTZ,
-  status     invite_status_enum
-)
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT event_id, role, expires_at, status
-  FROM   invite_codes
-  WHERE  code = p_code
-    AND  status = 'offen'
-    AND  expires_at > NOW();
-$$;
-
-
 -- ════════════════════════════════════════════════════════════════════════════
 -- INVITE CODES
 -- ════════════════════════════════════════════════════════════════════════════
@@ -427,6 +405,27 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   RETURN jsonb_build_object('success', false, 'error', 'INTERNAL_ERROR', 'detail', SQLERRM);
 END;
+$$;
+
+-- Sichere Invite-Vorschau für unauthentifizierte Signup-Seite.
+-- Gibt nur event_id, role, expires_at und status zurück — keine Metadaten.
+CREATE OR REPLACE FUNCTION public.get_invite_preview(p_code TEXT)
+RETURNS TABLE(
+  event_id   UUID,
+  role       user_role,
+  expires_at TIMESTAMPTZ,
+  status     invite_status_enum
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT event_id, role, expires_at, status
+  FROM   invite_codes
+  WHERE  code = p_code
+    AND  status = 'offen'
+    AND  expires_at > NOW();
 $$;
 
 
