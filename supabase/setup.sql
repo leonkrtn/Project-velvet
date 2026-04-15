@@ -1661,8 +1661,9 @@ CREATE POLICY "app_select" ON organizer_applications
   FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY "app_insert" ON organizer_applications
   FOR INSERT WITH CHECK (
-    auth.uid() IS NOT NULL
-    AND user_id = auth.uid()
+    (auth.uid() IS NULL     AND user_id IS NULL)
+    OR
+    (auth.uid() IS NOT NULL AND user_id = auth.uid())
   );
 CREATE POLICY "app_update" ON organizer_applications
   FOR UPDATE
