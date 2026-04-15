@@ -85,6 +85,7 @@ export async function POST(request: Request) {
     role: 'dienstleister',
     expires_at: expiresAt,
     metadata: { event_dienstleister_id: edId },
+    created_by: user.id,
   }).select('code').single()
 
   if (invErr) return NextResponse.json({ error: invErr.message }, { status: 500 })

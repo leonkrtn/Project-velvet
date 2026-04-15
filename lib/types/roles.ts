@@ -32,7 +32,7 @@ export interface EventDienstleister {
   userId?: string
   category: DienstleisterCategory | string
   scopes: DienstleisterScope[]
-  status: 'eingeladen' | 'aktiv' | 'beendet'
+  status: 'eingeladen' | 'akzeptiert' | 'abgelehnt' | 'beendet'
   invitedBy?: string
   invitedAt: string
   acceptedAt?: string
