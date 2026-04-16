@@ -14,7 +14,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const skipEventProvider =
     pathname.startsWith('/veranstalter') ||
     pathname.startsWith('/admin') ||
-    pathname.startsWith('/auth')
+    pathname.startsWith('/auth') ||
+    pathname === '/login' ||
+    pathname === '/signup'
 
   if (skipEventProvider) {
     return <>{children}</>
