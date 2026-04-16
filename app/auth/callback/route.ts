@@ -24,7 +24,19 @@ export async function GET(request: Request) {
 
   // Role-based redirect
   const user = data.session.user
-  const isOrganizer = user.app_metadata?.is_approved_organizer === true
+
+  // Check app_metadata first (requires custom_access_token_hook to be registered),
+  // then fall back to profiles table directly
+  let isOrganizer = user.app_metadata?.is_approved_organizer === true
+  if (!isOrganizer) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_approved_organizer')
+      .eq('id', user.id)
+      .single()
+    isOrganizer = profile?.is_approved_organizer === true
+  }
+
   if (isOrganizer) {
     return NextResponse.redirect(`${origin}/veranstalter/events`)
   }
