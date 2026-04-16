@@ -71,6 +71,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   const syncInProgress = useRef(false)
   const dbInitialized = useRef(false)
   const isDemoRef = useRef(true)
+  const authSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
   useEffect(() => { isDemoRef.current = isDemo }, [isDemo])
 
   // Derived state
@@ -163,7 +164,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       setIsSyncing(false)
       setHasLoaded(true)
 
-      supabase.auth.onAuthStateChange(async (authEvent, newSession) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (authEvent, newSession) => {
         if (authEvent === 'SIGNED_IN' && newSession) {
           setCurrentUserId(newSession.user.id)
           setIsDemo(false)
@@ -184,6 +185,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
           setEvent(SEED_EVENT)
         }
       })
+      authSubscriptionRef.current = subscription
     }).catch(() => {
       setEvent(SEED_EVENT)
       setIsDemo(true)
@@ -194,6 +196,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('velvet-saved', reload)
     window.addEventListener('storage', reload)
     return () => {
+      authSubscriptionRef.current?.unsubscribe()
       window.removeEventListener('velvet-saved', reload)
       window.removeEventListener('storage', reload)
     }
