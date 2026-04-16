@@ -26,7 +26,8 @@ export async function POST(request: Request) {
     permissions?: Partial<TrauzeugePermissions>
   }
 
-  if (!eventId || !targetRole) {
+  const ALLOWED_ROLES = ['brautpaar', 'trauzeuge']
+  if (!eventId || !targetRole || !ALLOWED_ROLES.includes(targetRole)) {
     return NextResponse.json({ error: 'eventId und targetRole erforderlich' }, { status: 400 })
   }
 
