@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type NavId = 'uebersicht' | 'allgemein' | 'einladen' | 'mitglieder'
+type NavId = 'uebersicht' | 'allgemein' | 'einladen' | 'vorschlaege' | 'mitglieder'
 
 type EventData = {
   id: string
@@ -32,8 +32,20 @@ type InviteCode = {
   id: string
   code: string
   role: string
+  status: string
   expires_at: string
   used_at: string | null
+}
+
+type VendorSuggestion = {
+  id: string
+  name: string | null
+  category: string | null
+  description: string | null
+  price_estimate: number
+  contact_email: string | null
+  contact_phone: string | null
+  status: string
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -585,11 +597,15 @@ function EinladenSection({ eventId, inviteCodes, onCodesRefresh }: {
                     {c.code.slice(0, 18)}…
                   </code>
                   <span style={{ fontSize: 11, color: '#6B7280', whiteSpace: 'nowrap' }}>Bis {fmtExpiry(c.expires_at)}</span>
-                  {c.used_at ? (
-                    <span style={{ fontSize: 10, fontWeight: 700, background: '#111827', color: '#fff', padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-                      Verwendet
+                  {c.status === 'verwendet' || c.used_at ? (
+                    <span style={{ fontSize: 10, fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+                      Angenommen
                     </span>
-                  ) : null}
+                  ) : (
+                    <span style={{ fontSize: 10, fontWeight: 700, background: '#F3F4F6', color: '#6B7280', padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+                      Offen
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -688,11 +704,15 @@ function EinladenSection({ eventId, inviteCodes, onCodesRefresh }: {
                     {c.code.slice(0, 18)}…
                   </code>
                   <span style={{ fontSize: 11, color: '#6B7280', whiteSpace: 'nowrap' }}>Bis {fmtExpiry(c.expires_at)}</span>
-                  {c.used_at ? (
-                    <span style={{ fontSize: 10, fontWeight: 700, background: '#111827', color: '#fff', padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-                      Verwendet
+                  {c.status === 'verwendet' || c.used_at ? (
+                    <span style={{ fontSize: 10, fontWeight: 700, background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+                      Angenommen
                     </span>
-                  ) : null}
+                  ) : (
+                    <span style={{ fontSize: 10, fontWeight: 700, background: '#F3F4F6', color: '#6B7280', padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
+                      Offen
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -756,6 +776,166 @@ function MitgliederSection({ members }: { members: Member[] }) {
   )
 }
 
+// ── Vorschläge Section ─────────────────────────────────────────────────────
+
+const VENDOR_CATEGORIES = ['Fotograf','Videograf','Catering','Floristik','Musik','DJ','Sonstiges'] as const
+
+function VorschlaegeSection({ eventId }: { eventId: string }) {
+  const supabase = createClient()
+  const [vendors, setVendors] = useState<VendorSuggestion[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ name: '', category: 'Fotograf', description: '', price_estimate: '', contact_email: '', contact_phone: '' })
+  const [formError, setFormError] = useState('')
+
+  useEffect(() => { loadVendors() }, [])
+
+  async function loadVendors() {
+    setLoading(true)
+    const { data } = await supabase
+      .from('organizer_vendor_suggestions')
+      .select('id, name, category, description, price_estimate, contact_email, contact_phone, status')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: false })
+    setVendors((data ?? []) as VendorSuggestion[])
+    setLoading(false)
+  }
+
+  async function addVendor(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.name.trim()) { setFormError('Name erforderlich.'); return }
+    setSaving(true); setFormError('')
+    const { error } = await supabase.from('organizer_vendor_suggestions').insert({
+      event_id: eventId,
+      name: form.name.trim(),
+      category: form.category,
+      description: form.description.trim() || null,
+      price_estimate: Number(form.price_estimate) || 0,
+      contact_email: form.contact_email.trim() || null,
+      contact_phone: form.contact_phone.trim() || null,
+    })
+    if (error) { setFormError(error.message); setSaving(false); return }
+    setForm({ name: '', category: 'Fotograf', description: '', price_estimate: '', contact_email: '', contact_phone: '' })
+    setShowForm(false)
+    await loadVendors()
+    setSaving(false)
+  }
+
+  async function deleteVendor(id: string) {
+    await supabase.from('organizer_vendor_suggestions').delete().eq('id', id)
+    setVendors(v => v.filter(x => x.id !== id))
+  }
+
+  async function updateStatus(id: string, status: string) {
+    await supabase.from('organizer_vendor_suggestions').update({ status }).eq('id', id)
+    setVendors(v => v.map(x => x.id === id ? { ...x, status } : x))
+  }
+
+  const statusColor = (s: string) => s === 'angenommen' ? '#166534' : s === 'abgelehnt' ? '#991b1b' : '#6B7280'
+  const statusBg = (s: string) => s === 'angenommen' ? '#dcfce7' : s === 'abgelehnt' ? '#fee2e2' : '#F3F4F6'
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h2 style={{ fontSize: 18, fontWeight: 600, color: '#111827', margin: 0 }}>Dienstleister-Vorschläge</h2>
+          <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0' }}>Vorschläge für das Brautpaar sichtbar</p>
+        </div>
+        <button
+          onClick={() => setShowForm(s => !s)}
+          style={{ padding: '9px 16px', fontSize: 13, fontWeight: 600, background: '#111827', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          + Hinzufügen
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={addVendor} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, padding: 16, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div>
+              <label style={labelStyle}>Name *</label>
+              <input style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Studio Lichtblick" onFocus={e => { e.target.style.borderColor = '#111827' }} onBlur={e => { e.target.style.borderColor = '#D1D5DB' }} />
+            </div>
+            <div>
+              <label style={labelStyle}>Kategorie</label>
+              <select style={inputStyle} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                {VENDOR_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div>
+              <label style={labelStyle}>E-Mail</label>
+              <input style={inputStyle} type="email" value={form.contact_email} onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))} placeholder="kontakt@example.de" onFocus={e => { e.target.style.borderColor = '#111827' }} onBlur={e => { e.target.style.borderColor = '#D1D5DB' }} />
+            </div>
+            <div>
+              <label style={labelStyle}>Telefon</label>
+              <input style={inputStyle} value={form.contact_phone} onChange={e => setForm(f => ({ ...f, contact_phone: e.target.value }))} placeholder="+49 …" onFocus={e => { e.target.style.borderColor = '#111827' }} onBlur={e => { e.target.style.borderColor = '#D1D5DB' }} />
+            </div>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={labelStyle}>Geschätzte Kosten (€)</label>
+            <input style={{ ...inputStyle, maxWidth: 180 }} type="number" min={0} value={form.price_estimate} onChange={e => setForm(f => ({ ...f, price_estimate: e.target.value }))} placeholder="0" onFocus={e => { e.target.style.borderColor = '#111827' }} onBlur={e => { e.target.style.borderColor = '#D1D5DB' }} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelStyle}>Beschreibung</label>
+            <textarea style={{ ...inputStyle, height: 64, resize: 'vertical' }} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Kurze Beschreibung …" onFocus={e => { e.target.style.borderColor = '#111827' }} onBlur={e => { e.target.style.borderColor = '#D1D5DB' }} />
+          </div>
+          {formError && <p style={{ fontSize: 13, color: '#991b1b', marginBottom: 10 }}>{formError}</p>}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" onClick={() => setShowForm(false)} style={{ padding: '8px 14px', border: '1px solid #D1D5DB', borderRadius: 7, background: 'none', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Abbrechen</button>
+            <button type="submit" disabled={saving} style={{ padding: '8px 16px', background: '#111827', color: '#fff', border: 'none', borderRadius: 7, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
+              {saving ? 'Wird gespeichert …' : 'Speichern'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <div style={{ height: 80, background: '#F3F4F6', borderRadius: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+      ) : vendors.length === 0 && !showForm ? (
+        <p style={{ textAlign: 'center', color: '#9CA3AF', fontSize: 13, padding: '40px 0' }}>Noch keine Vorschläge. Klicke auf "+ Hinzufügen".</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {vendors.map(v => (
+            <div key={v.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{v.name}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, background: '#F3F4F6', color: '#6B7280', padding: '2px 8px', borderRadius: 20 }}>{v.category}</span>
+                  </div>
+                  {v.description && <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 4px' }}>{v.description}</p>}
+                  <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#9CA3AF' }}>
+                    {v.price_estimate > 0 && <span>{v.price_estimate.toLocaleString('de-DE')} €</span>}
+                    {v.contact_email && <span>{v.contact_email}</span>}
+                    {v.contact_phone && <span>{v.contact_phone}</span>}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <select
+                    value={v.status}
+                    onChange={e => updateStatus(v.id, e.target.value)}
+                    style={{ fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 20, border: 'none', background: statusBg(v.status), color: statusColor(v.status), cursor: 'pointer', fontFamily: 'inherit' }}
+                  >
+                    <option value="vorschlag">Vorschlag</option>
+                    <option value="angenommen">Angenommen</option>
+                    <option value="abgelehnt">Abgelehnt</option>
+                  </select>
+                  <button onClick={() => deleteVendor(v.id)} style={{ padding: '4px 8px', border: '1px solid #FEE2E2', borderRadius: 6, background: 'none', cursor: 'pointer', fontSize: 11, color: '#991b1b', fontFamily: 'inherit' }}>
+                    Löschen
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Dashboard ─────────────────────────────────────────────────────────
 
 function DashboardInner() {
@@ -799,7 +979,7 @@ function DashboardInner() {
           .eq('event_id', eventId),
         supabase
           .from('invite_codes')
-          .select('id, code, role, expires_at, used_at')
+          .select('id, code, role, status, expires_at, used_at')
           .eq('event_id', eventId)
           .order('created_at', { ascending: false }),
       ])
@@ -822,17 +1002,18 @@ function DashboardInner() {
   async function refreshCodes() {
     const { data } = await supabase
       .from('invite_codes')
-      .select('id, code, role, expires_at, used_at')
+      .select('id, code, role, status, expires_at, used_at')
       .eq('event_id', eventId)
       .order('created_at', { ascending: false })
     if (data) setInviteCodes(data as InviteCode[])
   }
 
   const navItems: { id: NavId; label: string }[] = [
-    { id: 'uebersicht', label: 'Übersicht' },
-    { id: 'allgemein',  label: 'Allgemein' },
-    { id: 'einladen',   label: 'Einladen' },
-    { id: 'mitglieder', label: 'Mitglieder' },
+    { id: 'uebersicht',  label: 'Übersicht' },
+    { id: 'allgemein',   label: 'Allgemein' },
+    { id: 'einladen',    label: 'Einladen' },
+    { id: 'vorschlaege', label: 'Vorschläge' },
+    { id: 'mitglieder',  label: 'Mitglieder' },
   ]
 
   // ── Layout ──
@@ -967,6 +1148,9 @@ function DashboardInner() {
                   inviteCodes={inviteCodes}
                   onCodesRefresh={refreshCodes}
                 />
+              )}
+              {activeNav === 'vorschlaege' && (
+                <VorschlaegeSection eventId={eventId} />
               )}
               {activeNav === 'mitglieder' && (
                 <MitgliederSection members={members} />
