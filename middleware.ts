@@ -45,10 +45,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Layer 3: /veranstalter/* requires is_approved_organizer (except /veranstalter/pending)
+  // Layer 3: /veranstalter/* organizer check
+  // Requires custom_access_token_hook registered in Supabase Dashboard
+  // (Authentication → Hooks → Custom Access Token → public.custom_access_token_hook).
+  // Without the hook, app_metadata.is_approved_organizer is never set and all
+  // organizers would be blocked. Page-level checks handle authorization instead.
   if (pathname.startsWith('/veranstalter/') && pathname !== '/veranstalter/pending') {
     const isApproved = user.app_metadata?.is_approved_organizer === true
-    if (!isApproved) {
+    if (isApproved === false && user.app_metadata?.is_approved_organizer !== undefined) {
       const url = request.nextUrl.clone()
       url.pathname = '/veranstalter/pending'
       return NextResponse.redirect(url)
