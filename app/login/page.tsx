@@ -22,7 +22,15 @@ export default function LoginPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
         const { data: { session } } = await supabase.auth.getSession()
-        const isOrganizer = session?.user?.app_metadata?.is_approved_organizer === true
+        let isOrganizer = session?.user?.app_metadata?.is_approved_organizer === true
+        if (!isOrganizer && session) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('is_approved_organizer')
+            .eq('id', session.user.id)
+            .single()
+          isOrganizer = profile?.is_approved_organizer === true
+        }
         if (isOrganizer) {
           router.push('/veranstalter/events')
         } else {

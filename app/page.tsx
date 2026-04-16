@@ -17,7 +17,15 @@ export default function Home() {
         return
       }
 
-      const isOrganizer = session.user.app_metadata?.is_approved_organizer === true
+      let isOrganizer = session.user.app_metadata?.is_approved_organizer === true
+      if (!isOrganizer) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_approved_organizer')
+          .eq('id', session.user.id)
+          .single()
+        isOrganizer = profile?.is_approved_organizer === true
+      }
       if (isOrganizer) {
         router.replace('/veranstalter/events')
         return
