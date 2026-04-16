@@ -1,6 +1,6 @@
 // app/api/invite/dienstleister/route.ts
 // Erstellt globalen DienstleisterProfile + EventDienstleister + Invite-Code
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
@@ -12,7 +12,7 @@ function getServiceClient() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) return NextResponse.json({ error: 'Nicht authentifiziert' }, { status: 401 })
 

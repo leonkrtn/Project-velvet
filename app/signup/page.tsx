@@ -3,43 +3,28 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-type Path = 'invite' | null
+type InvitePreview = {
+  event_id: string
+  role: string
+  expires_at: string
+}
 
 export default function SignupPage() {
   const router = useRouter()
-  const [path, setPath] = useState<Path>(null)
+  const supabase = createClient()
+
+  const [inviteCode, setInviteCode] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [inviteCode, setInviteCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [preview, setPreview] = useState<InvitePreview | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
-  const supabase = createClient()
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (password.length < 8) { setError('Passwort muss mindestens 8 Zeichen haben.'); return }
-    if (!inviteCode.trim()) { setError('Einladungscode ist erforderlich.'); return }
-    setLoading(true); setError('')
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name, invite_code: inviteCode.trim() },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-      if (error) throw error
-      setSuccess(true)
-    } catch (err: any) {
-      setError(err.message ?? 'Registrierung fehlgeschlagen.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // After successful signUp but before redeem — lets user retry redeem only
+  const [pendingRedeem, setPendingRedeem] = useState(false)
+  const [pendingCode, setPendingCode] = useState('')
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '13px 16px', fontSize: 15,
@@ -48,21 +33,71 @@ export default function SignupPage() {
     boxSizing: 'border-box', color: 'var(--text)',
   }
 
-  if (success) {
-    return (
-      <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ width: '100%', maxWidth: 400, background: 'var(--surface)', border: '1px solid var(--gold)', borderRadius: 'var(--r-md)', padding: 28, textAlign: 'center' }}>
-          <p style={{ fontSize: 32 }}>🎉</p>
-          <p style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', marginTop: 12 }}>Fast geschafft!</p>
-          <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 10, lineHeight: 1.6 }}>
-            Wir haben eine Bestätigungs-E-Mail an <strong>{email}</strong> geschickt. Bitte klicke auf den Link, um dein Konto zu aktivieren.
-          </p>
-          <a href="/login" style={{ display: 'inline-block', marginTop: 24, padding: '12px 28px', background: 'var(--gold)', color: '#fff', borderRadius: 100, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
-            Zur Anmeldung
-          </a>
-        </div>
-      </div>
-    )
+  const handleCodeBlur = async () => {
+    const code = inviteCode.trim()
+    if (!code) { setPreview(null); return }
+    setPreviewLoading(true)
+    try {
+      const { data } = await supabase.rpc('get_invite_preview', { p_code: code })
+      setPreview(data?.[0] ?? null)
+    } catch {
+      setPreview(null)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  const doRedeem = async (code: string): Promise<string> => {
+    const result = await supabase.rpc('redeem_invite_code', { p_code: code })
+    if (result.error) throw new Error(result.error.message)
+    const data = result.data as { success: boolean; error?: string; event_id?: string }
+    if (!data.success) throw new Error(data.error ?? 'Code konnte nicht eingelöst werden')
+    return data.event_id!
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (password.length < 8) { setError('Passwort muss mindestens 8 Zeichen haben.'); return }
+    const code = inviteCode.trim()
+    if (!code) { setError('Einladungscode ist erforderlich.'); return }
+    setLoading(true); setError('')
+
+    try {
+      const { error: signUpErr } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name } },
+      })
+      if (signUpErr) throw signUpErr
+
+      try {
+        const eventId = await doRedeem(code)
+        router.push(`/dashboard?event=${eventId}`)
+      } catch (redeemErr: unknown) {
+        setPendingCode(code)
+        setPendingRedeem(true)
+        setError(
+          (redeemErr instanceof Error ? redeemErr.message : 'Unbekannter Fehler') +
+          ' — Konto wurde erstellt. Klicke "Erneut versuchen" um den Code einzulösen.'
+        )
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRetryRedeem = async () => {
+    setLoading(true); setError('')
+    try {
+      const eventId = await doRedeem(pendingCode)
+      router.push(`/dashboard?event=${eventId}`)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Code konnte nicht eingelöst werden.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -75,111 +110,111 @@ export default function SignupPage() {
           <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 8 }}>Konto erstellen</p>
         </div>
 
-        {/* Path selection */}
-        {path === null && (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 28 }}>
-            <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 16 }}>Wie möchtest du beitreten?</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <button
-                type="button"
-                onClick={() => setPath('invite')}
-                style={{
-                  padding: '16px', borderRadius: 'var(--r-sm)', textAlign: 'left',
-                  border: '1.5px solid var(--border)', background: 'var(--bg)',
-                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => { (e.currentTarget.style.borderColor = 'var(--gold)'); (e.currentTarget.style.background = 'var(--gold-pale)') }}
-                onMouseLeave={e => { (e.currentTarget.style.borderColor = 'var(--border)'); (e.currentTarget.style.background = 'var(--bg)') }}
-              >
-                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Ich habe einen Einladungscode</p>
-                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3 }}>Brautpaar, Trauzeuge oder Dienstleister — registriere dich mit deinem Code</p>
-              </button>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 28 }}>
 
-              <a
-                href="/bewerbung"
-                style={{
-                  display: 'block', padding: '16px', borderRadius: 'var(--r-sm)', textAlign: 'left',
-                  border: '1.5px solid var(--border)', background: 'var(--bg)',
-                  cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                  textDecoration: 'none',
-                }}
-                onMouseEnter={(e: any) => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.background = 'var(--gold-pale)' }}
-                onMouseLeave={(e: any) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg)' }}
-              >
-                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Ich bin Veranstalter</p>
-                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3 }}>Bewirb dich als Hochzeitsplaner — nach Prüfung erhältst du Zugang</p>
-              </a>
-            </div>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            <div style={{ marginTop: 20, textAlign: 'center' }}>
-              <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-                Bereits registriert?{' '}
-                <a href="/login" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Anmelden</a>
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Invite code signup form */}
-        {path === 'invite' && (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 28 }}>
-            <button
-              type="button"
-              onClick={() => { setPath(null); setError('') }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', fontSize: 13, padding: 0, marginBottom: 20, fontFamily: 'inherit' }}
-            >
-              ← Zurück
-            </button>
-            <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Dein Name</label>
-                <input
-                  required value={name} onChange={e => setName(e.target.value)}
-                  placeholder="Max Mustermann"
-                  style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>E-Mail-Adresse</label>
-                <input
-                  type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="deine@email.de"
-                  style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Passwort (mind. 8 Zeichen)</label>
-                <input
-                  type="password" required autoComplete="new-password"
-                  value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Einladungscode</label>
-                <input
-                  required value={inviteCode} onChange={e => setInviteCode(e.target.value)}
-                  placeholder="Von deinem Veranstalter oder Brautpaar"
-                  style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-                />
-              </div>
-
-              {error && (
-                <p style={{ fontSize: 13, color: 'var(--red)', background: 'rgba(160,64,64,0.08)', padding: '10px 14px', borderRadius: 8 }}>{error}</p>
+            {/* Invite Code */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>
+                Einladungscode <span style={{ color: 'var(--gold)' }}>*</span>
+              </label>
+              <input
+                required
+                value={inviteCode}
+                onChange={e => { setInviteCode(e.target.value); setPreview(null) }}
+                onBlur={handleCodeBlur}
+                placeholder="Von deinem Veranstalter oder Brautpaar"
+                style={inputStyle}
+                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+              />
+              {previewLoading && (
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5 }}>Prüfe Code …</p>
               )}
+              {preview && (
+                <p style={{ fontSize: 12, color: 'var(--gold)', marginTop: 5, fontWeight: 600 }}>
+                  Einladung gefunden · Rolle: {preview.role}
+                </p>
+              )}
+              {!previewLoading && inviteCode.trim() && !preview && (
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5 }}>Code nicht gefunden oder abgelaufen</p>
+              )}
+            </div>
 
+            {/* Name */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>
+                Dein Name <span style={{ color: 'var(--gold)' }}>*</span>
+              </label>
+              <input
+                required
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Max Mustermann"
+                style={inputStyle}
+                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>
+                E-Mail-Adresse <span style={{ color: 'var(--gold)' }}>*</span>
+              </label>
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="deine@email.de"
+                style={inputStyle}
+                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>
+                Passwort (mind. 8 Zeichen) <span style={{ color: 'var(--gold)' }}>*</span>
+              </label>
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                style={inputStyle}
+                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+              />
+            </div>
+
+            {error && (
+              <div style={{ fontSize: 13, color: 'var(--red)', background: 'rgba(160,64,64,0.08)', padding: '10px 14px', borderRadius: 8 }}>
+                <p>{error}</p>
+                {pendingRedeem && (
+                  <button
+                    type="button"
+                    onClick={handleRetryRedeem}
+                    disabled={loading}
+                    style={{
+                      marginTop: 10, padding: '8px 16px', borderRadius: 'var(--r-sm)',
+                      border: '1px solid var(--red)', background: 'none',
+                      color: 'var(--red)', cursor: 'pointer', fontSize: 13,
+                      fontFamily: 'inherit', fontWeight: 600,
+                    }}
+                  >
+                    {loading ? 'Wird versucht …' : 'Erneut versuchen'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {!pendingRedeem && (
               <button
                 type="submit"
                 disabled={loading}
@@ -193,9 +228,23 @@ export default function SignupPage() {
               >
                 {loading ? 'Wird erstellt …' : 'Konto erstellen'}
               </button>
-            </form>
+            )}
+          </form>
+
+          <div style={{ marginTop: 20, textAlign: 'center' }}>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+              Bereits registriert?{' '}
+              <a href="/login" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Anmelden</a>
+            </p>
           </div>
-        )}
+        </div>
+
+        {/* Hidden admin link — no label */}
+        <a
+          href="/admin/create-organizer"
+          style={{ display: 'block', width: 8, height: 8, position: 'fixed', bottom: 12, right: 12, opacity: 0.15 }}
+          aria-hidden="true"
+        />
       </div>
     </div>
   )

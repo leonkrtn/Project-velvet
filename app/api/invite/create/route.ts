@@ -2,7 +2,7 @@
 // Erstellt Invite-Codes für Brautpaar, Trauzeuge
 // Veranstalter → kann Brautpaar + Trauzeuge einladen
 // Brautpaar → kann Trauzeuge einladen
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import type { TrauzeugePermissions } from '@/lib/types/roles'
@@ -15,7 +15,7 @@ function getServiceClient() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) return NextResponse.json({ error: 'Nicht authentifiziert' }, { status: 401 })
 

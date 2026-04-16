@@ -1,13 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// Routes that don't require authentication
-const PUBLIC_ROUTES = ['/', '/login', '/signup', '/auth/callback', '/bewerbung']
+const PUBLIC_ROUTES = ['/', '/login', '/signup', '/auth/callback', '/join']
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
-  // Only run Supabase middleware when env vars are configured
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!supabaseUrl || !supabaseKey || supabaseUrl === 'your-supabase-url') {
@@ -29,23 +27,32 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  // Refresh session (do not remove — keeps session alive)
   const { data: { user } } = await supabase.auth.getUser()
-
   const pathname = request.nextUrl.pathname
 
-  // Check if route is public (including /rsvp/* paths)
+  // Layer 1: public routes — no auth required
   const isPublic =
     PUBLIC_ROUTES.some(r => pathname === r) ||
     pathname.startsWith('/rsvp/') ||
     pathname.startsWith('/api/')
+  if (isPublic) return supabaseResponse
 
-  // Redirect unauthenticated users to /login (only when DB is configured)
-  if (!user && !isPublic) {
+  // Layer 2: must be logged in
+  if (!user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('next', pathname)
     return NextResponse.redirect(url)
+  }
+
+  // Layer 3: /veranstalter/* requires is_approved_organizer (except /veranstalter/pending)
+  if (pathname.startsWith('/veranstalter/') && pathname !== '/veranstalter/pending') {
+    const isApproved = user.app_metadata?.is_approved_organizer === true
+    if (!isApproved) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/veranstalter/pending'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
