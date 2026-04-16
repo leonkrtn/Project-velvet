@@ -1301,10 +1301,7 @@ DROP POLICY IF EXISTS "members_select" ON event_members;
 CREATE POLICY "members_select" ON event_members
   FOR SELECT USING (
     user_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM event_members em2
-      WHERE em2.event_id = event_members.event_id AND em2.user_id = auth.uid()
-    )
+    OR is_event_member(event_members.event_id)
   );
 
 DROP POLICY IF EXISTS "members_insert" ON event_members;
