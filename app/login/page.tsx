@@ -34,7 +34,7 @@ export default function LoginPage() {
           if (memberships && memberships.length > 0) {
             router.push('/dashboard?event=' + memberships[0].event_id)
           } else {
-            router.push('/join')
+            router.push('/signup')
           }
         }
         router.refresh()

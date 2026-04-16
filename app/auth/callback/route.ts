@@ -39,5 +39,5 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/dashboard?event=${memberships[0].event_id}`)
   }
 
-  return NextResponse.redirect(`${origin}/join`)
+  return NextResponse.redirect(`${origin}/signup`)
 }
