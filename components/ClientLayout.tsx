@@ -7,13 +7,14 @@ import { EventProvider } from '@/lib/event-context'
 
 const NO_CHROME = ['/einstellungen', '/onboarding', '/', '/login', '/signup', '/bewerbung']
 const NO_NAV    = [...NO_CHROME, '/rsvp']
-const NO_EVENT_PROVIDER = ['/veranstalter', '/admin', '/login', '/signup', '/', '/auth']
-
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const showHeader  = !NO_CHROME.some(p => pathname === p || pathname.startsWith('/rsvp'))
   const showBottomNav = !NO_NAV.some(p => pathname === p || pathname.startsWith('/rsvp'))
-  const skipEventProvider = NO_EVENT_PROVIDER.some(p => pathname === p || pathname.startsWith(p + '/') || pathname === p)
+  const skipEventProvider =
+    pathname.startsWith('/veranstalter') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/auth')
 
   if (skipEventProvider) {
     return <>{children}</>
