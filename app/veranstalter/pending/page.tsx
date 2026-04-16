@@ -13,6 +13,18 @@ export default function VeranstalterPendingPage() {
       const { data: { session } } = await supabase.auth.refreshSession()
       if (session?.user?.app_metadata?.is_approved_organizer === true) {
         router.push('/veranstalter/events')
+        return
+      }
+      // Fallback: check profiles directly (when JWT hook is not registered)
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_approved_organizer')
+          .eq('id', session.user.id)
+          .single()
+        if (profile?.is_approved_organizer === true) {
+          router.push('/veranstalter/events')
+        }
       }
     } catch {
       // ignore — will retry
