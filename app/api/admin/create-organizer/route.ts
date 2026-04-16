@@ -48,7 +48,7 @@ async function signToken(payload: string, secret: string): Promise<string> {
     'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
   )
   const sig = await crypto.subtle.sign('HMAC', key, enc.encode(payload))
-  const b64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
+  const b64 = btoa(String.fromCharCode(...Array.from(new Uint8Array(sig))))
   return `${payload}.${b64}`
 }
 
