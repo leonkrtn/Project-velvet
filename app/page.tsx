@@ -1,41 +1,43 @@
-// app/page.tsx
-// Rollenbasiertes Routing nach dem Login:
-//   veranstalter            → /veranstalter
-//   brautpaar / trauzeuge   → /dashboard
-//   dienstleister           → /dashboard
-//   kein Event / Demo-Modus → /onboarding
 'use client'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useEvent } from '@/lib/event-context'
+import { createClient } from '@/lib/supabase/client'
 
 export default function Home() {
   const router = useRouter()
-  const { currentRole, hasLoaded, isDemo, event } = useEvent()
 
   useEffect(() => {
-    if (!hasLoaded) return // warten bis Context geladen ist
+    const supabase = createClient()
 
-    if (isDemo || !event) {
-      // Nicht eingeloggt oder kein Event in DB → Onboarding
-      router.replace('/onboarding')
-      return
+    async function redirect() {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        router.replace('/login')
+        return
+      }
+
+      const isOrganizer = session.user.app_metadata?.is_approved_organizer === true
+      if (isOrganizer) {
+        router.replace('/veranstalter/events')
+        return
+      }
+
+      const { data: memberships } = await supabase
+        .from('event_members')
+        .select('event_id')
+        .eq('user_id', session.user.id)
+        .limit(1)
+
+      if (memberships && memberships.length > 0) {
+        router.replace('/dashboard?event=' + memberships[0].event_id)
+      } else {
+        router.replace('/signup')
+      }
     }
 
-    switch (currentRole) {
-      case 'veranstalter':
-        router.replace('/veranstalter')
-        break
-      case 'brautpaar':
-      case 'trauzeuge':
-      case 'dienstleister':
-        router.replace('/dashboard')
-        break
-      default:
-        // Eingeloggt, aber noch keine Rolle (genehmigter Veranstalter ohne Event)
-        router.replace('/onboarding')
-    }
-  }, [hasLoaded, currentRole, isDemo, event, router])
+    redirect()
+  }, [router])
 
   return null
 }
