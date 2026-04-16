@@ -1,6 +1,6 @@
 // app/api/events/create/route.ts
 // Server-only: validiert is_approved_organizer, erstellt Event als Veranstalter
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { DEFAULT_FEATURE_TOGGLES } from '@/lib/store'
@@ -12,7 +12,7 @@ function getServiceClient() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createClient()
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
 
   if (authErr || !user) {

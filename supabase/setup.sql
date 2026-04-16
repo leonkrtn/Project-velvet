@@ -1,8 +1,13 @@
 -- ============================================================
--- Velvet Wedding Platform — Production-Ready Database Setup v6
--- Supabase-kompatibel | Einmalig auf leerer Datenbank ausführen
--- Voraussetzung: DROP SCHEMA public CASCADE; CREATE SCHEMA public;
+-- Velvet Wedding Platform — Production-Ready Database Setup v7
+-- Supabase-kompatibel | Idempotent — beliebig oft ausführbar
 -- ============================================================
+
+-- !! FULL RESET — diese drei Zeilen auskommentieren wenn die Datenbank
+-- !! komplett zurückgesetzt werden soll, danach das gesamte File ausführen.
+-- DROP SCHEMA public CASCADE;
+-- CREATE SCHEMA public;
+-- GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
 CREATE SCHEMA IF NOT EXISTS public;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -12,46 +17,52 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- ENUM TYPEN
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TYPE user_role AS ENUM (
-  'veranstalter', 'brautpaar', 'trauzeuge', 'dienstleister'
-);
-CREATE TYPE application_status_enum AS ENUM (
-  'pending', 'approved', 'rejected'
-);
-CREATE TYPE guest_status_enum AS ENUM (
-  'angelegt', 'eingeladen', 'zugesagt', 'abgesagt', 'vielleicht'
-);
-CREATE TYPE vendor_status_enum AS ENUM (
-  'angefragt', 'bestaetigt', 'abgesagt', 'in_verhandlung'
-);
-CREATE TYPE invite_status_enum AS ENUM (
-  'offen', 'verwendet', 'abgelaufen'
-);
-CREATE TYPE payment_status_enum AS ENUM (
-  'offen', 'angezahlt', 'bezahlt', 'storniert'
-);
-CREATE TYPE suggestion_status_enum AS ENUM (
-  'vorschlag', 'akzeptiert', 'abgelehnt'
-);
-CREATE TYPE pending_change_status_enum AS ENUM (
-  'pending', 'approved', 'rejected'
-);
-CREATE TYPE event_dienstleister_status_enum AS ENUM (
-  'eingeladen', 'akzeptiert', 'abgelehnt', 'beendet'
-);
-CREATE TYPE organizer_application_status_enum AS ENUM (
-  'pending', 'approved', 'rejected'
-);
-CREATE TYPE audit_action_enum AS ENUM (
-  'INSERT', 'UPDATE', 'DELETE'
-);
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM ('veranstalter', 'brautpaar', 'trauzeuge', 'dienstleister');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE application_status_enum AS ENUM ('pending', 'approved', 'rejected');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE guest_status_enum AS ENUM ('angelegt', 'eingeladen', 'zugesagt', 'abgesagt', 'vielleicht');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE vendor_status_enum AS ENUM ('angefragt', 'bestaetigt', 'abgesagt', 'in_verhandlung');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE invite_status_enum AS ENUM ('offen', 'verwendet', 'abgelaufen');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE payment_status_enum AS ENUM ('offen', 'angezahlt', 'bezahlt', 'storniert');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE suggestion_status_enum AS ENUM ('vorschlag', 'akzeptiert', 'abgelehnt');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE pending_change_status_enum AS ENUM ('pending', 'approved', 'rejected');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE event_dienstleister_status_enum AS ENUM ('eingeladen', 'akzeptiert', 'abgelehnt', 'beendet');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE audit_action_enum AS ENUM ('INSERT', 'UPDATE', 'DELETE');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- PROFILES
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id                    UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   name                  TEXT        NOT NULL DEFAULT 'Nutzer',
   email                 TEXT        NOT NULL DEFAULT '',
@@ -60,7 +71,7 @@ CREATE TABLE profiles (
   created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_profiles_email ON profiles(email) WHERE email <> '';
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email) WHERE email <> '';
 
 -- Auto-Profil bei neuem Auth-User
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -80,7 +91,7 @@ BEGIN
       'Nutzer'
     ),
     COALESCE(NULLIF(TRIM(NEW.email), ''), ''),
-    COALESCE((NEW.raw_user_meta_data->>'is_approved_organizer')::boolean, false)
+    false
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
@@ -89,6 +100,7 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
@@ -98,7 +110,7 @@ CREATE TRIGGER on_auth_user_created
 -- EVENTS
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
   id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   title               TEXT        NOT NULL DEFAULT 'Unsere Hochzeit',
   couple_name         TEXT,
@@ -122,15 +134,15 @@ CREATE TABLE events (
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_events_date       ON events(date)       WHERE date IS NOT NULL;
-CREATE INDEX idx_events_created_by ON events(created_by) WHERE created_by IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_events_date       ON events(date)       WHERE date IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_events_created_by ON events(created_by) WHERE created_by IS NOT NULL;
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- EVENT MEMBERS
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE event_members (
+CREATE TABLE IF NOT EXISTS event_members (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id   UUID        NOT NULL REFERENCES events(id)   ON DELETE CASCADE,
   user_id    UUID        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -140,8 +152,8 @@ CREATE TABLE event_members (
   UNIQUE (event_id, user_id)
 );
 
-CREATE INDEX idx_event_members_user_id    ON event_members(user_id);
-CREATE INDEX idx_event_members_event_role ON event_members(event_id, role);
+CREATE INDEX IF NOT EXISTS idx_event_members_user_id    ON event_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_event_members_event_role ON event_members(event_id, role);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -224,7 +236,7 @@ $$;
 --  und invite_codes zur Definitionszeit auflöst)
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE invite_codes (
+CREATE TABLE IF NOT EXISTS invite_codes (
   id         UUID               PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id   UUID               NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   code       TEXT               NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(24), 'base64url'),
@@ -243,13 +255,12 @@ CREATE TABLE invite_codes (
   )
 );
 
-CREATE INDEX idx_invite_codes_event_id    ON invite_codes(event_id);
-CREATE INDEX idx_invite_codes_code_status ON invite_codes(code) WHERE status = 'offen';
+CREATE INDEX IF NOT EXISTS idx_invite_codes_event_id    ON invite_codes(event_id);
+CREATE INDEX IF NOT EXISTS idx_invite_codes_code_status ON invite_codes(code) WHERE status = 'offen';
 
 
 -- ════════════════════════════════════════════════════════════════════════════
--- INVITE RPCs (LANGUAGE plpgsql → Runtime-Auflösung → Reihenfolge egal,
---              aber hier trotzdem nach den Tabellen zur Klarheit)
+-- INVITE RPCs
 -- ════════════════════════════════════════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION public.redeem_invite_code(p_code TEXT)
@@ -290,6 +301,10 @@ BEGIN
   IF v_invite.status = 'abgelaufen' OR v_invite.expires_at < NOW() THEN
     UPDATE invite_codes SET status = 'abgelaufen' WHERE id = v_invite.id;
     RETURN jsonb_build_object('success', false, 'error', 'CODE_EXPIRED');
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM events WHERE id = v_invite.event_id) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'EVENT_NOT_FOUND');
   END IF;
 
   SELECT * INTO v_existing
@@ -397,7 +412,7 @@ $$;
 -- GUESTS
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE guests (
+CREATE TABLE IF NOT EXISTS guests (
   id             UUID              PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id       UUID              NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   name           TEXT              NOT NULL CHECK (TRIM(name) <> ''),
@@ -426,18 +441,18 @@ CREATE TABLE guests (
   )
 );
 
-CREATE INDEX idx_guests_event_id     ON guests(event_id);
-CREATE INDEX idx_guests_token        ON guests(token)         WHERE token IS NOT NULL;
-CREATE INDEX idx_guests_event_status ON guests(event_id, status);
-CREATE INDEX idx_guests_hotel_room   ON guests(hotel_room_id) WHERE hotel_room_id IS NOT NULL;
-CREATE INDEX idx_guests_created_by   ON guests(created_by)   WHERE created_by IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_guests_event_id     ON guests(event_id);
+CREATE INDEX IF NOT EXISTS idx_guests_token        ON guests(token)         WHERE token IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_guests_event_status ON guests(event_id, status);
+CREATE INDEX IF NOT EXISTS idx_guests_hotel_room   ON guests(hotel_room_id) WHERE hotel_room_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_guests_created_by   ON guests(created_by)   WHERE created_by IS NOT NULL;
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- BEGLEITPERSONEN
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE begleitpersonen (
+CREATE TABLE IF NOT EXISTS begleitpersonen (
   id             UUID   PRIMARY KEY DEFAULT gen_random_uuid(),
   guest_id       UUID   NOT NULL REFERENCES guests(id) ON DELETE CASCADE,
   name           TEXT,
@@ -448,14 +463,14 @@ CREATE TABLE begleitpersonen (
   allergy_custom TEXT
 );
 
-CREATE INDEX idx_begleitpersonen_guest_id ON begleitpersonen(guest_id);
+CREATE INDEX IF NOT EXISTS idx_begleitpersonen_guest_id ON begleitpersonen(guest_id);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- HOTELS
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE hotels (
+CREATE TABLE IF NOT EXISTS hotels (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id   UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   name       TEXT        NOT NULL CHECK (TRIM(name) <> ''),
@@ -463,9 +478,9 @@ CREATE TABLE hotels (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_hotels_event_id ON hotels(event_id);
+CREATE INDEX IF NOT EXISTS idx_hotels_event_id ON hotels(event_id);
 
-CREATE TABLE hotel_rooms (
+CREATE TABLE IF NOT EXISTS hotel_rooms (
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   hotel_id        UUID        NOT NULL REFERENCES hotels(id) ON DELETE CASCADE,
   room_type       TEXT        NOT NULL,
@@ -476,14 +491,14 @@ CREATE TABLE hotel_rooms (
   CONSTRAINT chk_booked_lte_total CHECK (booked_rooms <= total_rooms)
 );
 
-CREATE INDEX idx_hotel_rooms_hotel_id ON hotel_rooms(hotel_id);
+CREATE INDEX IF NOT EXISTS idx_hotel_rooms_hotel_id ON hotel_rooms(hotel_id);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- TIMELINE
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE timeline_entries (
+CREATE TABLE IF NOT EXISTS timeline_entries (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id   UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   time       TIMESTAMPTZ,
@@ -493,14 +508,14 @@ CREATE TABLE timeline_entries (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_timeline_event_sort ON timeline_entries(event_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_timeline_event_sort ON timeline_entries(event_id, sort_order);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- BUDGET
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE budget_items (
+CREATE TABLE IF NOT EXISTS budget_items (
   id             UUID                PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id       UUID                NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   category       TEXT,
@@ -512,14 +527,14 @@ CREATE TABLE budget_items (
   created_at     TIMESTAMPTZ         NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_budget_items_event_id ON budget_items(event_id);
+CREATE INDEX IF NOT EXISTS idx_budget_items_event_id ON budget_items(event_id);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- VENDORS
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE vendors (
+CREATE TABLE IF NOT EXISTS vendors (
   id           UUID               PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id     UUID               NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   name         TEXT,
@@ -533,14 +548,14 @@ CREATE TABLE vendors (
   created_at   TIMESTAMPTZ        NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_vendors_event_id ON vendors(event_id);
+CREATE INDEX IF NOT EXISTS idx_vendors_event_id ON vendors(event_id);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- TASKS
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE tasks (
+CREATE TABLE IF NOT EXISTS tasks (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id   UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   title      TEXT,
@@ -550,15 +565,15 @@ CREATE TABLE tasks (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_tasks_event_id   ON tasks(event_id);
-CREATE INDEX idx_tasks_event_done ON tasks(event_id, done);
+CREATE INDEX IF NOT EXISTS idx_tasks_event_id   ON tasks(event_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_event_done ON tasks(event_id, done);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- REMINDERS
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE reminders (
+CREATE TABLE IF NOT EXISTS reminders (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id    UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   type        TEXT,
@@ -569,8 +584,8 @@ CREATE TABLE reminders (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_reminders_event_id    ON reminders(event_id);
-CREATE INDEX idx_reminders_unsent_date ON reminders(target_date)
+CREATE INDEX IF NOT EXISTS idx_reminders_event_id    ON reminders(event_id);
+CREATE INDEX IF NOT EXISTS idx_reminders_unsent_date ON reminders(target_date)
   WHERE sent = false AND target_date IS NOT NULL;
 
 
@@ -578,7 +593,7 @@ CREATE INDEX idx_reminders_unsent_date ON reminders(target_date)
 -- SUB-EVENTS
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE sub_events (
+CREATE TABLE IF NOT EXISTS sub_events (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id    UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   name        TEXT,
@@ -589,23 +604,23 @@ CREATE TABLE sub_events (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_sub_events_event_id ON sub_events(event_id);
+CREATE INDEX IF NOT EXISTS idx_sub_events_event_id ON sub_events(event_id);
 
-CREATE TABLE sub_event_guests (
+CREATE TABLE IF NOT EXISTS sub_event_guests (
   sub_event_id UUID NOT NULL REFERENCES sub_events(id) ON DELETE CASCADE,
   guest_id     UUID NOT NULL REFERENCES guests(id)     ON DELETE CASCADE,
   PRIMARY KEY (sub_event_id, guest_id)
 );
 
-CREATE INDEX idx_sub_event_guests_guest     ON sub_event_guests(guest_id);
-CREATE INDEX idx_sub_event_guests_sub_event ON sub_event_guests(sub_event_id);
+CREATE INDEX IF NOT EXISTS idx_sub_event_guests_guest     ON sub_event_guests(guest_id);
+CREATE INDEX IF NOT EXISTS idx_sub_event_guests_sub_event ON sub_event_guests(sub_event_id);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- SEATING
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE seating_tables (
+CREATE TABLE IF NOT EXISTS seating_tables (
   id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id     UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   name         TEXT,
@@ -619,23 +634,23 @@ CREATE TABLE seating_tables (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_seating_tables_event_id ON seating_tables(event_id);
+CREATE INDEX IF NOT EXISTS idx_seating_tables_event_id ON seating_tables(event_id);
 
-CREATE TABLE seating_assignments (
+CREATE TABLE IF NOT EXISTS seating_assignments (
   table_id UUID NOT NULL REFERENCES seating_tables(id) ON DELETE CASCADE,
   guest_id UUID NOT NULL REFERENCES guests(id)         ON DELETE CASCADE,
   PRIMARY KEY (table_id, guest_id)
 );
 
-CREATE INDEX idx_seating_assignments_guest ON seating_assignments(guest_id);
-CREATE INDEX idx_seating_assignments_table ON seating_assignments(table_id);
+CREATE INDEX IF NOT EXISTS idx_seating_assignments_guest ON seating_assignments(guest_id);
+CREATE INDEX IF NOT EXISTS idx_seating_assignments_table ON seating_assignments(table_id);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- CATERING
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE catering_plans (
+CREATE TABLE IF NOT EXISTS catering_plans (
   id                         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id                   UUID        NOT NULL UNIQUE REFERENCES events(id) ON DELETE CASCADE,
   service_style              TEXT        NOT NULL DEFAULT '',
@@ -660,7 +675,7 @@ CREATE TABLE catering_plans (
 -- FEATURE TOGGLES
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE feature_toggles (
+CREATE TABLE IF NOT EXISTS feature_toggles (
   event_id UUID    NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   key      TEXT    NOT NULL CHECK (TRIM(key) <> ''),
   enabled  BOOLEAN NOT NULL DEFAULT true,
@@ -672,7 +687,7 @@ CREATE TABLE feature_toggles (
 -- ORGANIZER SUGGESTIONS
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE organizer_vendor_suggestions (
+CREATE TABLE IF NOT EXISTS organizer_vendor_suggestions (
   id             UUID                   PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id       UUID                   NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   name           TEXT,
@@ -685,9 +700,9 @@ CREATE TABLE organizer_vendor_suggestions (
   created_at     TIMESTAMPTZ            NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_org_vendor_sugg_event ON organizer_vendor_suggestions(event_id);
+CREATE INDEX IF NOT EXISTS idx_org_vendor_sugg_event ON organizer_vendor_suggestions(event_id);
 
-CREATE TABLE organizer_hotel_suggestions (
+CREATE TABLE IF NOT EXISTS organizer_hotel_suggestions (
   id              UUID                   PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id        UUID                   NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   name            TEXT,
@@ -700,9 +715,9 @@ CREATE TABLE organizer_hotel_suggestions (
   created_at      TIMESTAMPTZ            NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_org_hotel_sugg_event ON organizer_hotel_suggestions(event_id);
+CREATE INDEX IF NOT EXISTS idx_org_hotel_sugg_event ON organizer_hotel_suggestions(event_id);
 
-CREATE TABLE organizer_catering_suggestions (
+CREATE TABLE IF NOT EXISTS organizer_catering_suggestions (
   id               UUID                   PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id         UUID                   NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   name             TEXT,
@@ -715,14 +730,14 @@ CREATE TABLE organizer_catering_suggestions (
   created_at       TIMESTAMPTZ            NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_org_catering_sugg_event ON organizer_catering_suggestions(event_id);
+CREATE INDEX IF NOT EXISTS idx_org_catering_sugg_event ON organizer_catering_suggestions(event_id);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- DEKO
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE deko_suggestions (
+CREATE TABLE IF NOT EXISTS deko_suggestions (
   id          UUID                   PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id    UUID                   NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   title       TEXT,
@@ -732,9 +747,9 @@ CREATE TABLE deko_suggestions (
   created_at  TIMESTAMPTZ            NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_deko_suggestions_event ON deko_suggestions(event_id);
+CREATE INDEX IF NOT EXISTS idx_deko_suggestions_event ON deko_suggestions(event_id);
 
-CREATE TABLE deko_wishes (
+CREATE TABLE IF NOT EXISTS deko_wishes (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id   UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   title      TEXT,
@@ -744,15 +759,15 @@ CREATE TABLE deko_wishes (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_deko_wishes_event      ON deko_wishes(event_id);
-CREATE INDEX idx_deko_wishes_created_by ON deko_wishes(created_by) WHERE created_by IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_deko_wishes_event      ON deko_wishes(event_id);
+CREATE INDEX IF NOT EXISTS idx_deko_wishes_created_by ON deko_wishes(created_by) WHERE created_by IS NOT NULL;
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- LOCATION IMAGES / GUEST PHOTOS
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE location_images (
+CREATE TABLE IF NOT EXISTS location_images (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id    UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   storage_url TEXT        NOT NULL CHECK (TRIM(storage_url) <> ''),
@@ -760,9 +775,9 @@ CREATE TABLE location_images (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_location_images_event ON location_images(event_id);
+CREATE INDEX IF NOT EXISTS idx_location_images_event ON location_images(event_id);
 
-CREATE TABLE guest_photos (
+CREATE TABLE IF NOT EXISTS guest_photos (
   id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id          UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   uploader_name     TEXT,
@@ -772,39 +787,16 @@ CREATE TABLE guest_photos (
   uploaded_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_guest_photos_event ON guest_photos(event_id);
-CREATE INDEX idx_guest_photos_guest ON guest_photos(uploader_guest_id)
+CREATE INDEX IF NOT EXISTS idx_guest_photos_event ON guest_photos(event_id);
+CREATE INDEX IF NOT EXISTS idx_guest_photos_guest ON guest_photos(uploader_guest_id)
   WHERE uploader_guest_id IS NOT NULL;
-
-
--- ════════════════════════════════════════════════════════════════════════════
--- ORGANIZER APPLICATIONS
--- ════════════════════════════════════════════════════════════════════════════
-
-CREATE TABLE organizer_applications (
-  id           UUID                              PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id      UUID                              REFERENCES profiles(id) ON DELETE SET NULL,
-  company_name TEXT,
-  contact_name TEXT                              NOT NULL,
-  email        TEXT                              NOT NULL,
-  phone        TEXT,
-  website      TEXT,
-  description  TEXT,
-  status       organizer_application_status_enum NOT NULL DEFAULT 'pending',
-  reviewed_by  UUID                              REFERENCES profiles(id) ON DELETE SET NULL,
-  reviewed_at  TIMESTAMPTZ,
-  created_at   TIMESTAMPTZ                       NOT NULL DEFAULT NOW(),
-  UNIQUE (user_id)
-);
-
-CREATE INDEX idx_organizer_apps_status ON organizer_applications(status);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- DIENSTLEISTER
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE dienstleister_profiles (
+CREATE TABLE IF NOT EXISTS dienstleister_profiles (
   id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   name         TEXT        NOT NULL CHECK (TRIM(name) <> ''),
   company_name TEXT,
@@ -816,9 +808,9 @@ CREATE TABLE dienstleister_profiles (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_dienstleister_category ON dienstleister_profiles(category);
+CREATE INDEX IF NOT EXISTS idx_dienstleister_category ON dienstleister_profiles(category);
 
-CREATE TABLE user_dienstleister (
+CREATE TABLE IF NOT EXISTS user_dienstleister (
   id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id          UUID        NOT NULL REFERENCES profiles(id)               ON DELETE CASCADE,
   dienstleister_id UUID        NOT NULL REFERENCES dienstleister_profiles(id) ON DELETE CASCADE,
@@ -826,10 +818,10 @@ CREATE TABLE user_dienstleister (
   UNIQUE (user_id, dienstleister_id)
 );
 
-CREATE INDEX idx_user_dl_user ON user_dienstleister(user_id);
-CREATE INDEX idx_user_dl_dl   ON user_dienstleister(dienstleister_id);
+CREATE INDEX IF NOT EXISTS idx_user_dl_user ON user_dienstleister(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_dl_dl   ON user_dienstleister(dienstleister_id);
 
-CREATE TABLE event_dienstleister (
+CREATE TABLE IF NOT EXISTS event_dienstleister (
   id               UUID                            PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id         UUID                            NOT NULL REFERENCES events(id)                ON DELETE CASCADE,
   dienstleister_id UUID                            NOT NULL REFERENCES dienstleister_profiles(id) ON DELETE CASCADE,
@@ -843,16 +835,16 @@ CREATE TABLE event_dienstleister (
   UNIQUE (event_id, dienstleister_id)
 );
 
-CREATE INDEX idx_event_dl_event ON event_dienstleister(event_id);
-CREATE INDEX idx_event_dl_user  ON event_dienstleister(user_id) WHERE user_id IS NOT NULL;
-CREATE INDEX idx_event_dl_dl    ON event_dienstleister(dienstleister_id);
+CREATE INDEX IF NOT EXISTS idx_event_dl_event ON event_dienstleister(event_id);
+CREATE INDEX IF NOT EXISTS idx_event_dl_user  ON event_dienstleister(user_id) WHERE user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_event_dl_dl    ON event_dienstleister(dienstleister_id);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- TRAUZEUGE PERMISSIONS
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE trauzeuge_permissions (
+CREATE TABLE IF NOT EXISTS trauzeuge_permissions (
   id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id          UUID        NOT NULL REFERENCES events(id)   ON DELETE CASCADE,
   user_id           UUID        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -870,15 +862,14 @@ CREATE TABLE trauzeuge_permissions (
   UNIQUE (event_id, user_id)
 );
 
-CREATE INDEX idx_tz_perm_event_user ON trauzeuge_permissions(event_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_tz_perm_event_user ON trauzeuge_permissions(event_id, user_id);
 
 
 -- ════════════════════════════════════════════════════════════════════════════
 -- AUDIT LOG
--- (wird nach write_audit_log-Funktion erstellt — plpgsql löst runtime auf)
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE audit_log (
+CREATE TABLE IF NOT EXISTS audit_log (
   id         UUID              PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id   UUID              REFERENCES events(id)   ON DELETE CASCADE,
   actor_id   UUID              REFERENCES profiles(id) ON DELETE SET NULL,
@@ -891,13 +882,12 @@ CREATE TABLE audit_log (
   created_at TIMESTAMPTZ       NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_audit_event_time ON audit_log(event_id, created_at DESC)
+CREATE INDEX IF NOT EXISTS idx_audit_event_time ON audit_log(event_id, created_at DESC)
   WHERE event_id IS NOT NULL;
-CREATE INDEX idx_audit_record     ON audit_log(record_id)   WHERE record_id IS NOT NULL;
-CREATE INDEX idx_audit_actor      ON audit_log(actor_id)    WHERE actor_id  IS NOT NULL;
-CREATE INDEX idx_audit_table      ON audit_log(table_name, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_record     ON audit_log(record_id)   WHERE record_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_audit_actor      ON audit_log(actor_id)    WHERE actor_id  IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_audit_table      ON audit_log(table_name, created_at DESC);
 
--- write_audit_log NACH audit_log definieren (auch plpgsql — zur Sicherheit)
 CREATE OR REPLACE FUNCTION public.write_audit_log(
   p_event_id   UUID,
   p_actor_id   UUID,
@@ -929,7 +919,7 @@ $$;
 -- MESSAGING
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE conversations (
+CREATE TABLE IF NOT EXISTS conversations (
   id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id          UUID        NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   title             TEXT,
@@ -938,10 +928,10 @@ CREATE TABLE conversations (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_conversations_event   ON conversations(event_id);
-CREATE INDEX idx_conversations_created ON conversations(event_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conversations_event   ON conversations(event_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_created ON conversations(event_id, created_at DESC);
 
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID        NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   event_id        UUID        NOT NULL REFERENCES events(id)        ON DELETE CASCADE,
@@ -952,12 +942,11 @@ CREATE TABLE messages (
   CONSTRAINT chk_edited_after_created CHECK (edited_at IS NULL OR edited_at >= created_at)
 );
 
-CREATE INDEX idx_messages_conv_time  ON messages(conversation_id, created_at DESC);
-CREATE INDEX idx_messages_event_time ON messages(event_id, created_at DESC);
-CREATE INDEX idx_messages_sender     ON messages(sender_id)  WHERE sender_id IS NOT NULL;
-CREATE INDEX idx_messages_event_conv ON messages(event_id, conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_conv_time  ON messages(conversation_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_event_time ON messages(event_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_messages_sender     ON messages(sender_id)  WHERE sender_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_messages_event_conv ON messages(event_id, conversation_id);
 
--- Setzt event_id immer aus der Conversation (verhindert falsche event_id)
 CREATE OR REPLACE FUNCTION public.messages_set_event_id()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -982,6 +971,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS messages_set_event_id_trigger ON messages;
 CREATE TRIGGER messages_set_event_id_trigger
   BEFORE INSERT ON messages
   FOR EACH ROW EXECUTE PROCEDURE public.messages_set_event_id();
@@ -991,7 +981,7 @@ CREATE TRIGGER messages_set_event_id_trigger
 -- PENDING CHANGES
 -- ════════════════════════════════════════════════════════════════════════════
 
-CREATE TABLE pending_changes (
+CREATE TABLE IF NOT EXISTS pending_changes (
   id            UUID                       PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id      UUID                       NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   area          TEXT                       NOT NULL,
@@ -1008,9 +998,8 @@ CREATE TABLE pending_changes (
   )
 );
 
-CREATE INDEX idx_pending_changes_event_status ON pending_changes(event_id, status);
+CREATE INDEX IF NOT EXISTS idx_pending_changes_event_status ON pending_changes(event_id, status);
 
--- Auto-Fill proposer_role aus event_members
 CREATE OR REPLACE FUNCTION public.set_pending_change_proposer_role()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -1028,6 +1017,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS before_pending_change_insert ON pending_changes;
 CREATE TRIGGER before_pending_change_insert
   BEFORE INSERT ON pending_changes
   FOR EACH ROW EXECUTE PROCEDURE public.set_pending_change_proposer_role();
@@ -1097,9 +1087,122 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS guests_audit_trigger ON guests;
 CREATE TRIGGER guests_audit_trigger
   AFTER INSERT OR UPDATE OR DELETE ON guests
   FOR EACH ROW EXECUTE PROCEDURE public.guests_audit_trigger_fn();
+
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- NEW FUNCTIONS
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- Veranstalter erstellt Event + Mitgliedschaft atomar
+CREATE OR REPLACE FUNCTION public.create_event_with_organizer(
+  p_title              TEXT,
+  p_date               DATE,
+  p_venue              TEXT,
+  p_venue_address      TEXT,
+  p_dresscode          TEXT,
+  p_children_allowed   BOOLEAN,
+  p_children_note      TEXT,
+  p_meal_options       TEXT[],
+  p_max_begleitpersonen INT,
+  p_ceremony_start     TIMESTAMPTZ
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id  UUID;
+  v_event_id UUID;
+BEGIN
+  v_user_id := auth.uid();
+
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'FORBIDDEN: not authenticated' USING ERRCODE = 'P0001';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM profiles WHERE id = v_user_id AND is_approved_organizer = true
+  ) THEN
+    RAISE EXCEPTION 'FORBIDDEN: not an approved organizer' USING ERRCODE = 'P0001';
+  END IF;
+
+  INSERT INTO events (
+    title, date, venue, venue_address, dresscode,
+    children_allowed, children_note, meal_options,
+    max_begleitpersonen, ceremony_start, created_by
+  ) VALUES (
+    p_title, p_date, p_venue, p_venue_address, p_dresscode,
+    p_children_allowed, p_children_note, p_meal_options,
+    p_max_begleitpersonen, p_ceremony_start, v_user_id
+  )
+  RETURNING id INTO v_event_id;
+
+  INSERT INTO event_members (event_id, user_id, role)
+  VALUES (v_event_id, v_user_id, 'veranstalter');
+
+  RETURN v_event_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_event_with_organizer(
+  TEXT, DATE, TEXT, TEXT, TEXT, BOOLEAN, TEXT, TEXT[], INT, TIMESTAMPTZ
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.create_event_with_organizer(
+  TEXT, DATE, TEXT, TEXT, TEXT, BOOLEAN, TEXT, TEXT[], INT, TIMESTAMPTZ
+) TO authenticated;
+
+
+-- Setzt is_approved_organizer = true — nur via service_role aufrufbar
+CREATE OR REPLACE FUNCTION public.approve_organizer(p_user_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE profiles SET is_approved_organizer = true WHERE id = p_user_id;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.approve_organizer(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.approve_organizer(UUID) TO service_role;
+
+
+-- Custom Access Token Hook — schreibt is_approved_organizer in app_metadata des JWT
+-- Nach SQL-Ausführung manuell aktivieren:
+--   Supabase Dashboard → Authentication → Hooks → Custom Access Token
+--   → Funktion: public.custom_access_token_hook
+CREATE OR REPLACE FUNCTION public.custom_access_token_hook(event jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_is_organizer BOOLEAN;
+  v_user_id      UUID;
+BEGIN
+  v_user_id := (event->>'user_id')::UUID;
+
+  SELECT is_approved_organizer INTO v_is_organizer
+  FROM profiles
+  WHERE id = v_user_id;
+
+  RETURN jsonb_set(
+    event,
+    '{claims,app_metadata,is_approved_organizer}',
+    to_jsonb(COALESCE(v_is_organizer, false))
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.custom_access_token_hook(jsonb) TO supabase_auth_admin;
 
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -1132,7 +1235,6 @@ ALTER TABLE deko_suggestions               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deko_wishes                    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE location_images                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE guest_photos                   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organizer_applications         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dienstleister_profiles         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_dienstleister             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_dienstleister            ENABLE ROW LEVEL SECURITY;
@@ -1148,16 +1250,24 @@ ALTER TABLE pending_changes                ENABLE ROW LEVEL SECURITY;
 -- ════════════════════════════════════════════════════════════════════════════
 
 -- ── Profiles ─────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "profiles_select" ON profiles;
 CREATE POLICY "profiles_select" ON profiles
   FOR SELECT USING (id = auth.uid());
+
+DROP POLICY IF EXISTS "profiles_insert" ON profiles;
 CREATE POLICY "profiles_insert" ON profiles
   FOR INSERT WITH CHECK (id = auth.uid());
+
+DROP POLICY IF EXISTS "profiles_update" ON profiles;
 CREATE POLICY "profiles_update" ON profiles
   FOR UPDATE USING (id = auth.uid()) WITH CHECK (id = auth.uid());
 
 -- ── Events ────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "events_select" ON events;
 CREATE POLICY "events_select" ON events
   FOR SELECT USING (is_event_member(id));
+
+DROP POLICY IF EXISTS "events_insert" ON events;
 CREATE POLICY "events_insert" ON events
   FOR INSERT WITH CHECK (
     created_by = auth.uid()
@@ -1166,6 +1276,8 @@ CREATE POLICY "events_insert" ON events
       WHERE id = auth.uid() AND is_approved_organizer = true
     )
   );
+
+DROP POLICY IF EXISTS "events_update" ON events;
 CREATE POLICY "events_update" ON events
   FOR UPDATE
   USING (
@@ -1176,13 +1288,16 @@ CREATE POLICY "events_update" ON events
     is_event_member(id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(id)
   );
+
+DROP POLICY IF EXISTS "events_delete" ON events;
 CREATE POLICY "events_delete" ON events
   FOR DELETE USING (
     is_event_member(id, ARRAY['veranstalter']::user_role[])
     OR created_by = auth.uid()
   );
 
--- ── Event Members — direkter Tabellen-Check, kein is_event_member() ──────────
+-- ── Event Members ─────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "members_select" ON event_members;
 CREATE POLICY "members_select" ON event_members
   FOR SELECT USING (
     user_id = auth.uid()
@@ -1191,14 +1306,20 @@ CREATE POLICY "members_select" ON event_members
       WHERE em2.event_id = event_members.event_id AND em2.user_id = auth.uid()
     )
   );
+
+DROP POLICY IF EXISTS "members_insert" ON event_members;
 CREATE POLICY "members_insert" ON event_members
   FOR INSERT WITH CHECK (
     can_manage_member(event_members.event_id, event_members.role)
   );
+
+DROP POLICY IF EXISTS "members_update" ON event_members;
 CREATE POLICY "members_update" ON event_members
   FOR UPDATE
   USING     (can_manage_member(event_members.event_id, event_members.role))
   WITH CHECK (can_manage_member(event_members.event_id, event_members.role));
+
+DROP POLICY IF EXISTS "members_delete" ON event_members;
 CREATE POLICY "members_delete" ON event_members
   FOR DELETE USING (
     user_id = auth.uid()
@@ -1206,29 +1327,41 @@ CREATE POLICY "members_delete" ON event_members
   );
 
 -- ── Invite Codes ──────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "invite_select" ON invite_codes;
 CREATE POLICY "invite_select" ON invite_codes
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "invite_insert" ON invite_codes;
 CREATE POLICY "invite_insert" ON invite_codes
   FOR INSERT WITH CHECK (
     created_by = auth.uid()
     AND is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
+
+DROP POLICY IF EXISTS "invite_update" ON invite_codes;
 CREATE POLICY "invite_update" ON invite_codes
   FOR UPDATE
   USING     (is_event_member(event_id, ARRAY['veranstalter']::user_role[]))
   WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
+
+DROP POLICY IF EXISTS "invite_delete" ON invite_codes;
 CREATE POLICY "invite_delete" ON invite_codes
   FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
 -- ── Guests ────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "guests_select" ON guests;
 CREATE POLICY "guests_select" ON guests
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "guests_insert" ON guests;
 CREATE POLICY "guests_insert" ON guests
   FOR INSERT WITH CHECK (
     created_by = auth.uid()
     AND is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "guests_update" ON guests;
 CREATE POLICY "guests_update" ON guests
   FOR UPDATE
   USING (
@@ -1239,6 +1372,8 @@ CREATE POLICY "guests_update" ON guests
     is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "guests_delete" ON guests;
 CREATE POLICY "guests_delete" ON guests
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
@@ -1246,11 +1381,14 @@ CREATE POLICY "guests_delete" ON guests
   );
 
 -- ── Begleitpersonen ───────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "begleit_select" ON begleitpersonen;
 CREATE POLICY "begleit_select" ON begleitpersonen
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM guests g
       WHERE g.id = begleitpersonen.guest_id AND is_event_member(g.event_id))
   );
+
+DROP POLICY IF EXISTS "begleit_insert" ON begleitpersonen;
 CREATE POLICY "begleit_insert" ON begleitpersonen
   FOR INSERT WITH CHECK (
     EXISTS (SELECT 1 FROM guests g
@@ -1258,6 +1396,8 @@ CREATE POLICY "begleit_insert" ON begleitpersonen
         AND is_event_member(g.event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
         AND NOT is_event_frozen(g.event_id))
   );
+
+DROP POLICY IF EXISTS "begleit_update" ON begleitpersonen;
 CREATE POLICY "begleit_update" ON begleitpersonen
   FOR UPDATE
   USING (
@@ -1272,6 +1412,8 @@ CREATE POLICY "begleit_update" ON begleitpersonen
         AND is_event_member(g.event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
         AND NOT is_event_frozen(g.event_id))
   );
+
+DROP POLICY IF EXISTS "begleit_delete" ON begleitpersonen;
 CREATE POLICY "begleit_delete" ON begleitpersonen
   FOR DELETE USING (
     EXISTS (SELECT 1 FROM guests g
@@ -1281,13 +1423,18 @@ CREATE POLICY "begleit_delete" ON begleitpersonen
   );
 
 -- ── Hotels ────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "hotels_select" ON hotels;
 CREATE POLICY "hotels_select" ON hotels
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "hotels_insert" ON hotels;
 CREATE POLICY "hotels_insert" ON hotels
   FOR INSERT WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "hotels_update" ON hotels;
 CREATE POLICY "hotels_update" ON hotels
   FOR UPDATE
   USING (
@@ -1298,16 +1445,21 @@ CREATE POLICY "hotels_update" ON hotels
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "hotels_delete" ON hotels;
 CREATE POLICY "hotels_delete" ON hotels
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
 
+DROP POLICY IF EXISTS "hotel_rooms_select" ON hotel_rooms;
 CREATE POLICY "hotel_rooms_select" ON hotel_rooms
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM hotels h
       WHERE h.id = hotel_rooms.hotel_id AND is_event_member(h.event_id))
   );
+
+DROP POLICY IF EXISTS "hotel_rooms_insert" ON hotel_rooms;
 CREATE POLICY "hotel_rooms_insert" ON hotel_rooms
   FOR INSERT WITH CHECK (
     EXISTS (SELECT 1 FROM hotels h
@@ -1315,6 +1467,8 @@ CREATE POLICY "hotel_rooms_insert" ON hotel_rooms
         AND is_event_member(h.event_id, ARRAY['veranstalter','brautpaar']::user_role[])
         AND NOT is_event_frozen(h.event_id))
   );
+
+DROP POLICY IF EXISTS "hotel_rooms_update" ON hotel_rooms;
 CREATE POLICY "hotel_rooms_update" ON hotel_rooms
   FOR UPDATE
   USING (
@@ -1329,6 +1483,8 @@ CREATE POLICY "hotel_rooms_update" ON hotel_rooms
         AND is_event_member(h.event_id, ARRAY['veranstalter','brautpaar']::user_role[])
         AND NOT is_event_frozen(h.event_id))
   );
+
+DROP POLICY IF EXISTS "hotel_rooms_delete" ON hotel_rooms;
 CREATE POLICY "hotel_rooms_delete" ON hotel_rooms
   FOR DELETE USING (
     EXISTS (SELECT 1 FROM hotels h
@@ -1337,15 +1493,20 @@ CREATE POLICY "hotel_rooms_delete" ON hotel_rooms
   );
 
 -- ── Budget ────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "budget_select" ON budget_items;
 CREATE POLICY "budget_select" ON budget_items
   FOR SELECT USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
+
+DROP POLICY IF EXISTS "budget_insert" ON budget_items;
 CREATE POLICY "budget_insert" ON budget_items
   FOR INSERT WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "budget_update" ON budget_items;
 CREATE POLICY "budget_update" ON budget_items
   FOR UPDATE
   USING (
@@ -1356,6 +1517,8 @@ CREATE POLICY "budget_update" ON budget_items
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "budget_delete" ON budget_items;
 CREATE POLICY "budget_delete" ON budget_items
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
@@ -1363,13 +1526,18 @@ CREATE POLICY "budget_delete" ON budget_items
   );
 
 -- ── Vendors ───────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "vendors_select" ON vendors;
 CREATE POLICY "vendors_select" ON vendors
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "vendors_insert" ON vendors;
 CREATE POLICY "vendors_insert" ON vendors
   FOR INSERT WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "vendors_update" ON vendors;
 CREATE POLICY "vendors_update" ON vendors
   FOR UPDATE
   USING (
@@ -1380,6 +1548,8 @@ CREATE POLICY "vendors_update" ON vendors
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "vendors_delete" ON vendors;
 CREATE POLICY "vendors_delete" ON vendors
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
@@ -1387,47 +1557,66 @@ CREATE POLICY "vendors_delete" ON vendors
   );
 
 -- ── Tasks ─────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "tasks_select" ON tasks;
 CREATE POLICY "tasks_select" ON tasks
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "tasks_insert" ON tasks;
 CREATE POLICY "tasks_insert" ON tasks
   FOR INSERT WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
   );
+
+DROP POLICY IF EXISTS "tasks_update" ON tasks;
 CREATE POLICY "tasks_update" ON tasks
   FOR UPDATE
   USING     (is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[]))
   WITH CHECK (is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[]));
+
+DROP POLICY IF EXISTS "tasks_delete" ON tasks;
 CREATE POLICY "tasks_delete" ON tasks
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
 
 -- ── Reminders ─────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "reminders_select" ON reminders;
 CREATE POLICY "reminders_select" ON reminders
   FOR SELECT USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
+
+DROP POLICY IF EXISTS "reminders_insert" ON reminders;
 CREATE POLICY "reminders_insert" ON reminders
   FOR INSERT WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
+
+DROP POLICY IF EXISTS "reminders_update" ON reminders;
 CREATE POLICY "reminders_update" ON reminders
   FOR UPDATE
   USING     (is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[]))
   WITH CHECK (is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[]));
+
+DROP POLICY IF EXISTS "reminders_delete" ON reminders;
 CREATE POLICY "reminders_delete" ON reminders
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
 
 -- ── Sub-Events ────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "subevents_select" ON sub_events;
 CREATE POLICY "subevents_select" ON sub_events
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "subevents_insert" ON sub_events;
 CREATE POLICY "subevents_insert" ON sub_events
   FOR INSERT WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "subevents_update" ON sub_events;
 CREATE POLICY "subevents_update" ON sub_events
   FOR UPDATE
   USING (
@@ -1438,15 +1627,21 @@ CREATE POLICY "subevents_update" ON sub_events
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "subevents_delete" ON sub_events;
 CREATE POLICY "subevents_delete" ON sub_events
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
+
+DROP POLICY IF EXISTS "subevents_guests_select" ON sub_event_guests;
 CREATE POLICY "subevents_guests_select" ON sub_event_guests
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM sub_events se
       WHERE se.id = sub_event_guests.sub_event_id AND is_event_member(se.event_id))
   );
+
+DROP POLICY IF EXISTS "subevents_guests_insert" ON sub_event_guests;
 CREATE POLICY "subevents_guests_insert" ON sub_event_guests
   FOR INSERT WITH CHECK (
     EXISTS (SELECT 1 FROM sub_events se
@@ -1454,6 +1649,8 @@ CREATE POLICY "subevents_guests_insert" ON sub_event_guests
         AND is_event_member(se.event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
         AND NOT is_event_frozen(se.event_id))
   );
+
+DROP POLICY IF EXISTS "subevents_guests_delete" ON sub_event_guests;
 CREATE POLICY "subevents_guests_delete" ON sub_event_guests
   FOR DELETE USING (
     EXISTS (SELECT 1 FROM sub_events se
@@ -1463,13 +1660,18 @@ CREATE POLICY "subevents_guests_delete" ON sub_event_guests
   );
 
 -- ── Seating ───────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "seating_select" ON seating_tables;
 CREATE POLICY "seating_select" ON seating_tables
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "seating_insert" ON seating_tables;
 CREATE POLICY "seating_insert" ON seating_tables
   FOR INSERT WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "seating_update" ON seating_tables;
 CREATE POLICY "seating_update" ON seating_tables
   FOR UPDATE
   USING (
@@ -1480,15 +1682,21 @@ CREATE POLICY "seating_update" ON seating_tables
     is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "seating_delete" ON seating_tables;
 CREATE POLICY "seating_delete" ON seating_tables
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
+
+DROP POLICY IF EXISTS "seating_assign_select" ON seating_assignments;
 CREATE POLICY "seating_assign_select" ON seating_assignments
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM seating_tables st
       WHERE st.id = seating_assignments.table_id AND is_event_member(st.event_id))
   );
+
+DROP POLICY IF EXISTS "seating_assign_insert" ON seating_assignments;
 CREATE POLICY "seating_assign_insert" ON seating_assignments
   FOR INSERT WITH CHECK (
     EXISTS (SELECT 1 FROM seating_tables st
@@ -1496,6 +1704,8 @@ CREATE POLICY "seating_assign_insert" ON seating_assignments
         AND is_event_member(st.event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
         AND NOT is_event_frozen(st.event_id))
   );
+
+DROP POLICY IF EXISTS "seating_assign_delete" ON seating_assignments;
 CREATE POLICY "seating_assign_delete" ON seating_assignments
   FOR DELETE USING (
     EXISTS (SELECT 1 FROM seating_tables st
@@ -1505,15 +1715,20 @@ CREATE POLICY "seating_assign_delete" ON seating_assignments
   );
 
 -- ── Catering ──────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "catering_select" ON catering_plans;
 CREATE POLICY "catering_select" ON catering_plans
   FOR SELECT USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar','dienstleister']::user_role[])
   );
+
+DROP POLICY IF EXISTS "catering_insert" ON catering_plans;
 CREATE POLICY "catering_insert" ON catering_plans
   FOR INSERT WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "catering_update" ON catering_plans;
 CREATE POLICY "catering_update" ON catering_plans
   FOR UPDATE
   USING (
@@ -1524,78 +1739,120 @@ CREATE POLICY "catering_update" ON catering_plans
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "catering_delete" ON catering_plans;
 CREATE POLICY "catering_delete" ON catering_plans
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter']::user_role[])
   );
 
 -- ── Feature Toggles ───────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "ft_select" ON feature_toggles;
 CREATE POLICY "ft_select" ON feature_toggles
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "ft_insert" ON feature_toggles;
 CREATE POLICY "ft_insert" ON feature_toggles
   FOR INSERT WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
+
+DROP POLICY IF EXISTS "ft_update" ON feature_toggles;
 CREATE POLICY "ft_update" ON feature_toggles
   FOR UPDATE
   USING     (is_event_member(event_id, ARRAY['veranstalter']::user_role[]))
   WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
+
+DROP POLICY IF EXISTS "ft_delete" ON feature_toggles;
 CREATE POLICY "ft_delete" ON feature_toggles
   FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
 -- ── Organizer Suggestions ─────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "org_vendor_select" ON organizer_vendor_suggestions;
 CREATE POLICY "org_vendor_select" ON organizer_vendor_suggestions
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "org_vendor_insert" ON organizer_vendor_suggestions;
 CREATE POLICY "org_vendor_insert" ON organizer_vendor_suggestions
   FOR INSERT WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
+
+DROP POLICY IF EXISTS "org_vendor_update" ON organizer_vendor_suggestions;
 CREATE POLICY "org_vendor_update" ON organizer_vendor_suggestions
   FOR UPDATE
   USING     (is_event_member(event_id, ARRAY['veranstalter']::user_role[]))
   WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
+
+DROP POLICY IF EXISTS "org_vendor_delete" ON organizer_vendor_suggestions;
 CREATE POLICY "org_vendor_delete" ON organizer_vendor_suggestions
   FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
+DROP POLICY IF EXISTS "org_hotel_select" ON organizer_hotel_suggestions;
 CREATE POLICY "org_hotel_select" ON organizer_hotel_suggestions
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "org_hotel_insert" ON organizer_hotel_suggestions;
 CREATE POLICY "org_hotel_insert" ON organizer_hotel_suggestions
   FOR INSERT WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
+
+DROP POLICY IF EXISTS "org_hotel_update" ON organizer_hotel_suggestions;
 CREATE POLICY "org_hotel_update" ON organizer_hotel_suggestions
   FOR UPDATE
   USING     (is_event_member(event_id, ARRAY['veranstalter']::user_role[]))
   WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
+
+DROP POLICY IF EXISTS "org_hotel_delete" ON organizer_hotel_suggestions;
 CREATE POLICY "org_hotel_delete" ON organizer_hotel_suggestions
   FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
+DROP POLICY IF EXISTS "org_cater_select" ON organizer_catering_suggestions;
 CREATE POLICY "org_cater_select" ON organizer_catering_suggestions
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "org_cater_insert" ON organizer_catering_suggestions;
 CREATE POLICY "org_cater_insert" ON organizer_catering_suggestions
   FOR INSERT WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
+
+DROP POLICY IF EXISTS "org_cater_update" ON organizer_catering_suggestions;
 CREATE POLICY "org_cater_update" ON organizer_catering_suggestions
   FOR UPDATE
   USING     (is_event_member(event_id, ARRAY['veranstalter']::user_role[]))
   WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
+
+DROP POLICY IF EXISTS "org_cater_delete" ON organizer_catering_suggestions;
 CREATE POLICY "org_cater_delete" ON organizer_catering_suggestions
   FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
 -- ── Deko ──────────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "deko_sug_select" ON deko_suggestions;
 CREATE POLICY "deko_sug_select" ON deko_suggestions
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "deko_sug_insert" ON deko_suggestions;
 CREATE POLICY "deko_sug_insert" ON deko_suggestions
   FOR INSERT WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
+
+DROP POLICY IF EXISTS "deko_sug_update" ON deko_suggestions;
 CREATE POLICY "deko_sug_update" ON deko_suggestions
   FOR UPDATE
   USING     (is_event_member(event_id, ARRAY['veranstalter']::user_role[]))
   WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
+
+DROP POLICY IF EXISTS "deko_sug_delete" ON deko_suggestions;
 CREATE POLICY "deko_sug_delete" ON deko_suggestions
   FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
+DROP POLICY IF EXISTS "deko_wish_select" ON deko_wishes;
 CREATE POLICY "deko_wish_select" ON deko_wishes
   FOR SELECT USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
   );
+
+DROP POLICY IF EXISTS "deko_wish_insert" ON deko_wishes;
 CREATE POLICY "deko_wish_insert" ON deko_wishes
   FOR INSERT WITH CHECK (
     created_by = auth.uid()
     AND is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
   );
+
+DROP POLICY IF EXISTS "deko_wish_update" ON deko_wishes;
 CREATE POLICY "deko_wish_update" ON deko_wishes
   FOR UPDATE
   USING (
@@ -1606,6 +1863,8 @@ CREATE POLICY "deko_wish_update" ON deko_wishes
     created_by = auth.uid()
     OR is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
+
+DROP POLICY IF EXISTS "deko_wish_delete" ON deko_wishes;
 CREATE POLICY "deko_wish_delete" ON deko_wishes
   FOR DELETE USING (
     created_by = auth.uid()
@@ -1613,34 +1872,49 @@ CREATE POLICY "deko_wish_delete" ON deko_wishes
   );
 
 -- ── Location Images ───────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "loc_img_select" ON location_images;
 CREATE POLICY "loc_img_select" ON location_images
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "loc_img_insert" ON location_images;
 CREATE POLICY "loc_img_insert" ON location_images
   FOR INSERT WITH CHECK (
     uploaded_by = auth.uid()
     AND is_event_member(event_id, ARRAY['veranstalter']::user_role[])
   );
+
+DROP POLICY IF EXISTS "loc_img_delete" ON location_images;
 CREATE POLICY "loc_img_delete" ON location_images
   FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
 -- ── Guest Photos ──────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "guest_photos_select" ON guest_photos;
 CREATE POLICY "guest_photos_select" ON guest_photos
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "guest_photos_insert" ON guest_photos;
 CREATE POLICY "guest_photos_insert" ON guest_photos
   FOR INSERT WITH CHECK (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "guest_photos_delete" ON guest_photos;
 CREATE POLICY "guest_photos_delete" ON guest_photos
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
 
 -- ── Timeline ──────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "timeline_select" ON timeline_entries;
 CREATE POLICY "timeline_select" ON timeline_entries
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "timeline_insert" ON timeline_entries;
 CREATE POLICY "timeline_insert" ON timeline_entries
   FOR INSERT WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "timeline_update" ON timeline_entries;
 CREATE POLICY "timeline_update" ON timeline_entries
   FOR UPDATE
   USING (
@@ -1651,30 +1925,23 @@ CREATE POLICY "timeline_update" ON timeline_entries
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     AND NOT is_event_frozen(event_id)
   );
+
+DROP POLICY IF EXISTS "timeline_delete" ON timeline_entries;
 CREATE POLICY "timeline_delete" ON timeline_entries
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
 
--- ── Organizer Applications ────────────────────────────────────────────────────
-CREATE POLICY "app_select" ON organizer_applications
-  FOR SELECT USING (user_id = auth.uid());
-CREATE POLICY "app_insert" ON organizer_applications
-  FOR INSERT WITH CHECK (
-    (auth.uid() IS NULL     AND user_id IS NULL)
-    OR
-    (auth.uid() IS NOT NULL AND user_id = auth.uid())
-  );
-CREATE POLICY "app_update" ON organizer_applications
-  FOR UPDATE
-  USING     (user_id = auth.uid() AND status = 'pending')
-  WITH CHECK (user_id = auth.uid());
-
 -- ── Dienstleister Profiles ────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "dl_profile_select" ON dienstleister_profiles;
 CREATE POLICY "dl_profile_select" ON dienstleister_profiles
   FOR SELECT USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "dl_profile_insert" ON dienstleister_profiles;
 CREATE POLICY "dl_profile_insert" ON dienstleister_profiles
   FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "dl_profile_update" ON dienstleister_profiles;
 CREATE POLICY "dl_profile_update" ON dienstleister_profiles
   FOR UPDATE
   USING (
@@ -1687,23 +1954,33 @@ CREATE POLICY "dl_profile_update" ON dienstleister_profiles
   );
 
 -- ── User Dienstleister ────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "ud_select" ON user_dienstleister;
 CREATE POLICY "ud_select" ON user_dienstleister
   FOR SELECT USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "ud_insert" ON user_dienstleister;
 CREATE POLICY "ud_insert" ON user_dienstleister
   FOR INSERT WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "ud_delete" ON user_dienstleister;
 CREATE POLICY "ud_delete" ON user_dienstleister
   FOR DELETE USING (user_id = auth.uid());
 
 -- ── Event Dienstleister ───────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "ed_select" ON event_dienstleister;
 CREATE POLICY "ed_select" ON event_dienstleister
   FOR SELECT USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     OR user_id = auth.uid()
   );
+
+DROP POLICY IF EXISTS "ed_insert" ON event_dienstleister;
 CREATE POLICY "ed_insert" ON event_dienstleister
   FOR INSERT WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
+
+DROP POLICY IF EXISTS "ed_update" ON event_dienstleister;
 CREATE POLICY "ed_update" ON event_dienstleister
   FOR UPDATE
   USING (
@@ -1714,35 +1991,46 @@ CREATE POLICY "ed_update" ON event_dienstleister
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     OR user_id = auth.uid()
   );
+
+DROP POLICY IF EXISTS "ed_delete" ON event_dienstleister;
 CREATE POLICY "ed_delete" ON event_dienstleister
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
 
 -- ── Trauzeuge Permissions ─────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "tz_perm_select" ON trauzeuge_permissions;
 CREATE POLICY "tz_perm_select" ON trauzeuge_permissions
   FOR SELECT USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     OR user_id = auth.uid()
   );
+
+DROP POLICY IF EXISTS "tz_perm_insert" ON trauzeuge_permissions;
 CREATE POLICY "tz_perm_insert" ON trauzeuge_permissions
   FOR INSERT WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
+
+DROP POLICY IF EXISTS "tz_perm_update" ON trauzeuge_permissions;
 CREATE POLICY "tz_perm_update" ON trauzeuge_permissions
   FOR UPDATE
   USING     (is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[]))
   WITH CHECK (is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[]));
+
+DROP POLICY IF EXISTS "tz_perm_delete" ON trauzeuge_permissions;
 CREATE POLICY "tz_perm_delete" ON trauzeuge_permissions
   FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
 -- ── Audit Log — nur lesbar, Writes via SECURITY DEFINER ──────────────────────
+DROP POLICY IF EXISTS "audit_select" ON audit_log;
 CREATE POLICY "audit_select" ON audit_log
   FOR SELECT USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
 
 -- ── Conversations ─────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "conv_select" ON conversations;
 CREATE POLICY "conv_select" ON conversations
   FOR SELECT USING (
     is_event_member(event_id)
@@ -1751,11 +2039,15 @@ CREATE POLICY "conv_select" ON conversations
       OR get_event_role(event_id) = ANY(participant_roles)
     )
   );
+
+DROP POLICY IF EXISTS "conv_insert" ON conversations;
 CREATE POLICY "conv_insert" ON conversations
   FOR INSERT WITH CHECK (
     created_by = auth.uid()
     AND is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
   );
+
+DROP POLICY IF EXISTS "conv_update" ON conversations;
 CREATE POLICY "conv_update" ON conversations
   FOR UPDATE
   USING (
@@ -1768,6 +2060,7 @@ CREATE POLICY "conv_update" ON conversations
   );
 
 -- ── Messages ──────────────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "msg_select" ON messages;
 CREATE POLICY "msg_select" ON messages
   FOR SELECT USING (
     is_event_member(event_id)
@@ -1781,6 +2074,8 @@ CREATE POLICY "msg_select" ON messages
         )
     )
   );
+
+DROP POLICY IF EXISTS "msg_insert" ON messages;
 CREATE POLICY "msg_insert" ON messages
   FOR INSERT WITH CHECK (
     sender_id = auth.uid()
@@ -1795,10 +2090,14 @@ CREATE POLICY "msg_insert" ON messages
         )
     )
   );
+
+DROP POLICY IF EXISTS "msg_update" ON messages;
 CREATE POLICY "msg_update" ON messages
   FOR UPDATE
   USING     (sender_id = auth.uid())
   WITH CHECK (sender_id = auth.uid());
+
+DROP POLICY IF EXISTS "msg_delete" ON messages;
 CREATE POLICY "msg_delete" ON messages
   FOR DELETE USING (
     sender_id = auth.uid()
@@ -1806,13 +2105,18 @@ CREATE POLICY "msg_delete" ON messages
   );
 
 -- ── Pending Changes ───────────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "pc_select" ON pending_changes;
 CREATE POLICY "pc_select" ON pending_changes
   FOR SELECT USING (is_event_member(event_id));
+
+DROP POLICY IF EXISTS "pc_insert" ON pending_changes;
 CREATE POLICY "pc_insert" ON pending_changes
   FOR INSERT WITH CHECK (
     proposed_by = auth.uid()
     AND is_event_member(event_id)
   );
+
+DROP POLICY IF EXISTS "pc_update" ON pending_changes;
 CREATE POLICY "pc_update" ON pending_changes
   FOR UPDATE
   USING (
@@ -1821,6 +2125,8 @@ CREATE POLICY "pc_update" ON pending_changes
   WITH CHECK (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
   );
+
+DROP POLICY IF EXISTS "pc_delete" ON pending_changes;
 CREATE POLICY "pc_delete" ON pending_changes
   FOR DELETE USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
@@ -1842,7 +2148,6 @@ ALTER PUBLICATION supabase_realtime ADD TABLE conversations;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
 -- anon: Minimum für unauthentifizierte Flows
-GRANT INSERT ON TABLE organizer_applications TO anon;
 GRANT EXECUTE ON FUNCTION public.get_invite_preview(TEXT) TO anon;
 
 -- authenticated: volle CRUD — RLS schränkt weiter ein

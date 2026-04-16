@@ -21,7 +21,22 @@ export default function LoginPage() {
       if (mode === 'password') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        router.push('/dashboard')
+        const { data: { session } } = await supabase.auth.getSession()
+        const isOrganizer = session?.user?.app_metadata?.is_approved_organizer === true
+        if (isOrganizer) {
+          router.push('/veranstalter/events')
+        } else {
+          const { data: memberships } = await supabase
+            .from('event_members')
+            .select('event_id')
+            .eq('user_id', session!.user.id)
+            .limit(1)
+          if (memberships && memberships.length > 0) {
+            router.push('/dashboard?event=' + memberships[0].event_id)
+          } else {
+            router.push('/join')
+          }
+        }
         router.refresh()
       } else {
         const { error } = await supabase.auth.signInWithOtp({
@@ -33,8 +48,8 @@ export default function LoginPage() {
         if (error) throw error
         setMagicSent(true)
       }
-    } catch (err: any) {
-      setError(err.message ?? 'Anmeldung fehlgeschlagen.')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Anmeldung fehlgeschlagen.')
     } finally {
       setLoading(false)
     }
@@ -145,12 +160,6 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Demo mode note */}
-            <div style={{ marginTop: 20, padding: '12px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px dashed var(--border)' }}>
-              <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center' }}>
-                Ohne Konto: <a href="/dashboard" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Demo-Modus öffnen →</a>
-              </p>
-            </div>
           </div>
         )}
       </div>
