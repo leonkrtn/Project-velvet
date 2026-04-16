@@ -77,10 +77,11 @@ export default function VeranstalterEventsPage() {
 
       if (error) throw error
 
-      const list: EventSummary[] = (data ?? []).map((row: {
+      type RawRow = {
         event_id: string
         events: { id: string; title: string; date: string | null; venue: string | null } | null
-      }) => ({
+      }
+      const list: EventSummary[] = ((data ?? []) as RawRow[]).map(row => ({
         id: row.events?.id ?? row.event_id,
         title: row.events?.title ?? '—',
         date: row.events?.date ?? null,
