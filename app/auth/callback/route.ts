@@ -17,5 +17,27 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
   }
 
-  return NextResponse.redirect(`${origin}${next}`)
+  // If caller provided explicit next (not default), honor it
+  if (next !== '/') {
+    return NextResponse.redirect(`${origin}${next}`)
+  }
+
+  // Role-based redirect
+  const user = data.session.user
+  const isOrganizer = user.app_metadata?.is_approved_organizer === true
+  if (isOrganizer) {
+    return NextResponse.redirect(`${origin}/veranstalter/events`)
+  }
+
+  const { data: memberships } = await supabase
+    .from('event_members')
+    .select('event_id')
+    .eq('user_id', user.id)
+    .limit(1)
+
+  if (memberships && memberships.length > 0) {
+    return NextResponse.redirect(`${origin}/dashboard?event=${memberships[0].event_id}`)
+  }
+
+  return NextResponse.redirect(`${origin}/join`)
 }
