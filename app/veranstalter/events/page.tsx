@@ -81,7 +81,7 @@ export default function VeranstalterEventsPage() {
         event_id: string
         events: { id: string; title: string; date: string | null; venue: string | null } | null
       }
-      const list: EventSummary[] = ((data ?? []) as RawRow[]).map(row => ({
+      const list: EventSummary[] = ((data ?? []) as unknown as RawRow[]).map(row => ({
         id: row.events?.id ?? row.event_id,
         title: row.events?.title ?? '—',
         date: row.events?.date ?? null,
