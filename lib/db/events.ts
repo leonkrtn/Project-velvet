@@ -635,21 +635,40 @@ export function eventDisplayName(ev: { couple_name?: string | null; title?: stri
 
 export async function fetchEventSummariesForVeranstalter(userId: string): Promise<EventSummary[]> {
   const supabase = createBrowserClient()
+  
   const { data, error } = await supabase
     .from('event_members')
-    .select('event_id, events:event_id(id, title, couple_name, date, venue, onboarding_complete, created_at)')
+    .select(`
+      event_id, 
+      events!event_id (
+        id, 
+        title, 
+        couple_name, 
+        date, 
+        venue, 
+        onboarding_complete, 
+        created_at
+      )
+    `) // Das "!" sagt Supabase: Nutze explizit den Foreign Key 'event_id'
     .eq('user_id', userId)
     .eq('role', 'veranstalter')
     .order('event_id')
 
-  if (error || !data) return []
+  if (error) {
+    console.error("Fehler beim Laden der Event-Übersichten:", error)
+    return []
+  }
+
+  if (!data) return []
 
   return data
     .map((row: any) => {
       const ev = row.events
       if (!ev) return null
+      
       const coupleName = ev.couple_name ?? null
       const title = ev.title ?? 'Unbenanntes Event'
+      
       return {
         id: ev.id,
         title,
