@@ -6,8 +6,18 @@ import { createClient } from '@/lib/supabase/client'
 type EventSummary = {
   id: string
   title: string
+  couple_name: string | null
   date: string | null
   venue: string | null
+}
+
+function displayEventName(ev: { couple_name?: string | null; title?: string | null } | null | undefined): string {
+  if (!ev) return 'Unbenanntes Event'
+  const cn = (ev.couple_name ?? '').trim()
+  if (cn) return cn
+  const t = (ev.title ?? '').trim()
+  if (t) return t
+  return 'Unbenanntes Event'
 }
 
 type WizardData = {
@@ -71,7 +81,7 @@ export default function VeranstalterEventsPage() {
 
       const { data, error } = await supabase
         .from('event_members')
-        .select('event_id, events(id, title, date, venue)')
+        .select('event_id, events(id, title, couple_name, date, venue)')
         .eq('user_id', user.id)
         .eq('role', 'veranstalter')
 
@@ -79,11 +89,12 @@ export default function VeranstalterEventsPage() {
 
       type RawRow = {
         event_id: string
-        events: { id: string; title: string; date: string | null; venue: string | null } | null
+        events: { id: string; title: string; couple_name: string | null; date: string | null; venue: string | null } | null
       }
       const list: EventSummary[] = ((data ?? []) as unknown as RawRow[]).map(row => ({
         id: row.events?.id ?? row.event_id,
         title: row.events?.title ?? '—',
+        couple_name: row.events?.couple_name ?? null,
         date: row.events?.date ?? null,
         venue: row.events?.venue ?? null,
       }))
@@ -157,6 +168,7 @@ export default function VeranstalterEventsPage() {
       const newId = data as string
       const newEvent: EventSummary = {
         id: newId, title: wizardData.title.trim(),
+        couple_name: wizardData.title.trim(),
         date: wizardData.date, venue: wizardData.venue.trim() || null,
       }
       setEvents(prev => [newEvent, ...prev])
@@ -503,7 +515,7 @@ export default function VeranstalterEventsPage() {
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 3px' }}>{ev.title}</p>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 3px' }}>{displayEventName(ev)}</p>
                   <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>{fmtDate(ev.date)}</p>
                   {ev.venue && <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{ev.venue}</p>}
                 </div>

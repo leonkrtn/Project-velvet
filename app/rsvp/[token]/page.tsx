@@ -3,9 +3,8 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { v4 as uuid } from 'uuid'
 import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel } from 'lucide-react'
-import {
-  loadEvent, saveEvent, getGuestByToken,
-  type Event, type Guest, type MealChoice, type AllergyTag, type TransportMode, type AltersKategorie, type Begleitperson,
+import type {
+  Event, Guest, MealChoice, AllergyTag, TransportMode, AltersKategorie,
 } from '@/lib/store'
 import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle, Input } from '@/components/ui'
 
@@ -43,6 +42,9 @@ export default function RSVPPage() {
 
   const [event, setEvent] = useState<Event | null>(null)
   const [guest, setGuest] = useState<Guest | null>(null)
+  const [isFrozen, setIsFrozen] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
   const [step,  setStep]  = useState<Step>('intro')
   const [toast, setToast] = useState<string | null>(null)
 
@@ -66,37 +68,86 @@ export default function RSVPPage() {
   const [hotelRoomId,  setHotelRoomId]  = useState('')
 
   useEffect(() => {
-    const e = loadEvent(); setEvent(e)
-    const g = getGuestByToken(e, token)
-    if (!g) return; setGuest(g)
-    // Pre-fill if already responded
-    if (g.status !== 'eingeladen') {
-      setAttending(g.status === 'zugesagt')
-      setTrinkAlkohol(g.trinkAlkohol)
-      setMeal(g.meal)
-      setAllergies(g.allergies)
-      setAllergyCustom(g.allergyCustom ?? '')
-      setArrivalDate(g.arrivalDate ?? '')
-      setArrivalTime(g.arrivalTime ?? '')
-      setTransport((g.transport ?? '') as TransportMode)
-      setHotelRoomId(g.hotelRoomId ?? '')
-      setMessage(g.message ?? '')
-      setCompanions(g.begleitpersonen.map(bp => ({
-        id: bp.id,
-        name: bp.name,
-        ageCategory: bp.ageCategory,
-        trinkAlkohol: bp.trinkAlkohol,
-        meal: bp.meal,
-        allergies: bp.allergies,
-        allergyCustom: bp.allergyCustom ?? '',
-      })))
+    let cancelled = false
+    async function load() {
+      try {
+        const res = await fetch(`/api/rsvp/${encodeURIComponent(token)}`, { cache: 'no-store' })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: 'Einladung nicht gefunden' }))
+          if (!cancelled) setLoadError(err.error ?? 'Einladung nicht gefunden')
+          return
+        }
+        const data = await res.json()
+        if (cancelled) return
+        const ev = data.event
+        const g  = data.guest
+        setEvent({
+          id: ev.id,
+          coupleName: ev.coupleName ?? '',
+          date: ev.date ?? '',
+          venue: ev.venue ?? '',
+          venueAddress: ev.venueAddress ?? '',
+          dresscode: ev.dresscode ?? '',
+          childrenAllowed: ev.childrenAllowed,
+          childrenNote: ev.childrenNote ?? undefined,
+          mealOptions: ev.mealOptions ?? ['fleisch','fisch','vegetarisch','vegan'],
+          maxBegleitpersonen: ev.maxBegleitpersonen ?? 2,
+          hotels: ev.hotels ?? [],
+          guests: [], subEvents: [], seatingTables: [], budget: [],
+          vendors: [], tasks: [], reminders: [], timeline: [],
+          dekoWishes: [], guestPhotos: [],
+        } as unknown as Event)
+        setIsFrozen(!!ev.isFrozen)
+        setGuest({
+          id: g.id, name: g.name, email: g.email ?? '', token: g.token,
+          status: g.status,
+          trinkAlkohol: g.trinkAlkohol ?? undefined,
+          meal: g.meal ?? undefined,
+          allergies: g.allergies ?? [],
+          allergyCustom: g.allergyCustom ?? undefined,
+          arrivalDate: g.arrivalDate ?? undefined,
+          arrivalTime: g.arrivalTime ?? undefined,
+          transport: g.transport ?? undefined,
+          hotelRoomId: g.hotelRoomId ?? undefined,
+          message: g.message ?? undefined,
+          respondedAt: g.respondedAt ?? undefined,
+          begleitpersonen: g.begleitpersonen ?? [],
+        } as Guest)
+        if (g.status !== 'eingeladen' && g.status !== 'angelegt') {
+          setAttending(g.status === 'zugesagt')
+          setTrinkAlkohol(g.trinkAlkohol ?? undefined)
+          setMeal(g.meal ?? undefined)
+          setAllergies(g.allergies ?? [])
+          setAllergyCustom(g.allergyCustom ?? '')
+          setArrivalDate(g.arrivalDate ?? '')
+          setArrivalTime(g.arrivalTime ?? '')
+          setTransport((g.transport ?? '') as TransportMode)
+          setHotelRoomId(g.hotelRoomId ?? '')
+          setMessage(g.message ?? '')
+          setCompanions((g.begleitpersonen ?? []).map((bp: any) => ({
+            id: bp.id,
+            name: bp.name,
+            ageCategory: bp.ageCategory,
+            trinkAlkohol: bp.trinkAlkohol ?? undefined,
+            meal: bp.meal ?? undefined,
+            allergies: bp.allergies ?? [],
+            allergyCustom: bp.allergyCustom ?? '',
+          })))
+        }
+      } catch (err: any) {
+        if (!cancelled) setLoadError(err?.message ?? 'Netzwerkfehler')
+      }
     }
+    load()
+    return () => { cancelled = true }
   }, [token])
 
   if (!event || !guest) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--bg)', flexDirection: 'column', gap: 12 }}>
       <span style={{ fontFamily: "'DM Serif Display',serif", fontSize: 28, color: 'var(--gold)' }}>Velvet.</span>
-      <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>Einladung nicht gefunden.</p>
+      <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>
+        {loadError ?? 'Einladung wird geladen…'}
+      </p>
     </div>
   )
 
@@ -115,48 +166,89 @@ export default function RSVPPage() {
     setCompanions(prev => prev.map((c, i) => i === idx ? { ...c, ...patch } : c))
   }
 
-  const save = () => {
-    if (!event || !guest) return
-    const updatedHotels = (event.hotels ?? []).map(h => ({
-      ...h,
-      rooms: h.rooms.map(r => {
-        const wasBooked = guest.hotelRoomId && guest.hotelRoomId !== 'none' && r.id === guest.hotelRoomId
-        const isNew     = hotelRoomId && hotelRoomId !== 'none' && r.id === hotelRoomId && guest.hotelRoomId !== hotelRoomId
-        if (wasBooked && !isNew) return { ...r, bookedRooms: Math.max(0, r.bookedRooms - 1) }
-        if (isNew && !wasBooked) return { ...r, bookedRooms: r.bookedRooms + 1 }
-        return r
-      })
-    }))
-
-    const begleitpersonen: Begleitperson[] = attending
-      ? companions.map(c => ({
-          id: c.id,
-          name: c.name,
-          ageCategory: c.ageCategory,
-          trinkAlkohol: c.ageCategory === 'erwachsen' ? c.trinkAlkohol : undefined,
-          meal: c.meal,
-          allergies: c.allergies,
-          allergyCustom: c.allergyCustom,
-        }))
-      : []
-
-    const updatedGuest: Guest = {
-      ...guest,
-      status:          attending ? 'zugesagt' : 'abgesagt',
-      trinkAlkohol:    attending ? trinkAlkohol : undefined,
-      meal:            attending ? meal : undefined,
-      allergies:       attending ? allergies : [],
-      allergyCustom:   attending ? allergyCustom : '',
-      begleitpersonen,
-      arrivalDate:     attending ? arrivalDate : undefined,
-      arrivalTime:     attending ? arrivalTime : undefined,
-      transport:       attending ? (transport as TransportMode) : undefined,
-      hotelRoomId:     attending ? (hotelRoomId || 'none') : undefined,
-      message,
-      respondedAt: new Date().toISOString(),
+  const save = async () => {
+    if (!event || !guest || saving) return
+    if (isFrozen) {
+      setToast('Das Event ist gesperrt — Änderungen nicht mehr möglich.')
+      return
     }
-    const updated: Event = { ...event, guests: event.guests.map(g => g.id === guest.id ? updatedGuest : g), hotels: updatedHotels }
-    saveEvent(updated); window.dispatchEvent(new Event('velvet-saved')); setEvent(updated); setGuest(updatedGuest); setStep('confirmation')
+    setSaving(true)
+
+    const payload = {
+      attending: attending === true,
+      trinkAlkohol: attending ? trinkAlkohol ?? null : null,
+      meal: attending ? meal ?? null : null,
+      allergies: attending ? allergies : [],
+      allergyCustom: attending ? allergyCustom : null,
+      begleitpersonen: attending
+        ? companions.map(c => ({
+            id: c.id,
+            name: c.name,
+            ageCategory: c.ageCategory,
+            trinkAlkohol: c.ageCategory === 'erwachsen' ? c.trinkAlkohol ?? null : null,
+            meal: c.meal ?? null,
+            allergies: c.allergies,
+            allergyCustom: c.allergyCustom,
+          }))
+        : [],
+      arrivalDate: attending ? arrivalDate : null,
+      arrivalTime: attending ? arrivalTime : null,
+      transport: attending ? (transport || null) : null,
+      hotelRoomId: attending ? (hotelRoomId && hotelRoomId !== 'none' ? hotelRoomId : null) : null,
+      message,
+    }
+
+    try {
+      const res = await fetch(`/api/rsvp/${encodeURIComponent(token)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setToast(data.error ?? 'Speichern fehlgeschlagen')
+        setSaving(false)
+        return
+      }
+
+      const g = data.guest
+      const updatedGuest: Guest = {
+        ...guest,
+        status: g.status,
+        trinkAlkohol: g.trinkAlkohol ?? undefined,
+        meal: g.meal ?? undefined,
+        allergies: g.allergies ?? [],
+        allergyCustom: g.allergyCustom ?? '',
+        arrivalDate: g.arrivalDate ?? undefined,
+        arrivalTime: g.arrivalTime ?? undefined,
+        transport: g.transport ?? undefined,
+        hotelRoomId: g.hotelRoomId ?? undefined,
+        message: g.message ?? '',
+        respondedAt: g.respondedAt ?? new Date().toISOString(),
+        begleitpersonen: g.begleitpersonen ?? [],
+      }
+
+      // Hotel-Room-Delta lokal reflektieren für sofortige UI-Konsistenz
+      const prev = guest.hotelRoomId && guest.hotelRoomId !== 'none' ? guest.hotelRoomId : null
+      const next = g.hotelRoomId && g.hotelRoomId !== 'none' ? g.hotelRoomId : null
+      const updatedHotels = (event.hotels ?? []).map(h => ({
+        ...h,
+        rooms: h.rooms.map(r => {
+          if (prev === next) return r
+          if (r.id === prev) return { ...r, bookedRooms: Math.max(0, r.bookedRooms - 1) }
+          if (r.id === next) return { ...r, bookedRooms: r.bookedRooms + 1 }
+          return r
+        }),
+      }))
+
+      setEvent({ ...event, hotels: updatedHotels })
+      setGuest(updatedGuest)
+      setStep('confirmation')
+    } catch (err: any) {
+      setToast(err?.message ?? 'Netzwerkfehler')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const progressSteps: Step[] = attending === false
@@ -376,9 +468,9 @@ export default function RSVPPage() {
 
             <Textarea label="Nachricht (optional)" value={message} onChange={setMessage} placeholder="Herzliche Glückwünsche …" />
 
-            <Button fullWidth size="lg" variant="gold" disabled={attending === null}
+            <Button fullWidth size="lg" variant="gold" disabled={attending === null || saving || isFrozen}
               onClick={() => { if (attending === false) { save() } else { setStep('details') } }}>
-              {attending === false ? 'Absage senden' : 'Weiter'}
+              {saving ? 'Wird gespeichert…' : attending === false ? 'Absage senden' : 'Weiter'}
             </Button>
           </div>
         )}
@@ -498,7 +590,9 @@ export default function RSVPPage() {
                 </div>
               ))}
             </div>
-            <Button fullWidth size="lg" variant="gold" disabled={!hotelRoomId} onClick={save}>Antwort absenden</Button>
+            <Button fullWidth size="lg" variant="gold" disabled={!hotelRoomId || saving || isFrozen} onClick={save}>
+              {saving ? 'Wird gespeichert…' : 'Antwort absenden'}
+            </Button>
           </div>
         )}
 

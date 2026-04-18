@@ -23,7 +23,7 @@ function isUUID(s: string) { return UUID_RE.test(s) }
 
 // Wandelt beliebige String-IDs in deterministisch abgeleitete UUIDs um,
 // damit alte localStorage-IDs wie "g1" stabil in UUIDs konvertiert werden.
-function toUUID(id: string): string {
+export function toUUID(id: string): string {
   if (isUUID(id)) return id
   // Einfache, deterministische Hash-to-UUID-Konvertierung
   let hash = 0
@@ -32,6 +32,44 @@ function toUUID(id: string): string {
   }
   const h = Math.abs(hash).toString(16).padStart(8, '0')
   return `${h.slice(0,8)}-0000-4000-8000-${h.padEnd(12, '0').slice(0,12)}`
+}
+
+// ── Row-Builder (wiederverwendet von Bulk-Upsert + per-Guest-RSVP-API) ────────
+export function toGuestRow(g: Guest, eventId: string) {
+  return {
+    id: toUUID(g.id),
+    event_id: eventId,
+    name: g.name,
+    email: g.email ?? null,
+    token: g.token || crypto.randomUUID(),
+    status: g.status,
+    phone: g.phone ?? null,
+    address: g.address ?? null,
+    trink_alkohol: g.trinkAlkohol ?? null,
+    meal_choice: g.meal ?? null,
+    allergy_tags: g.allergies ?? [],
+    allergy_custom: g.allergyCustom ?? null,
+    arrival_date: g.arrivalDate ?? null,
+    arrival_time: g.arrivalTime ?? null,
+    transport_mode: g.transport ?? null,
+    hotel_room_id: g.hotelRoomId && g.hotelRoomId !== 'none' ? toUUID(g.hotelRoomId) : null,
+    message: g.message ?? null,
+    responded_at: g.respondedAt ?? null,
+    sub_event_ids: g.subEventIds ?? [],
+  }
+}
+
+export function toBegleitRow(b: Begleitperson, guestId: string) {
+  return {
+    id: toUUID(b.id),
+    guest_id: guestId,
+    name: b.name,
+    age_category: b.ageCategory,
+    trink_alkohol: b.trinkAlkohol ?? null,
+    meal_choice: b.meal ?? null,
+    allergy_tags: b.allergies ?? [],
+    allergy_custom: b.allergyCustom ?? null,
+  }
 }
 
 // ── Event aus Supabase laden ───────────────────────────────────────────────────
@@ -247,7 +285,7 @@ export async function fetchEventFromDB(userId: string, specificEventId?: string)
   // 12. Zusammenführen
   return {
     id: ev.id,
-    coupleName: ev.couple_name ?? '',
+    coupleName: ev.couple_name || ev.title || '',
     date: ev.date ?? '',
     venue: ev.venue ?? '',
     venueAddress: ev.venue_address ?? '',
@@ -328,42 +366,31 @@ export async function upsertEventToDB(event: Event, userId: string): Promise<voi
   )
   // Note: ignoreDuplicates=true means if a row already exists, we don't overwrite the role
 
-  // 3. Gäste (delete + insert, CASCADE löscht begleitpersonen/sub_event_guests/seating_assignments)
-  await supabase.from('guests').delete().eq('event_id', eventId)
-  if (event.guests.length > 0) {
-    const guestRows = event.guests.map(g => ({
-      id: toUUID(g.id),
-      event_id: eventId,
-      name: g.name, email: g.email ?? null, token: g.token || crypto.randomUUID(),
-      status: g.status,
-      phone: g.phone ?? null, address: g.address ?? null,
-      trink_alkohol: g.trinkAlkohol ?? null,
-      meal_choice: g.meal ?? null,
-      allergy_tags: g.allergies ?? [],
-      allergy_custom: g.allergyCustom ?? null,
-      arrival_date: g.arrivalDate ?? null,
-      arrival_time: g.arrivalTime ?? null,
-      transport_mode: g.transport ?? null,
-      hotel_room_id: g.hotelRoomId ? toUUID(g.hotelRoomId) : null,
-      message: g.message ?? null,
-      responded_at: g.respondedAt ?? null,
-      sub_event_ids: g.subEventIds ?? [],
-    }))
-    await supabase.from('guests').insert(guestRows)
+  // 3. Gäste (non-destruktiv: upsert + nur fehlende Ids löschen,
+  //    damit parallele RSVP-Schreibvorgänge nicht überschrieben werden)
+  const guestRows = event.guests.map(g => toGuestRow(g, eventId))
+  const guestIds  = guestRows.map(r => r.id)
 
-    // Begleitpersonen
-    const begleitRows = event.guests.flatMap(g =>
-      g.begleitpersonen.map(b => ({
-        id: toUUID(b.id),
-        guest_id: toUUID(g.id),
-        name: b.name, age_category: b.ageCategory,
-        trink_alkohol: b.trinkAlkohol ?? null,
-        meal_choice: b.meal ?? null,
-        allergy_tags: b.allergies ?? [],
-        allergy_custom: b.allergyCustom ?? null,
-      }))
-    )
-    if (begleitRows.length > 0) await supabase.from('begleitpersonen').insert(begleitRows)
+  const { data: existingGuests } = await supabase
+    .from('guests').select('id').eq('event_id', eventId)
+  const existingIds   = (existingGuests ?? []).map(r => r.id as string)
+  const idsToDelete   = existingIds.filter(id => !guestIds.includes(id))
+  if (idsToDelete.length > 0) {
+    // CASCADE löscht zugehörige begleitpersonen/sub_event_guests/seating_assignments
+    await supabase.from('guests').delete().in('id', idsToDelete)
+  }
+  if (guestRows.length > 0) {
+    await supabase.from('guests').upsert(guestRows, { onConflict: 'id' })
+
+    // Begleitpersonen pro Gast: delete-scoped + insert (kein event-weites Delete)
+    for (const g of event.guests) {
+      const gid = toUUID(g.id)
+      await supabase.from('begleitpersonen').delete().eq('guest_id', gid)
+      if (g.begleitpersonen.length > 0) {
+        const rows = g.begleitpersonen.map(b => toBegleitRow(b, gid))
+        await supabase.from('begleitpersonen').insert(rows)
+      }
+    }
   }
 
   // 4. Sub-Events
@@ -592,10 +619,18 @@ export type EventSummary = {
   id: string
   title: string
   coupleName: string | null
+  displayName: string
   date: string | null
   venue: string | null
   onboardingComplete: boolean
   createdAt: string
+}
+
+// Einheitliche Namens-Auswahl für alle Dashboards.
+export function eventDisplayName(ev: { couple_name?: string | null; title?: string | null }): string {
+  return (ev.couple_name && ev.couple_name.trim())
+    || (ev.title && ev.title.trim())
+    || 'Unbenanntes Event'
 }
 
 export async function fetchEventSummariesForVeranstalter(userId: string): Promise<EventSummary[]> {
@@ -613,10 +648,13 @@ export async function fetchEventSummariesForVeranstalter(userId: string): Promis
     .map((row: any) => {
       const ev = row.events
       if (!ev) return null
+      const coupleName = ev.couple_name ?? null
+      const title = ev.title ?? 'Unbenanntes Event'
       return {
         id: ev.id,
-        title: ev.title ?? 'Unbenanntes Event',
-        coupleName: ev.couple_name ?? null,
+        title,
+        coupleName,
+        displayName: eventDisplayName(ev),
         date: ev.date ?? null,
         venue: ev.venue ?? null,
         onboardingComplete: ev.onboarding_complete ?? false,

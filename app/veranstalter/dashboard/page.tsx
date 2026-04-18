@@ -10,6 +10,7 @@ type NavId = 'uebersicht' | 'allgemein' | 'einladen' | 'vorschlaege' | 'mitglied
 type EventData = {
   id: string
   title: string
+  couple_name: string | null
   date: string | null
   venue: string | null
   venue_address: string | null
@@ -21,11 +22,21 @@ type EventData = {
   ceremony_start: string | null
 }
 
+function displayEventName(ev: { couple_name?: string | null; title?: string | null } | null | undefined): string {
+  if (!ev) return 'Unbenanntes Event'
+  const cn = (ev.couple_name ?? '').trim()
+  if (cn) return cn
+  const t = (ev.title ?? '').trim()
+  if (t) return t
+  return 'Unbenanntes Event'
+}
+
 type Member = {
   id: string
   user_id: string
   role: string
-  profiles: { name: string } | null
+  name: string | null
+  email: string | null
 }
 
 type InviteCode = {
@@ -159,7 +170,7 @@ function UebersichtSection({
   return (
     <div>
       <h1 style={{ fontSize: 22, fontWeight: 600, color: '#111827', margin: '0 0 6px' }}>
-        {event.title}
+        {displayEventName(event)}
       </h1>
       <p style={{ fontSize: 14, color: '#6B7280', margin: '0 0 28px' }}>
         {[fmtDate(event.date), event.venue].filter(Boolean).join(' · ')}
@@ -725,17 +736,85 @@ function EinladenSection({ eventId, inviteCodes, onCodesRefresh }: {
 
 // ── Section: Mitglieder ────────────────────────────────────────────────────
 
-function MitgliederSection({ members }: { members: Member[] }) {
+function MitgliederSection({ members, onRefresh }: { members: Member[]; onRefresh: () => Promise<void> | void }) {
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<Member | null>(null)
+  const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null)
+
   function roleBadgeStyle(role: string): React.CSSProperties {
     if (role === 'veranstalter') return { background: '#111827', color: '#fff' }
     if (role === 'brautpaar') return { background: '#6B7280', color: '#fff' }
     return { background: '#E5E7EB', color: '#374151' }
   }
 
+  const veranstalterCount = members.filter(m => m.role === 'veranstalter').length
+
+  async function resetPassword(m: Member) {
+    if (!m.email) { setFlash({ kind: 'err', msg: 'Keine E-Mail hinterlegt — Reset nicht möglich.' }); return }
+    setBusyId(m.id)
+    try {
+      const r = await fetch(`/api/members/${m.id}/reset-password`, { method: 'POST' })
+      const body = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        setFlash({ kind: 'err', msg: body?.error ?? `Fehler (${r.status})` })
+      } else {
+        setFlash({ kind: 'ok', msg: `Recovery-Mail an ${m.email} gesendet.` })
+      }
+    } catch (e: unknown) {
+      setFlash({ kind: 'err', msg: e instanceof Error ? e.message : 'Netzwerkfehler' })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function removeMember(m: Member) {
+    setBusyId(m.id)
+    try {
+      const r = await fetch(`/api/members/${m.id}`, { method: 'DELETE' })
+      const body = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        setFlash({ kind: 'err', msg: body?.error ?? `Fehler (${r.status})` })
+      } else {
+        setFlash({ kind: 'ok', msg: 'Mitglied entfernt.' })
+        await onRefresh()
+      }
+    } catch (e: unknown) {
+      setFlash({ kind: 'err', msg: e instanceof Error ? e.message : 'Netzwerkfehler' })
+    } finally {
+      setBusyId(null)
+      setConfirmDelete(null)
+    }
+  }
+
+  const btnSecondary: React.CSSProperties = {
+    fontSize: 12, fontWeight: 600, padding: '6px 10px',
+    border: '1px solid #D1D5DB', background: '#fff', color: '#374151',
+    borderRadius: 6, cursor: 'pointer',
+  }
+  const btnDanger: React.CSSProperties = {
+    fontSize: 12, fontWeight: 600, padding: '6px 10px',
+    border: '1px solid #DC2626', background: '#fff', color: '#DC2626',
+    borderRadius: 6, cursor: 'pointer',
+  }
+  const btnDisabled: React.CSSProperties = { opacity: 0.5, cursor: 'not-allowed' }
+
   return (
     <div>
       <h2 style={{ fontSize: 17, fontWeight: 600, color: '#111827', margin: '0 0 6px' }}>Mitglieder</h2>
       <p style={{ fontSize: 13, color: '#6B7280', margin: '0 0 20px' }}>{members.length} Mitglied{members.length !== 1 ? 'er' : ''}</p>
+
+      {flash && (
+        <div style={{
+          padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+          background: flash.kind === 'ok' ? '#ecfdf5' : '#fef2f2',
+          color: flash.kind === 'ok' ? '#065f46' : '#991b1b',
+          border: `1px solid ${flash.kind === 'ok' ? '#a7f3d0' : '#fecaca'}`,
+          fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 12,
+        }}>
+          <span>{flash.msg}</span>
+          <button onClick={() => setFlash(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 700 }}>×</button>
+        </div>
+      )}
 
       {members.length === 0 ? (
         <p style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', padding: '32px 0' }}>
@@ -743,33 +822,105 @@ function MitgliederSection({ members }: { members: Member[] }) {
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {members.map(m => (
-            <div
-              key={m.id}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '12px 14px', background: '#fff',
-                border: '1px solid #E5E7EB', borderRadius: 8,
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>
-                  {m.profiles?.name ?? 'Unbekannt'}
-                </p>
-                <p style={{ fontSize: 11, color: '#9CA3AF', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {m.user_id.slice(0, 16)}…
-                </p>
+          {members.map(m => {
+            const isLastVeranstalter = m.role === 'veranstalter' && veranstalterCount <= 1
+            const rowBusy = busyId === m.id
+            return (
+              <div
+                key={m.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                  padding: '12px 14px', background: '#fff',
+                  border: '1px solid #E5E7EB', borderRadius: 8,
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>
+                    {m.name ?? 'Unbekannt'}
+                  </p>
+                  <p style={{ fontSize: 12, color: '#6B7280', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {m.email ?? '—'}
+                  </p>
+                </div>
+                <span style={{
+                  ...roleBadgeStyle(m.role),
+                  fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', padding: '3px 10px', borderRadius: 20,
+                  flexShrink: 0,
+                }}>
+                  {m.role}
+                </span>
+                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <button
+                    onClick={() => resetPassword(m)}
+                    disabled={rowBusy || !m.email}
+                    title={!m.email ? 'Keine E-Mail hinterlegt' : 'Passwort-Reset-Mail senden'}
+                    style={{ ...btnSecondary, ...((rowBusy || !m.email) ? btnDisabled : {}) }}
+                  >
+                    {rowBusy ? '…' : 'Passwort zurücksetzen'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(m)}
+                    disabled={rowBusy || isLastVeranstalter}
+                    title={isLastVeranstalter ? 'Letzter Veranstalter kann nicht entfernt werden' : 'Aus Event entfernen'}
+                    style={{ ...btnDanger, ...((rowBusy || isLastVeranstalter) ? btnDisabled : {}) }}
+                  >
+                    Entfernen
+                  </button>
+                </div>
               </div>
-              <span style={{
-                ...roleBadgeStyle(m.role),
-                fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-                letterSpacing: '0.08em', padding: '3px 10px', borderRadius: 20,
-                flexShrink: 0,
-              }}>
-                {m.role}
-              </span>
+            )
+          })}
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
+            padding: 16,
+          }}
+          onClick={() => { if (busyId !== confirmDelete.id) setConfirmDelete(null) }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 10, padding: 20, maxWidth: 420, width: '100%',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+            }}
+          >
+            <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: '#111827' }}>
+              Mitglied aus Event entfernen?
+            </h3>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
+              <strong>{confirmDelete.name ?? confirmDelete.email ?? 'Mitglied'}</strong> verliert den Zugriff auf dieses Event.
+              Der Benutzer-Account bleibt bestehen.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                disabled={busyId === confirmDelete.id}
+                style={btnSecondary}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={() => removeMember(confirmDelete)}
+                disabled={busyId === confirmDelete.id}
+                style={{
+                  fontSize: 12, fontWeight: 700, padding: '6px 14px',
+                  background: '#DC2626', color: '#fff',
+                  border: '1px solid #DC2626', borderRadius: 6, cursor: 'pointer',
+                  ...(busyId === confirmDelete.id ? btnDisabled : {}),
+                }}
+              >
+                {busyId === confirmDelete.id ? 'Entferne…' : 'Entfernen'}
+              </button>
             </div>
-          ))}
+          </div>
         </div>
       )}
     </div>
@@ -970,13 +1121,11 @@ function DashboardInner() {
       const [eventRes, membersRes, codesRes] = await Promise.all([
         supabase
           .from('events')
-          .select('id, title, date, venue, venue_address, dresscode, children_allowed, children_note, meal_options, max_begleitpersonen, ceremony_start')
+          .select('id, title, couple_name, date, venue, venue_address, dresscode, children_allowed, children_note, meal_options, max_begleitpersonen, ceremony_start')
           .eq('id', eventId)
           .single(),
-        supabase
-          .from('event_members')
-          .select('id, user_id, role, profiles(name)')
-          .eq('event_id', eventId),
+        fetch(`/api/members?eventId=${encodeURIComponent(eventId)}`, { cache: 'no-store' })
+          .then(async r => ({ ok: r.ok, status: r.status, body: await r.json().catch(() => ({})) })),
         supabase
           .from('invite_codes')
           .select('id, code, role, status, expires_at, used_at')
@@ -990,7 +1139,11 @@ function DashboardInner() {
       }
 
       setEvent(eventRes.data as EventData)
-      setMembers((membersRes.data ?? []) as unknown as Member[])
+      if (membersRes.ok) {
+        setMembers((membersRes.body?.members ?? []) as Member[])
+      } else {
+        setMembers([])
+      }
       setInviteCodes((codesRes.data ?? []) as InviteCode[])
     } catch (err: unknown) {
       setAccessError(err instanceof Error ? err.message : 'Fehler beim Laden.')
@@ -1058,7 +1211,7 @@ function DashboardInner() {
             </button>
             {!loading && event && (
               <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: '12px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {event.title}
+                {displayEventName(event)}
               </p>
             )}
           </div>
@@ -1153,7 +1306,7 @@ function DashboardInner() {
                 <VorschlaegeSection eventId={eventId} />
               )}
               {activeNav === 'mitglieder' && (
-                <MitgliederSection members={members} />
+                <MitgliederSection members={members} onRefresh={loadAll} />
               )}
             </div>
           ) : null}
