@@ -649,7 +649,7 @@ export async function fetchEventSummariesForVeranstalter(userId: string): Promis
         onboarding_complete, 
         created_at
       )
-    `) // Das "!" sagt Supabase: Nutze explizit den Foreign Key 'event_id'
+    `) 
     .eq('user_id', userId)
     .eq('role', 'veranstalter')
     .order('event_id')
@@ -665,14 +665,10 @@ export async function fetchEventSummariesForVeranstalter(userId: string): Promis
     .map((row: any) => {
       const ev = row.events
       if (!ev) return null
-      
-      const coupleName = ev.couple_name ?? null
-      const title = ev.title ?? 'Unbenanntes Event'
-      
       return {
         id: ev.id,
-        title,
-        coupleName,
+        title: ev.title ?? 'Unbenanntes Event',
+        coupleName: ev.couple_name ?? null,
         displayName: eventDisplayName(ev),
         date: ev.date ?? null,
         venue: ev.venue ?? null,
@@ -870,7 +866,7 @@ export async function fetchMessages(conversationId: string): Promise<Message[]> 
   const supabase = createBrowserClient()
   const { data } = await supabase
     .from('messages')
-    .select('*, profiles(name)')
+    .select('*, profiles!sender_id(name)')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true })
   return (data ?? []).map(row => ({
@@ -949,7 +945,7 @@ export async function fetchAuditLog(eventId: string): Promise<AuditEntry[]> {
   const supabase = createBrowserClient()
   const { data } = await supabase
     .from('audit_log')
-    .select('*, profiles(name)')
+    .select('*, profiles!actor_id(name)')
     .eq('event_id', eventId)
     .order('created_at', { ascending: false })
     .limit(200)
