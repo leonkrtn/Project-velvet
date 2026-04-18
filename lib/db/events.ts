@@ -637,7 +637,7 @@ export async function fetchEventSummariesForVeranstalter(userId: string): Promis
   const supabase = createBrowserClient()
   const { data, error } = await supabase
     .from('event_members')
-    .select('event_id, events(id, title, couple_name, date, venue, onboarding_complete, created_at)')
+    .select('event_id, events:event_id(id, title, couple_name, date, venue, onboarding_complete, created_at)')
     .eq('user_id', userId)
     .eq('role', 'veranstalter')
     .order('event_id')
