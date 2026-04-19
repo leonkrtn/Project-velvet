@@ -69,6 +69,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   const [trauzeugePerm, setTrauzeugePerm] = useState<TrauzeugePermissions | null>(null)
 
   const syncInProgress = useRef(false)
+  const pendingEvent = useRef<Event | null>(null)
   const dbInitialized = useRef(false)
   const isDemoRef = useRef(true)
   const authSubscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
@@ -217,28 +218,51 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     }
   }, [currentUserId])
 
+  async function doSync(e: Event, userId: string) {
+    if (syncInProgress.current) {
+      pendingEvent.current = e
+      return
+    }
+    syncInProgress.current = true
+    try {
+      const { upsertEventToDB } = await getDB()
+      await upsertEventToDB(e, userId)
+      console.log('[Velvet] Sync OK – Gäste:', e.guests.length)
+      setSyncError(null)
+      if (pendingEvent.current) {
+        const next = pendingEvent.current
+        pendingEvent.current = null
+        syncInProgress.current = false
+        await doSync(next, userId)
+        return
+      }
+    } catch (err: any) {
+      console.error('[Velvet] Sync FEHLER:', err?.message ?? String(err), '| code:', err?.code, '| details:', err?.details, '| hint:', err?.hint)
+      setSyncError('Daten konnten nicht synchronisiert werden.')
+    } finally {
+      syncInProgress.current = false
+    }
+  }
+
   const updateEvent = useCallback(async (e: Event) => {
     setEvent(e)
     saveEvent(e)
 
-    if (isDemoRef.current || !isSupabaseConfigured()) return
-    if (syncInProgress.current) return
-    syncInProgress.current = true
+    if (isDemoRef.current || !isSupabaseConfigured()) {
+      console.log('[Velvet] updateEvent: übersprungen – isDemo:', isDemoRef.current, '| supabaseOK:', isSupabaseConfigured())
+      return
+    }
 
     try {
       const { createClient } = await getSupabase()
       const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
+      console.log('[Velvet] updateEvent: session userId:', session?.user?.id ?? 'KEINE SESSION')
       if (!session) return
-
-      const { upsertEventToDB } = await getDB()
-      await upsertEventToDB(e, session.user.id)
-      setSyncError(null)
-    } catch (err) {
-      console.error('[EventContext] Sync fehlgeschlagen:', err)
+      await doSync(e, session.user.id)
+    } catch (err: any) {
+      console.error('[Velvet] updateEvent Fehler:', err?.message ?? String(err))
       setSyncError('Daten konnten nicht synchronisiert werden.')
-    } finally {
-      syncInProgress.current = false
     }
   }, [])
 
