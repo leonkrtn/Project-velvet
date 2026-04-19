@@ -24,7 +24,7 @@ export default async function ChatsPage({ params }: Props) {
       .order('updated_at', { ascending: false }),
     admin
       .from('event_members')
-      .select('id, user_id, role, profiles(id, name, email)')
+      .select('id, user_id, role, profiles!user_id(id, name, email)')
       .eq('event_id', eventId),
   ])
 
