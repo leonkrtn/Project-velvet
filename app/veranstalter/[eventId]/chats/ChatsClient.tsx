@@ -110,7 +110,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
     setNewMsg('')
     const { data: inserted } = await supabase
       .from('messages')
-      .insert({ conversation_id: activeConv.id, sender_id: currentUserId, content })
+      .insert({ conversation_id: activeConv.id, event_id: eventId, sender_id: currentUserId, content })
       .select('id, conversation_id, sender_id, content, read_at, created_at')
       .single()
     if (inserted) {
