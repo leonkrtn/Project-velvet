@@ -166,7 +166,7 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, children
             {children}
           </div>
         ) : (
-          <main style={{ flex: 1, padding: '36px 40px 60px', maxWidth: 1200, width: '100%', margin: '0 auto' }}>
+          <main style={{ flex: 1, padding: '36px 40px 60px', width: '100%', boxSizing: 'border-box' }}>
             {children}
           </main>
         )}

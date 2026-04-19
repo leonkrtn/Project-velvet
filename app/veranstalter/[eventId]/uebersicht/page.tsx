@@ -76,7 +76,7 @@ export default async function UebersichtPage({ params }: Props) {
       </p>
 
       {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
         <KpiCard
           icon={<Users size={20} color="var(--text-primary)" />}
           label="Mitglieder"
@@ -101,7 +101,7 @@ export default async function UebersichtPage({ params }: Props) {
       </div>
 
       {/* Two section cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 24 }}>
 
         {/* Event Card */}
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>

@@ -86,14 +86,14 @@ export default async function StatistikenPage({ params }: Props) {
       <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 28 }}>Finanzielle Übersicht und Event-Kennzahlen</p>
 
       {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 16, marginBottom: 28 }}>
         <KpiBox label="Gesamtbudget" value={fmtMoney(budgetTotal)} color="var(--text)" />
         <KpiBox label="Ausgegeben" value={fmtMoney(totalSpent)} color="#007AFF" />
         <KpiBox label="Verbleibend" value={fmtMoney(remaining)} color={remaining >= 0 ? 'var(--green)' : 'var(--red)'} />
         <KpiBox label="Veranstalter-Marge" value={fmtMoney(margin)} color={margin >= 0 ? 'var(--green)' : 'var(--red)'} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 24, marginBottom: 24 }}>
         {/* Donut chart: Budget nach Kategorie */}
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 24 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 20 }}>Budget nach Kategorie</h3>
@@ -186,7 +186,7 @@ export default async function StatistikenPage({ params }: Props) {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 24 }}>
         {/* Cost table */}
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 24 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Dienstleister-Kosten</h3>

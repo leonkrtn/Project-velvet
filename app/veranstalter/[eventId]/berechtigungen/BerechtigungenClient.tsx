@@ -102,7 +102,24 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers 
   const enabledCount = PERM_LABELS.filter(p => perms[p.key]).length
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
+    <div className="bp-grid">
+      <style>{`
+        .bp-grid {
+          display: grid;
+          grid-template-columns: 1fr 340px;
+          gap: 24px;
+        }
+        .bp-sidebar {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          padding-top: 72px;
+        }
+        @media (max-width: 900px) {
+          .bp-grid { grid-template-columns: 1fr; }
+          .bp-sidebar { padding-top: 0; }
+        }
+      `}</style>
       {/* Left: Permissions grid */}
       <div>
         <div style={{ marginBottom: 28 }}>
@@ -139,8 +156,8 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers 
         )}
       </div>
 
-      {/* Right: BP info + active summary + invite link */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 72 }}>
+      {/* Right: BP info + active summary */}
+      <div className="bp-sidebar">
 
         {/* BP Members */}
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 20 }}>
