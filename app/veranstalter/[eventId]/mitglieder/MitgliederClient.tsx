@@ -247,7 +247,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
                     )}
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 3 }}>Dabei seit</div>
-                      <div style={{ fontSize: 13 }}>{new Date(m.joined_at).toLocaleDateString('de-DE')}</div>
+                      <div style={{ fontSize: 13 }}>{m.joined_at ? new Date(m.joined_at).toLocaleDateString('de-DE') : '—'}</div>
                     </div>
                   </div>
                   {vendor?.notes && (
