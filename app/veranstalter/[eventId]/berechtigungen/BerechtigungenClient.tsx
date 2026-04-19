@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Copy, Check, RefreshCw } from 'lucide-react'
+import { Check } from 'lucide-react'
 
 interface Permissions {
   id?: string
@@ -47,19 +47,10 @@ interface BpMember {
   profiles: { id: string; name: string; email: string } | null
 }
 
-interface InviteCode {
-  id: string
-  code: string
-  status: string
-  expires_at: string | null
-  created_at: string
-}
-
 interface Props {
   eventId: string
   initialPerms: Permissions | null
   bpMembers: BpMember[]
-  existingInvite: InviteCode | null
 }
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -82,13 +73,10 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   )
 }
 
-export default function BerechtigungenClient({ eventId, initialPerms, bpMembers, existingInvite }: Props) {
+export default function BerechtigungenClient({ eventId, initialPerms, bpMembers }: Props) {
   const [perms, setPerms] = useState<Permissions>(initialPerms ?? { ...DEFAULT_PERMS })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [inviteCode, setInviteCode] = useState<string | null>(existingInvite?.code ?? null)
-  const [generatingInvite, setGeneratingInvite] = useState(false)
-  const [copied, setCopied] = useState(false)
   const supabase = createClient()
 
   async function togglePerm(key: keyof Omit<Permissions, 'id' | 'event_id'>, value: boolean) {
@@ -111,25 +99,6 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers,
     setTimeout(() => setSaved(false), 1500)
   }
 
-  async function generateInvite() {
-    setGeneratingInvite(true)
-    const res = await fetch('/api/invite/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId, targetRole: 'brautpaar' }),
-    })
-    const data = await res.json()
-    if (data.code) setInviteCode(data.code)
-    setGeneratingInvite(false)
-  }
-
-  async function copyInvite() {
-    if (!inviteCode) return
-    await navigator.clipboard.writeText(`${window.location.origin}/invite/${inviteCode}`)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
   const enabledCount = PERM_LABELS.filter(p => perms[p.key]).length
 
   return (
@@ -140,13 +109,6 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers,
           <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>Berechtigungen</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Steuere, welche Bereiche das Brautpaar einsehen darf</p>
         </div>
-
-        {saving && (
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Speichern…</div>
-        )}
-        {saved && !saving && (
-          <div style={{ fontSize: 12, color: 'var(--green)', marginBottom: 12 }}>Gespeichert ✓</div>
-        )}
 
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
           {PERM_LABELS.map(({ key, label, desc }, i) => (
@@ -166,6 +128,15 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers,
             </div>
           ))}
         </div>
+
+        {saving && (
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Speichern…</div>
+        )}
+        {saved && !saving && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--green)', marginTop: 12 }}>
+            <Check size={13} /> Gespeichert
+          </div>
+        )}
       </div>
 
       {/* Right: BP info + active summary + invite link */}
@@ -209,46 +180,6 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers,
           </div>
         </div>
 
-        {/* Invite link */}
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Einladungslink</h3>
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 14 }}>Erstelle einen Einladungslink für das Brautpaar (gültig 7 Tage)</p>
-
-          {inviteCode ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <input
-                readOnly
-                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/invite/${inviteCode}`}
-                style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, background: '#F5F5F7', outline: 'none', boxSizing: 'border-box' }}
-              />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={copyInvite}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '9px', background: copied ? 'var(--green)' : 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
-                >
-                  {copied ? <Check size={13} /> : <Copy size={13} />}
-                  {copied ? 'Kopiert!' : 'Kopieren'}
-                </button>
-                <button
-                  onClick={generateInvite}
-                  disabled={generatingInvite}
-                  title="Neuen Link generieren"
-                  style={{ padding: '9px 12px', background: '#F5F5F7', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                >
-                  <RefreshCw size={14} color="var(--text-tertiary)" />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={generateInvite}
-              disabled={generatingInvite}
-              style={{ width: '100%', padding: '10px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: generatingInvite ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500 }}
-            >
-              {generatingInvite ? 'Erstellen…' : 'Link erstellen'}
-            </button>
-          )}
-        </div>
       </div>
     </div>
   )

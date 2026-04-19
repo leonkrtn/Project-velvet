@@ -172,16 +172,24 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   }
 
   return (
-    <div style={{ display: 'flex', flex: 1, gap: 0, background: 'var(--surface)', overflow: 'hidden' }}>
-      {/* Sidebar */}
-      <div style={{ width: 300, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', flexShrink: 0, background: 'var(--surface)' }}>
-        <div style={{ padding: '22px 22px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.4px' }}>Chats</h2>
-          <button onClick={() => setShowNewChat(true)} style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--accent)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-            <Plus size={14} />
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+      {/* Page header — same position/style as all other pages */}
+      <div style={{ padding: '36px 40px 24px', flexShrink: 0, background: 'var(--bg)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>Chats</h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{conversations.length} Gespräch{conversations.length !== 1 ? 'e' : ''}</p>
+          </div>
+          <button onClick={() => setShowNewChat(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14, fontWeight: 500, flexShrink: 0 }}>
+            <Plus size={15} /> Neuer Chat
           </button>
         </div>
+      </div>
 
+      {/* Chat interface */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', margin: '0 40px 40px', background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+        {/* Chat list column */}
+        <div style={{ width: 280, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {conversations.length === 0 && (
             <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, fontStyle: 'italic' }}>
@@ -312,6 +320,8 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
           </div>
         )}
       </div>
+
+      </div> {/* end chat interface wrapper */}
 
       {/* New Chat Modal */}
       {showNewChat && (

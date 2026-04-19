@@ -9,7 +9,7 @@ export default async function BerechtigungenPage({ params }: Props) {
   const { eventId } = await params
   const supabase = await createClient()
 
-  const [permRes, bpMembersRes, inviteRes] = await Promise.all([
+  const [permRes, bpMembersRes] = await Promise.all([
     supabase
       .from('brautpaar_permissions')
       .select('*')
@@ -20,15 +20,6 @@ export default async function BerechtigungenPage({ params }: Props) {
       .select('id, user_id, profiles(id, name, email)')
       .eq('event_id', eventId)
       .eq('role', 'brautpaar'),
-    supabase
-      .from('invite_codes')
-      .select('id, code, status, expires_at, created_at')
-      .eq('event_id', eventId)
-      .eq('role', 'brautpaar')
-      .eq('status', 'offen')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle(),
   ])
 
   const bpNormalized = (bpMembersRes.data ?? []).map(m => ({
@@ -41,7 +32,6 @@ export default async function BerechtigungenPage({ params }: Props) {
       eventId={eventId}
       initialPerms={permRes.data}
       bpMembers={bpNormalized}
-      existingInvite={inviteRes.data}
     />
   )
 }

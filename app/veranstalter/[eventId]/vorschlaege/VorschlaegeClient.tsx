@@ -206,18 +206,17 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid var(--border)' }}>
+      <div style={{ display: 'inline-flex', background: '#EBEBEC', borderRadius: 10, padding: 3, marginBottom: 24, gap: 2 }}>
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            data-sel={tab === t.key ? '1' : undefined}
             style={{
-              padding: '10px 20px', background: 'none', border: 'none',
-              cursor: 'pointer', fontSize: 14, fontWeight: 500,
-              color: tab === t.key ? 'var(--accent)' : 'var(--text-tertiary)',
-              borderBottom: tab === t.key ? '2px solid var(--accent)' : '2px solid transparent',
-              marginBottom: -2,
+              padding: '7px 16px', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 500,
+              borderRadius: 8, transition: 'all 0.15s',
+              background: tab === t.key ? 'var(--surface)' : 'transparent',
+              color: tab === t.key ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
             }}
           >
             {t.label} <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 4 }}>({t.count})</span>
