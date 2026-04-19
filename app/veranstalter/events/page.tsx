@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { Settings, Trash2 } from 'lucide-react'
 
 type EventSummary = {
   id: string
@@ -60,6 +61,11 @@ export default function VeranstalterEventsPage() {
   const [wizardData, setWizardData] = useState<WizardData>(DEFAULT_WIZARD)
   const [wizardError, setWizardError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [presetBase, setPresetBase] = useState<Partial<WizardData>>({})
+
+  // Delete confirmation
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '11px 14px', fontSize: 14,
@@ -69,29 +75,36 @@ export default function VeranstalterEventsPage() {
   }
 
   useEffect(() => {
-    loadEvents()
+    init()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function loadEvents() {
+  async function init() {
     setLoading(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const { data, error } = await supabase
-        .from('event_members')
-        .select('event_id, events(id, title, couple_name, date, venue)')
-        .eq('user_id', user.id)
-        .eq('role', 'veranstalter')
+      const [{ data: evRows, error: evErr }, { data: presetRow }] = await Promise.all([
+        supabase
+          .from('event_members')
+          .select('event_id, events(id, title, couple_name, date, venue)')
+          .eq('user_id', user.id)
+          .eq('role', 'veranstalter'),
+        supabase
+          .from('organizer_presets')
+          .select('*')
+          .eq('user_id', user.id)
+          .single(),
+      ])
 
-      if (error) throw error
+      if (evErr) throw evErr
 
       type RawRow = {
         event_id: string
         events: { id: string; title: string; couple_name: string | null; date: string | null; venue: string | null } | null
       }
-      const list: EventSummary[] = ((data ?? []) as unknown as RawRow[]).map(row => ({
+      const list: EventSummary[] = ((evRows ?? []) as unknown as RawRow[]).map(row => ({
         id: row.events?.id ?? row.event_id,
         title: row.events?.title ?? '—',
         couple_name: row.events?.couple_name ?? null,
@@ -99,6 +112,18 @@ export default function VeranstalterEventsPage() {
         venue: row.events?.venue ?? null,
       }))
       setEvents(list)
+
+      if (presetRow) {
+        setPresetBase({
+          venue:               presetRow.venue               ?? '',
+          venueAddress:        presetRow.venue_address       ?? '',
+          dresscode:           presetRow.dresscode           ?? '',
+          childrenAllowed:     presetRow.children_allowed    ?? true,
+          childrenNote:        presetRow.children_note       ?? '',
+          maxBegleitpersonen:  presetRow.max_begleitpersonen ?? 2,
+          mealOptions:         presetRow.meal_options        ?? ['fleisch', 'fisch', 'vegetarisch', 'vegan'],
+        })
+      }
     } catch (err) {
       console.error('[VeranstalterEvents] load failed:', err)
     } finally {
@@ -107,7 +132,7 @@ export default function VeranstalterEventsPage() {
   }
 
   function openWizard() {
-    setWizardData(DEFAULT_WIZARD)
+    setWizardData({ ...DEFAULT_WIZARD, ...presetBase })
     setWizardStep(1)
     setWizardError('')
     setShowWizard(true)
@@ -190,8 +215,77 @@ export default function VeranstalterEventsPage() {
     }))
   }
 
+  async function confirmDelete() {
+    if (!deleteConfirmId) return
+    setDeleting(true)
+    try {
+      await supabase.from('events').delete().eq('id', deleteConfirmId)
+      setEvents(prev => prev.filter(e => e.id !== deleteConfirmId))
+    } catch (err) {
+      console.error('[VeranstalterEvents] delete failed:', err)
+    } finally {
+      setDeleting(false)
+      setDeleteConfirmId(null)
+    }
+  }
+
+  const eventToDelete = events.find(e => e.id === deleteConfirmId)
+
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px 16px 64px' }}>
+
+      {/* Delete confirmation modal */}
+      {deleteConfirmId && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: 24,
+          }}
+          onClick={() => !deleting && setDeleteConfirmId(null)}
+        >
+          <div
+            style={{
+              background: '#fff', borderRadius: 'var(--radius)', padding: '28px 28px 24px',
+              maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ marginBottom: 18 }}>
+              <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>Event löschen?</p>
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                <strong>{displayEventName(eventToDelete)}</strong> und alle zugehörigen Daten werden unwiderruflich gelöscht.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                disabled={deleting}
+                style={{
+                  padding: '10px 18px', borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)', background: 'none',
+                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, color: 'var(--text-tertiary)',
+                }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                style={{
+                  padding: '10px 18px', borderRadius: 'var(--radius-sm)',
+                  border: 'none', background: '#D94848', color: '#fff',
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+                  opacity: deleting ? 0.6 : 1,
+                }}
+              >
+                {deleting ? 'Wird gelöscht …' : 'Löschen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, gap: 16 }}>
@@ -203,20 +297,36 @@ export default function VeranstalterEventsPage() {
             Verwalte deine Hochzeits-Events oder erstelle ein neues.
           </p>
         </div>
-        {!showWizard && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <button
-            onClick={openWizard}
+            onClick={() => router.push('/veranstalter/voreinstellungen')}
+            title="Voreinstellungen"
             style={{
-              flexShrink: 0,
-              background: 'var(--accent)', color: '#fff', border: 'none',
-              borderRadius: 'var(--radius-sm)', padding: '10px 18px',
-              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              whiteSpace: 'nowrap',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 38, height: 38,
+              border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+              background: 'none', cursor: 'pointer', color: 'var(--text-tertiary)',
+              transition: 'border-color 0.15s, color 0.15s',
             }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text)'; e.currentTarget.style.color = 'var(--text)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
           >
-            + Neues Event
+            <Settings size={16} />
           </button>
-        )}
+          {!showWizard && (
+            <button
+              onClick={openWizard}
+              style={{
+                background: 'var(--accent)', color: '#fff', border: 'none',
+                borderRadius: 'var(--radius-sm)', padding: '10px 18px',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              + Neues Event
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Wizard */}
@@ -519,19 +629,36 @@ export default function VeranstalterEventsPage() {
                   <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>{fmtDate(ev.date)}</p>
                   {ev.venue && <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>{ev.venue}</p>}
                 </div>
-                <button
-                  onClick={() => router.push(`/veranstalter/dashboard?event=${ev.id}`)}
-                  style={{
-                    flexShrink: 0, padding: '8px 16px',
-                    border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-                    background: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                    fontSize: 13, color: 'var(--text)', transition: 'border-color 0.15s, color 0.15s',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text)' }}
-                >
-                  Verwalten
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <button
+                    onClick={() => setDeleteConfirmId(ev.id)}
+                    title="Event löschen"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 34, height: 34,
+                      border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                      background: 'none', cursor: 'pointer', color: 'var(--text-tertiary)',
+                      transition: 'border-color 0.15s, color 0.15s, background 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#D94848'; e.currentTarget.style.color = '#D94848'; e.currentTarget.style.background = 'rgba(217,72,72,0.06)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'none' }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                  <button
+                    onClick={() => router.push(`/veranstalter/dashboard?event=${ev.id}`)}
+                    style={{
+                      padding: '8px 16px',
+                      border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                      background: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                      fontSize: 13, color: 'var(--text)', transition: 'border-color 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text)' }}
+                  >
+                    Verwalten
+                  </button>
+                </div>
               </div>
             </div>
           ))}
