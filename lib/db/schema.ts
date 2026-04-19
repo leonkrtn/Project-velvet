@@ -44,6 +44,7 @@ CREATE TRIGGER on_auth_user_created
 -- ── Events ────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS events (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_by          UUID REFERENCES auth.users(id),
   title               TEXT NOT NULL DEFAULT 'Unsere Hochzeit',
   couple_name         TEXT,
   date                TEXT,
@@ -535,7 +536,7 @@ DO $$ BEGIN CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (id = a
 DO $$ BEGIN CREATE POLICY "profiles_update" ON profiles FOR UPDATE USING (id = auth.uid()); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN CREATE POLICY "events_select" ON events FOR SELECT USING (is_event_member(id)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE POLICY "events_insert" ON events FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_approved_organizer = true)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "events_insert" ON events FOR INSERT WITH CHECK (created_by = auth.uid()); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY "events_update" ON events FOR UPDATE USING (is_event_member(id, ARRAY['veranstalter','brautpaar']::user_role[]) AND NOT is_event_frozen(id)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY "events_delete" ON events FOR DELETE USING (is_event_member(id, ARRAY['veranstalter']::user_role[])); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 

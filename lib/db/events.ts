@@ -343,6 +343,7 @@ export async function upsertEventToDB(event: Event, userId: string): Promise<voi
   // 1. Sicherstellen, dass event existiert und user Mitglied ist
   const { error: evErr } = await supabase.from('events').upsert({
     id: eventId,
+    created_by: userId,
     couple_name: event.coupleName,
     date: event.date,
     venue: event.venue,
@@ -608,7 +609,7 @@ export async function createNewEvent(userId: string): Promise<string> {
   })
 
   await supabase.from('event_members').insert({
-    event_id: eventId, user_id: userId, role: 'veranstalter',
+    event_id: eventId, user_id: userId, role: 'brautpaar',
   })
 
   return eventId
