@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Send, Plus, X, Trash2, MessageSquare } from 'lucide-react'
 
@@ -65,24 +65,24 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const [creating, setCreating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
   // Load messages when conversation changes
   const loadMessages = useCallback(async (convId: string) => {
     const { data } = await supabase
       .from('messages')
-      .select('id, conversation_id, sender_id, content, read_at, created_at, profiles:sender_id(name)')
+      .select('id, conversation_id, sender_id, content, read_at, created_at, sender:profiles!sender_id(name)')
       .eq('conversation_id', convId)
       .order('created_at', { ascending: true })
       .limit(100)
-    setMessages(data?.map(m => ({ ...m, sender: Array.isArray(m.profiles) ? m.profiles[0] : m.profiles })) ?? [])
+    setMessages(data?.map(m => ({ ...m, sender: Array.isArray(m.sender) ? (m.sender[0] ?? null) : m.sender })) ?? [])
   }, [supabase])
 
   useEffect(() => {
     if (!activeConv) return
     loadMessages(activeConv.id)
 
-    // Realtime subscription
+    // Realtime subscription — use payload data directly to avoid extra round-trip
     const channel = supabase
       .channel(`chat:${activeConv.id}`)
       .on('postgres_changes', {
@@ -90,16 +90,9 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
         schema: 'public',
         table: 'messages',
         filter: `conversation_id=eq.${activeConv.id}`,
-      }, async (payload) => {
-        // Fetch with sender name
-        const { data } = await supabase
-          .from('messages')
-          .select('id, conversation_id, sender_id, content, read_at, created_at, profiles:sender_id(name)')
-          .eq('id', payload.new.id)
-          .single()
-        if (data) {
-          setMessages(prev => [...prev, { ...data, sender: Array.isArray(data.profiles) ? data.profiles[0] : data.profiles }])
-        }
+      }, (payload) => {
+        const p = payload.new as { id: string; conversation_id: string; sender_id: string | null; content: string; read_at: string | null; created_at: string }
+        setMessages(prev => prev.some(m => m.id === p.id) ? prev : [...prev, { ...p, sender: null }])
       })
       .subscribe()
 
@@ -113,14 +106,17 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   async function sendMessage() {
     if (!newMsg.trim() || !activeConv || sending) return
     setSending(true)
-    await supabase.from('messages').insert({
-      conversation_id: activeConv.id,
-      sender_id: currentUserId,
-      content: newMsg.trim(),
-    })
+    const content = newMsg.trim()
     setNewMsg('')
+    const { data: inserted } = await supabase
+      .from('messages')
+      .insert({ conversation_id: activeConv.id, sender_id: currentUserId, content })
+      .select('id, conversation_id, sender_id, content, read_at, created_at')
+      .single()
+    if (inserted) {
+      setMessages(prev => prev.some(m => m.id === inserted.id) ? prev : [...prev, { ...inserted, sender: null }])
+    }
     setSending(false)
-    // Update conversation updated_at
     await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConv.id)
   }
 
