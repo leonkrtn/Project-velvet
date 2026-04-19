@@ -63,7 +63,7 @@ export default function VeranstalterEventsPage() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '11px 14px', fontSize: 14,
-    border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
+    border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
     background: '#fff', fontFamily: 'inherit', outline: 'none',
     boxSizing: 'border-box', color: 'var(--text)',
   }
@@ -196,10 +196,10 @@ export default function VeranstalterEventsPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, gap: 16 }}>
         <div>
-          <h1 style={{ fontFamily: 'var(--heading-font)', fontSize: 26, fontWeight: 500, color: 'var(--text)', margin: '0 0 4px' }}>
+          <h1 style={{ fontSize: 26, fontWeight: 500, color: 'var(--text)', margin: '0 0 4px' }}>
             Meine Events
           </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
             Verwalte deine Hochzeits-Events oder erstelle ein neues.
           </p>
         </div>
@@ -208,8 +208,8 @@ export default function VeranstalterEventsPage() {
             onClick={openWizard}
             style={{
               flexShrink: 0,
-              background: 'var(--gold)', color: '#fff', border: 'none',
-              borderRadius: 'var(--r-sm)', padding: '10px 18px',
+              background: 'var(--accent)', color: '#fff', border: 'none',
+              borderRadius: 'var(--radius-sm)', padding: '10px 18px',
               fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
               whiteSpace: 'nowrap',
             }}
@@ -222,20 +222,20 @@ export default function VeranstalterEventsPage() {
       {/* Wizard */}
       {showWizard && (
         <div style={{
-          background: 'var(--surface)', border: '1px solid var(--gold)',
-          borderRadius: 'var(--r-md)', padding: 28, marginBottom: 28,
+          background: 'var(--surface)', border: '1px solid var(--accent)',
+          borderRadius: 'var(--radius)', padding: 28, marginBottom: 28,
         }}>
           {/* Step indicator */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
             {[1, 2, 3, 4].map(s => (
               <div key={s} style={{
                 flex: 1, height: 4, borderRadius: 2,
-                background: s <= wizardStep ? 'var(--gold)' : 'var(--border)',
+                background: s <= wizardStep ? 'var(--accent)' : 'var(--border)',
                 transition: 'background 0.2s',
               }} />
             ))}
           </div>
-          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 16 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 16 }}>
             Schritt {wizardStep} von 4
           </p>
 
@@ -244,48 +244,48 @@ export default function VeranstalterEventsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Event-Grunddaten</h2>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>
-                  Eventname <span style={{ color: 'var(--gold)' }}>*</span>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                  Eventname <span style={{ color: 'var(--accent)' }}>*</span>
                 </label>
                 <input
                   required value={wizardData.title}
                   onChange={e => updateWizard({ title: e.target.value })}
                   placeholder="Hochzeit Max & Anna"
                   style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                   onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>
-                  Datum <span style={{ color: 'var(--gold)' }}>*</span>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                  Datum <span style={{ color: 'var(--accent)' }}>*</span>
                 </label>
                 <input
                   type="date" required value={wizardData.date}
                   onChange={e => updateWizard({ date: e.target.value })}
                   style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                   onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Uhrzeit Zeremonie (optional)</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Uhrzeit Zeremonie (optional)</label>
                 <input
                   type="time" value={wizardData.ceremonyStart}
                   onChange={e => updateWizard({ ceremonyStart: e.target.value })}
                   style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                   onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Location (optional)</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Location (optional)</label>
                 <input
                   value={wizardData.venue}
                   onChange={e => updateWizard({ venue: e.target.value })}
                   placeholder="Schloss Lichtenberg"
                   style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                   onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
                 />
               </div>
@@ -297,29 +297,29 @@ export default function VeranstalterEventsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Details</h2>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Adresse (optional)</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Adresse (optional)</label>
                 <input
                   value={wizardData.venueAddress}
                   onChange={e => updateWizard({ venueAddress: e.target.value })}
                   placeholder="Musterstraße 1, 12345 Musterstadt"
                   style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                   onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Dresscode (optional)</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Dresscode (optional)</label>
                 <input
                   value={wizardData.dresscode}
                   onChange={e => updateWizard({ dresscode: e.target.value })}
                   placeholder="Festlich, Cocktailkleid etc."
                   style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                   onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 10 }}>Kinder willkommen?</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 10 }}>Kinder willkommen?</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {[true, false].map(val => (
                     <button
@@ -327,10 +327,10 @@ export default function VeranstalterEventsPage() {
                       type="button"
                       onClick={() => updateWizard({ childrenAllowed: val })}
                       style={{
-                        padding: '9px 18px', borderRadius: 'var(--r-sm)',
-                        border: `1.5px solid ${wizardData.childrenAllowed === val ? 'var(--gold)' : 'var(--border)'}`,
-                        background: wizardData.childrenAllowed === val ? 'var(--gold-pale)' : 'none',
-                        color: wizardData.childrenAllowed === val ? 'var(--gold)' : 'var(--text-dim)',
+                        padding: '9px 18px', borderRadius: 'var(--radius-sm)',
+                        border: `1.5px solid ${wizardData.childrenAllowed === val ? 'var(--accent)' : 'var(--border)'}`,
+                        background: wizardData.childrenAllowed === val ? 'var(--accent-light)' : 'none',
+                        color: wizardData.childrenAllowed === val ? 'var(--accent)' : 'var(--text-tertiary)',
                         fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                         transition: 'all 0.15s',
                       }}
@@ -345,19 +345,19 @@ export default function VeranstalterEventsPage() {
                     onChange={e => updateWizard({ childrenNote: e.target.value })}
                     placeholder="Hinweis zu Kindern (optional)"
                     style={{ ...inputStyle, marginTop: 10 }}
-                    onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                    onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                     onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
                   />
                 )}
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Max. Begleitpersonen pro Gast</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Max. Begleitpersonen pro Gast</label>
                 <input
                   type="number" min={0} max={10}
                   value={wizardData.maxBegleitpersonen}
                   onChange={e => updateWizard({ maxBegleitpersonen: Math.max(0, parseInt(e.target.value) || 0) })}
                   style={{ ...inputStyle, maxWidth: 100 }}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                   onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
                 />
               </div>
@@ -368,7 +368,7 @@ export default function VeranstalterEventsPage() {
           {wizardStep === 3 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Menüoptionen</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>Welche Menüoptionen stehen zur Wahl?</p>
+              <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>Welche Menüoptionen stehen zur Wahl?</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {ALL_MEALS.map(meal => {
                   const active = wizardData.mealOptions.includes(meal)
@@ -379,9 +379,9 @@ export default function VeranstalterEventsPage() {
                       onClick={() => toggleMeal(meal)}
                       style={{
                         padding: '9px 18px', borderRadius: 100,
-                        border: `1.5px solid ${active ? 'var(--gold)' : 'var(--border)'}`,
-                        background: active ? 'var(--gold-pale)' : 'none',
-                        color: active ? 'var(--gold)' : 'var(--text-dim)',
+                        border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                        background: active ? 'var(--accent-light)' : 'none',
+                        color: active ? 'var(--accent)' : 'var(--text-tertiary)',
                         fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
                         textTransform: 'capitalize', transition: 'all 0.15s',
                       }}
@@ -410,7 +410,7 @@ export default function VeranstalterEventsPage() {
                 ['Menüoptionen', wizardData.mealOptions.join(', ') || '—'],
               ].map(([label, value]) => (
                 <div key={label} style={{ display: 'flex', gap: 12, fontSize: 14 }}>
-                  <span style={{ minWidth: 160, color: 'var(--text-dim)', flexShrink: 0 }}>{label}</span>
+                  <span style={{ minWidth: 160, color: 'var(--text-tertiary)', flexShrink: 0 }}>{label}</span>
                   <span style={{ color: 'var(--text)', fontWeight: 500 }}>{value}</span>
                 </div>
               ))}
@@ -430,9 +430,9 @@ export default function VeranstalterEventsPage() {
               type="button"
               onClick={wizardStep === 1 ? closeWizard : handleBack}
               style={{
-                padding: '11px 20px', borderRadius: 'var(--r-sm)',
+                padding: '11px 20px', borderRadius: 'var(--radius-sm)',
                 border: '1px solid var(--border)', background: 'none',
-                cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, color: 'var(--text-dim)',
+                cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, color: 'var(--text-tertiary)',
               }}
             >
               {wizardStep === 1 ? 'Abbrechen' : '← Zurück'}
@@ -442,7 +442,7 @@ export default function VeranstalterEventsPage() {
                 type="button"
                 onClick={handleNext}
                 style={{
-                  padding: '11px 24px', borderRadius: 'var(--r-sm)',
+                  padding: '11px 24px', borderRadius: 'var(--radius-sm)',
                   border: 'none', background: 'var(--text)', color: '#fff',
                   cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
                 }}
@@ -455,8 +455,8 @@ export default function VeranstalterEventsPage() {
                 onClick={handleSubmit}
                 disabled={submitting}
                 style={{
-                  padding: '11px 24px', borderRadius: 'var(--r-sm)',
-                  border: 'none', background: 'var(--gold)', color: '#fff',
+                  padding: '11px 24px', borderRadius: 'var(--radius-sm)',
+                  border: 'none', background: 'var(--accent)', color: '#fff',
                   cursor: submitting ? 'not-allowed' : 'pointer',
                   fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
                   opacity: submitting ? 0.6 : 1,
@@ -474,7 +474,7 @@ export default function VeranstalterEventsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[1, 2].map(i => (
             <div key={i} style={{
-              height: 80, borderRadius: 'var(--r-md)',
+              height: 80, borderRadius: 'var(--radius)',
               background: 'var(--surface)', border: '1px solid var(--border)',
               animation: 'pulse 1.5s ease-in-out infinite',
             }} />
@@ -484,19 +484,19 @@ export default function VeranstalterEventsPage() {
       ) : events.length === 0 && !showWizard ? (
         <div style={{
           textAlign: 'center', padding: '48px 24px',
-          border: '2px dashed var(--border)', borderRadius: 'var(--r-md)',
+          border: '2px dashed var(--border)', borderRadius: 'var(--radius)',
           background: 'var(--surface)',
         }}>
           <p style={{ fontSize: 32, marginBottom: 12 }}>💍</p>
           <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Noch kein Event angelegt</p>
-          <p style={{ fontSize: 14, color: 'var(--text-dim)', marginBottom: 20 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-tertiary)', marginBottom: 20 }}>
             Erstelle dein erstes Event und starte mit der Planung.
           </p>
           <button
             onClick={openWizard}
             style={{
-              background: 'var(--gold)', color: '#fff', border: 'none',
-              borderRadius: 'var(--r-sm)', padding: '12px 24px',
+              background: 'var(--accent)', color: '#fff', border: 'none',
+              borderRadius: 'var(--radius-sm)', padding: '12px 24px',
               fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
@@ -509,25 +509,25 @@ export default function VeranstalterEventsPage() {
             <div
               key={ev.id}
               style={{
-                border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
+                border: '1px solid var(--border)', borderRadius: 'var(--radius)',
                 background: 'var(--surface)', padding: '16px 18px',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 3px' }}>{displayEventName(ev)}</p>
-                  <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: 0 }}>{fmtDate(ev.date)}</p>
-                  {ev.venue && <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{ev.venue}</p>}
+                  <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>{fmtDate(ev.date)}</p>
+                  {ev.venue && <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>{ev.venue}</p>}
                 </div>
                 <button
                   onClick={() => router.push(`/veranstalter/dashboard?event=${ev.id}`)}
                   style={{
                     flexShrink: 0, padding: '8px 16px',
-                    border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
+                    border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
                     background: 'none', cursor: 'pointer', fontFamily: 'inherit',
                     fontSize: 13, color: 'var(--text)', transition: 'border-color 0.15s, color 0.15s',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.color = 'var(--gold)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text)' }}
                 >
                   Verwalten

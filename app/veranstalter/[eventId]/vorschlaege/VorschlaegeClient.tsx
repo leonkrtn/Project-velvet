@@ -80,12 +80,12 @@ function fmtMoney(n: number) {
 
 const inputSt: React.CSSProperties = {
   width: '100%', padding: '10px 13px', background: '#fff',
-  border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
+  border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
   fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
 }
 const labelSt: React.CSSProperties = {
   display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-  letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 5,
+  letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 5,
 }
 
 export default function VorschlaegeClient({ eventId, initialVendors, initialHotels, initialDeko }: Props) {
@@ -194,12 +194,12 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
-          <h1 style={{ fontFamily: 'var(--heading-font)', fontSize: 28, fontWeight: 600, marginBottom: 6 }}>Vorschläge</h1>
-          <p style={{ color: 'var(--text-light)', fontSize: 14 }}>Präsentiere dem Brautpaar Optionen für Dienstleister, Hotels und Dekoration</p>
+          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>Vorschläge</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Präsentiere dem Brautpaar Optionen für Dienstleister, Hotels und Dekoration</p>
         </div>
         <button
           onClick={() => setModal(tab)}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
         >
           <Plus size={15} /> Hinzufügen
         </button>
@@ -215,12 +215,12 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
             style={{
               padding: '10px 20px', background: 'none', border: 'none',
               cursor: 'pointer', fontSize: 14, fontWeight: 500,
-              color: tab === t.key ? 'var(--gold)' : 'var(--text-dim)',
-              borderBottom: tab === t.key ? '2px solid var(--gold)' : '2px solid transparent',
+              color: tab === t.key ? 'var(--accent)' : 'var(--text-tertiary)',
+              borderBottom: tab === t.key ? '2px solid var(--accent)' : '2px solid transparent',
               marginBottom: -2,
             }}
           >
-            {t.label} <span style={{ fontSize: 12, color: 'var(--text-dim)', marginLeft: 4 }}>({t.count})</span>
+            {t.label} <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 4 }}>({t.count})</span>
           </button>
         ))}
       </div>
@@ -230,23 +230,23 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
           {vendors.length === 0 && <EmptyState label="Noch keine Dienstleister-Vorschläge" />}
           {vendors.map(v => (
-            <div key={v.id} style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', padding: 20 }}>
+            <div key={v.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 3 }}>{v.name ?? 'Unbenannt'}</div>
-                  {v.category && <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{v.category}</div>}
+                  {v.category && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{v.category}</div>}
                 </div>
-                <button onClick={() => deleteVendor(v.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-dim)' }}>
+                <button onClick={() => deleteVendor(v.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}>
                   <Trash2 size={14} />
                 </button>
               </div>
-              {v.description && <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 10 }}>{v.description}</p>}
+              {v.description && <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>{v.description}</p>}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{fmtMoney(v.price_estimate)}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{fmtMoney(v.price_estimate)}</span>
                 <StatusBadge status={v.status} onChange={s => updateVendorStatus(v.id, s)} />
               </div>
               {(v.contact_email || v.contact_phone) && (
-                <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-dim)' }}>
+                <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-tertiary)' }}>
                   {v.contact_email && <div>{v.contact_email}</div>}
                   {v.contact_phone && <div>{v.contact_phone}</div>}
                 </div>
@@ -263,25 +263,25 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
           {hotels.map(h => {
             const isOpen = expanded.has(h.id)
             return (
-              <div key={h.id} style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+              <div key={h.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', cursor: 'pointer' }} onClick={() => toggleExpand(h.id)}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 15 }}>{h.name ?? 'Unbenannt'}</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 2 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>
                       {h.address ?? '—'} · {h.distance_km} km · {h.total_rooms} Zimmer · {fmtMoney(h.price_per_night)}/Nacht
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <StatusBadge status={h.status} onChange={s => updateHotelStatus(h.id, s)} />
-                    <button onClick={e => { e.stopPropagation(); deleteHotel(h.id) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-dim)' }}>
+                    <button onClick={e => { e.stopPropagation(); deleteHotel(h.id) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}>
                       <Trash2 size={14} />
                     </button>
-                    {isOpen ? <ChevronUp size={16} color="var(--text-dim)" /> : <ChevronDown size={16} color="var(--text-dim)" />}
+                    {isOpen ? <ChevronUp size={16} color="var(--text-tertiary)" /> : <ChevronDown size={16} color="var(--text-tertiary)" />}
                   </div>
                 </div>
                 {isOpen && h.description && (
                   <div style={{ padding: '0 20px 16px', borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-                    <p style={{ fontSize: 13, color: 'var(--text-light)' }}>{h.description}</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{h.description}</p>
                   </div>
                 )}
               </div>
@@ -295,12 +295,12 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
           {deko.length === 0 && <EmptyState label="Noch keine Deko-Vorschläge" />}
           {deko.map(d => (
-            <div key={d.id} style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
-              <div style={{ height: 160, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            <div key={d.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+              <div style={{ height: 160, background: '#F5F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 {d.image_url ? (
                   <img src={d.image_url} alt={d.title ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <ImageIcon size={32} color="var(--text-dim)" />
+                  <ImageIcon size={32} color="var(--text-tertiary)" />
                 )}
                 <button onClick={() => deleteDeko(d.id)} style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.5)', border: 'none', cursor: 'pointer', padding: 5, borderRadius: 6, display: 'flex', color: '#fff' }}>
                   <Trash2 size={13} />
@@ -308,7 +308,7 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
               </div>
               <div style={{ padding: 14 }}>
                 <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{d.title ?? 'Unbenannt'}</div>
-                {d.description && <p style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 10 }}>{d.description}</p>}
+                {d.description && <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>{d.description}</p>}
                 <StatusBadge status={d.status} onChange={s => updateDekoStatus(d.id, s)} />
               </div>
             </div>
@@ -320,11 +320,11 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
       {modal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           onClick={() => setModal(null)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', padding: 28, width: 460, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 28, width: 460, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-md)' }} onClick={e => e.stopPropagation()}>
 
             {modal === 'dienstleister' && (
               <>
-                <h3 style={{ fontFamily: 'var(--heading-font)', fontSize: 20, fontWeight: 600, marginBottom: 20 }}>Dienstleister hinzufügen</h3>
+                <h3 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 20 }}>Dienstleister hinzufügen</h3>
                 <ModalGrid>
                   <ModalField label="Name"><input style={inputSt} value={vForm.name} onChange={e => setVForm(f => ({ ...f, name: e.target.value }))} /></ModalField>
                   <ModalField label="Kategorie"><input style={inputSt} value={vForm.category} onChange={e => setVForm(f => ({ ...f, category: e.target.value }))} placeholder="z.B. Fotograf" /></ModalField>
@@ -342,7 +342,7 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
 
             {modal === 'hotels' && (
               <>
-                <h3 style={{ fontFamily: 'var(--heading-font)', fontSize: 20, fontWeight: 600, marginBottom: 20 }}>Hotel hinzufügen</h3>
+                <h3 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 20 }}>Hotel hinzufügen</h3>
                 <ModalGrid>
                   <ModalField label="Name"><input style={inputSt} value={hForm.name} onChange={e => setHForm(f => ({ ...f, name: e.target.value }))} /></ModalField>
                   <ModalField label="Entfernung (km)"><input type="number" style={inputSt} value={hForm.distance_km} onChange={e => setHForm(f => ({ ...f, distance_km: e.target.value }))} /></ModalField>
@@ -360,7 +360,7 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
 
             {modal === 'dekoration' && (
               <>
-                <h3 style={{ fontFamily: 'var(--heading-font)', fontSize: 20, fontWeight: 600, marginBottom: 20 }}>Deko-Vorschlag hinzufügen</h3>
+                <h3 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 20 }}>Deko-Vorschlag hinzufügen</h3>
                 <ModalField label="Titel"><input style={inputSt} value={dForm.title} onChange={e => setDForm(f => ({ ...f, title: e.target.value }))} /></ModalField>
                 <ModalField label="Beschreibung">
                   <textarea style={{ ...inputSt, minHeight: 80, resize: 'vertical' }} value={dForm.description} onChange={e => setDForm(f => ({ ...f, description: e.target.value }))} />
@@ -370,11 +370,11 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
             )}
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-              <button onClick={() => setModal(null)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
+              <button onClick={() => setModal(null)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
               <button
                 onClick={modal === 'dienstleister' ? addVendor : modal === 'hotels' ? addHotel : addDeko}
                 disabled={saving}
-                style={{ padding: '9px 20px', background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: saving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500 }}
+                style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: saving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500 }}
               >
                 {saving ? 'Speichern…' : 'Hinzufügen'}
               </button>
@@ -388,7 +388,7 @@ export default function VorschlaegeClient({ eventId, initialVendors, initialHote
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div style={{ gridColumn: '1/-1', padding: '48px 20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 14, fontStyle: 'italic' }}>
+    <div style={{ gridColumn: '1/-1', padding: '48px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14, fontStyle: 'italic' }}>
       {label}
     </div>
   )

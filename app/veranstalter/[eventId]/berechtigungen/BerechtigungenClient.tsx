@@ -69,7 +69,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       onClick={() => onChange(!checked)}
       style={{
         width: 44, height: 24, borderRadius: 12, border: 'none',
-        background: checked ? 'var(--gold)' : 'var(--border2)', cursor: 'pointer',
+        background: checked ? 'var(--accent)' : 'var(--border2)', cursor: 'pointer',
         position: 'relative', flexShrink: 0, transition: 'background 0.2s',
       }}
     >
@@ -137,18 +137,18 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers,
       {/* Left: Permissions grid */}
       <div>
         <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontFamily: 'var(--heading-font)', fontSize: 28, fontWeight: 600, marginBottom: 6 }}>Berechtigungen</h1>
-          <p style={{ color: 'var(--text-light)', fontSize: 14 }}>Steuere, welche Bereiche das Brautpaar einsehen darf</p>
+          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>Berechtigungen</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Steuere, welche Bereiche das Brautpaar einsehen darf</p>
         </div>
 
         {saving && (
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 12 }}>Speichern…</div>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12 }}>Speichern…</div>
         )}
         {saved && !saving && (
           <div style={{ fontSize: 12, color: 'var(--green)', marginBottom: 12 }}>Gespeichert ✓</div>
         )}
 
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
           {PERM_LABELS.map(({ key, label, desc }, i) => (
             <div
               key={key}
@@ -160,7 +160,7 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers,
             >
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 2 }}>{label}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{desc}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{desc}</div>
               </div>
               <Toggle checked={perms[key]} onChange={v => togglePerm(key, v)} />
             </div>
@@ -172,19 +172,19 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers,
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 72 }}>
 
         {/* BP Members */}
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', padding: 20 }}>
-          <h3 style={{ fontFamily: 'var(--heading-font)', fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Brautpaar</h3>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 20 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Brautpaar</h3>
           {bpMembers.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text-dim)', fontStyle: 'italic' }}>Noch nicht eingeladen</p>
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Noch nicht eingeladen</p>
           ) : (
             bpMembers.map(m => (
               <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--gold-pale)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
                   {(m.profiles?.name ?? '?').split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2)}
                 </div>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{m.profiles?.name ?? '—'}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{m.profiles?.email ?? '—'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.profiles?.email ?? '—'}</div>
                 </div>
               </div>
             ))
@@ -192,16 +192,16 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers,
         </div>
 
         {/* Active permissions summary */}
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', padding: 20 }}>
-          <h3 style={{ fontFamily: 'var(--heading-font)', fontSize: 15, fontWeight: 600, marginBottom: 14 }}>
-            Aktive Zugänge <span style={{ fontSize: 12, color: 'var(--text-dim)', fontWeight: 400 }}>({enabledCount}/{PERM_LABELS.length})</span>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 20 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>
+            Aktive Zugänge <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontWeight: 400 }}>({enabledCount}/{PERM_LABELS.length})</span>
           </h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {PERM_LABELS.map(p => (
               <span key={p.key} style={{
                 padding: '3px 10px', borderRadius: 12, fontSize: 12, fontWeight: 500,
-                background: perms[p.key] ? 'var(--green-pale)' : 'var(--surface2)',
-                color: perms[p.key] ? 'var(--green)' : 'var(--text-dim)',
+                background: perms[p.key] ? 'var(--green-pale)' : '#F5F5F7',
+                color: perms[p.key] ? 'var(--green)' : 'var(--text-tertiary)',
               }}>
                 {p.label}
               </span>
@@ -210,21 +210,21 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers,
         </div>
 
         {/* Invite link */}
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', padding: 20 }}>
-          <h3 style={{ fontFamily: 'var(--heading-font)', fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Einladungslink</h3>
-          <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 14 }}>Erstelle einen Einladungslink für das Brautpaar (gültig 7 Tage)</p>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 20 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Einladungslink</h3>
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 14 }}>Erstelle einen Einladungslink für das Brautpaar (gültig 7 Tage)</p>
 
           {inviteCode ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <input
                 readOnly
                 value={`${typeof window !== 'undefined' ? window.location.origin : ''}/invite/${inviteCode}`}
-                style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 12, background: 'var(--surface2)', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, background: '#F5F5F7', outline: 'none', boxSizing: 'border-box' }}
               />
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
                   onClick={copyInvite}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '9px', background: copied ? 'var(--green)' : 'var(--gold)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '9px', background: copied ? 'var(--green)' : 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
                 >
                   {copied ? <Check size={13} /> : <Copy size={13} />}
                   {copied ? 'Kopiert!' : 'Kopieren'}
@@ -233,9 +233,9 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers,
                   onClick={generateInvite}
                   disabled={generatingInvite}
                   title="Neuen Link generieren"
-                  style={{ padding: '9px 12px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  style={{ padding: '9px 12px', background: '#F5F5F7', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                 >
-                  <RefreshCw size={14} color="var(--text-dim)" />
+                  <RefreshCw size={14} color="var(--text-tertiary)" />
                 </button>
               </div>
             </div>
@@ -243,7 +243,7 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers,
             <button
               onClick={generateInvite}
               disabled={generatingInvite}
-              style={{ width: '100%', padding: '10px', background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: generatingInvite ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500 }}
+              style={{ width: '100%', padding: '10px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: generatingInvite ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500 }}
             >
               {generatingInvite ? 'Erstellen…' : 'Link erstellen'}
             </button>

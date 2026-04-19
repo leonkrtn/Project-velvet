@@ -69,12 +69,12 @@ function initials(name: string) {
 
 const inputSt: React.CSSProperties = {
   width: '100%', padding: '9px 12px', background: '#fff',
-  border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
+  border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
   fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
 }
 const labelSt: React.CSSProperties = {
   display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-  letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 5,
+  letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 5,
 }
 
 const CATEGORIES: Category[] = ['Zeremonie', 'Empfang', 'Feier', 'Logistik']
@@ -170,8 +170,8 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
       {/* Left: Timeline list */}
       <div style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h1 style={{ fontFamily: 'var(--heading-font)', fontSize: 28, fontWeight: 600 }}>Ablaufplan</h1>
-          <button onClick={openAdd} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px' }}>Ablaufplan</h1>
+          <button onClick={openAdd} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
             <Plus size={14} /> Punkt hinzufügen
           </button>
         </div>
@@ -185,8 +185,8 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
               data-sel={filter === cat ? '1' : undefined}
               style={{
                 padding: '5px 14px', borderRadius: 20, fontSize: 13, border: 'none', cursor: 'pointer',
-                background: filter === cat ? (cat === 'Alle' ? 'var(--black)' : CATEGORY_COLORS[cat as Category]) : 'var(--surface2)',
-                color: filter === cat ? '#fff' : 'var(--text-mid)',
+                background: filter === cat ? (cat === 'Alle' ? 'var(--black)' : CATEGORY_COLORS[cat as Category]) : '#F5F5F7',
+                color: filter === cat ? '#fff' : 'var(--text-primary)',
                 fontWeight: filter === cat ? 600 : 400,
               }}
             >
@@ -198,7 +198,7 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
         {/* Timeline entries */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtered.length === 0 && (
-            <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 14, fontStyle: 'italic' }}>
+            <div style={{ padding: '48px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14, fontStyle: 'italic' }}>
               Keine Einträge vorhanden. Füge einen neuen Ablaufpunkt hinzu.
             </div>
           )}
@@ -212,26 +212,26 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
                 onClick={() => setSelected(isSelected ? null : entry)}
                 style={{
                   display: 'flex', gap: 16, padding: '14px 16px',
-                  background: isSelected ? 'var(--gold-pale)' : 'var(--surface)',
-                  border: `1px solid ${isSelected ? 'var(--gold)' : 'var(--border)'}`,
+                  background: isSelected ? 'var(--accent-light)' : 'var(--surface)',
+                  border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
                   borderLeft: `4px solid ${color}`,
-                  borderRadius: 'var(--r-sm)', cursor: 'pointer',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer',
                   transition: 'all 0.15s',
                 }}
               >
                 <div style={{ minWidth: 52, fontVariantNumeric: 'tabular-nums' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{minutesToTime(entry.start_minutes)}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{entry.duration_minutes ?? '?'} min</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{entry.duration_minutes ?? '?'} min</div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>{entry.title ?? 'Unbenannt'}</div>
                   {entry.location && (
-                    <div style={{ fontSize: 12, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <MapPin size={11} />{entry.location}
                     </div>
                   )}
                   {entry.checklist.length > 0 && (
-                    <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 3 }}>
                       ✓ {entry.checklist.filter(c => c.done).length}/{entry.checklist.length} Aufgaben
                     </div>
                   )}
@@ -241,10 +241,10 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
                     padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 500,
                     background: color + '20', color,
                   }}>{cat ?? '—'}</span>
-                  <button onClick={e => { e.stopPropagation(); openEdit(entry) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'var(--text-dim)' }}>
+                  <button onClick={e => { e.stopPropagation(); openEdit(entry) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'var(--text-tertiary)' }}>
                     <Pencil size={13} />
                   </button>
-                  <button onClick={e => { e.stopPropagation(); handleDelete(entry.id) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'var(--text-dim)' }}>
+                  <button onClick={e => { e.stopPropagation(); handleDelete(entry.id) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'var(--text-tertiary)' }}>
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -256,10 +256,10 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
 
       {/* Right: Detail panel */}
       {selected && (
-        <div style={{ width: 320, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 22, overflowY: 'auto', height: '100%' }}>
+        <div style={{ width: 320, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 22, overflowY: 'auto', height: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ fontFamily: 'var(--heading-font)', fontSize: 16, fontWeight: 600 }}>{selected.title ?? 'Details'}</h3>
-            <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-dim)' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600 }}>{selected.title ?? 'Details'}</h3>
+            <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}>
               <X size={16} />
             </button>
           </div>
@@ -273,7 +273,7 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
 
           {/* Checklist */}
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 10 }}>Checkliste</div>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Checkliste</div>
             {selected.checklist.map((item, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7, cursor: 'pointer' }} onClick={() => toggleChecklist(selected, i)}>
                 <div style={{
@@ -283,7 +283,7 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
                 }}>
                   {item.done && <Check size={10} color="#fff" strokeWidth={3} />}
                 </div>
-                <span style={{ fontSize: 13, color: item.done ? 'var(--text-dim)' : 'var(--text)', textDecoration: item.done ? 'line-through' : 'none' }}>
+                <span style={{ fontSize: 13, color: item.done ? 'var(--text-tertiary)' : 'var(--text)', textDecoration: item.done ? 'line-through' : 'none' }}>
                   {item.text}
                 </span>
               </div>
@@ -294,10 +294,10 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
           {/* Responsibilities */}
           {selected.responsibilities.length > 0 && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 10 }}>Verantwortliche</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Verantwortliche</div>
               {selected.responsibilities.map((r, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--gold-pale)', color: 'var(--gold)', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {r.initials}
                   </div>
                   <div style={{ flex: 1 }}>
@@ -305,8 +305,8 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
                   </div>
                   <span style={{
                     padding: '2px 8px', borderRadius: 10, fontSize: 11,
-                    background: r.status === 'done' ? 'var(--green-pale)' : 'var(--surface2)',
-                    color: r.status === 'done' ? 'var(--green)' : 'var(--text-dim)',
+                    background: r.status === 'done' ? 'var(--green-pale)' : '#F5F5F7',
+                    color: r.status === 'done' ? 'var(--green)' : 'var(--text-tertiary)',
                   }}>{r.status === 'done' ? 'Erledigt' : 'Ausstehend'}</span>
                 </div>
               ))}
@@ -319,8 +319,8 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           onClick={() => setShowModal(false)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', padding: 28, width: 440, maxWidth: '100%' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontFamily: 'var(--heading-font)', fontSize: 20, fontWeight: 600, marginBottom: 22 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 28, width: 440, maxWidth: '100%' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 22 }}>
               {editEntry ? 'Punkt bearbeiten' : 'Neuer Ablaufpunkt'}
             </h3>
 
@@ -353,8 +353,8 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
                     data-sel={form.category === cat ? '1' : undefined}
                     style={{
                       padding: '5px 14px', borderRadius: 20, fontSize: 13, border: 'none', cursor: 'pointer',
-                      background: form.category === cat ? CATEGORY_COLORS[cat] : 'var(--surface2)',
-                      color: form.category === cat ? '#fff' : 'var(--text-mid)',
+                      background: form.category === cat ? CATEGORY_COLORS[cat] : '#F5F5F7',
+                      color: form.category === cat ? '#fff' : 'var(--text-primary)',
                       fontWeight: form.category === cat ? 600 : 400,
                     }}
                   >
@@ -365,8 +365,8 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowModal(false)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
-              <button onClick={handleSave} disabled={saving} style={{ padding: '9px 20px', background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: saving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500 }}>
+              <button onClick={() => setShowModal(false)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
+              <button onClick={handleSave} disabled={saving} style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: saving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500 }}>
                 {saving ? 'Speichern…' : editEntry ? 'Speichern' : 'Hinzufügen'}
               </button>
             </div>
@@ -379,7 +379,7 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
 
 function InfoChip({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--surface2)', borderRadius: 12, fontSize: 12, color: 'var(--text-mid)' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: '#F5F5F7', borderRadius: 12, fontSize: 12, color: 'var(--text-primary)' }}>
       {icon}{text}
     </span>
   )
@@ -390,7 +390,7 @@ function AddChecklistItem({ onAdd }: { onAdd: (text: string) => void }) {
   return (
     <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
       <input
-        style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
+        style={{ flex: 1, padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
         value={val}
         onChange={e => setVal(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') { onAdd(val); setVal('') } }}
@@ -398,7 +398,7 @@ function AddChecklistItem({ onAdd }: { onAdd: (text: string) => void }) {
       />
       <button
         onClick={() => { onAdd(val); setVal('') }}
-        style={{ padding: '6px 10px', background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 13 }}
+        style={{ padding: '6px 10px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 13 }}
       >
         <Plus size={13} />
       </button>

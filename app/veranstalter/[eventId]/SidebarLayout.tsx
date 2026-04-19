@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Settings, Users, MessageSquare, Lightbulb,
-  Calendar, BarChart2, Shield, Grid2X2, UserCog, ChevronLeft, Menu, X,
+  Calendar, BarChart2, Shield, Grid2X2, UserCog, ChevronLeft, Menu,
 } from 'lucide-react'
 
 interface Props {
@@ -37,70 +37,87 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, children
     return pathname === `${base}/${key}` || pathname.startsWith(`${base}/${key}/`)
   }
 
+  const isChats = pathname === `${base}/chats` || pathname.startsWith(`${base}/chats/`)
+
   const sidebar = (
     <nav style={{
-      width: 240, flexShrink: 0, background: 'var(--surface)',
-      borderRight: '1px solid var(--border)', display: 'flex',
-      flexDirection: 'column', height: '100%', overflowY: 'auto',
+      width: 220,
+      minWidth: 220,
+      background: 'var(--sidebar-bg)',
+      borderRight: '1px solid var(--border)',
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+      overflowY: 'auto',
     }}>
-      {/* Header */}
-      <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ padding: '16px 12px 8px' }}>
         <Link
           href="/veranstalter"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-light)', fontSize: 12, textDecoration: 'none', marginBottom: 12 }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            fontSize: 13, color: 'var(--text-secondary)',
+            textDecoration: 'none', padding: '4px 6px',
+            borderRadius: 6, width: 'fit-content',
+          }}
         >
-          <ChevronLeft size={14} /> Alle Events
+          <ChevronLeft size={14} />
+          Alle Events
         </Link>
-        <div style={{ fontFamily: 'var(--heading-font)', fontSize: 16, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>
-          {eventTitle}
-        </div>
+      </div>
+
+      <div style={{
+        fontSize: 15, fontWeight: 600, color: 'var(--text-primary)',
+        padding: '14px 12px 10px', letterSpacing: '-0.2px', lineHeight: 1.3,
+      }}>
+        {eventTitle}
         {eventDate && (
-          <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3 }}>
+          <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', marginTop: 2 }}>
             {new Date(eventDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
           </div>
         )}
       </div>
 
-      {/* Nav items */}
-      <div style={{ padding: '10px 10px', flex: 1 }}>
+      <div style={{ padding: '4px 8px', flex: 1 }}>
         {NAV_ITEMS.map(({ key, label, icon: Icon, disabled }) => {
           const active = isActive(key)
+          if (disabled) {
+            return (
+              <div key={key} style={{
+                display: 'flex', alignItems: 'center', gap: 9,
+                padding: '8px 10px', borderRadius: 8,
+                fontSize: 14, color: 'var(--text-tertiary)',
+                cursor: 'not-allowed', marginBottom: 1,
+              }}>
+                <Icon size={16} style={{ opacity: 0.4, flexShrink: 0 }} />
+                <span>{label}</span>
+                <span style={{
+                  marginLeft: 'auto', fontSize: 9, fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                  background: 'rgba(0,0,0,0.06)', color: 'var(--text-tertiary)',
+                  padding: '2px 6px', borderRadius: 4,
+                }}>Bald</span>
+              </div>
+            )
+          }
           return (
-            <div key={key}>
-              {disabled ? (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '9px 12px', borderRadius: 'var(--r-sm)',
-                  fontSize: 14, color: 'var(--text-dim)', cursor: 'not-allowed',
-                  marginBottom: 2,
-                }}>
-                  <Icon size={16} />
-                  <span>{label}</span>
-                  <span style={{
-                    marginLeft: 'auto', fontSize: 9, fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.08em',
-                    background: 'var(--surface2)', color: 'var(--text-dim)',
-                    padding: '2px 6px', borderRadius: 4,
-                  }}>Bald</span>
-                </div>
-              ) : (
-                <Link
-                  href={`${base}/${key}`}
-                  onClick={() => setMobileOpen(false)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '9px 12px', borderRadius: 'var(--r-sm)',
-                    fontSize: 14, textDecoration: 'none', marginBottom: 2,
-                    background: active ? 'var(--gold-pale)' : 'transparent',
-                    color: active ? 'var(--gold)' : 'var(--text-mid)',
-                    fontWeight: active ? 500 : 400,
-                  }}
-                >
-                  <Icon size={16} />
-                  <span>{label}</span>
-                </Link>
-              )}
-            </div>
+            <Link
+              key={key}
+              href={`${base}/${key}`}
+              onClick={() => setMobileOpen(false)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 9,
+                padding: '8px 10px', borderRadius: 8,
+                fontSize: 14, fontWeight: active ? 500 : 450,
+                color: 'var(--text-primary)',
+                textDecoration: 'none', marginBottom: 1,
+                background: active ? 'var(--surface)' : 'transparent',
+                boxShadow: active ? 'var(--shadow-sm)' : 'none',
+                transition: 'background 0.12s',
+              }}
+            >
+              <Icon size={16} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
+              <span>{label}</span>
+            </Link>
           )
         })}
       </div>
@@ -110,7 +127,7 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, children
   return (
     <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: 'var(--bg)' }}>
       {/* Desktop sidebar */}
-      <div style={{ display: 'none' }} className="sidebar-desktop">
+      <div className="sidebar-desktop" style={{ display: 'none' }}>
         {sidebar}
       </div>
 
@@ -120,7 +137,7 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, children
           style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex' }}
           onClick={() => setMobileOpen(false)}
         >
-          <div style={{ width: 240, height: '100%' }} onClick={e => e.stopPropagation()}>
+          <div style={{ width: 220, height: '100%' }} onClick={e => e.stopPropagation()}>
             {sidebar}
           </div>
           <div style={{ flex: 1, background: 'rgba(0,0,0,0.4)' }} />
@@ -128,7 +145,7 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, children
       )}
 
       {/* Main content */}
-      <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflow: isChats ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Mobile topbar */}
         <div className="mobile-topbar" style={{
           display: 'none', alignItems: 'center', gap: 12,
@@ -141,14 +158,18 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, children
           >
             <Menu size={20} />
           </button>
-          <span style={{ fontFamily: 'var(--heading-font)', fontSize: 16, fontWeight: 600 }}>
-            {eventTitle}
-          </span>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>{eventTitle}</span>
         </div>
 
-        <main style={{ flex: 1, padding: '32px 36px', maxWidth: 1200, width: '100%', margin: '0 auto' }}>
-          {children}
-        </main>
+        {isChats ? (
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {children}
+          </div>
+        ) : (
+          <main style={{ flex: 1, padding: '36px 40px 60px', maxWidth: 1200, width: '100%', margin: '0 auto' }}>
+            {children}
+          </main>
+        )}
       </div>
 
       <style>{`
@@ -159,6 +180,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, children
           .mobile-topbar { display: flex !important; }
           main { padding: 20px 16px !important; }
         }
+        .nav-item-link:hover { background: rgba(0,0,0,0.06) !important; }
+        .back-btn-link:hover { background: rgba(0,0,0,0.06) !important; color: var(--text-primary) !important; }
       `}</style>
     </div>
   )

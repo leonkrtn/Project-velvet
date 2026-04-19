@@ -172,12 +172,12 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   }
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 120px)', gap: 0, background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flex: 1, gap: 0, background: 'var(--surface)', overflow: 'hidden' }}>
       {/* Sidebar */}
-      <div style={{ width: 300, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-        <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontFamily: 'var(--heading-font)', fontSize: 18, fontWeight: 600 }}>Chats</h2>
-          <button onClick={() => setShowNewChat(true)} style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--gold)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+      <div style={{ width: 300, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', flexShrink: 0, background: 'var(--surface)' }}>
+        <div style={{ padding: '22px 22px 14px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.4px' }}>Chats</h2>
+          <button onClick={() => setShowNewChat(true)} style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--accent)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
             <Plus size={14} />
           </button>
         </div>
@@ -197,38 +197,38 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
                 key={conv.id}
                 onClick={() => setActiveConv(conv)}
                 style={{
-                  padding: '12px 16px', cursor: 'pointer',
-                  background: isActive ? 'var(--gold-pale)' : 'transparent',
-                  borderLeft: `3px solid ${isActive ? 'var(--gold)' : 'transparent'}`,
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  borderBottom: '1px solid var(--border)',
+                  padding: '11px 16px', cursor: 'pointer',
+                  background: isActive ? '#EDEDEF' : 'transparent',
+                  borderLeft: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
+                  display: 'flex', alignItems: 'center', gap: 11,
+                  position: 'relative',
                 }}
               >
-                {/* Avatar stack */}
-                <div style={{ position: 'relative', width: 36, height: 36, flexShrink: 0 }}>
+                {/* Avatar */}
+                <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#F0F0F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
                   {initList.length > 1 ? (
                     <>
-                      <div style={{ position: 'absolute', top: 0, right: 0, width: 24, height: 24, borderRadius: '50%', background: 'var(--gold-pale)', color: 'var(--gold)', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--surface)' }}>
-                        {initials(initList[1].profiles?.name ?? '?')}
-                      </div>
-                      <div style={{ position: 'absolute', bottom: 0, left: 0, width: 24, height: 24, borderRadius: '50%', background: '#E8E8E8', color: '#666', fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--surface)' }}>
+                      <div style={{ position: 'absolute', top: 0, left: 0, width: 24, height: 24, borderRadius: '50%', background: '#8E8E93', color: 'white', fontSize: 9, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--surface)' }}>
                         {initials(initList[0].profiles?.name ?? '?')}
+                      </div>
+                      <div style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: '50%', background: '#636366', color: 'white', fontSize: 9, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--surface)' }}>
+                        {initials(initList[1].profiles?.name ?? '?')}
                       </div>
                     </>
                   ) : (
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--gold-pale)', color: 'var(--gold)', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <MessageSquare size={16} />
-                    </div>
+                    <MessageSquare size={16} color="#8E8E93" />
                   )}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{fmtTime(conv.updated_at)}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>{fmtTime(conv.updated_at)}</span>
+                  </div>
                 </div>
                 <button
                   onClick={e => { e.stopPropagation(); setDeleteConfirm(conv.id) }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-dim)', opacity: 0, transition: 'opacity 0.15s' }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', opacity: 0, transition: 'opacity 0.15s' }}
                   onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
                   onMouseLeave={e => (e.currentTarget.style.opacity = '0')}
                 >
@@ -241,43 +241,43 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
       </div>
 
       {/* Chat area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--surface)' }}>
         {activeConv ? (
           <>
             {/* Header */}
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>{convDisplayName(activeConv)}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+            <div style={{ padding: '16px 22px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>{convDisplayName(activeConv)}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                   {activeConv.conversation_participants.length} Teilnehmer
                 </div>
               </div>
             </div>
 
             {/* Messages */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, background: '#FAFAFA' }}>
               {messages.map(msg => {
                 const isMe = msg.sender_id === currentUserId
                 return (
                   <div key={msg.id} style={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: 8 }}>
                     {!isMe && (
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', flexShrink: 0 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#E5E5EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#636366', flexShrink: 0 }}>
                         {initials(msg.sender?.name ?? '?')}
                       </div>
                     )}
                     <div style={{ maxWidth: '68%' }}>
                       {!isMe && msg.sender && (
-                        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 3, marginLeft: 4 }}>{msg.sender.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 3, marginLeft: 4 }}>{msg.sender.name}</div>
                       )}
                       <div style={{
                         padding: '10px 14px', borderRadius: isMe ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-                        background: isMe ? 'var(--gold)' : 'var(--surface2)',
-                        color: isMe ? '#fff' : 'var(--text)',
+                        background: isMe ? 'var(--accent)' : '#E5E5EA',
+                        color: isMe ? '#fff' : 'var(--text-primary)',
                         fontSize: 14, lineHeight: 1.5,
                       }}>
                         {msg.content}
                       </div>
-                      <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 3, textAlign: isMe ? 'right' : 'left', marginLeft: isMe ? 0 : 4, marginRight: isMe ? 4 : 0 }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 3, textAlign: isMe ? 'right' : 'left', marginLeft: isMe ? 0 : 4, marginRight: isMe ? 4 : 0 }}>
                         {fmtTime(msg.created_at)}
                       </div>
                     </div>
@@ -288,26 +288,26 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
             </div>
 
             {/* Input */}
-            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10 }}>
+            <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, background: 'var(--surface)' }}>
               <input
                 value={newMsg}
                 onChange={e => setNewMsg(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                 placeholder="Nachricht schreiben…"
-                style={{ flex: 1, padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 20, fontSize: 14, outline: 'none', fontFamily: 'inherit', background: 'var(--surface2)' }}
+                style={{ flex: 1, padding: '10px 16px', border: 'none', borderRadius: 22, fontSize: 14, outline: 'none', fontFamily: 'inherit', background: '#F0F0F2' }}
               />
               <button
                 onClick={sendMessage}
                 disabled={!newMsg.trim() || sending}
-                style={{ width: 40, height: 40, borderRadius: '50%', background: newMsg.trim() ? 'var(--gold)' : 'var(--surface2)', border: 'none', cursor: newMsg.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', color: newMsg.trim() ? '#fff' : 'var(--text-dim)', flexShrink: 0 }}
+                style={{ width: 40, height: 40, borderRadius: '50%', background: newMsg.trim() ? 'var(--accent)' : '#E5E5EA', border: 'none', cursor: newMsg.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', color: newMsg.trim() ? '#fff' : '#8E8E93', flexShrink: 0 }}
               >
                 <Send size={16} />
               </button>
             </div>
           </>
         ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', flexDirection: 'column', gap: 12 }}>
-            <MessageSquare size={40} color="var(--border2)" />
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', flexDirection: 'column', gap: 12 }}>
+            <MessageSquare size={40} color="#C7C7CC" />
             <p style={{ fontSize: 14 }}>Wähle einen Chat aus oder erstelle einen neuen</p>
           </div>
         )}
@@ -317,24 +317,24 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
       {showNewChat && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           onClick={() => setShowNewChat(false)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', padding: 28, width: 420, maxWidth: '100%' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 28, width: 420, maxWidth: '100%', boxShadow: 'var(--shadow-md)' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h3 style={{ fontFamily: 'var(--heading-font)', fontSize: 20, fontWeight: 600 }}>Neuer Chat</h3>
+              <h3 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px' }}>Neuer Chat</h3>
               <button onClick={() => setShowNewChat(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={18} /></button>
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 6 }}>Gruppenname (optional)</label>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 6 }}>Gruppenname (optional)</label>
               <input
                 value={chatName}
                 onChange={e => setChatName(e.target.value)}
                 placeholder="z.B. Team Foto"
-                style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 14, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
               />
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 10 }}>Teilnehmer wählen</label>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Teilnehmer wählen</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
                 {members.filter(m => m.user_id !== currentUserId).map(m => {
                   const selected = selectedMembers.includes(m.user_id)
@@ -344,19 +344,19 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
                       onClick={() => setSelectedMembers(prev => selected ? prev.filter(id => id !== m.user_id) : [...prev, m.user_id])}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
-                        borderRadius: 'var(--r-sm)', cursor: 'pointer',
-                        background: selected ? 'var(--gold-pale)' : 'var(--surface2)',
-                        border: `1px solid ${selected ? 'var(--gold-lt)' : 'transparent'}`,
+                        borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                        background: selected ? 'var(--accent-light)' : '#F5F5F7',
+                        border: `1px solid ${selected ? 'rgba(29,29,31,0.2)' : 'transparent'}`,
                       }}
                     >
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: selected ? 'var(--gold)' : 'var(--border)', color: selected ? '#fff' : 'var(--text-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: selected ? 'var(--accent)' : '#C7C7CC', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
                         {initials(m.profiles?.name ?? '?')}
                       </div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 500 }}>{m.profiles?.name ?? '—'}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{m.role}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.role}</div>
                       </div>
-                      {selected && <div style={{ marginLeft: 'auto', color: 'var(--gold)' }}><Check size={14} /></div>}
+                      {selected && <div style={{ marginLeft: 'auto', color: 'var(--accent)' }}><Check size={14} /></div>}
                     </div>
                   )
                 })}
@@ -364,11 +364,11 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setShowNewChat(false)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
+              <button onClick={() => setShowNewChat(false)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
               <button
                 onClick={createConversation}
                 disabled={selectedMembers.length === 0 || creating}
-                style={{ padding: '9px 20px', background: selectedMembers.length > 0 ? 'var(--gold)' : 'var(--border)', color: selectedMembers.length > 0 ? '#fff' : 'var(--text-dim)', border: 'none', borderRadius: 'var(--r-sm)', cursor: selectedMembers.length > 0 && !creating ? 'pointer' : 'default', fontSize: 14, fontWeight: 500 }}
+                style={{ padding: '9px 20px', background: selectedMembers.length > 0 ? 'var(--accent)' : '#C7C7CC', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: selectedMembers.length > 0 && !creating ? 'pointer' : 'default', fontSize: 14, fontWeight: 500 }}
               >
                 {creating ? 'Erstellen…' : `Chat erstellen (${selectedMembers.length})`}
               </button>
@@ -381,14 +381,14 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
       {deleteConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           onClick={() => setDeleteConfirm(null)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', padding: 28, width: 360, maxWidth: '100%' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontFamily: 'var(--heading-font)', fontSize: 18, fontWeight: 600, marginBottom: 12 }}>Chat löschen?</h3>
-            <p style={{ fontSize: 14, color: 'var(--text-light)', marginBottom: 24 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 28, width: 360, maxWidth: '100%', boxShadow: 'var(--shadow-md)' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 12 }}>Chat löschen?</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24 }}>
               Alle Nachrichten werden unwiderruflich gelöscht.
             </p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button onClick={() => setDeleteConfirm(null)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
-              <button onClick={() => deleteConversation(deleteConfirm)} style={{ padding: '9px 18px', background: 'var(--red)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Löschen</button>
+              <button onClick={() => setDeleteConfirm(null)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
+              <button onClick={() => deleteConversation(deleteConfirm)} style={{ padding: '9px 18px', background: '#FF3B30', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Löschen</button>
             </div>
           </div>
         </div>

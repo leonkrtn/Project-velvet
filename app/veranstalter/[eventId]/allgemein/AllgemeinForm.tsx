@@ -45,16 +45,16 @@ interface Props {
 const input: React.CSSProperties = {
   width: '100%', padding: '10px 13px',
   background: '#fff', border: '1px solid var(--border)',
-  borderRadius: 'var(--r-sm)', fontSize: 14, outline: 'none',
+  borderRadius: 'var(--radius-sm)', fontSize: 14, outline: 'none',
   fontFamily: 'inherit', boxSizing: 'border-box',
 }
 const label: React.CSSProperties = {
   display: 'block', fontSize: 11, fontWeight: 700,
   textTransform: 'uppercase', letterSpacing: '0.1em',
-  color: 'var(--text-dim)', marginBottom: 5,
+  color: 'var(--text-tertiary)', marginBottom: 5,
 }
 const section: React.CSSProperties = {
-  background: 'var(--surface)', borderRadius: 'var(--r-md)',
+  background: 'var(--surface)', borderRadius: 'var(--radius)',
   border: '1px solid var(--border)', marginBottom: 20,
 }
 const sectionHead: React.CSSProperties = {
@@ -77,7 +77,7 @@ function SectionWrap({ title, children }: { title: string; children: React.React
     <div style={section}>
       <div style={sectionHead} onClick={() => setOpen(o => !o)}>
         <span style={{ fontWeight: 600, fontSize: 15 }}>{title}</span>
-        {open ? <ChevronUp size={16} color="var(--text-dim)" /> : <ChevronDown size={16} color="var(--text-dim)" />}
+        {open ? <ChevronUp size={16} color="var(--text-tertiary)" /> : <ChevronDown size={16} color="var(--text-tertiary)" />}
       </div>
       {open && <div style={sectionBody}>{children}</div>}
     </div>
@@ -92,7 +92,7 @@ function Toggle({ checked, onChange, label: lbl }: { checked: boolean; onChange:
         onClick={() => onChange(!checked)}
         style={{
           width: 40, height: 22, borderRadius: 11, border: 'none',
-          background: checked ? 'var(--gold)' : 'var(--border2)', cursor: 'pointer',
+          background: checked ? 'var(--accent)' : 'var(--border2)', cursor: 'pointer',
           position: 'relative', flexShrink: 0, transition: 'background 0.2s',
         }}
       >
@@ -102,7 +102,7 @@ function Toggle({ checked, onChange, label: lbl }: { checked: boolean; onChange:
           transition: 'left 0.2s',
         }} />
       </button>
-      <span style={{ fontSize: 14, color: 'var(--text-mid)' }}>{lbl}</span>
+      <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{lbl}</span>
     </div>
   )
 }
@@ -176,10 +176,10 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers }: Props
 
   return (
     <div style={{ paddingBottom: 80 }}>
-      <h1 style={{ fontFamily: 'var(--heading-font)', fontSize: 28, fontWeight: 600, marginBottom: 6 }}>
+      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>
         Allgemein
       </h1>
-      <p style={{ color: 'var(--text-light)', fontSize: 14, marginBottom: 28 }}>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 28 }}>
         Event-Einstellungen und Details
       </p>
 
@@ -283,11 +283,11 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers }: Props
             {mealOptions.map(opt => (
               <span key={opt} style={{
                 display: 'inline-flex', alignItems: 'center', gap: 5,
-                background: 'var(--gold-pale)', border: '1px solid var(--gold-lt)',
-                borderRadius: 20, padding: '4px 10px', fontSize: 13, color: 'var(--gold)',
+                background: 'var(--accent-light)', border: '1px solid rgba(29,29,31,0.15)',
+                borderRadius: 20, padding: '4px 10px', fontSize: 13, color: 'var(--accent)',
               }}>
                 {opt}
-                <button type="button" onClick={() => removeMealOption(opt)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--gold)' }}>
+                <button type="button" onClick={() => removeMealOption(opt)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--accent)' }}>
                   <X size={13} />
                 </button>
               </span>
@@ -295,7 +295,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers }: Props
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <input style={{ ...input, flex: 1 }} value={newMealOption} onChange={e => setNewMealOption(e.target.value)} onKeyDown={e => e.key === 'Enter' && addMealOption()} placeholder="Neue Option…" />
-            <button type="button" onClick={addMealOption} style={{ padding: '10px 14px', background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500 }}>
+            <button type="button" onClick={addMealOption} style={{ padding: '10px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500 }}>
               <Plus size={14} /> Hinzufügen
             </button>
           </div>
@@ -325,14 +325,14 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers }: Props
       {/* 6. Kontakt Brautpaar */}
       <SectionWrap title="Kontakt Brautpaar">
         {bpMembers.length === 0 ? (
-          <p style={{ fontSize: 14, color: 'var(--text-dim)', fontStyle: 'italic' }}>
+          <p style={{ fontSize: 14, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
             Noch kein Brautpaar eingeladen.
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {bpMembers.map((m, i) => (
-              <div key={m.id} style={{ background: 'var(--surface2)', borderRadius: 'var(--r-sm)', padding: '14px 16px' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 8 }}>
+              <div key={m.id} style={{ background: '#F5F5F7', borderRadius: 'var(--radius-sm)', padding: '14px 16px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
                   Person {i + 1}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -370,19 +370,19 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers }: Props
           justifyContent: 'space-between', zIndex: 100,
           boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
         }}>
-          <span style={{ fontSize: 14, color: 'var(--text-light)' }}>Ungespeicherte Änderungen</span>
+          <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Ungespeicherte Änderungen</span>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             {error && <span style={{ fontSize: 13, color: 'var(--red)' }}>{error}</span>}
             <button
               onClick={() => { setForm(initialData); setDirty(false) }}
-              style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 14 }}
+              style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}
             >
               Abbrechen
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              style={{ padding: '9px 20px', background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: saving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: saving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
             >
               <Save size={14} />
               {saving ? 'Speichern…' : 'Speichern'}
@@ -395,7 +395,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers }: Props
         <div style={{
           position: 'fixed', bottom: 24, right: 24,
           background: 'var(--green)', color: '#fff',
-          padding: '12px 20px', borderRadius: 'var(--r-sm)',
+          padding: '12px 20px', borderRadius: 'var(--radius-sm)',
           fontSize: 14, fontWeight: 500, zIndex: 100,
           boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
         }}>
