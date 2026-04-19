@@ -114,9 +114,13 @@ export default function VeranstalterEventsPage() {
       setEvents(list)
 
       if (presetRow) {
+        const street = presetRow.location_street ?? ''
+        const zip    = presetRow.location_zip    ?? ''
+        const city   = presetRow.location_city   ?? ''
+        const builtAddress = [street, `${zip} ${city}`.trim()].filter(Boolean).join(', ')
         setPresetBase({
           venue:               presetRow.venue               ?? '',
-          venueAddress:        presetRow.venue_address       ?? '',
+          venueAddress:        builtAddress,
           dresscode:           presetRow.dresscode           ?? '',
           childrenAllowed:     presetRow.children_allowed    ?? true,
           childrenNote:        presetRow.children_note       ?? '',

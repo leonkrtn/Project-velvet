@@ -6,12 +6,14 @@ import { ChevronLeft, Check } from 'lucide-react'
 
 type Presets = {
   venue: string
-  venue_address: string
   location_name: string
   location_street: string
   location_zip: string
   location_city: string
   location_website: string
+  hotel_notes: string
+  dienstleister_notes: string
+  deko_notes: string
   dresscode: string
   children_allowed: boolean
   children_note: string
@@ -21,12 +23,14 @@ type Presets = {
 
 const EMPTY: Presets = {
   venue: '',
-  venue_address: '',
   location_name: '',
   location_street: '',
   location_zip: '',
   location_city: '',
   location_website: '',
+  hotel_notes: '',
+  dienstleister_notes: '',
+  deko_notes: '',
   dresscode: '',
   children_allowed: true,
   children_note: '',
@@ -60,6 +64,10 @@ export default function VoreinstellungenPage() {
     boxSizing: 'border-box', color: 'var(--text)',
   }
 
+  const ta: React.CSSProperties = {
+    ...inp, resize: 'vertical', minHeight: 80, lineHeight: 1.5,
+  }
+
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,18 +88,20 @@ export default function VoreinstellungenPage() {
 
       if (row) {
         setData({
-          venue:               row.venue               ?? '',
-          venue_address:       row.venue_address       ?? '',
-          location_name:       row.location_name       ?? '',
-          location_street:     row.location_street     ?? '',
-          location_zip:        row.location_zip        ?? '',
-          location_city:       row.location_city       ?? '',
-          location_website:    row.location_website    ?? '',
-          dresscode:           row.dresscode           ?? '',
-          children_allowed:    row.children_allowed    ?? true,
-          children_note:       row.children_note       ?? '',
-          max_begleitpersonen: row.max_begleitpersonen ?? 2,
-          meal_options:        row.meal_options        ?? ['fleisch', 'fisch', 'vegetarisch', 'vegan'],
+          venue:                row.venue                ?? '',
+          location_name:        row.location_name        ?? '',
+          location_street:      row.location_street      ?? '',
+          location_zip:         row.location_zip         ?? '',
+          location_city:        row.location_city        ?? '',
+          location_website:     row.location_website     ?? '',
+          hotel_notes:          row.hotel_notes          ?? '',
+          dienstleister_notes:  row.dienstleister_notes  ?? '',
+          deko_notes:           row.deko_notes           ?? '',
+          dresscode:            row.dresscode            ?? '',
+          children_allowed:     row.children_allowed     ?? true,
+          children_note:        row.children_note        ?? '',
+          max_begleitpersonen:  row.max_begleitpersonen  ?? 2,
+          meal_options:         row.meal_options         ?? ['fleisch', 'fisch', 'vegetarisch', 'vegan'],
         })
       }
     } finally {
@@ -116,23 +126,24 @@ export default function VoreinstellungenPage() {
     if (!userId) return
     setSaving(true)
     try {
-      const row = {
-        user_id:             userId,
-        venue:               data.venue.trim()            || null,
-        venue_address:       data.venue_address.trim()    || null,
-        location_name:       data.location_name.trim()    || null,
-        location_street:     data.location_street.trim()  || null,
-        location_zip:        data.location_zip.trim()     || null,
-        location_city:       data.location_city.trim()    || null,
-        location_website:    data.location_website.trim() || null,
-        dresscode:           data.dresscode.trim()        || null,
-        children_allowed:    data.children_allowed,
-        children_note:       data.children_note.trim()    || null,
-        max_begleitpersonen: data.max_begleitpersonen,
-        meal_options:        data.meal_options,
-        updated_at:          new Date().toISOString(),
-      }
-      await supabase.from('organizer_presets').upsert(row, { onConflict: 'user_id' })
+      await supabase.from('organizer_presets').upsert({
+        user_id:              userId,
+        venue:                data.venue.trim()               || null,
+        location_name:        data.location_name.trim()       || null,
+        location_street:      data.location_street.trim()     || null,
+        location_zip:         data.location_zip.trim()        || null,
+        location_city:        data.location_city.trim()       || null,
+        location_website:     data.location_website.trim()    || null,
+        hotel_notes:          data.hotel_notes.trim()         || null,
+        dienstleister_notes:  data.dienstleister_notes.trim() || null,
+        deko_notes:           data.deko_notes.trim()          || null,
+        dresscode:            data.dresscode.trim()           || null,
+        children_allowed:     data.children_allowed,
+        children_note:        data.children_note.trim()       || null,
+        max_begleitpersonen:  data.max_begleitpersonen,
+        meal_options:         data.meal_options,
+        updated_at:           new Date().toISOString(),
+      }, { onConflict: 'user_id' })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } finally {
@@ -153,6 +164,11 @@ export default function VoreinstellungenPage() {
   const card: React.CSSProperties = {
     background: 'var(--surface)', border: '1px solid var(--border)',
     borderRadius: 'var(--radius)', padding: '20px 22px', marginBottom: 16,
+  }
+
+  const focusBorder = {
+    onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => { e.target.style.borderColor = 'var(--accent)' },
+    onBlur:  (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => { e.target.style.borderColor = 'var(--border)' },
   }
 
   if (loading) {
@@ -197,28 +213,9 @@ export default function VoreinstellungenPage() {
               onChange={e => patch({ venue: e.target.value })}
               placeholder="Schloss Lichtenberg"
               style={inp}
-              onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+              {...focusBorder}
             />
           </div>
-          <div>
-            <label style={labelStyle}>Vollständige Adresse</label>
-            <input
-              value={data.venue_address}
-              onChange={e => patch({ venue_address: e.target.value })}
-              placeholder="Musterstraße 1, 12345 Musterstadt"
-              style={inp}
-              onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Location Details */}
-      <div style={card}>
-        <p style={sectionTitle}>Location Details</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={labelStyle}>Bezeichnung / Saal</label>
             <input
@@ -226,8 +223,7 @@ export default function VoreinstellungenPage() {
               onChange={e => patch({ location_name: e.target.value })}
               placeholder="Festsaal West"
               style={inp}
-              onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+              {...focusBorder}
             />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -238,8 +234,7 @@ export default function VoreinstellungenPage() {
                 onChange={e => patch({ location_street: e.target.value })}
                 placeholder="Musterstraße 1"
                 style={inp}
-                onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                {...focusBorder}
               />
             </div>
             <div>
@@ -249,32 +244,31 @@ export default function VoreinstellungenPage() {
                 onChange={e => patch({ location_zip: e.target.value })}
                 placeholder="12345"
                 style={inp}
-                onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                {...focusBorder}
               />
             </div>
           </div>
-          <div>
-            <label style={labelStyle}>Stadt</label>
-            <input
-              value={data.location_city}
-              onChange={e => patch({ location_city: e.target.value })}
-              placeholder="Musterstadt"
-              style={inp}
-              onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-            />
-          </div>
-          <div>
-            <label style={labelStyle}>Website</label>
-            <input
-              value={data.location_website}
-              onChange={e => patch({ location_website: e.target.value })}
-              placeholder="https://location.de"
-              style={inp}
-              onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Stadt</label>
+              <input
+                value={data.location_city}
+                onChange={e => patch({ location_city: e.target.value })}
+                placeholder="Musterstadt"
+                style={inp}
+                {...focusBorder}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Website</label>
+              <input
+                value={data.location_website}
+                onChange={e => patch({ location_website: e.target.value })}
+                placeholder="https://location.de"
+                style={inp}
+                {...focusBorder}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -299,6 +293,56 @@ export default function VoreinstellungenPage() {
             <input disabled placeholder="8" style={inp} />
           </div>
         </div>
+      </div>
+
+      {/* Vorschläge */}
+      <div style={card}>
+        <p style={sectionTitle}>Vorschläge</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Hotel</label>
+            <textarea
+              value={data.hotel_notes}
+              onChange={e => patch({ hotel_notes: e.target.value })}
+              placeholder="z. B. Hotel Muster, 5 Zimmer reserviert, 10 min zur Location"
+              style={ta}
+              {...focusBorder}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Dienstleister</label>
+            <textarea
+              value={data.dienstleister_notes}
+              onChange={e => patch({ dienstleister_notes: e.target.value })}
+              placeholder="z. B. DJ Max, Fotograf Anna Schmidt"
+              style={ta}
+              {...focusBorder}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Deko</label>
+            <textarea
+              value={data.deko_notes}
+              onChange={e => patch({ deko_notes: e.target.value })}
+              placeholder="z. B. Weiße Tischdecken, Blumengestecke Rosen"
+              style={ta}
+              {...focusBorder}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Mitarbeiter — coming soon */}
+      <div style={{ ...card, opacity: 0.55, pointerEvents: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <p style={{ ...sectionTitle, marginBottom: 0 }}>Mitarbeiter</p>
+          <span style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
+            textTransform: 'uppercase', color: 'var(--text-tertiary)',
+            background: 'var(--border)', borderRadius: 6, padding: '3px 8px',
+          }}>Bald verfügbar</span>
+        </div>
+        <textarea disabled placeholder="Standard-Mitarbeiter für neue Events" style={{ ...ta, width: '100%' }} />
       </div>
 
       {/* Standard-Vorschläge (Menüoptionen) */}
@@ -340,8 +384,7 @@ export default function VoreinstellungenPage() {
               onChange={e => patch({ dresscode: e.target.value })}
               placeholder="Festlich, Cocktailkleid etc."
               style={inp}
-              onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+              {...focusBorder}
             />
           </div>
           <div>
@@ -371,8 +414,7 @@ export default function VoreinstellungenPage() {
                 onChange={e => patch({ children_note: e.target.value })}
                 placeholder="Hinweis zu Kindern (optional)"
                 style={{ ...inp, marginTop: 10 }}
-                onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                {...focusBorder}
               />
             )}
           </div>
@@ -383,8 +425,7 @@ export default function VoreinstellungenPage() {
               value={data.max_begleitpersonen}
               onChange={e => patch({ max_begleitpersonen: Math.max(0, parseInt(e.target.value) || 0) })}
               style={{ ...inp, maxWidth: 100 }}
-              onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
-              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+              {...focusBorder}
             />
           </div>
         </div>
