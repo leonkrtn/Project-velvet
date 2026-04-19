@@ -9,7 +9,7 @@ type MemberRole = 'veranstalter' | 'brautpaar' | 'trauzeuge' | 'dienstleister'
 interface Member {
   id: string
   role: MemberRole
-  joined_at: string
+  joined_at: string | null
   display_name: string | null
   invite_status: string | null
   profiles: { id: string; name: string; email: string } | null
