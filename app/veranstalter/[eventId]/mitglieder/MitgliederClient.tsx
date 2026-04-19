@@ -9,7 +9,7 @@ type MemberRole = 'veranstalter' | 'brautpaar' | 'trauzeuge' | 'dienstleister'
 interface Member {
   id: string
   role: MemberRole
-  joined_at: string
+  joined_at: string | null
   display_name: string | null
   invite_status: string | null
   profiles: { id: string; name: string; email: string } | null
@@ -69,8 +69,13 @@ function StatusBadge({ status }: { status: string | null }) {
   )
 }
 
+const DL_CATEGORIES = [
+  'Fotograf', 'Videograf', 'Caterer', 'Floristin', 'Band / DJ',
+  'Konditorei', 'Hairstylist / Make-up', 'Trauungsredner', 'Location', 'Andere',
+]
+
 type FilterType = 'alle' | 'bestaetigt' | 'offen'
-type InviteRole = 'brautpaar' | 'trauzeuge'
+type InviteRole = 'brautpaar' | 'trauzeuge' | 'dienstleister'
 
 export default function MitgliederClient({ eventId, members: initialMembers, vendors }: Props) {
   const router = useRouter()
@@ -79,6 +84,9 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const [filter, setFilter] = useState<FilterType>('alle')
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [inviteRole, setInviteRole] = useState<InviteRole>('trauzeuge')
+  const [inviteDLName, setInviteDLName] = useState('')
+  const [inviteDLCategory, setInviteDLCategory] = useState(DL_CATEGORIES[0])
+  const [inviteDLEmail, setInviteDLEmail] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -100,12 +108,27 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   }
 
   async function handleInvite() {
+    if (inviteRole === 'dienstleister' && !inviteDLName.trim()) return
     setInviting(true)
-    const res = await fetch('/api/invite/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId, targetRole: inviteRole }),
-    })
+    let res: Response
+    if (inviteRole === 'dienstleister') {
+      res = await fetch('/api/invite/dienstleister', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId,
+          name: inviteDLName.trim(),
+          category: inviteDLCategory,
+          email: inviteDLEmail.trim() || undefined,
+        }),
+      })
+    } else {
+      res = await fetch('/api/invite/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, targetRole: inviteRole }),
+      })
+    }
     const data = await res.json()
     setInviting(false)
     if (data.code) {
@@ -175,8 +198,8 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
       {/* Table */}
       <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 140px 130px 40px', gap: 0, padding: '10px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
-          {['', 'Name & Rolle', 'Kosten', 'Status', ''].map((h, i) => (
+        <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 130px 40px', gap: 0, padding: '10px 20px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
+          {['', 'Name & Rolle', 'Status', ''].map((h, i) => (
             <span key={i} style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>{h}</span>
           ))}
         </div>
@@ -194,7 +217,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
           return (
             <div key={m.id} style={{ borderBottom: '1px solid var(--border)' }}>
               {/* Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 140px 130px 40px', gap: 0, padding: '14px 20px', alignItems: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 130px 40px', gap: 0, padding: '14px 20px', alignItems: 'center' }}>
                 {/* Avatar */}
                 <div style={{
                   width: 32, height: 32, borderRadius: '50%',
@@ -209,11 +232,6 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{displayName}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{ROLE_LABELS[m.role]}</div>
-                </div>
-
-                {/* Cost */}
-                <div style={{ fontSize: 14, color: 'var(--text-mid)' }}>
-                  {vendor ? `${fmtMoney(vendor.price)} ${vendor.cost_label ?? ''}` : '—'}
                 </div>
 
                 {/* Status */}
@@ -247,7 +265,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
                     )}
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 3 }}>Dabei seit</div>
-                      <div style={{ fontSize: 13 }}>{new Date(m.joined_at).toLocaleDateString('de-DE')}</div>
+                      <div style={{ fontSize: 13 }}>{m.joined_at ? new Date(m.joined_at).toLocaleDateString('de-DE') : '—'}</div>
                     </div>
                   </div>
                   {vendor?.notes && (
@@ -290,19 +308,59 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 6 }}>Rolle</label>
                   <select
                     value={inviteRole}
-                    onChange={e => setInviteRole(e.target.value as InviteRole)}
+                    onChange={e => { setInviteRole(e.target.value as InviteRole); setInviteDLName(''); setInviteDLEmail('') }}
                     style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 14, fontFamily: 'inherit', background: '#fff', outline: 'none' }}
                   >
                     <option value="brautpaar">Brautpaar</option>
                     <option value="trauzeuge">Trauzeuge</option>
+                    <option value="dienstleister">Dienstleister</option>
                   </select>
                 </div>
+
+                {inviteRole === 'dienstleister' && (
+                  <>
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 6 }}>Name *</label>
+                      <input
+                        value={inviteDLName}
+                        onChange={e => setInviteDLName(e.target.value)}
+                        placeholder="z.B. Max Mustermann"
+                        style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 6 }}>Kategorie</label>
+                      <select
+                        value={inviteDLCategory}
+                        onChange={e => setInviteDLCategory(e.target.value)}
+                        style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 14, fontFamily: 'inherit', background: '#fff', outline: 'none' }}
+                      >
+                        {DL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 6 }}>E-Mail (optional)</label>
+                      <input
+                        value={inviteDLEmail}
+                        onChange={e => setInviteDLEmail(e.target.value)}
+                        type="email"
+                        placeholder="name@beispiel.de"
+                        style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </>
+                )}
+
                 <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 20 }}>
                   Ein Einladungslink wird erstellt. Teile ihn mit der Person, die beitreten soll. Der Link ist 7 Tage gültig.
                 </p>
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                   <button onClick={() => setShowInviteModal(false)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
-                  <button onClick={handleInvite} disabled={inviting} style={{ padding: '9px 20px', background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: inviting ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500 }}>
+                  <button
+                    onClick={handleInvite}
+                    disabled={inviting || (inviteRole === 'dienstleister' && !inviteDLName.trim())}
+                    style={{ padding: '9px 20px', background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 'var(--r-sm)', cursor: inviting ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, opacity: (inviteRole === 'dienstleister' && !inviteDLName.trim()) ? 0.5 : 1 }}
+                  >
                     {inviting ? 'Erstellen…' : 'Link erstellen'}
                   </button>
                 </div>
@@ -310,7 +368,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
             ) : (
               <>
                 <p style={{ fontSize: 14, color: 'var(--text-light)', marginBottom: 14 }}>
-                  Einladungslink für <strong>{inviteRole === 'brautpaar' ? 'Brautpaar' : 'Trauzeuge'}</strong>:
+                  Einladungslink für <strong>{inviteRole === 'brautpaar' ? 'Brautpaar' : inviteRole === 'trauzeuge' ? 'Trauzeuge' : `${inviteDLCategory} (${inviteDLName})`}</strong>:
                 </p>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
                   <input readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/invite/${inviteCode}`} style={{ flex: 1, padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 13, background: 'var(--surface2)', outline: 'none' }} />

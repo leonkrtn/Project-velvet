@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import ChatsClient from './ChatsClient'
 
 interface Props {
@@ -8,6 +9,7 @@ interface Props {
 export default async function ChatsPage({ params }: Props) {
   const { eventId } = await params
   const supabase = await createClient()
+  const admin = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -20,9 +22,9 @@ export default async function ChatsPage({ params }: Props) {
       `)
       .eq('event_id', eventId)
       .order('updated_at', { ascending: false }),
-    supabase
+    admin
       .from('event_members')
-      .select('id, user_id, role, profiles(id, name, email)')
+      .select('id, user_id, role, profiles!user_id(id, name, email)')
       .eq('event_id', eventId),
   ])
 

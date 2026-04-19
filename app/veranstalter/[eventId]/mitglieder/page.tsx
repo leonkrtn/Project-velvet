@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import MitgliederClient from './MitgliederClient'
 
@@ -8,26 +8,27 @@ interface Props {
 
 export default async function MitgliederPage({ params }: Props) {
   const { eventId } = await params
-  const supabase = await createClient()
+  const admin = createAdminClient()
 
-  const { data: members } = await supabase
+  const { data: members, error } = await admin
     .from('event_members')
     .select(`
-      id, role, joined_at, display_name, invite_status,
-      profiles(id, name, email)
+      id, role, display_name, invite_status,
+      profiles!user_id(id, name, email)
     `)
     .eq('event_id', eventId)
-    .order('joined_at', { ascending: true })
+    .order('id', { ascending: true })
 
-  if (members === null) redirect('/veranstalter')
+  if (error || members === null) redirect('/veranstalter')
 
   const membersNormalized = members.map(m => ({
     ...m,
+    joined_at: null as string | null,
     profiles: Array.isArray(m.profiles) ? (m.profiles[0] ?? null) : m.profiles,
   }))
 
   // For Dienstleister: fetch vendor data linked via email match or event
-  const { data: vendors } = await supabase
+  const { data: vendors } = await admin
     .from('vendors')
     .select('id, name, category, price, cost_label, email, phone, status, notes')
     .eq('event_id', eventId)
