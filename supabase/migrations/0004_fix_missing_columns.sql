@@ -22,6 +22,14 @@ ALTER TABLE conversations ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
 
+-- ════════════════════════════════════════════════════════════════════════════
+-- MESSAGES: ensure event_id and read_at exist
+-- ════════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES events(id) ON DELETE CASCADE;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
+
+
 -- updated_at auto-update trigger (idempotent)
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
