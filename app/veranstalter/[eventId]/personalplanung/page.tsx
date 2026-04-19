@@ -1,0 +1,18 @@
+import { UserCog } from 'lucide-react'
+
+export default function PersonalplanungPage() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 400, textAlign: 'center', gap: 16 }}>
+      <div style={{ width: 64, height: 64, borderRadius: 'var(--r-md)', background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <UserCog size={28} color="var(--text-dim)" />
+      </div>
+      <h2 style={{ fontFamily: 'var(--heading-font)', fontSize: 22, fontWeight: 600 }}>Personalplanung</h2>
+      <p style={{ fontSize: 14, color: 'var(--text-dim)', maxWidth: 320 }}>
+        Diese Funktion wird bald verfügbar sein. Wir arbeiten noch an dieser Seite.
+      </p>
+      <span style={{ padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', background: 'var(--gold-pale)', color: 'var(--gold)' }}>
+        In Entwicklung
+      </span>
+    </div>
+  )
+}

@@ -1,0 +1,51 @@
+import { createClient } from '@/lib/supabase/server'
+import ChatsClient from './ChatsClient'
+
+interface Props {
+  params: Promise<{ eventId: string }>
+}
+
+export default async function ChatsPage({ params }: Props) {
+  const { eventId } = await params
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const [conversationsRes, membersRes] = await Promise.all([
+    supabase
+      .from('conversations')
+      .select(`
+        id, name, created_by, created_at, updated_at,
+        conversation_participants(user_id, profiles(id, name))
+      `)
+      .eq('event_id', eventId)
+      .order('updated_at', { ascending: false }),
+    supabase
+      .from('event_members')
+      .select('id, user_id, role, profiles(id, name, email)')
+      .eq('event_id', eventId),
+  ])
+
+  const membersNormalized = (membersRes.data ?? []).map(m => ({
+    ...m,
+    profiles: Array.isArray(m.profiles) ? (m.profiles[0] ?? null) : m.profiles,
+  }))
+
+  // Normalize conversation_participants nested profiles
+  const conversations = (conversationsRes.data ?? []).map(conv => ({
+    ...conv,
+    conversation_participants: (conv.conversation_participants ?? []).map((p: { user_id: string; profiles: { id: string; name: string }[] | { id: string; name: string } | null }) => ({
+      ...p,
+      profiles: Array.isArray(p.profiles) ? (p.profiles[0] ?? null) : p.profiles,
+    })),
+  }))
+
+  return (
+    <ChatsClient
+      eventId={eventId}
+      currentUserId={user?.id ?? ''}
+      initialConversations={conversations}
+      members={membersNormalized}
+    />
+  )
+}
