@@ -22,7 +22,6 @@ interface Message {
   conversation_id: string
   sender_id: string | null
   content: string
-  read_at: string | null
   created_at: string
   sender?: { name: string } | null
 }
@@ -71,7 +70,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const loadMessages = useCallback(async (convId: string) => {
     const { data } = await supabase
       .from('messages')
-      .select('id, conversation_id, sender_id, content, read_at, created_at, sender:profiles!sender_id(name)')
+      .select('id, conversation_id, sender_id, content, created_at, sender:profiles!sender_id(name)')
       .eq('conversation_id', convId)
       .order('created_at', { ascending: true })
       .limit(100)
@@ -111,7 +110,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
     const { data: inserted } = await supabase
       .from('messages')
       .insert({ conversation_id: activeConv.id, sender_id: currentUserId, content })
-      .select('id, conversation_id, sender_id, content, read_at, created_at')
+      .select('id, conversation_id, sender_id, content, created_at')
       .single()
     if (inserted) {
       setMessages(prev => prev.some(m => m.id === inserted.id) ? prev : [...prev, { ...inserted, sender: null }])
