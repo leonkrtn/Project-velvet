@@ -113,7 +113,7 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers 
           display: flex;
           flex-direction: column;
           gap: 16px;
-          padding-top: 72px;
+          padding-top: 90px;
         }
         @media (max-width: 900px) {
           .bp-grid { grid-template-columns: 1fr; }
