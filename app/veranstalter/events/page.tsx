@@ -4,6 +4,10 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Settings, Trash2 } from 'lucide-react'
 
+interface PresetVendor { id: string; name: string | null; category: string | null; description: string | null; price_estimate: number; contact_email: string | null; contact_phone: string | null }
+interface PresetHotel  { id: string; name: string | null; address: string | null; distance_km: number; price_per_night: number; total_rooms: number; description: string | null }
+interface PresetDeko   { id: string; title: string | null; description: string | null; image_url: string | null }
+
 type EventSummary = {
   id: string
   title: string
@@ -62,6 +66,8 @@ export default function VeranstalterEventsPage() {
   const [wizardError, setWizardError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [presetBase, setPresetBase] = useState<Partial<WizardData>>({})
+  const [presetSuggestions, setPresetSuggestions] = useState<{ vendors: PresetVendor[]; hotels: PresetHotel[]; deko: PresetDeko[] }>({ vendors: [], hotels: [], deko: [] })
+  const [applyVorschlaege, setApplyVorschlaege] = useState(false)
 
   // Delete confirmation
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
@@ -127,6 +133,11 @@ export default function VeranstalterEventsPage() {
           maxBegleitpersonen:  presetRow.max_begleitpersonen ?? 2,
           mealOptions:         presetRow.meal_options        ?? ['fleisch', 'fisch', 'vegetarisch', 'vegan'],
         })
+        const vendors: PresetVendor[] = presetRow.preset_vendors ?? []
+        const hotels:  PresetHotel[]  = presetRow.preset_hotels  ?? []
+        const deko:    PresetDeko[]   = presetRow.preset_deko    ?? []
+        setPresetSuggestions({ vendors, hotels, deko })
+        setApplyVorschlaege(vendors.length > 0 || hotels.length > 0 || deko.length > 0)
       }
     } catch (err) {
       console.error('[VeranstalterEvents] load failed:', err)
@@ -195,6 +206,24 @@ export default function VeranstalterEventsPage() {
       })
       if (error) throw error
       const newId = data as string
+
+      if (applyVorschlaege) {
+        const inserts: Promise<unknown>[] = []
+        if (presetSuggestions.vendors.length)
+          inserts.push(supabase.from('organizer_vendor_suggestions').insert(
+            presetSuggestions.vendors.map(v => ({ event_id: newId, name: v.name, category: v.category, description: v.description, price_estimate: v.price_estimate, contact_email: v.contact_email, contact_phone: v.contact_phone }))
+          ))
+        if (presetSuggestions.hotels.length)
+          inserts.push(supabase.from('organizer_hotel_suggestions').insert(
+            presetSuggestions.hotels.map(h => ({ event_id: newId, name: h.name, address: h.address, distance_km: h.distance_km, price_per_night: h.price_per_night, total_rooms: h.total_rooms, description: h.description }))
+          ))
+        if (presetSuggestions.deko.length)
+          inserts.push(supabase.from('deko_suggestions').insert(
+            presetSuggestions.deko.map(d => ({ event_id: newId, title: d.title, description: d.description, image_url: d.image_url }))
+          ))
+        await Promise.all(inserts)
+      }
+
       const newEvent: EventSummary = {
         id: newId, title: wizardData.title.trim(),
         couple_name: wizardData.title.trim(),
@@ -528,6 +557,22 @@ export default function VeranstalterEventsPage() {
                   <span style={{ color: 'var(--text)', fontWeight: 500 }}>{value}</span>
                 </div>
               ))}
+              {(presetSuggestions.vendors.length + presetSuggestions.hotels.length + presetSuggestions.deko.length) > 0 && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, paddingTop: 14, borderTop: '1px solid var(--border)', cursor: 'pointer', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={applyVorschlaege}
+                    onChange={e => setApplyVorschlaege(e.target.checked)}
+                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent)', flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: 14, color: 'var(--text)' }}>
+                    Vorschläge übernehmen
+                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 6 }}>
+                      ({presetSuggestions.vendors.length + presetSuggestions.hotels.length + presetSuggestions.deko.length} aus Voreinstellungen)
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
           )}
 
