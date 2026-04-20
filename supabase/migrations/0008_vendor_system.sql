@@ -100,8 +100,8 @@ $$ LANGUAGE sql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION preview_invitation_code(p_code TEXT)
 RETURNS JSONB AS $$
 DECLARE
-  v_inv   event_invitations%ROWTYPE;
-  v_event events%ROWTYPE;
+  v_inv   RECORD;
+  v_event RECORD;
 BEGIN
   SELECT * INTO v_inv FROM event_invitations WHERE code = p_code;
 
@@ -135,11 +135,12 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION join_event_by_code(p_code TEXT)
 RETURNS JSONB AS $$
 DECLARE
-  v_inv   event_invitations%ROWTYPE;
-  v_event events%ROWTYPE;
-  v_uid   UUID := auth.uid();
+  v_inv   RECORD;
+  v_event RECORD;
+  v_uid   UUID;
   v_perm  TEXT;
 BEGIN
+  v_uid := auth.uid();
   IF v_uid IS NULL THEN
     RETURN jsonb_build_object('error', 'Nicht angemeldet');
   END IF;
@@ -564,7 +565,7 @@ CREATE POLICY "messages_select" ON messages
 CREATE OR REPLACE FUNCTION adjust_hotel_booking(p_prev_room UUID, p_next_room UUID)
 RETURNS JSONB AS $$
 DECLARE
-  v_room hotel_rooms%ROWTYPE;
+  v_room RECORD;
 BEGIN
   -- Zuerst neues Zimmer sperren und Verfügbarkeit prüfen (vor jeder Änderung)
   IF p_next_room IS NOT NULL THEN
