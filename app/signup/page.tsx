@@ -1,26 +1,31 @@
 'use client'
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-type InvitePreview = {
+type CodeType = 'event' | 'vendor' | null
+
+type EventPreview = {
   event_id: string
   role: string
   expires_at: string
 }
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
 
-  const [inviteCode, setInviteCode] = useState('')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [preview, setPreview] = useState<InvitePreview | null>(null)
+  const [inviteCode, setInviteCode]   = useState(searchParams.get('code') ?? '')
+  const [codeType, setCodeType]       = useState<CodeType>(null)
+  const [eventPreview, setEventPreview] = useState<EventPreview | null>(null)
+  const [name, setName]               = useState('')
+  const [email, setEmail]             = useState('')
+  const [password, setPassword]       = useState('')
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState('')
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [success, setSuccess]         = useState(false)
 
   // After successful signUp but before redeem — lets user retry redeem only
   const [pendingRedeem, setPendingRedeem] = useState(false)
@@ -35,13 +40,26 @@ export default function SignupPage() {
 
   const handleCodeBlur = async () => {
     const code = inviteCode.trim()
-    if (!code) { setPreview(null); return }
+    if (!code) { setCodeType(null); setEventPreview(null); return }
     setPreviewLoading(true)
+    setCodeType(null)
+    setEventPreview(null)
     try {
-      const { data } = await supabase.rpc('get_invite_preview', { p_code: code })
-      setPreview(data?.[0] ?? null)
+      // Try vendor code first
+      const { data: vendorData } = await supabase.rpc('preview_vendor_signup_code', { p_code: code })
+      if (vendorData && !vendorData.error) {
+        setCodeType('vendor')
+        setPreviewLoading(false)
+        return
+      }
+      // Fall back to event invite code
+      const { data: eventData } = await supabase.rpc('get_invite_preview', { p_code: code })
+      if (eventData?.[0]) {
+        setCodeType('event')
+        setEventPreview(eventData[0])
+      }
     } catch {
-      setPreview(null)
+      // ignore
     } finally {
       setPreviewLoading(false)
     }
@@ -55,6 +73,18 @@ export default function SignupPage() {
     return data.event_id!
   }
 
+  const handleRetryRedeem = async () => {
+    setLoading(true); setError('')
+    try {
+      const eventId = await doRedeem(pendingCode)
+      router.push(`/dashboard?event=${eventId}`)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Code konnte nicht eingelöst werden.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (password.length < 8) { setError('Passwort muss mindestens 8 Zeichen haben.'); return }
@@ -62,6 +92,25 @@ export default function SignupPage() {
     if (!code) { setError('Einladungscode ist erforderlich.'); return }
     setLoading(true); setError('')
 
+    // Vendor code flow — server-side account creation
+    if (codeType === 'vendor') {
+      const res = await fetch('/api/vendor/signup', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ code, name: name.trim(), email: email.trim(), password }),
+      })
+      const data = await res.json()
+      setLoading(false)
+      if (!res.ok || data.error) {
+        setError(data.error ?? 'Registrierung fehlgeschlagen.')
+        return
+      }
+      setSuccess(true)
+      setTimeout(() => router.push('/login'), 2500)
+      return
+    }
+
+    // Event invite code flow
     try {
       const { error: signUpErr } = await supabase.auth.signUp({
         email,
@@ -88,23 +137,22 @@ export default function SignupPage() {
     }
   }
 
-  const handleRetryRedeem = async () => {
-    setLoading(true); setError('')
-    try {
-      const eventId = await doRedeem(pendingCode)
-      router.push(`/dashboard?event=${eventId}`)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Code konnte nicht eingelöst werden.')
-    } finally {
-      setLoading(false)
-    }
+  if (success) {
+    return (
+      <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 40, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1, marginBottom: 24 }}>Velvet.</p>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Account erstellt!</h2>
+          <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>Du wirst zum Login weitergeleitet…</p>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 440 }}>
 
-        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 40, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1 }}>Velvet.</p>
           <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 8 }}>Konto erstellen</p>
@@ -122,21 +170,26 @@ export default function SignupPage() {
               <input
                 required
                 value={inviteCode}
-                onChange={e => { setInviteCode(e.target.value); setPreview(null) }}
+                onChange={e => { setInviteCode(e.target.value); setCodeType(null); setEventPreview(null) }}
                 onBlur={handleCodeBlur}
-                placeholder="Von deinem Veranstalter oder Brautpaar"
+                placeholder="Von deinem Veranstalter"
                 style={inputStyle}
                 onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
               />
               {previewLoading && (
                 <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5 }}>Prüfe Code …</p>
               )}
-              {preview && (
+              {codeType === 'vendor' && (
                 <p style={{ fontSize: 12, color: 'var(--gold)', marginTop: 5, fontWeight: 600 }}>
-                  Einladung gefunden · Rolle: {preview.role}
+                  Dienstleister-Code gültig ✓
                 </p>
               )}
-              {!previewLoading && inviteCode.trim() && !preview && (
+              {codeType === 'event' && eventPreview && (
+                <p style={{ fontSize: 12, color: 'var(--gold)', marginTop: 5, fontWeight: 600 }}>
+                  Einladung gefunden · Rolle: {eventPreview.role}
+                </p>
+              )}
+              {!previewLoading && inviteCode.trim() && !codeType && (
                 <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5 }}>Code nicht gefunden oder abgelaufen</p>
               )}
             </div>
@@ -239,7 +292,7 @@ export default function SignupPage() {
           </div>
         </div>
 
-        {/* Hidden admin link — no label */}
+        {/* Hidden admin link */}
         <a
           href="/admin/create-organizer"
           style={{ display: 'block', width: 8, height: 8, position: 'fixed', bottom: 12, right: 12, opacity: 0.15 }}
@@ -247,5 +300,13 @@ export default function SignupPage() {
         />
       </div>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   )
 }

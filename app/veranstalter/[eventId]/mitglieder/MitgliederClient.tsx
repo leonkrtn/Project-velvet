@@ -241,8 +241,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
 
   async function copySignupCode() {
     if (!signupCode) return
-    const url = `${window.location.origin}/vendor/signup?code=${signupCode}`
-    await navigator.clipboard.writeText(url)
+    await navigator.clipboard.writeText(signupCode)
     setSignupCodeCopied(true)
     setTimeout(() => setSignupCodeCopied(false), 2000)
   }
@@ -584,11 +583,14 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
 
         {signupCode ? (
           <div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+              Teile diesen Code mit dem Dienstleister. Er kann ihn auf <strong>project-velvet.vercel.app/signup</strong> einlösen.
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
               <input
                 readOnly
-                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/vendor/signup?code=${signupCode}`}
-                style={{ flex: 1, padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, background: '#F5F5F7', outline: 'none' }}
+                value={signupCode}
+                style={{ flex: 1, padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 15, fontFamily: 'monospace', fontWeight: 600, background: '#F5F5F7', outline: 'none', letterSpacing: '0.05em' }}
               />
               <button
                 onClick={copySignupCode}
@@ -598,11 +600,11 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
                 {signupCodeCopied ? 'Kopiert' : 'Kopieren'}
               </button>
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', flex: 1 }}>Link ist 7 Tage gültig und kann nur einmal verwendet werden.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>7 Tage gültig · Einmalig verwendbar</p>
               <button
                 onClick={() => { setSignupCode(null); setSignupCodeError(null) }}
-                style={{ background: 'none', border: 'none', fontSize: 13, color: 'var(--text-tertiary)', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}
+                style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--text-tertiary)', cursor: 'pointer', textDecoration: 'underline' }}
               >
                 Neuen Code erstellen
               </button>
