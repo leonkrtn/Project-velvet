@@ -208,20 +208,18 @@ export default function VeranstalterEventsPage() {
       const newId = data as string
 
       if (applyVorschlaege) {
-        const inserts: Promise<unknown>[] = []
         if (presetSuggestions.vendors.length)
-          inserts.push(supabase.from('organizer_vendor_suggestions').insert(
+          await supabase.from('organizer_vendor_suggestions').insert(
             presetSuggestions.vendors.map(v => ({ event_id: newId, name: v.name, category: v.category, description: v.description, price_estimate: v.price_estimate, contact_email: v.contact_email, contact_phone: v.contact_phone }))
-          ))
+          )
         if (presetSuggestions.hotels.length)
-          inserts.push(supabase.from('organizer_hotel_suggestions').insert(
+          await supabase.from('organizer_hotel_suggestions').insert(
             presetSuggestions.hotels.map(h => ({ event_id: newId, name: h.name, address: h.address, distance_km: h.distance_km, price_per_night: h.price_per_night, total_rooms: h.total_rooms, description: h.description }))
-          ))
+          )
         if (presetSuggestions.deko.length)
-          inserts.push(supabase.from('deko_suggestions').insert(
+          await supabase.from('deko_suggestions').insert(
             presetSuggestions.deko.map(d => ({ event_id: newId, title: d.title, description: d.description, image_url: d.image_url }))
-          ))
-        await Promise.all(inserts)
+          )
       }
 
       const newEvent: EventSummary = {
