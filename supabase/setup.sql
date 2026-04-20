@@ -1932,11 +1932,25 @@ CREATE POLICY "timeline_delete" ON timeline_entries
 -- ── Dienstleister Profiles ────────────────────────────────────────────────────
 DROP POLICY IF EXISTS "dl_profile_select" ON dienstleister_profiles;
 CREATE POLICY "dl_profile_select" ON dienstleister_profiles
-  FOR SELECT USING (auth.uid() IS NOT NULL);
+  FOR SELECT USING (
+    -- Eigene Profile (via user_dienstleister-Verknüpfung)
+    EXISTS (
+      SELECT 1 FROM user_dienstleister ud
+      WHERE ud.dienstleister_id = dienstleister_profiles.id
+        AND ud.user_id = auth.uid()
+    )
+    -- Veranstalter/Brautpaar dürfen Profile ihrer Event-Dienstleister sehen
+    OR EXISTS (
+      SELECT 1 FROM event_dienstleister ed
+      WHERE ed.dienstleister_id = dienstleister_profiles.id
+        AND is_event_member(ed.event_id, ARRAY['veranstalter','brautpaar']::user_role[])
+    )
+  );
 
 DROP POLICY IF EXISTS "dl_profile_insert" ON dienstleister_profiles;
+-- INSERT läuft immer über service-role (admin client) — direkte Client-Inserts blockieren
 CREATE POLICY "dl_profile_insert" ON dienstleister_profiles
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (false);
 
 DROP POLICY IF EXISTS "dl_profile_update" ON dienstleister_profiles;
 CREATE POLICY "dl_profile_update" ON dienstleister_profiles
