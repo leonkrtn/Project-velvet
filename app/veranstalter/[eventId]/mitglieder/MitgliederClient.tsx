@@ -111,6 +111,12 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const [removeConfirm, setRemoveConfirm]       = useState<string | null>(null)
   const [removing, setRemoving]                 = useState(false)
 
+  // Signup-Code-State
+  const [signupCode, setSignupCode]             = useState<string | null>(null)
+  const [signupCodeCopied, setSignupCodeCopied] = useState(false)
+  const [creatingSignupCode, setCreatingSignupCode] = useState(false)
+  const [signupCodeError, setSignupCodeError]   = useState<string | null>(null)
+
   const filtered = members.filter(m => {
     if (filter === 'bestaetigt') return m.invite_status === 'confirmed'
     if (filter === 'offen')      return m.invite_status !== 'confirmed'
@@ -217,6 +223,28 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     setRemoveConfirm(null)
     setRemoving(false)
     router.refresh()
+  }
+
+  async function createSignupCode() {
+    setCreatingSignupCode(true)
+    setSignupCodeError(null)
+    const res = await fetch('/api/vendor/signup-code', { method: 'POST' })
+    const data = await res.json()
+    setCreatingSignupCode(false)
+    if (!res.ok || data.error) {
+      setSignupCodeError(data.error ?? 'Fehler beim Erstellen')
+      return
+    }
+    setSignupCode(data.code)
+    setSignupCodeCopied(false)
+  }
+
+  async function copySignupCode() {
+    if (!signupCode) return
+    const url = `${window.location.origin}/vendor/signup?code=${signupCode}`
+    await navigator.clipboard.writeText(url)
+    setSignupCodeCopied(true)
+    setTimeout(() => setSignupCodeCopied(false), 2000)
   }
 
   function vendorForMember(m: Member): Vendor | undefined {
@@ -537,6 +565,59 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
             </div>
           )
         })}
+      </div>
+
+      {/* Dienstleister-Account erstellen */}
+      <div style={{ marginTop: 32, background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ marginBottom: 16 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 4 }}>Dienstleister-Account erstellen</h2>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            Generiere einen Registrierungslink, mit dem ein Dienstleister einen eigenen Account anlegen kann – unabhängig von einem Event.
+          </p>
+        </div>
+
+        {signupCodeError && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'rgba(255,59,48,0.08)', border: '1px solid rgba(255,59,48,0.18)', borderRadius: 'var(--radius-sm)', marginBottom: 14, fontSize: 13, color: '#FF3B30' }}>
+            {signupCodeError}
+          </div>
+        )}
+
+        {signupCode ? (
+          <div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <input
+                readOnly
+                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/vendor/signup?code=${signupCode}`}
+                style={{ flex: 1, padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, background: '#F5F5F7', outline: 'none' }}
+              />
+              <button
+                onClick={copySignupCode}
+                style={{ padding: '10px 14px', background: signupCodeCopied ? '#34C759' : 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, whiteSpace: 'nowrap' }}
+              >
+                {signupCodeCopied ? <Check size={14} /> : <Copy size={14} />}
+                {signupCodeCopied ? 'Kopiert' : 'Kopieren'}
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', flex: 1 }}>Link ist 7 Tage gültig und kann nur einmal verwendet werden.</p>
+              <button
+                onClick={() => { setSignupCode(null); setSignupCodeError(null) }}
+                style={{ background: 'none', border: 'none', fontSize: 13, color: 'var(--text-tertiary)', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}
+              >
+                Neuen Code erstellen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={createSignupCode}
+            disabled={creatingSignupCode}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: creatingSignupCode ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, opacity: creatingSignupCode ? 0.7 : 1 }}
+          >
+            <Plus size={15} />
+            {creatingSignupCode ? 'Erstellen…' : 'Registrierungslink erstellen'}
+          </button>
+        )}
       </div>
 
       {/* Einladungs-Modal */}
