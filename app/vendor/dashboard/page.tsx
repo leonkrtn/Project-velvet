@@ -15,9 +15,10 @@ export default async function VendorOverviewPage() {
     .eq('role', 'dienstleister')
     .order('created_at', { ascending: false })
 
+  type EventRow = { id: string; title: string; date: string | null; venue: string | null }
   const events = (memberships ?? [])
-    .map(m => m.events as { id: string; title: string; date: string | null; venue: string | null } | null)
-    .filter(Boolean) as { id: string; title: string; date: string | null; venue: string | null }[]
+    .map(m => (Array.isArray(m.events) ? m.events[0] : m.events) as EventRow | null)
+    .filter((e): e is EventRow => !!e)
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '40px 24px' }}>
