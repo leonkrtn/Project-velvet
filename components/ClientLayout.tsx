@@ -13,6 +13,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const showBottomNav = !NO_NAV.some(p => pathname === p || pathname.startsWith('/rsvp'))
   const skipEventProvider =
     pathname.startsWith('/veranstalter') ||
+    pathname.startsWith('/vendor') ||
     pathname.startsWith('/admin') ||
     pathname.startsWith('/auth') ||
     pathname === '/login' ||
