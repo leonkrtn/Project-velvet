@@ -61,7 +61,7 @@ export async function POST(
 
   // 3. Recovery-Link generieren — Supabase verschickt die Mail automatisch,
   //    sofern SMTP/Auth-Email-Templates konfiguriert sind.
-  const origin = new URL(request.url).origin
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin
   const { error: linkErr } = await admin.auth.admin.generateLink({
     type: 'recovery',
     email,

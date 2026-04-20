@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
@@ -39,6 +40,17 @@ function recordFailure(ip: string): void {
 
 function clearFailures(ip: string): void {
   failMap.delete(ip)
+}
+
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a)
+  const bb = Buffer.from(b)
+  // dummy compare if lengths differ to normalize timing, then return false
+  if (ab.length !== bb.length) {
+    timingSafeEqual(ab, ab)
+    return false
+  }
+  return timingSafeEqual(ab, bb)
 }
 
 // Simple HMAC-SHA256 token using ADMIN_SECRET as key
@@ -84,7 +96,7 @@ export async function POST(request: Request) {
   // ── Phase 1: Verify admin code ──────────────────────────────────────────────
   if (phase === 'verify') {
     const code = body.code as string | undefined
-    if (!code || code !== adminSecret) {
+    if (!code || !safeEqual(code, adminSecret)) {
       recordFailure(ip)
       console.warn(`[admin/create-organizer] Failed verify attempt from ${ip} at ${new Date().toISOString()}`)
       return NextResponse.json({ error: 'Ungültiger Code' }, { status: 401 })

@@ -39,12 +39,11 @@ DROP POLICY IF EXISTS "einv_select"        ON event_invitations;
 DROP POLICY IF EXISTS "einv_insert"        ON event_invitations;
 DROP POLICY IF EXISTS "einv_update"        ON event_invitations;
 
--- Ersteller und Veranstalter können lesen; angemeldete User dürfen Code nachschlagen
+-- Ersteller und Veranstalter können lesen; Code-Lookup läuft via SECURITY DEFINER RPCs (umgehen RLS)
 CREATE POLICY "einv_select" ON event_invitations
   FOR SELECT USING (
     created_by = auth.uid()
     OR is_event_member(event_id, ARRAY['veranstalter']::user_role[])
-    OR auth.uid() IS NOT NULL
   );
 
 CREATE POLICY "einv_insert" ON event_invitations
@@ -101,8 +100,8 @@ $$ LANGUAGE sql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION preview_invitation_code(p_code TEXT)
 RETURNS JSONB AS $$
 DECLARE
-  v_inv   event_invitations%ROWTYPE;
-  v_event events%ROWTYPE;
+  v_inv   RECORD;
+  v_event RECORD;
 BEGIN
   SELECT * INTO v_inv FROM event_invitations WHERE code = p_code;
 
@@ -136,11 +135,12 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION join_event_by_code(p_code TEXT)
 RETURNS JSONB AS $$
 DECLARE
-  v_inv   event_invitations%ROWTYPE;
-  v_event events%ROWTYPE;
-  v_uid   UUID := auth.uid();
+  v_inv   RECORD;
+  v_event RECORD;
+  v_uid   UUID;
   v_perm  TEXT;
 BEGIN
+  v_uid := auth.uid();
   IF v_uid IS NULL THEN
     RETURN jsonb_build_object('error', 'Nicht angemeldet');
   END IF;
@@ -557,3 +557,45 @@ CREATE POLICY "messages_select" ON messages
         )
     )
   );
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- HOTEL BOOKING: atomare Zimmer-Buchung ohne Race Condition
+-- Prüft Verfügbarkeit mit FOR UPDATE-Lock bevor irgendwas geändert wird
+-- ════════════════════════════════════════════════════════════════════════════
+CREATE OR REPLACE FUNCTION adjust_hotel_booking(p_prev_room UUID, p_next_room UUID)
+RETURNS JSONB AS $$
+DECLARE
+  v_room RECORD;
+BEGIN
+  -- Zuerst neues Zimmer sperren und Verfügbarkeit prüfen (vor jeder Änderung)
+  IF p_next_room IS NOT NULL THEN
+    SELECT * INTO v_room
+    FROM hotel_rooms
+    WHERE id = p_next_room
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('error', 'Zimmer nicht gefunden');
+    END IF;
+    IF v_room.booked_rooms >= v_room.total_rooms THEN
+      RETURN jsonb_build_object('error', 'Zimmer ausgebucht');
+    END IF;
+  END IF;
+
+  -- Vorheriges Zimmer freigeben
+  IF p_prev_room IS NOT NULL AND p_prev_room IS DISTINCT FROM p_next_room THEN
+    UPDATE hotel_rooms
+    SET booked_rooms = GREATEST(0, booked_rooms - 1)
+    WHERE id = p_prev_room;
+  END IF;
+
+  -- Neues Zimmer buchen (bereits mit FOR UPDATE gesperrt)
+  IF p_next_room IS NOT NULL THEN
+    UPDATE hotel_rooms
+    SET booked_rooms = booked_rooms + 1
+    WHERE id = p_next_room;
+  END IF;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

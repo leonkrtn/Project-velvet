@@ -228,28 +228,16 @@ export async function POST(
     if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 })
   }
 
-  // 6. Hotel-Room-Delta atomar anpassen
+  // 6. Hotel-Room-Delta atomar anpassen (RPC serialisiert via FOR UPDATE-Lock)
   if (prevRoom !== nextRoom) {
-    if (prevRoom) {
-      const { data: r } = await admin.from('hotel_rooms').select('booked_rooms').eq('id', prevRoom).maybeSingle()
-      if (r) {
-        await admin.from('hotel_rooms')
-          .update({ booked_rooms: Math.max(0, (r.booked_rooms ?? 0) - 1) })
-          .eq('id', prevRoom)
-      }
-    }
-    if (nextRoom) {
-      const { data: r } = await admin.from('hotel_rooms')
-        .select('booked_rooms, total_rooms').eq('id', nextRoom).maybeSingle()
-      if (!r) {
-        return NextResponse.json({ error: 'Zimmer nicht gefunden' }, { status: 404 })
-      }
-      if ((r.booked_rooms ?? 0) >= (r.total_rooms ?? 0)) {
-        return NextResponse.json({ error: 'Zimmer ausgebucht' }, { status: 409 })
-      }
-      await admin.from('hotel_rooms')
-        .update({ booked_rooms: (r.booked_rooms ?? 0) + 1 })
-        .eq('id', nextRoom)
+    const { data: bookingResult, error: bookingErr } = await admin.rpc('adjust_hotel_booking', {
+      p_prev_room: prevRoom ?? null,
+      p_next_room: nextRoom ?? null,
+    })
+    if (bookingErr) return NextResponse.json({ error: bookingErr.message }, { status: 500 })
+    if (bookingResult?.error) {
+      const status = bookingResult.error === 'Zimmer nicht gefunden' ? 404 : 409
+      return NextResponse.json({ error: bookingResult.error }, { status })
     }
   }
 
