@@ -40,13 +40,29 @@ function LoginForm() {
         } else {
           const { data: memberships } = await supabase
             .from('event_members')
-            .select('event_id')
+            .select('event_id, role')
             .eq('user_id', session!.user.id)
-            .limit(1)
-          if (memberships && memberships.length > 0) {
-            router.push('/dashboard?event=' + memberships[0].event_id)
+            .limit(5)
+
+          const isVendor = memberships?.some(m => m.role === 'dienstleister')
+          const nonVendor = memberships?.find(m => m.role !== 'dienstleister')
+
+          if (isVendor) {
+            router.push('/vendor/dashboard')
+          } else if (nonVendor) {
+            router.push('/dashboard?event=' + nonVendor.event_id)
           } else {
-            router.push('/signup')
+            // Check if account was created via vendor signup code
+            const { data: vsc } = await supabase
+              .from('vendor_signup_codes')
+              .select('id')
+              .eq('used_by', session!.user.id)
+              .limit(1)
+            if (vsc && vsc.length > 0) {
+              router.push('/vendor/dashboard')
+            } else {
+              router.push('/signup')
+            }
           }
         }
         router.refresh()
