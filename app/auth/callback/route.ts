@@ -43,12 +43,19 @@ export async function GET(request: Request) {
 
   const { data: memberships } = await supabase
     .from('event_members')
-    .select('event_id')
+    .select('event_id, role')
     .eq('user_id', user.id)
-    .limit(1)
 
   if (memberships && memberships.length > 0) {
-    return NextResponse.redirect(`${origin}/dashboard?event=${memberships[0].event_id}`)
+    const isVendor = memberships.some(m => m.role === 'dienstleister')
+    const nonVendor = memberships.find(m => m.role !== 'dienstleister')
+
+    if (isVendor && !nonVendor) {
+      return NextResponse.redirect(`${origin}/vendor/dashboard`)
+    }
+    if (nonVendor) {
+      return NextResponse.redirect(`${origin}/dashboard?event=${nonVendor.event_id}`)
+    }
   }
 
   return NextResponse.redirect(`${origin}/signup`)

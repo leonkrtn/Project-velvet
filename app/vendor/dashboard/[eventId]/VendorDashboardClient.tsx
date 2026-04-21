@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { Menu, X, CalendarDays } from 'lucide-react'
+import { Menu, X, CalendarDays, ChevronLeft } from 'lucide-react'
 import { ALL_MODULES, MODULE_MAP } from '@/lib/vendor-modules'
 
 // Tab-Komponenten
@@ -74,7 +74,19 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
       display: 'flex', flexDirection: 'column',
       height: '100vh', overflowY: 'auto',
     }}>
-      <div style={{ padding: '16px 12px 8px' }}>
+      <div style={{ padding: '12px 12px 8px' }}>
+        <button
+          onClick={() => router.push('/vendor/dashboard')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 4,
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--text-tertiary)', fontSize: 12, fontWeight: 500,
+            padding: '2px 0', marginBottom: 6, fontFamily: 'inherit',
+          }}
+        >
+          <ChevronLeft size={14} />
+          Alle Events
+        </button>
         <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-tertiary)', marginBottom: 4 }}>
           Dienstleister-Portal
         </p>
