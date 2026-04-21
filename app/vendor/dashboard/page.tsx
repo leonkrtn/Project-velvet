@@ -13,7 +13,7 @@ export default async function VendorOverviewPage() {
     .select('event_id, events(id, title, date, venue)')
     .eq('user_id', user.id)
     .eq('role', 'dienstleister')
-    .order('created_at', { ascending: false })
+    .order('joined_at', { ascending: false })
 
   type EventRow = { id: string; title: string; date: string | null; venue: string | null }
   const events = (memberships ?? [])
