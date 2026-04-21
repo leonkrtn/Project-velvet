@@ -269,7 +269,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
       </div>
 
       {/* Chat area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--surface)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--surface)', overflow: 'hidden' }}>
         {activeConv ? (
           <>
             {/* Header */}

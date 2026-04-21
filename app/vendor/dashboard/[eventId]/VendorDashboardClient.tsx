@@ -141,7 +141,7 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
       )}
 
       {/* Hauptinhalt */}
-      <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflow: resolvedTab === 'mod_chat' ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Mobile Topbar */}
         <div className="mobile-topbar" style={{ display: 'none', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
           <button
@@ -155,15 +155,21 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
           </span>
         </div>
 
-        <main style={{ flex: 1, padding: '36px 40px 60px', width: '100%', boxSizing: 'border-box' }}>
-          {TabComponent ? (
-            <TabComponent eventId={eventId} />
-          ) : (
-            <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-              Keine Berechtigung für diesen Bereich.
-            </div>
-          )}
-        </main>
+        {resolvedTab === 'mod_chat' ? (
+          <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {TabComponent ? <TabComponent eventId={eventId} /> : null}
+          </div>
+        ) : (
+          <main style={{ flex: 1, padding: '36px 40px 60px', width: '100%', boxSizing: 'border-box' }}>
+            {TabComponent ? (
+              <TabComponent eventId={eventId} />
+            ) : (
+              <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+                Keine Berechtigung für diesen Bereich.
+              </div>
+            )}
+          </main>
+        )}
       </div>
 
       <style>{`
