@@ -2,11 +2,25 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Settings, Trash2 } from 'lucide-react'
+import { Settings, Trash2, Plus, Pencil, X, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface PresetVendor { id: string; name: string | null; category: string | null; description: string | null; price_estimate: number; contact_email: string | null; contact_phone: string | null }
 interface PresetHotel  { id: string; name: string | null; address: string | null; distance_km: number; price_per_night: number; total_rooms: number; description: string | null }
 interface PresetDeko   { id: string; title: string | null; description: string | null; image_url: string | null }
+
+type StaffMember = {
+  id: string
+  organizer_id: string
+  name: string
+  email: string | null
+  phone: string | null
+  responsibilities: string | null
+  notes: string | null
+}
+
+const EMPTY_STAFF: Omit<StaffMember, 'id' | 'organizer_id'> = {
+  name: '', email: '', phone: '', responsibilities: '', notes: '',
+}
 
 type EventSummary = {
   id: string
@@ -73,6 +87,18 @@ export default function VeranstalterEventsPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Staff management
+  const [staff, setStaff] = useState<StaffMember[]>([])
+  const [staffOpen, setStaffOpen] = useState(false)
+  const [showStaffModal, setShowStaffModal] = useState(false)
+  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null)
+  const [staffForm, setStaffForm] = useState<Omit<StaffMember, 'id' | 'organizer_id'>>(EMPTY_STAFF)
+  const [staffSubmitting, setStaffSubmitting] = useState(false)
+  const [staffError, setStaffError] = useState('')
+  const [deleteStaffId, setDeleteStaffId] = useState<string | null>(null)
+  const [deletingStaff, setDeletingStaff] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '11px 14px', fontSize: 14,
     border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
@@ -90,8 +116,9 @@ export default function VeranstalterEventsPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+      setCurrentUserId(user.id)
 
-      const [{ data: evRows, error: evErr }, { data: presetRow }] = await Promise.all([
+      const [{ data: evRows, error: evErr }, { data: presetRow }, { data: staffRows }] = await Promise.all([
         supabase
           .from('event_members')
           .select('event_id, events(id, title, couple_name, date, venue)')
@@ -102,6 +129,11 @@ export default function VeranstalterEventsPage() {
           .select('*')
           .eq('user_id', user.id)
           .single(),
+        supabase
+          .from('organizer_staff')
+          .select('*')
+          .eq('organizer_id', user.id)
+          .order('created_at', { ascending: true }),
       ])
 
       if (evErr) throw evErr
@@ -118,6 +150,7 @@ export default function VeranstalterEventsPage() {
         venue: row.events?.venue ?? null,
       }))
       setEvents(list)
+      setStaff((staffRows ?? []) as StaffMember[])
 
       if (presetRow) {
         const street = presetRow.location_street ?? ''
@@ -261,6 +294,84 @@ export default function VeranstalterEventsPage() {
   }
 
   const eventToDelete = events.find(e => e.id === deleteConfirmId)
+  const staffToDelete = staff.find(s => s.id === deleteStaffId)
+
+  function openAddStaff() {
+    setEditingStaff(null)
+    setStaffForm(EMPTY_STAFF)
+    setStaffError('')
+    setShowStaffModal(true)
+  }
+
+  function openEditStaff(member: StaffMember) {
+    setEditingStaff(member)
+    setStaffForm({
+      name: member.name,
+      email: member.email ?? '',
+      phone: member.phone ?? '',
+      responsibilities: member.responsibilities ?? '',
+      notes: member.notes ?? '',
+    })
+    setStaffError('')
+    setShowStaffModal(true)
+  }
+
+  function closeStaffModal() {
+    setShowStaffModal(false)
+    setStaffError('')
+  }
+
+  async function saveStaff() {
+    if (!staffForm.name.trim()) { setStaffError('Name ist erforderlich.'); return }
+    if (!currentUserId) return
+    setStaffSubmitting(true); setStaffError('')
+    try {
+      const payload = {
+        name: staffForm.name.trim(),
+        email: staffForm.email?.trim() || null,
+        phone: staffForm.phone?.trim() || null,
+        responsibilities: staffForm.responsibilities?.trim() || null,
+        notes: staffForm.notes?.trim() || null,
+      }
+      if (editingStaff) {
+        const { data, error } = await supabase
+          .from('organizer_staff')
+          .update(payload)
+          .eq('id', editingStaff.id)
+          .select()
+          .single()
+        if (error) throw error
+        setStaff(prev => prev.map(s => s.id === editingStaff.id ? (data as StaffMember) : s))
+      } else {
+        const { data, error } = await supabase
+          .from('organizer_staff')
+          .insert({ ...payload, organizer_id: currentUserId })
+          .select()
+          .single()
+        if (error) throw error
+        setStaff(prev => [...prev, data as StaffMember])
+      }
+      closeStaffModal()
+    } catch (err: unknown) {
+      setStaffError(err instanceof Error ? err.message : 'Fehler beim Speichern.')
+    } finally {
+      setStaffSubmitting(false)
+    }
+  }
+
+  async function confirmDeleteStaff() {
+    if (!deleteStaffId) return
+    setDeletingStaff(true)
+    try {
+      await supabase.from('organizer_staff').delete().eq('id', deleteStaffId)
+      setStaff(prev => prev.filter(s => s.id !== deleteStaffId))
+    } catch (err) {
+      console.error('[VeranstalterEvents] staff delete failed:', err)
+    } finally {
+      setDeletingStaff(false)
+      setDeleteStaffId(null)
+    }
+  }
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px 16px 64px' }}>
@@ -709,6 +820,312 @@ export default function VeranstalterEventsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Mitarbeiter-Sektion ─────────────────────────────────────────── */}
+      <div style={{ marginTop: 40 }}>
+        <button
+          onClick={() => setStaffOpen(o => !o)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%', padding: '14px 18px',
+            border: '1px solid var(--border)', borderRadius: staffOpen ? 'var(--radius) var(--radius) 0 0' : 'var(--radius)',
+            background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit',
+            transition: 'border-color 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Meine Mitarbeiter</span>
+            {staff.length > 0 && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, color: 'var(--accent)',
+                background: 'var(--accent-light)', borderRadius: 100,
+                padding: '2px 8px',
+              }}>{staff.length}</span>
+            )}
+          </div>
+          {staffOpen ? <ChevronUp size={16} color="var(--text-tertiary)" /> : <ChevronDown size={16} color="var(--text-tertiary)" />}
+        </button>
+
+        {staffOpen && (
+          <div style={{
+            border: '1px solid var(--border)', borderTop: 'none',
+            borderRadius: '0 0 var(--radius) var(--radius)',
+            background: 'var(--surface)', padding: 18,
+          }}>
+            {staff.length === 0 ? (
+              <p style={{ fontSize: 14, color: 'var(--text-tertiary)', margin: '0 0 14px', textAlign: 'center' }}>
+                Noch keine Mitarbeiter angelegt.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+                {staff.map(member => (
+                  <div
+                    key={member.id}
+                    style={{
+                      border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                      padding: '14px 16px', background: '#fff',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>{member.name}</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 16px' }}>
+                          {member.email && (
+                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{member.email}</span>
+                          )}
+                          {member.phone && (
+                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{member.phone}</span>
+                          )}
+                        </div>
+                        {member.responsibilities && (
+                          <p style={{
+                            fontSize: 12, color: 'var(--accent)', margin: '6px 0 0',
+                            background: 'var(--accent-light)', borderRadius: 4,
+                            display: 'inline-block', padding: '2px 8px',
+                          }}>
+                            {member.responsibilities}
+                          </p>
+                        )}
+                        {member.notes && (
+                          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '6px 0 0', fontStyle: 'italic' }}>
+                            {member.notes}
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <button
+                          onClick={() => openEditStaff(member)}
+                          title="Bearbeiten"
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 30, height: 30,
+                            border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                            background: 'none', cursor: 'pointer', color: 'var(--text-tertiary)',
+                            transition: 'border-color 0.15s, color 0.15s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={() => setDeleteStaffId(member.id)}
+                          title="Löschen"
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 30, height: 30,
+                            border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                            background: 'none', cursor: 'pointer', color: 'var(--text-tertiary)',
+                            transition: 'border-color 0.15s, color 0.15s, background 0.15s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#D94848'; e.currentTarget.style.color = '#D94848'; e.currentTarget.style.background = 'rgba(217,72,72,0.06)' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)'; e.currentTarget.style.background = 'none' }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={openAddStaff}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '9px 16px', borderRadius: 'var(--radius-sm)',
+                border: '1px dashed var(--border)', background: 'none',
+                cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
+                color: 'var(--text-tertiary)', width: '100%', justifyContent: 'center',
+                transition: 'border-color 0.15s, color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+            >
+              <Plus size={14} /> Mitarbeiter hinzufügen
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Staff Add/Edit Modal ────────────────────────────────────────── */}
+      {showStaffModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: 24,
+          }}
+          onClick={() => !staffSubmitting && closeStaffModal()}
+        >
+          <div
+            style={{
+              background: '#fff', borderRadius: 'var(--radius)', padding: '28px 28px 24px',
+              maxWidth: 480, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
+                {editingStaff ? 'Mitarbeiter bearbeiten' : 'Mitarbeiter hinzufügen'}
+              </p>
+              <button
+                onClick={closeStaffModal}
+                disabled={staffSubmitting}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)', background: 'none', cursor: 'pointer',
+                  color: 'var(--text-tertiary)',
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {([
+                { key: 'name', label: 'Name', required: true, placeholder: 'Max Mustermann' },
+                { key: 'email', label: 'E-Mail', required: false, placeholder: 'max@example.de', type: 'email' },
+                { key: 'phone', label: 'Telefonnummer', required: false, placeholder: '+49 151 12345678', type: 'tel' },
+              ] as { key: keyof typeof staffForm; label: string; required: boolean; placeholder: string; type?: string }[]).map(field => (
+                <div key={field.key}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                    {field.label} {field.required && <span style={{ color: 'var(--accent)' }}>*</span>}
+                  </label>
+                  <input
+                    type={field.type ?? 'text'}
+                    value={staffForm[field.key] ?? ''}
+                    onChange={e => setStaffForm(prev => ({ ...prev, [field.key]: e.target.value }))}
+                    placeholder={field.placeholder}
+                    style={inputStyle}
+                    onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
+                    onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                  />
+                </div>
+              ))}
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                  Zuständigkeiten
+                </label>
+                <textarea
+                  value={staffForm.responsibilities ?? ''}
+                  onChange={e => setStaffForm(prev => ({ ...prev, responsibilities: e.target.value }))}
+                  placeholder="z. B. Koordination Catering, Technik, Gästeempfang …"
+                  rows={2}
+                  style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                  Notizen
+                </label>
+                <textarea
+                  value={staffForm.notes ?? ''}
+                  onChange={e => setStaffForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Interne Notizen …"
+                  rows={2}
+                  style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                />
+              </div>
+            </div>
+
+            {staffError && (
+              <p style={{ fontSize: 13, color: 'var(--red)', background: 'rgba(160,64,64,0.08)', padding: '10px 14px', borderRadius: 8, marginTop: 14 }}>
+                {staffError}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+              <button
+                onClick={closeStaffModal}
+                disabled={staffSubmitting}
+                style={{
+                  padding: '10px 18px', borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)', background: 'none',
+                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, color: 'var(--text-tertiary)',
+                }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={saveStaff}
+                disabled={staffSubmitting}
+                style={{
+                  padding: '10px 20px', borderRadius: 'var(--radius-sm)',
+                  border: 'none', background: 'var(--accent)', color: '#fff',
+                  cursor: staffSubmitting ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+                  opacity: staffSubmitting ? 0.6 : 1,
+                }}
+              >
+                {staffSubmitting ? 'Wird gespeichert …' : editingStaff ? 'Speichern' : 'Hinzufügen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Staff Delete Confirmation ───────────────────────────────────── */}
+      {deleteStaffId && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: 24,
+          }}
+          onClick={() => !deletingStaff && setDeleteStaffId(null)}
+        >
+          <div
+            style={{
+              background: '#fff', borderRadius: 'var(--radius)', padding: '28px 28px 24px',
+              maxWidth: 400, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ marginBottom: 18 }}>
+              <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>Mitarbeiter löschen?</p>
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                <strong>{staffToDelete?.name}</strong> wird unwiderruflich entfernt.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setDeleteStaffId(null)}
+                disabled={deletingStaff}
+                style={{
+                  padding: '10px 18px', borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)', background: 'none',
+                  cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, color: 'var(--text-tertiary)',
+                }}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={confirmDeleteStaff}
+                disabled={deletingStaff}
+                style={{
+                  padding: '10px 18px', borderRadius: 'var(--radius-sm)',
+                  border: 'none', background: '#D94848', color: '#fff',
+                  cursor: deletingStaff ? 'not-allowed' : 'pointer',
+                  fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+                  opacity: deletingStaff ? 0.6 : 1,
+                }}
+              >
+                {deletingStaff ? 'Wird gelöscht …' : 'Löschen'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
