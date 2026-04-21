@@ -24,7 +24,7 @@ const NAV_ITEMS = [
   { key: 'statistiken',    label: 'Statistiken',      icon: BarChart2 },
   { key: 'berechtigungen', label: 'Berechtigungen',   icon: Shield },
   { key: 'sitzplan',       label: 'Sitzplan',         icon: Grid2X2,  disabled: true },
-  { key: 'personalplanung',label: 'Personalplanung',  icon: UserCog,  disabled: true },
+  { key: 'personalplanung',label: 'Personalplanung',  icon: UserCog },
 ]
 
 export default function SidebarLayout({ eventId, eventTitle, eventDate, children }: Props) {

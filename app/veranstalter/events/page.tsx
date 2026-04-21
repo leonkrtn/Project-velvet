@@ -8,18 +8,46 @@ interface PresetVendor { id: string; name: string | null; category: string | nul
 interface PresetHotel  { id: string; name: string | null; address: string | null; distance_km: number; price_per_night: number; total_rooms: number; description: string | null }
 interface PresetDeko   { id: string; title: string | null; description: string | null; image_url: string | null }
 
+const ROLE_OPTIONS = [
+  { value: 'service',   label: 'Service' },
+  { value: 'kueche',    label: 'Küche' },
+  { value: 'bar',       label: 'Bar' },
+  { value: 'technik',   label: 'Technik' },
+  { value: 'deko',      label: 'Deko' },
+  { value: 'security',  label: 'Security' },
+  { value: 'fahrer',    label: 'Fahrer' },
+  { value: 'runner',    label: 'Runner' },
+  { value: 'spueler',   label: 'Spüler' },
+  { value: 'empfang',   label: 'Empfang' },
+  { value: 'sonstiges', label: 'Sonstiges' },
+]
+
+const ROLE_COLORS: Record<string, string> = {
+  service: '#2563EB', kueche: '#DC2626', bar: '#D97706', technik: '#7C3AED',
+  deko: '#DB2777', security: '#4B5563', fahrer: '#A16207', runner: '#0891B2',
+  spueler: '#059669', empfang: '#9333EA', sonstiges: '#6B7280',
+}
+
+const WEEKDAYS_LIST = [
+  { key: 'mo', label: 'Mo' }, { key: 'di', label: 'Di' }, { key: 'mi', label: 'Mi' },
+  { key: 'do', label: 'Do' }, { key: 'fr', label: 'Fr' }, { key: 'sa', label: 'Sa' },
+  { key: 'so', label: 'So' },
+]
+
 type StaffMember = {
   id: string
   organizer_id: string
   name: string
   email: string | null
   phone: string | null
+  role_category: string | null
+  available_days: string[]
   responsibilities: string | null
   notes: string | null
 }
 
 const EMPTY_STAFF: Omit<StaffMember, 'id' | 'organizer_id'> = {
-  name: '', email: '', phone: '', responsibilities: '', notes: '',
+  name: '', email: '', phone: '', role_category: '', available_days: [], responsibilities: '', notes: '',
 }
 
 type EventSummary = {
@@ -309,6 +337,8 @@ export default function VeranstalterEventsPage() {
       name: member.name,
       email: member.email ?? '',
       phone: member.phone ?? '',
+      role_category: member.role_category ?? '',
+      available_days: member.available_days ?? [],
       responsibilities: member.responsibilities ?? '',
       notes: member.notes ?? '',
     })
@@ -330,6 +360,8 @@ export default function VeranstalterEventsPage() {
         name: staffForm.name.trim(),
         email: staffForm.email?.trim() || null,
         phone: staffForm.phone?.trim() || null,
+        role_category: staffForm.role_category?.trim() || null,
+        available_days: staffForm.available_days ?? [],
         responsibilities: staffForm.responsibilities?.trim() || null,
         notes: staffForm.notes?.trim() || null,
       }
@@ -872,7 +904,19 @@ export default function VeranstalterEventsPage() {
                   >
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '0 0 4px' }}>{member.name}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{member.name}</p>
+                          {member.role_category && (
+                            <span style={{
+                              fontSize: 11, fontWeight: 600, padding: '1px 7px', borderRadius: 20,
+                              background: (ROLE_COLORS[member.role_category] ?? '#6B7280') + '20',
+                              color: ROLE_COLORS[member.role_category] ?? '#6B7280',
+                              border: `1px solid ${(ROLE_COLORS[member.role_category] ?? '#6B7280')}40`,
+                            }}>
+                              {ROLE_OPTIONS.find(r => r.value === member.role_category)?.label ?? member.role_category}
+                            </span>
+                          )}
+                        </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 16px' }}>
                           {member.email && (
                             <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{member.email}</span>
@@ -881,9 +925,21 @@ export default function VeranstalterEventsPage() {
                             <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{member.phone}</span>
                           )}
                         </div>
+                        {member.available_days && member.available_days.length > 0 && (
+                          <div style={{ display: 'flex', gap: 3, marginTop: 5, flexWrap: 'wrap' }}>
+                            {WEEKDAYS_LIST.map(({ key, label }) => (
+                              <span key={key} style={{
+                                fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 3,
+                                background: member.available_days.includes(key) ? 'rgba(0,0,0,0.07)' : 'transparent',
+                                color: member.available_days.includes(key) ? 'var(--text-secondary)' : 'var(--text-tertiary)',
+                                opacity: member.available_days.includes(key) ? 1 : 0.35,
+                              }}>{label}</span>
+                            ))}
+                          </div>
+                        )}
                         {member.responsibilities && (
                           <p style={{
-                            fontSize: 12, color: 'var(--accent)', margin: '6px 0 0',
+                            fontSize: 12, color: 'var(--accent)', margin: '5px 0 0',
                             background: 'var(--accent-light)', borderRadius: 4,
                             display: 'inline-block', padding: '2px 8px',
                           }}>
@@ -891,7 +947,7 @@ export default function VeranstalterEventsPage() {
                           </p>
                         )}
                         {member.notes && (
-                          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '6px 0 0', fontStyle: 'italic' }}>
+                          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '5px 0 0', fontStyle: 'italic' }}>
                             {member.notes}
                           </p>
                         )}
@@ -1008,6 +1064,62 @@ export default function VeranstalterEventsPage() {
                   />
                 </div>
               ))}
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                  Tätigkeitsbereich
+                </label>
+                <select
+                  value={staffForm.role_category ?? ''}
+                  onChange={e => setStaffForm(prev => ({ ...prev, role_category: e.target.value }))}
+                  style={{ ...inputStyle, appearance: 'auto' }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
+                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                >
+                  <option value="">— Kein Bereich —</option>
+                  {ROLE_OPTIONS.map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 8 }}>
+                  Üblicherweise verfügbar
+                </label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {WEEKDAYS_LIST.map(({ key, label }) => {
+                    const checked = (staffForm.available_days ?? []).includes(key)
+                    return (
+                      <label
+                        key={key}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5,
+                          padding: '5px 11px', borderRadius: 20, cursor: 'pointer', userSelect: 'none',
+                          border: `1.5px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
+                          background: checked ? 'var(--accent-light)' : 'none',
+                          fontSize: 13, fontWeight: 600,
+                          color: checked ? 'var(--accent)' : 'var(--text-tertiary)',
+                          transition: 'all 0.12s',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => setStaffForm(prev => ({
+                            ...prev,
+                            available_days: checked
+                              ? (prev.available_days ?? []).filter(d => d !== key)
+                              : [...(prev.available_days ?? []), key],
+                          }))}
+                          style={{ display: 'none' }}
+                        />
+                        {label}
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
