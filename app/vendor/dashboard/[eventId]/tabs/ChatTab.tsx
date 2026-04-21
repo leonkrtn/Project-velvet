@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Send, MessageSquare } from 'lucide-react'
+import { Send, MessageSquare, X } from 'lucide-react'
 
 interface Participant {
   user_id: string
@@ -138,6 +138,14 @@ export default function ChatTab({ eventId }: { eventId: string }) {
     setAddingMember(false)
   }
 
+  async function removeParticipant(uid: string) {
+    if (!activeConv) return
+    await supabase.from('conversation_participants').delete().eq('conversation_id', activeConv.id).eq('user_id', uid)
+    const updatedConv = { ...activeConv, conversation_participants: activeConv.conversation_participants.filter(p => p.user_id !== uid) }
+    setActiveConv(updatedConv)
+    setConversations(prev => prev.map(c => c.id === activeConv.id ? updatedConv : c))
+  }
+
   function convDisplayName(conv: Conversation): string {
     if (conv.name) return conv.name
     const others = conv.conversation_participants
@@ -265,7 +273,14 @@ export default function ChatTab({ eventId }: { eventId: string }) {
                             <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#E5E5EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#636366', flexShrink: 0 }}>
                               {initials(p.profiles?.name ?? '?')}
                             </div>
-                            <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{p.profiles?.name ?? '—'}</span>
+                            <span style={{ fontSize: 13, color: 'var(--text-primary)', flex: 1 }}>{p.profiles?.name ?? '—'}</span>
+                            {p.user_id !== userId && (
+                              <button onClick={() => removeParticipant(p.user_id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--text-tertiary)', display: 'flex', borderRadius: 4, flexShrink: 0 }}
+                                onMouseEnter={e => (e.currentTarget.style.color = '#FF3B30')}
+                                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}>
+                                <X size={13} />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
