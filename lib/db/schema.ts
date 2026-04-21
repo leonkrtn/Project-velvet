@@ -333,6 +333,18 @@ CREATE TABLE IF NOT EXISTS guest_photos (
   uploaded_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ── Veranstalter-Mitarbeiter ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS organizer_staff (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organizer_id     UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  name             TEXT NOT NULL,
+  email            TEXT,
+  phone            TEXT,
+  responsibilities TEXT,
+  notes            TEXT,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ── Veranstalter-Bewerbungssystem ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS organizer_applications (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -522,6 +534,7 @@ ALTER TABLE location_images                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE guest_photos                   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles                       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organizer_applications         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE organizer_staff                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dienstleister_profiles         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_dienstleister             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_dienstleister            ENABLE ROW LEVEL SECURITY;
@@ -606,6 +619,12 @@ DO $$ BEGIN CREATE POLICY "timeline_write"  ON timeline_entries FOR ALL   USING 
 -- organizer_applications: user sieht nur eigene
 DO $$ BEGIN CREATE POLICY "app_select" ON organizer_applications FOR SELECT USING (user_id = auth.uid()); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY "app_insert" ON organizer_applications FOR INSERT WITH CHECK (user_id = auth.uid()); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- organizer_staff: Veranstalter sieht/verwaltet nur eigene Mitarbeiter
+DO $$ BEGIN CREATE POLICY "staff_select" ON organizer_staff FOR SELECT USING (organizer_id = auth.uid()); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "staff_insert" ON organizer_staff FOR INSERT WITH CHECK (organizer_id = auth.uid()); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "staff_update" ON organizer_staff FOR UPDATE USING (organizer_id = auth.uid()); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "staff_delete" ON organizer_staff FOR DELETE USING (organizer_id = auth.uid()); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- dienstleister_profiles: alle authentifizierten User können lesen
 DO $$ BEGIN CREATE POLICY "dl_profile_select" ON dienstleister_profiles FOR SELECT USING (auth.uid() IS NOT NULL); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
