@@ -123,28 +123,30 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
     if (selectedMembers.length === 0) return
     setCreating(true)
 
-    const { data: conv } = await supabase.from('conversations').insert({
-      event_id: eventId,
-      name: chatName.trim() || null,
-      created_by: currentUserId,
-    }).select().single()
+    const { data: convId, error } = await supabase.rpc('create_conversation', {
+      p_event_id: eventId,
+      p_name: chatName.trim() || null,
+      p_participant_ids: selectedMembers,
+    })
 
-    if (conv) {
-      const participants = [currentUserId, ...selectedMembers].map(uid => ({
-        conversation_id: conv.id,
-        user_id: uid,
-      }))
-      await supabase.from('conversation_participants').insert(participants)
+    if (!error && convId) {
+      const { data: conv } = await supabase
+        .from('conversations')
+        .select('id, name, created_by, created_at, updated_at, conversation_participants(user_id, profiles(id, name))')
+        .eq('id', convId)
+        .single()
 
-      const newConv = {
-        ...conv,
-        conversation_participants: participants.map(p => ({
-          user_id: p.user_id,
-          profiles: members.find(m => m.user_id === p.user_id)?.profiles ?? null,
-        })),
+      if (conv) {
+        const normalized = {
+          ...conv,
+          conversation_participants: (conv.conversation_participants ?? []).map((p: { user_id: string; profiles: { id: string; name: string }[] | { id: string; name: string } | null }) => ({
+            ...p,
+            profiles: Array.isArray(p.profiles) ? (p.profiles[0] ?? null) : p.profiles,
+          })),
+        }
+        setConversations(prev => [normalized, ...prev])
+        setActiveConv(normalized)
       }
-      setConversations(prev => [newConv, ...prev])
-      setActiveConv(newConv)
     }
 
     setSelectedMembers([])
