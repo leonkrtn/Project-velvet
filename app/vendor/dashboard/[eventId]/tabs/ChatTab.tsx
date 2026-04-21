@@ -46,11 +46,16 @@ export default function ChatTab({ eventId }: { eventId: string }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMsg, setNewMsg] = useState('')
   const [sending, setSending] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
+  const [addingMember, setAddingMember] = useState(false)
+  const [members, setMembers] = useState<{ user_id: string; role: string; profiles: { id: string; name: string; email: string } | null }[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
-  }, [supabase])
+    supabase.from('event_members').select('user_id, role, profiles!user_id(id, name, email)').eq('event_id', eventId)
+      .then(({ data }) => setMembers((data ?? []).map(m => ({ ...m, profiles: Array.isArray(m.profiles) ? (m.profiles[0] ?? null) : m.profiles }))))
+  }, [supabase, eventId])
 
   useEffect(() => {
     supabase
@@ -118,6 +123,19 @@ export default function ChatTab({ eventId }: { eventId: string }) {
     }
     setSending(false)
     await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConv.id)
+  }
+
+  useEffect(() => { setShowInfo(false) }, [activeConv?.id])
+
+  async function addParticipant(uid: string) {
+    if (!activeConv || addingMember) return
+    setAddingMember(true)
+    await supabase.from('conversation_participants').insert({ conversation_id: activeConv.id, user_id: uid })
+    const newParticipant = { user_id: uid, profiles: members.find(m => m.user_id === uid)?.profiles ?? null }
+    const updatedConv = { ...activeConv, conversation_participants: [...activeConv.conversation_participants, newParticipant] }
+    setActiveConv(updatedConv)
+    setConversations(prev => prev.map(c => c.id === activeConv.id ? updatedConv : c))
+    setAddingMember(false)
   }
 
   function convDisplayName(conv: Conversation): string {
@@ -191,10 +209,15 @@ export default function ChatTab({ eventId }: { eventId: string }) {
             <>
               <div style={{ padding: '16px 22px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)' }}>{convDisplayName(activeConv)}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{activeConv.conversation_participants.length} Teilnehmer</div>
+                  <button onClick={() => setShowInfo(v => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', display: 'block' }}>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)', textDecoration: showInfo ? 'underline' : 'none', textUnderlineOffset: 3 }}>{convDisplayName(activeConv)}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{activeConv.conversation_participants.length} Teilnehmer · Infos anzeigen</div>
+                  </button>
                 </div>
               </div>
+
+              {/* Body: messages + optional info panel */}
+              <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
               <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, background: '#FAFAFA' }}>
                 {messages.map(msg => {
@@ -227,6 +250,51 @@ export default function ChatTab({ eventId }: { eventId: string }) {
                 })}
                 <div ref={messagesEndRef} />
               </div>
+
+              {/* Info panel */}
+              {showInfo && (() => {
+                const participantIds = new Set(activeConv.conversation_participants.map(p => p.user_id))
+                const nonParticipants = members.filter(m => !participantIds.has(m.user_id))
+                return (
+                  <div style={{ width: 260, borderLeft: '1px solid var(--border)', background: 'var(--surface)', overflowY: 'auto', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Teilnehmer</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {activeConv.conversation_participants.map(p => (
+                          <div key={p.user_id} style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                            <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#E5E5EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#636366', flexShrink: 0 }}>
+                              {initials(p.profiles?.name ?? '?')}
+                            </div>
+                            <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{p.profiles?.name ?? '—'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    {nonParticipants.length > 0 && (
+                      <div style={{ padding: '16px 18px' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Hinzufügen</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {nonParticipants.map(m => (
+                            <button key={m.user_id} onClick={() => addParticipant(m.user_id)} disabled={addingMember}
+                              style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', opacity: addingMember ? 0.5 : 1 }}>
+                              <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#F0F0F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#8E8E93', flexShrink: 0 }}>
+                                {initials(m.profiles?.name ?? '?')}
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{m.profiles?.name ?? '—'}</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.role}</div>
+                              </div>
+                              <div style={{ marginLeft: 'auto', fontSize: 18, color: 'var(--accent)', lineHeight: 1 }}>+</div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              </div>{/* end body */}
 
               <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, background: 'var(--surface)' }}>
                 <input
