@@ -9,15 +9,13 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })
 
     const body = await req.json()
-    const { eventId, name, category, email, permissions } = body as {
+    const { eventId, category, permissions } = body as {
       eventId:     string
-      name:        string
       category:    string
-      email?:      string
       permissions: string[]
     }
 
-    if (!eventId || !name?.trim() || !category || !Array.isArray(permissions)) {
+    if (!eventId || !category || !Array.isArray(permissions)) {
       return NextResponse.json({ error: 'Pflichtfelder fehlen' }, { status: 400 })
     }
 
@@ -44,7 +42,7 @@ export async function POST(req: NextRequest) {
         role:        'dienstleister',
         permissions: finalPermissions,
         created_by:  user.id,
-        metadata:    { name: name.trim(), category, email: email?.trim() || null },
+        metadata:    { category },
       })
       .select('code')
       .single()

@@ -140,9 +140,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const [showInviteModal, setShowInviteModal]   = useState(false)
   const [modalStep, setModalStep]               = useState<ModalStep>('basis')
   const [inviteRole, setInviteRole]             = useState<InviteRole>('trauzeuge')
-  const [inviteDLName, setInviteDLName]         = useState('')
   const [inviteDLCategory, setInviteDLCategory] = useState(DL_CATEGORIES[0])
-  const [inviteDLEmail, setInviteDLEmail]       = useState('')
   const [selectedModules, setSelectedModules]   = useState<Set<string>>(new Set(['mod_chat']))
   const [inviting, setInviting]                 = useState(false)
   const [inviteCode, setInviteCode]             = useState<string | null>(null)
@@ -173,8 +171,6 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     setShowInviteModal(true)
     setModalStep('basis')
     setInviteRole('trauzeuge')
-    setInviteDLName('')
-    setInviteDLEmail('')
     setInviteDLCategory(DL_CATEGORIES[0])
     setSelectedModules(new Set(ROLE_MODULE_DEFAULTS[DL_CATEGORIES[0]] ?? ['mod_chat']))
     setInviteCode(null)
@@ -216,9 +212,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         eventId,
-        name:        inviteDLName.trim(),
         category:    inviteDLCategory,
-        email:       inviteDLEmail.trim() || undefined,
         permissions: Array.from(selectedModules),
       }),
     })
@@ -279,7 +273,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
         <Label>Rolle</Label>
         <select
           value={inviteRole}
-          onChange={e => { setInviteRole(e.target.value as InviteRole); setInviteDLName(''); setInviteDLEmail('') }}
+          onChange={e => setInviteRole(e.target.value as InviteRole)}
           style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 14, fontFamily: 'inherit', background: '#fff', outline: 'none' }}
         >
           <option value="brautpaar">Brautpaar</option>
@@ -288,22 +282,12 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
         </select>
       </div>
       {inviteRole === 'dienstleister' && (
-        <>
-          <div style={{ marginBottom: 12 }}>
-            <Label>Name *</Label>
-            <FieldInput value={inviteDLName} onChange={setInviteDLName} placeholder="z.B. Max Mustermann" />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <Label>Kategorie</Label>
-            <select value={inviteDLCategory} onChange={e => handleCategoryChange(e.target.value)} style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 14, fontFamily: 'inherit', background: '#fff', outline: 'none' }}>
-              {DL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <Label>E-Mail (optional)</Label>
-            <FieldInput value={inviteDLEmail} onChange={setInviteDLEmail} placeholder="name@beispiel.de" type="email" />
-          </div>
-        </>
+        <div style={{ marginBottom: 16 }}>
+          <Label>Kategorie</Label>
+          <select value={inviteDLCategory} onChange={e => handleCategoryChange(e.target.value)} style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 14, fontFamily: 'inherit', background: '#fff', outline: 'none' }}>
+            {DL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
       )}
       {inviteRole !== 'dienstleister' && (
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
@@ -312,7 +296,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
       )}
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
         <button onClick={closeModal} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
-        <button onClick={handleBasisWeiter} disabled={inviting || (inviteRole === 'dienstleister' && !inviteDLName.trim())} style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: inviting ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, opacity: (inviteRole === 'dienstleister' && !inviteDLName.trim()) ? 0.5 : 1 }}>
+        <button onClick={handleBasisWeiter} disabled={inviting} style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: inviting ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500 }}>
           {inviting ? 'Erstellen…' : inviteRole === 'dienstleister' ? 'Weiter' : 'Link erstellen'}
         </button>
       </div>
@@ -322,7 +306,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const stepModule = (
     <>
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-        Wähle die Bereiche, auf die <strong>{inviteDLName}</strong> ({inviteDLCategory}) Zugriff erhält.
+        Wähle die Bereiche, auf die <strong>{inviteDLCategory}</strong> Zugriff erhält.
         <strong style={{ color: 'var(--text-primary)' }}> Kommunikation</strong> ist immer aktiv.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
@@ -354,11 +338,8 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
       <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>Bitte prüfe die Einladung vor dem Erstellen.</p>
       <div style={{ background: '#F5F5F7', borderRadius: 'var(--radius-sm)', padding: '14px 16px', marginBottom: 20 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '8px 12px', fontSize: 13 }}>
-          <span style={{ color: 'var(--text-tertiary)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Name</span>
-          <span style={{ fontWeight: 500 }}>{inviteDLName}</span>
           <span style={{ color: 'var(--text-tertiary)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Kategorie</span>
           <span>{inviteDLCategory}</span>
-          {inviteDLEmail && (<><span style={{ color: 'var(--text-tertiary)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>E-Mail</span><span>{inviteDLEmail}</span></>)}
           <span style={{ color: 'var(--text-tertiary)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Zugriff</span>
           <span style={{ lineHeight: 1.6 }}>{ALL_MODULES.filter(m => selectedModules.has(m.key)).map(m => m.label).join(', ')}</span>
         </div>
@@ -375,7 +356,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const stepCode = (
     <>
       <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 14 }}>
-        Einladungslink für <strong>{inviteRole === 'brautpaar' ? 'Brautpaar' : inviteRole === 'trauzeuge' ? 'Trauzeuge' : `${inviteDLCategory} (${inviteDLName})`}</strong>:
+        Einladungslink für <strong>{inviteRole === 'brautpaar' ? 'Brautpaar' : inviteRole === 'trauzeuge' ? 'Trauzeuge' : inviteDLCategory}</strong>:
       </p>
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         <input readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/vendor/join?code=${inviteCode}`} style={{ flex: 1, padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, background: '#F5F5F7', outline: 'none' }} />

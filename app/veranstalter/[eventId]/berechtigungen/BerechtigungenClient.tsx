@@ -41,16 +41,9 @@ const PERM_LABELS: { key: keyof Omit<Permissions, 'id' | 'event_id'>; label: str
   { key: 'anzeigeeinstellungen',label: 'Anzeigeeinstellungen', desc: 'Darstellung anpassen' },
 ]
 
-interface BpMember {
-  id: string
-  user_id: string
-  profiles: { id: string; name: string; email: string } | null
-}
-
 interface Props {
   eventId: string
   initialPerms: Permissions | null
-  bpMembers: BpMember[]
 }
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -73,7 +66,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   )
 }
 
-export default function BerechtigungenClient({ eventId, initialPerms, bpMembers }: Props) {
+export default function BerechtigungenClient({ eventId, initialPerms }: Props) {
   const [perms, setPerms] = useState<Permissions>(initialPerms ?? { ...DEFAULT_PERMS })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -158,26 +151,6 @@ export default function BerechtigungenClient({ eventId, initialPerms, bpMembers 
 
       {/* Right: BP info + active summary */}
       <div className="bp-sidebar">
-
-        {/* BP Members */}
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Brautpaar</h3>
-          {bpMembers.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Noch nicht eingeladen</p>
-          ) : (
-            bpMembers.map(m => (
-              <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-                  {(m.profiles?.name ?? '?').split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2)}
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{m.profiles?.name ?? '—'}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.profiles?.email ?? '—'}</div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
 
         {/* Active permissions summary */}
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 20 }}>
