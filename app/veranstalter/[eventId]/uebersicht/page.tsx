@@ -28,13 +28,7 @@ function daysUntil(dateStr: string | null): number | null {
   return Math.ceil(diff / 86400000)
 }
 
-// ── Waterfall Chart ────────────────────────────────────────────────────────
-
-interface WaterfallBar {
-  label: string
-  value: number
-  type: 'positive' | 'negative' | 'result'
-}
+// ── Margin Table ───────────────────────────────────────────────────────────
 
 function MarginWaterfall({ einnahmen, veranstalterkosten, mitarbeiterkosten }: {
   einnahmen: number
@@ -44,163 +38,43 @@ function MarginWaterfall({ einnahmen, veranstalterkosten, mitarbeiterkosten }: {
   const marge = einnahmen - veranstalterkosten - mitarbeiterkosten
   const margePercent = einnahmen > 0 ? Math.round((marge / einnahmen) * 100) : 0
 
-  const bars: WaterfallBar[] = [
-    { label: 'Einnahmen',          value: einnahmen,          type: 'positive' },
-    { label: 'Veranstalterkosten', value: veranstalterkosten, type: 'negative' },
-    { label: 'Mitarbeiterkosten',  value: mitarbeiterkosten,  type: 'negative' },
-    { label: 'Marge',              value: marge,              type: 'result'   },
+  const rows = [
+    { label: 'Honorar (Einnahmen)', value: einnahmen,          sign: '+', color: 'var(--text-primary)' },
+    { label: 'Veranstalterkosten',  value: veranstalterkosten, sign: '−', color: '#FF3B30' },
+    { label: 'Mitarbeiterkosten',   value: mitarbeiterkosten,  sign: '−', color: '#FF3B30' },
   ]
 
-  // SVG dimensions
-  const W = 480
-  const H = 240
-  const padL = 10
-  const padR = 10
-  const padT = 30
-  const padB = 50
-  const chartH = H - padT - padB
-  const chartW = W - padL - padR
-  const barW = 72
-  const gap = (chartW - bars.length * barW) / (bars.length + 1)
-
-  // Scale: based on einnahmen as reference (max positive value)
-  const refVal = Math.max(einnahmen, 1)
-  function px(val: number) { return Math.abs(val) / refVal * chartH }
-
-  const baseline = padT + chartH // y-coordinate of the zero line
-
-  // Calculate bar positions (waterfall logic)
-  type BarRect = { x: number; y: number; h: number; color: string; value: number; label: string; labelY: number }
-  const rects: BarRect[] = []
-  let runningTop = baseline // tracks where the "top" of remaining value is
-
-  const COLOR_POS    = '#34C759'
-  const COLOR_NEG    = '#FF3B30'
-  const COLOR_RESULT_POS = '#007AFF'
-  const COLOR_RESULT_NEG = '#FF3B30'
-
-  bars.forEach((bar, i) => {
-    const x = padL + gap + i * (barW + gap)
-
-    if (bar.type === 'positive') {
-      const h = Math.max(px(bar.value), 1)
-      const y = baseline - h
-      rects.push({ x, y, h, color: COLOR_POS, value: bar.value, label: bar.label, labelY: y - 8 })
-      runningTop = y // top of this bar = starting point for next negative bar
-    } else if (bar.type === 'negative') {
-      const h = Math.max(px(bar.value), 1)
-      const y = runningTop
-      rects.push({ x, y, h, color: COLOR_NEG, value: bar.value, label: bar.label, labelY: y - 8 })
-      runningTop = y + h // move down by this amount
-    } else {
-      // result bar: bottom-anchored
-      const absH = Math.max(px(Math.abs(bar.value)), 1)
-      const isNeg = bar.value < 0
-      const y = isNeg ? baseline : baseline - absH
-      const color = isNeg ? COLOR_RESULT_NEG : COLOR_RESULT_POS
-      rects.push({ x, y, h: absH, color, value: bar.value, label: bar.label, labelY: isNeg ? baseline + 8 : y - 8 })
-    }
-  })
-
-  // Connector lines between bars (dashed, at runningTop transitions)
-  const connectors: Array<{ x1: number; y1: number; x2: number; y2: number }> = []
-  for (let i = 0; i < rects.length - 1; i++) {
-    const cur = rects[i]
-    const next = rects[i + 1]
-    const actualY = bars[i].type === 'positive'
-      ? cur.y
-      : cur.y + cur.h
-    connectors.push({ x1: cur.x + barW, y1: actualY, x2: next.x, y2: actualY })
-  }
-
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '20px 22px', boxShadow: 'var(--shadow-sm)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Veranstalter-Marge</div>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Einnahmen abzüglich aller Kosten</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: marge >= 0 ? '#007AFF' : '#FF3B30', letterSpacing: '-0.5px' }}>
-            {fmtMoney(marge)}
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-            {margePercent}% Marge
-          </div>
-        </div>
+    <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 22px', borderBottom: '1px solid var(--border)' }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Veranstalter-Marge</span>
+        {einnahmen > 0 && (
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{margePercent}% Marge</span>
+        )}
       </div>
 
       {einnahmen === 0 ? (
-        <div style={{ padding: '32px 0', textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+        <div style={{ padding: '20px 22px', fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
           Kein Honorar hinterlegt — Marge kann nicht berechnet werden.
         </div>
       ) : (
-        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block', marginTop: 8 }}>
-          {/* Baseline */}
-          <line x1={padL} y1={baseline} x2={W - padR} y2={baseline} stroke="var(--border)" strokeWidth={1} />
-
-          {/* Connector lines (dashed) */}
-          {connectors.map((c, i) => (
-            <line
-              key={i}
-              x1={c.x1} y1={c.y1} x2={c.x2} y2={c.y1}
-              stroke="#CBD5E1"
-              strokeWidth={1}
-              strokeDasharray="4 3"
-            />
+        <>
+          {rows.map(r => (
+            <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 22px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+              <span style={{ fontSize: 13.5, color: 'var(--text-secondary)' }}>{r.label}</span>
+              <span style={{ fontSize: 13.5, fontWeight: 500, color: r.color }}>
+                {r.sign} {fmtMoney(r.value)}
+              </span>
+            </div>
           ))}
-
-          {/* Bars */}
-          {rects.map((r, i) => (
-            <g key={i}>
-              <rect
-                x={r.x} y={r.y}
-                width={barW} height={r.h}
-                fill={r.color}
-                rx={4}
-                opacity={bars[i].type === 'result' ? 1 : 0.85}
-              />
-              {/* Value label above bar */}
-              <text
-                x={r.x + barW / 2}
-                y={bars[i].type === 'negative' ? r.y - 6 : r.labelY}
-                textAnchor="middle"
-                style={{ fontSize: 11, fontWeight: 700, fill: r.color }}
-              >
-                {bars[i].type === 'negative' ? '−' : ''}{fmtMoney(Math.abs(r.value))}
-              </text>
-              {/* Category label below baseline */}
-              <text
-                x={r.x + barW / 2}
-                y={baseline + 16}
-                textAnchor="middle"
-                style={{ fontSize: 11, fill: 'var(--text-secondary)' }}
-              >
-                {r.label}
-              </text>
-            </g>
-          ))}
-        </svg>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 22px', background: 'rgba(0,0,0,0.02)', borderTop: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Marge</span>
+            <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.3px', color: marge >= 0 ? '#15803D' : '#FF3B30' }}>
+              {fmtMoney(marge)}
+            </span>
+          </div>
+        </>
       )}
-
-      {/* Legend row */}
-      {einnahmen > 0 && (
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-          <LegendItem color={COLOR_POS} label={`Einnahmen ${fmtMoney(einnahmen)}`} />
-          <LegendItem color={COLOR_NEG} label={`Veranstalterkosten ${fmtMoney(veranstalterkosten)}`} />
-          <LegendItem color={COLOR_NEG} label={`Mitarbeiterkosten ${fmtMoney(mitarbeiterkosten)}`} />
-          <LegendItem color={marge >= 0 ? COLOR_RESULT_POS : COLOR_RESULT_NEG} label={`Marge ${fmtMoney(marge)}`} />
-        </div>
-      )}
-    </div>
-  )
-}
-
-function LegendItem({ color, label }: { color: string; label: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
-      <div style={{ width: 10, height: 10, borderRadius: 2, background: color, flexShrink: 0 }} />
-      {label}
     </div>
   )
 }
