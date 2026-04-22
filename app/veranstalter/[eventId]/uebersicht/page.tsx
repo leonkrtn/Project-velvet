@@ -49,7 +49,7 @@ export default async function UebersichtPage({ params }: Props) {
     supabase.from('event_members').select('id, role').eq('event_id', eventId),
     supabase
       .from('event_members')
-      .select('id, role, profiles(id, name, email, phone)')
+      .select('id, role, profiles!user_id(id, name, email, phone)')
       .eq('event_id', eventId)
       .in('role', ['brautpaar', 'trauzeuge']),
     supabase.from('invite_codes').select('id, status').eq('event_id', eventId).eq('status', 'offen'),

@@ -29,7 +29,7 @@ export default async function AllgemeinPage({ params }: Props) {
   const [{ data: bpMembers }, { data: organizerCosts }] = await Promise.all([
     supabase
       .from('event_members')
-      .select('id, user_id, profiles(id, name, email)')
+      .select('id, user_id, profiles!user_id(id, name, email)')
       .eq('event_id', eventId)
       .eq('role', 'brautpaar'),
     supabase

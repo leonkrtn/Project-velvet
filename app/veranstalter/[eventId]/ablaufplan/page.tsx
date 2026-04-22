@@ -18,7 +18,7 @@ export default async function AblaufplanPage({ params }: Props) {
       .order('sort_order', { ascending: true }),
     supabase
       .from('event_members')
-      .select('id, user_id, role, profiles(id, name)')
+      .select('id, user_id, role, profiles!user_id(id, name)')
       .eq('event_id', eventId),
   ])
 
