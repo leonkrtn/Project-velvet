@@ -17,7 +17,7 @@ export default async function BerechtigungenPage({ params }: Props) {
       .maybeSingle(),
     supabase
       .from('event_members')
-      .select('id, user_id, profiles(id, name, email)')
+      .select('id, user_id, profiles!user_id(id, name, email)')
       .eq('event_id', eventId)
       .eq('role', 'brautpaar'),
   ])
