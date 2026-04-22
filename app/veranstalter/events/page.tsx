@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Settings, Trash2, Plus, Pencil, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Settings, Trash2, Plus, Pencil, X, ChevronDown, ChevronUp, Search } from 'lucide-react'
 
 interface PresetVendor { id: string; name: string | null; category: string | null; description: string | null; price_estimate: number; contact_email: string | null; contact_phone: string | null }
 interface PresetHotel  { id: string; name: string | null; address: string | null; distance_km: number; price_per_night: number; total_rooms: number; description: string | null }
@@ -56,6 +56,7 @@ type EventSummary = {
   couple_name: string | null
   date: string | null
   venue: string | null
+  event_code: string | null
 }
 
 function displayEventName(ev: { couple_name?: string | null; title?: string | null } | null | undefined): string {
@@ -101,6 +102,7 @@ export default function VeranstalterEventsPage() {
   const supabase = createClient()
 
   const [events, setEvents] = useState<EventSummary[]>([])
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [showWizard, setShowWizard] = useState(false)
   const [wizardStep, setWizardStep] = useState(1)
@@ -149,7 +151,7 @@ export default function VeranstalterEventsPage() {
       const [{ data: evRows, error: evErr }, { data: presetRow }, { data: staffRows }] = await Promise.all([
         supabase
           .from('event_members')
-          .select('event_id, events(id, title, couple_name, date, venue)')
+          .select('event_id, events(id, title, couple_name, date, venue, event_code)')
           .eq('user_id', user.id)
           .eq('role', 'veranstalter'),
         supabase
@@ -168,7 +170,7 @@ export default function VeranstalterEventsPage() {
 
       type RawRow = {
         event_id: string
-        events: { id: string; title: string; couple_name: string | null; date: string | null; venue: string | null } | null
+        events: { id: string; title: string; couple_name: string | null; date: string | null; venue: string | null; event_code: string | null } | null
       }
       const list: EventSummary[] = ((evRows ?? []) as unknown as RawRow[]).map(row => ({
         id: row.events?.id ?? row.event_id,
@@ -176,6 +178,7 @@ export default function VeranstalterEventsPage() {
         couple_name: row.events?.couple_name ?? null,
         date: row.events?.date ?? null,
         venue: row.events?.venue ?? null,
+        event_code: row.events?.event_code ?? null,
       }))
       setEvents(list)
       setStaff((staffRows ?? []) as StaffMember[])
@@ -287,6 +290,7 @@ export default function VeranstalterEventsPage() {
         id: newId, title: wizardData.title.trim(),
         couple_name: wizardData.title.trim(),
         date: wizardData.date, venue: wizardData.venue.trim() || null,
+        event_code: null,
       }
       setEvents(prev => [newEvent, ...prev])
       closeWizard()
@@ -322,6 +326,16 @@ export default function VeranstalterEventsPage() {
   }
 
   const eventToDelete = events.find(e => e.id === deleteConfirmId)
+
+  const filteredEvents = search.trim()
+    ? events.filter(ev => {
+        const q = search.trim().toUpperCase()
+        return (
+          displayEventName(ev).toUpperCase().includes(q) ||
+          (ev.event_code ?? '').toUpperCase().includes(q)
+        )
+      })
+    : events
   const staffToDelete = staff.find(s => s.id === deleteStaffId)
 
   function openAddStaff() {
@@ -769,6 +783,26 @@ export default function VeranstalterEventsPage() {
         </div>
       )}
 
+      {/* Search */}
+      {!loading && events.length > 0 && (
+        <div style={{ position: 'relative', marginBottom: 14 }}>
+          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Nach Event oder Code suchen …"
+            style={{
+              width: '100%', padding: '10px 14px 10px 34px', fontSize: 13,
+              border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+              background: 'var(--surface)', fontFamily: 'inherit', outline: 'none',
+              boxSizing: 'border-box', color: 'var(--text)',
+            }}
+            onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
+            onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+          />
+        </div>
+      )}
+
       {/* Event list */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -803,9 +837,13 @@ export default function VeranstalterEventsPage() {
             Erstes Event erstellen
           </button>
         </div>
+      ) : filteredEvents.length === 0 && search.trim() ? (
+        <p style={{ fontSize: 14, color: 'var(--text-tertiary)', textAlign: 'center', padding: '24px 0' }}>
+          Kein Event gefunden für „{search}"
+        </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {events.map(ev => (
+          {filteredEvents.map(ev => (
             <div
               key={ev.id}
               style={{
@@ -815,7 +853,16 @@ export default function VeranstalterEventsPage() {
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: '0 0 3px' }}>{displayEventName(ev)}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'wrap' }}>
+                    <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{displayEventName(ev)}</p>
+                    {ev.event_code && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+                        color: 'var(--text-tertiary)', background: 'rgba(0,0,0,0.05)',
+                        padding: '1px 7px', borderRadius: 4, fontFamily: 'monospace',
+                      }}>#{ev.event_code}</span>
+                    )}
+                  </div>
                   <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>{fmtDate(ev.date)}</p>
                   {ev.venue && <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>{ev.venue}</p>}
                 </div>

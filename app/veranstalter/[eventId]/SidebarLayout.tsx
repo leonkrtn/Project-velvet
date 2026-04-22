@@ -4,13 +4,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Settings, Users, MessageSquare, Lightbulb,
-  Calendar, BarChart2, Shield, Grid2X2, UserCog, ChevronLeft, Menu,
+  Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu,
 } from 'lucide-react'
 
 interface Props {
   eventId: string
   eventTitle: string
   eventDate: string | null
+  eventCode?: string | null
   children: React.ReactNode
 }
 
@@ -21,13 +22,12 @@ const NAV_ITEMS = [
   { key: 'chats',          label: 'Chats',            icon: MessageSquare },
   { key: 'vorschlaege',    label: 'Vorschläge',       icon: Lightbulb },
   { key: 'ablaufplan',     label: 'Ablaufplan',       icon: Calendar },
-  { key: 'statistiken',    label: 'Statistiken',      icon: BarChart2 },
-  { key: 'berechtigungen', label: 'Berechtigungen',   icon: Shield },
+{ key: 'berechtigungen', label: 'Berechtigungen',   icon: Shield },
   { key: 'sitzplan',       label: 'Sitzplan',         icon: Grid2X2,  disabled: true },
   { key: 'personalplanung',label: 'Personalplanung',  icon: UserCog },
 ]
 
-export default function SidebarLayout({ eventId, eventTitle, eventDate, children }: Props) {
+export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCode, children }: Props) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -77,7 +77,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, children
         )}
       </div>
 
-      <div style={{ padding: '4px 8px', flex: 1 }}>
+      <div style={{ padding: '4px 8px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1 }}>
         {NAV_ITEMS.map(({ key, label, icon: Icon, disabled }) => {
           const active = isActive(key)
           if (disabled) {
@@ -120,6 +121,17 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, children
             </Link>
           )
         })}
+        </div>
+        {eventCode && (
+          <div style={{ padding: '12px 10px 8px', borderTop: '1px solid var(--border)', marginTop: 8 }}>
+            <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', margin: '0 0 3px' }}>
+              Event-Code
+            </p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.12em' }}>
+              #{eventCode}
+            </p>
+          </div>
+        )}
       </div>
     </nav>
   )

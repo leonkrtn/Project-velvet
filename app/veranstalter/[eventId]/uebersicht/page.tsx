@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Users, Mail, Calendar, Euro, TrendingUp, FileText, CheckSquare, Clock } from 'lucide-react'
+import { Users, Mail, Calendar } from 'lucide-react'
 import OrganizerTodoList from './OrganizerTodoList'
 
 interface Props {
@@ -34,16 +34,14 @@ export default async function UebersichtPage({ params }: Props) {
     guestsRes,
     vendorsRes,
     budgetItemsRes,
-    tasksRes,
     todosRes,
   ] = await Promise.all([
-    supabase.from('events').select('id, title, date, budget_total, organizer_fee').eq('id', eventId).single(),
+    supabase.from('events').select('id, title, date, budget_total').eq('id', eventId).single(),
     supabase.from('event_members').select('id, role').eq('event_id', eventId),
     supabase.from('invite_codes').select('id, status').eq('event_id', eventId).eq('status', 'offen'),
     supabase.from('guests').select('id, status').eq('event_id', eventId),
     supabase.from('vendors').select('id, name, status, price, category').eq('event_id', eventId),
     supabase.from('budget_items').select('id, planned, actual, payment_status').eq('event_id', eventId),
-    supabase.from('tasks').select('id, title, done, phase').eq('event_id', eventId).eq('done', false).limit(5),
     supabase.from('organizer_todos').select('id, title, done').eq('event_id', eventId).eq('organizer_id', user.id).order('created_at'),
   ])
 
@@ -55,7 +53,6 @@ export default async function UebersichtPage({ params }: Props) {
   const guests = guestsRes.data ?? []
   const vendors = vendorsRes.data ?? []
   const budgetItems = budgetItemsRes.data ?? []
-  const openTasks = tasksRes.data ?? []
   const organizerTodos = todosRes.data ?? []
 
   const daysLeft = daysUntil(event.date)
@@ -65,13 +62,9 @@ export default async function UebersichtPage({ params }: Props) {
 
   const budgetTotal = event.budget_total ?? 0
   const totalSpent = budgetItems.reduce((s, b) => s + (b.actual ?? 0), 0)
-  const openInvoices = budgetItems.filter(b => b.payment_status === 'offen').length
   const budgetPercent = budgetTotal > 0 ? Math.min(100, (totalSpent / budgetTotal) * 100) : 0
 
   const confirmedVendors = vendors.filter(v => v.status === 'bestaetigt').length
-  const totalVendorCost = vendors.reduce((s, v) => s + (v.price ?? 0), 0)
-  const organizerFee = event.organizer_fee ?? 0
-  const margin = budgetTotal > 0 ? budgetTotal - totalVendorCost - organizerFee : null
 
   return (
     <div>
@@ -152,57 +145,6 @@ export default async function UebersichtPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Veranstalter Card */}
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 22px 14px', borderBottom: '1px solid var(--border)' }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.1px' }}>Veranstalter</span>
-            <Link href={`/veranstalter/${eventId}/statistiken`} style={{ fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none', padding: '4px 8px', borderRadius: 6 }}>Details →</Link>
-          </div>
-
-          <div style={{ padding: '13px 22px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-              <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>Ausgaben</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{fmtMoney(totalVendorCost)}</span>
-            </div>
-            <div style={{ height: 5, background: 'rgba(0,0,0,0.08)', borderRadius: 99, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${budgetTotal > 0 ? Math.min(100, (totalVendorCost / budgetTotal) * 100) : 0}%`, background: '#007AFF', borderRadius: 99 }} />
-            </div>
-          </div>
-
-          <div style={{ padding: '6px 0 8px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-            <SectionItem label="Offene Rechnungen" value={openInvoices.toString()} accent={openInvoices > 0 ? 'red' : undefined} />
-            {margin != null && <SectionItem label="Veranstalter-Marge" value={fmtMoney(margin)} accent={margin >= 0 ? 'green' : 'red'} />}
-          </div>
-
-          <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 22px', cursor: 'default' }}>
-              <span style={{ fontSize: 13.5, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FF9500', display: 'inline-block', flexShrink: 0 }} />
-                Offene Aufgaben
-              </span>
-              <span style={{
-                background: '#FF9500', color: 'white', fontSize: 11, fontWeight: 600,
-                padding: '1px 7px', borderRadius: 20,
-              }}>{openTasks.length}</span>
-            </div>
-            {openTasks.length > 0 && (
-              <div style={{ padding: '2px 22px 10px 50px' }}>
-                {openTasks.map(t => (
-                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', fontSize: 13, color: 'var(--text-secondary)', borderTop: '1px solid rgba(0,0,0,0.04)' }}>
-                    <div style={{ width: 16, height: 16, border: '1.5px solid #C7C7CC', borderRadius: '50%', flexShrink: 0 }} />
-                    {t.title ?? 'Aufgabe'}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, padding: '14px 22px', borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.015)' }}>
-            <QuickAction label="Ablaufplan" href={`/veranstalter/${eventId}/ablaufplan`} icon={<Clock size={13} />} />
-            <QuickAction label="Statistiken" href={`/veranstalter/${eventId}/statistiken`} icon={<TrendingUp size={13} />} />
-            <QuickAction label="Berechtigungen" href={`/veranstalter/${eventId}/berechtigungen`} icon={<FileText size={13} />} />
-          </div>
-        </div>
       </div>
 
       {/* Organizer To-Do Liste */}
@@ -247,18 +189,5 @@ function SectionItem({ label, value, accent }: { label: string; value: string; a
       <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>{label}</span>
       <span style={{ fontSize: 14, fontWeight: 600, color, letterSpacing: '-0.3px' }}>{value}</span>
     </div>
-  )
-}
-
-function QuickAction({ label, href, icon }: { label: string; href: string; icon: React.ReactNode }) {
-  return (
-    <Link href={href} style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      padding: '6px 12px', borderRadius: 7,
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none',
-    }}>
-      {icon}{label}
-    </Link>
   )
 }
