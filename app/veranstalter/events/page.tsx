@@ -42,12 +42,12 @@ type StaffMember = {
   phone: string | null
   role_category: string | null
   available_days: string[]
-  responsibilities: string | null
+  hourly_rate: number | null
   notes: string | null
 }
 
 const EMPTY_STAFF: Omit<StaffMember, 'id' | 'organizer_id'> = {
-  name: '', email: '', phone: '', role_category: '', available_days: [], responsibilities: '', notes: '',
+  name: '', email: '', phone: '', role_category: '', available_days: [], hourly_rate: 0, notes: '',
 }
 
 type EventSummary = {
@@ -339,7 +339,7 @@ export default function VeranstalterEventsPage() {
       phone: member.phone ?? '',
       role_category: member.role_category ?? '',
       available_days: member.available_days ?? [],
-      responsibilities: member.responsibilities ?? '',
+      hourly_rate: member.hourly_rate ?? 0,
       notes: member.notes ?? '',
     })
     setStaffError('')
@@ -362,7 +362,7 @@ export default function VeranstalterEventsPage() {
         phone: staffForm.phone?.trim() || null,
         role_category: staffForm.role_category?.trim() || null,
         available_days: staffForm.available_days ?? [],
-        responsibilities: staffForm.responsibilities?.trim() || null,
+        hourly_rate: staffForm.hourly_rate ?? 0,
         notes: staffForm.notes?.trim() || null,
       }
       if (editingStaff) {
@@ -937,13 +937,13 @@ export default function VeranstalterEventsPage() {
                             ))}
                           </div>
                         )}
-                        {member.responsibilities && (
+                        {(member.hourly_rate != null && member.hourly_rate > 0) && (
                           <p style={{
                             fontSize: 12, color: 'var(--accent)', margin: '5px 0 0',
                             background: 'var(--accent-light)', borderRadius: 4,
                             display: 'inline-block', padding: '2px 8px',
                           }}>
-                            {member.responsibilities}
+                            {member.hourly_rate.toFixed(2)} €/h
                           </p>
                         )}
                         {member.notes && (
@@ -1123,14 +1123,16 @@ export default function VeranstalterEventsPage() {
 
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
-                  Zuständigkeiten
+                  Stundenlohn (€/h)
                 </label>
-                <textarea
-                  value={staffForm.responsibilities ?? ''}
-                  onChange={e => setStaffForm(prev => ({ ...prev, responsibilities: e.target.value }))}
-                  placeholder="z. B. Koordination Catering, Technik, Gästeempfang …"
-                  rows={2}
-                  style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.5 }}
+                <input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={staffForm.hourly_rate ?? 0}
+                  onChange={e => setStaffForm(prev => ({ ...prev, hourly_rate: parseFloat(e.target.value) || 0 }))}
+                  placeholder="0.00"
+                  style={inputStyle}
                   onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                   onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
                 />
