@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Users, Mail, Calendar, Euro, TrendingUp, FileText, CheckSquare, Clock } from 'lucide-react'
+import OrganizerTodoList from './OrganizerTodoList'
 
 interface Props {
   params: Promise<{ eventId: string }>
@@ -22,6 +23,9 @@ export default async function UebersichtPage({ params }: Props) {
   const { eventId } = await params
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
   // Parallel data fetching
   const [
     eventRes,
@@ -31,6 +35,7 @@ export default async function UebersichtPage({ params }: Props) {
     vendorsRes,
     budgetItemsRes,
     tasksRes,
+    todosRes,
   ] = await Promise.all([
     supabase.from('events').select('id, title, date, budget_total, organizer_fee').eq('id', eventId).single(),
     supabase.from('event_members').select('id, role').eq('event_id', eventId),
@@ -39,6 +44,7 @@ export default async function UebersichtPage({ params }: Props) {
     supabase.from('vendors').select('id, name, status, price, category').eq('event_id', eventId),
     supabase.from('budget_items').select('id, planned, actual, payment_status').eq('event_id', eventId),
     supabase.from('tasks').select('id, title, done, phase').eq('event_id', eventId).eq('done', false).limit(5),
+    supabase.from('organizer_todos').select('id, title, done').eq('event_id', eventId).eq('organizer_id', user.id).order('created_at'),
   ])
 
   const event = eventRes.data
@@ -50,6 +56,7 @@ export default async function UebersichtPage({ params }: Props) {
   const vendors = vendorsRes.data ?? []
   const budgetItems = budgetItemsRes.data ?? []
   const openTasks = tasksRes.data ?? []
+  const organizerTodos = todosRes.data ?? []
 
   const daysLeft = daysUntil(event.date)
   const guestsTotal = guests.length
@@ -196,6 +203,15 @@ export default async function UebersichtPage({ params }: Props) {
             <QuickAction label="Berechtigungen" href={`/veranstalter/${eventId}/berechtigungen`} icon={<FileText size={13} />} />
           </div>
         </div>
+      </div>
+
+      {/* Organizer To-Do Liste */}
+      <div style={{ marginTop: 24 }}>
+        <OrganizerTodoList
+          eventId={eventId}
+          organizerId={user.id}
+          initialTodos={organizerTodos}
+        />
       </div>
     </div>
   )
