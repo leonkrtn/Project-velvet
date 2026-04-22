@@ -17,13 +17,13 @@ ALTER TABLE event_organizer_costs ENABLE ROW LEVEL SECURITY;
 
 -- Nur Veranstalter des zugehörigen Events dürfen lesen/schreiben
 CREATE POLICY "veranstalter_select_costs" ON event_organizer_costs
-  FOR SELECT USING (is_event_member(event_id, ARRAY['veranstalter']::text[]));
+  FOR SELECT USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
 CREATE POLICY "veranstalter_insert_costs" ON event_organizer_costs
-  FOR INSERT WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::text[]));
+  FOR INSERT WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
 CREATE POLICY "veranstalter_update_costs" ON event_organizer_costs
-  FOR UPDATE USING (is_event_member(event_id, ARRAY['veranstalter']::text[]));
+  FOR UPDATE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
 CREATE POLICY "veranstalter_delete_costs" ON event_organizer_costs
-  FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::text[]));
+  FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
