@@ -16,7 +16,7 @@ export default async function MitgliederPage({ params }: Props) {
     .from('event_members')
     .select(`
       id, role, display_name, invite_status,
-      profiles!user_id(id, name, email)
+      profiles!user_id(id, name, email, phone)
     `)
     .eq('event_id', eventId)
     .order('id', { ascending: true })

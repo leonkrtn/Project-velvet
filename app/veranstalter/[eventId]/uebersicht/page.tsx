@@ -1,11 +1,20 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Users, Mail, Calendar } from 'lucide-react'
+import { Users, Mail, Calendar, Phone } from 'lucide-react'
 import OrganizerTodoList from './OrganizerTodoList'
 
 interface Props {
   params: Promise<{ eventId: string }>
+}
+
+type Projektphase = 'Planung' | 'Finalisierung' | 'Durchführung' | 'Nachbereitung'
+
+const PHASE_COLORS: Record<Projektphase, { bg: string; color: string; border: string }> = {
+  'Planung':        { bg: '#EEF2FF', color: '#4F46E5', border: '#C7D2FE' },
+  'Finalisierung':  { bg: '#FFF7ED', color: '#C2410C', border: '#FED7AA' },
+  'Durchführung':   { bg: '#F0FDF4', color: '#15803D', border: '#BBF7D0' },
+  'Nachbereitung':  { bg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE' },
 }
 
 function fmtMoney(n: number | null | undefined) {
@@ -26,18 +35,23 @@ export default async function UebersichtPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Parallel data fetching
   const [
     eventRes,
     membersRes,
+    contactMembersRes,
     inviteCodesRes,
     guestsRes,
     vendorsRes,
     budgetItemsRes,
     todosRes,
   ] = await Promise.all([
-    supabase.from('events').select('id, title, date, budget_total').eq('id', eventId).single(),
+    supabase.from('events').select('id, title, date, budget_total, projektphase').eq('id', eventId).single(),
     supabase.from('event_members').select('id, role').eq('event_id', eventId),
+    supabase
+      .from('event_members')
+      .select('id, role, profiles(id, name, email, phone)')
+      .eq('event_id', eventId)
+      .in('role', ['brautpaar', 'trauzeuge']),
     supabase.from('invite_codes').select('id, status').eq('event_id', eventId).eq('status', 'offen'),
     supabase.from('guests').select('id, status').eq('event_id', eventId),
     supabase.from('vendors').select('id, name, status, price, category').eq('event_id', eventId),
@@ -55,6 +69,13 @@ export default async function UebersichtPage({ params }: Props) {
   const budgetItems = budgetItemsRes.data ?? []
   const organizerTodos = todosRes.data ?? []
 
+  const contactMembers = (contactMembersRes.data ?? []).map(m => ({
+    ...m,
+    profiles: Array.isArray(m.profiles) ? (m.profiles[0] ?? null) : m.profiles,
+  }))
+  const brautpaar = contactMembers.filter(m => m.role === 'brautpaar')
+  const trauzeugen = contactMembers.filter(m => m.role === 'trauzeuge')
+
   const daysLeft = daysUntil(event.date)
   const guestsTotal = guests.length
   const guestsConfirmed = guests.filter(g => g.status === 'zugesagt').length
@@ -66,11 +87,30 @@ export default async function UebersichtPage({ params }: Props) {
 
   const confirmedVendors = vendors.filter(v => v.status === 'bestaetigt').length
 
+  const phase = (event.projektphase as Projektphase | null) ?? 'Planung'
+  const phaseStyle = PHASE_COLORS[phase]
+
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>
-        Übersicht
-      </h1>
+      {/* Header with phase badge */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 10 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', margin: 0 }}>
+          Übersicht
+        </h1>
+        <Link
+          href={`/veranstalter/${eventId}/allgemein`}
+          title="Projektphase bearbeiten"
+          style={{
+            display: 'inline-flex', alignItems: 'center',
+            padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600,
+            background: phaseStyle.bg, color: phaseStyle.color,
+            border: `1px solid ${phaseStyle.border}`, textDecoration: 'none',
+            letterSpacing: '0.01em',
+          }}
+        >
+          {phase}
+        </Link>
+      </div>
       <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 32 }}>
         Alle wichtigen Kennzahlen auf einen Blick
       </p>
@@ -129,8 +169,9 @@ export default async function UebersichtPage({ params }: Props) {
           </div>
 
           <div style={{ padding: '6px 0 8px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-            <SectionItem label="Bestätigte Dienstleister" value={confirmedVendors.toString()} />
-            <SectionItem label="Dienstleister gesamt" value={vendors.length.toString()} />
+            <Link href={`/veranstalter/${eventId}/mitglieder`} style={{ textDecoration: 'none', display: 'block' }}>
+              <SectionItem label="Bestätigte Dienstleister" value={confirmedVendors.toString()} clickable />
+            </Link>
           </div>
 
           <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.015)' }}>
@@ -145,6 +186,40 @@ export default async function UebersichtPage({ params }: Props) {
           </div>
         </div>
 
+        {/* Kontakt-Schnellzugriff */}
+        {(brautpaar.length > 0 || trauzeugen.length > 0) && (
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+            <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.1px' }}>Wichtige Kontakte</span>
+            </div>
+
+            {brautpaar.length > 0 && (
+              <div style={{ padding: '14px 22px', borderBottom: trauzeugen.length > 0 ? '1px solid var(--border)' : undefined }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>
+                  Brautpaar
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {brautpaar.map(m => (
+                    <ContactRow key={m.id} profile={m.profiles} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {trauzeugen.length > 0 && (
+              <div style={{ padding: '14px 22px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>
+                  Trauzeugen
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {trauzeugen.map(m => (
+                    <ContactRow key={m.id} profile={m.profiles} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Organizer To-Do Liste */}
@@ -182,12 +257,42 @@ function KpiCard({ icon, label, value, sub, href }: {
   )
 }
 
-function SectionItem({ label, value, accent }: { label: string; value: string; accent?: 'green' | 'red' }) {
+function SectionItem({ label, value, accent, clickable }: {
+  label: string; value: string; accent?: 'green' | 'red'; clickable?: boolean
+}) {
   const color = accent === 'green' ? '#34C759' : accent === 'red' ? '#FF3B30' : 'var(--text-primary)'
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 22px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-      <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>{label}</span>
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '11px 22px', borderTop: '1px solid rgba(0,0,0,0.05)',
+      cursor: clickable ? 'pointer' : undefined,
+    }}>
+      <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>
+        {label}
+        {clickable && <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 6 }}>→</span>}
+      </span>
       <span style={{ fontSize: 14, fontWeight: 600, color, letterSpacing: '-0.3px' }}>{value}</span>
+    </div>
+  )
+}
+
+function ContactRow({ profile }: { profile: { name: string; email: string; phone?: string | null } | null }) {
+  if (!profile) return null
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{profile.name}</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {profile.phone && (
+          <a href={`tel:${profile.phone}`} style={{ fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Phone size={12} color="var(--text-tertiary)" />
+            {profile.phone}
+          </a>
+        )}
+        <a href={`mailto:${profile.email}`} style={{ fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <Mail size={12} color="var(--text-tertiary)" />
+          {profile.email}
+        </a>
+      </div>
     </div>
   )
 }
