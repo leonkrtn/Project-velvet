@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Settings, Users, MessageSquare, Lightbulb,
-  Calendar, BarChart2, Shield, Grid2X2, UserCog, ChevronLeft, Menu,
+  Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu,
 } from 'lucide-react'
 
 interface Props {
@@ -21,8 +21,7 @@ const NAV_ITEMS = [
   { key: 'chats',          label: 'Chats',            icon: MessageSquare },
   { key: 'vorschlaege',    label: 'Vorschläge',       icon: Lightbulb },
   { key: 'ablaufplan',     label: 'Ablaufplan',       icon: Calendar },
-  { key: 'statistiken',    label: 'Statistiken',      icon: BarChart2 },
-  { key: 'berechtigungen', label: 'Berechtigungen',   icon: Shield },
+{ key: 'berechtigungen', label: 'Berechtigungen',   icon: Shield },
   { key: 'sitzplan',       label: 'Sitzplan',         icon: Grid2X2,  disabled: true },
   { key: 'personalplanung',label: 'Personalplanung',  icon: UserCog },
 ]
