@@ -133,7 +133,7 @@ export default async function UebersichtPage({ params }: Props) {
 
   // Margin calculation
   const einnahmen = event.organizer_fee ?? 0
-  const veranstalterkosten = (organizerCostsRes.data ?? []).reduce((s, c) => s + (c.amount ?? 0), 0)
+  const veranstalterkosten = (organizerCostsRes.data ?? []).reduce((s, c) => s + parseFloat(String(c.amount ?? 0)), 0)
 
   // Staff costs: need shifts for this event's days
   const dayIds = (daysRes.data ?? []).map(d => d.id)
