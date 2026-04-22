@@ -340,9 +340,9 @@ CREATE TABLE IF NOT EXISTS organizer_staff (
   name             TEXT NOT NULL,
   email            TEXT,
   phone            TEXT,
-  responsibilities TEXT,
   role_category    TEXT,
   available_days   TEXT[] DEFAULT '{}',
+  hourly_rate      NUMERIC DEFAULT 0,
   notes            TEXT,
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );

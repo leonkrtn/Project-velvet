@@ -34,6 +34,22 @@ type StaffMember = {
   role_category: string | null
   available_days: string[] | null
   phone: string | null
+  hourly_rate: number | null
+}
+
+type EventInfo = {
+  title: string
+  date: string | null
+}
+
+type TimelineEntry = {
+  id: string
+  event_id: string
+  title: string
+  start_minutes: number
+  end_minutes: number | null
+  location: string | null
+  category: string | null
 }
 
 type PlanDay = {
@@ -60,6 +76,23 @@ type Shift = {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+const TIMELINE_COLORS: Record<string, string> = {
+  Zeremonie: '#7C3AED',
+  Empfang:   '#2563EB',
+  Feier:     '#D97706',
+  Logistik:  '#6B7280',
+}
+
+function minutesToTime(m: number): string {
+  const hh = Math.floor(m / 60)
+  const mm = m % 60
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+}
+
+function tlColor(cat: string | null | undefined): string {
+  return TIMELINE_COLORS[cat ?? ''] ?? '#6B7280'
+}
+
 function fmtHour(h: number): string {
   const hh = Math.floor(h)
   const mm = Math.round((h - hh) * 60)
@@ -174,6 +207,8 @@ export default function PersonalplanungPage() {
   const [shifts, setShifts] = useState<Shift[]>([])
   const [loading, setLoading] = useState(true)
   const [activeDayId, setActiveDayId] = useState<string | null>(null)
+  const [eventInfo, setEventInfo] = useState<EventInfo | null>(null)
+  const [timelineEntries, setTimelineEntries] = useState<TimelineEntry[]>([])
 
   // Day modal
   const [showDayModal, setShowDayModal] = useState(false)
@@ -214,10 +249,14 @@ export default function PersonalplanungPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const [{ data: staffRows }, { data: dayRows }] = await Promise.all([
-        supabase.from('organizer_staff').select('id,name,role_category,available_days,phone').eq('organizer_id', user.id).order('name'),
+      const [{ data: staffRows }, { data: dayRows }, { data: eventRow }, { data: tlRows }] = await Promise.all([
+        supabase.from('organizer_staff').select('id,name,role_category,available_days,phone,hourly_rate').eq('organizer_id', user.id).order('name'),
         supabase.from('personalplanung_days').select('*').eq('event_id', eventId).order('sort_order'),
+        supabase.from('events').select('title,date').eq('id', eventId).single(),
+        supabase.from('timeline_entries').select('*').eq('event_id', eventId).order('start_minutes'),
       ])
+      setEventInfo(eventRow ? { title: (eventRow as { title: string; date: string | null }).title, date: (eventRow as { title: string; date: string | null }).date } : null)
+      setTimelineEntries((tlRows ?? []) as TimelineEntry[])
 
       const staffList = (staffRows ?? []) as StaffMember[]
       const dayList = (dayRows ?? []) as PlanDay[]
@@ -248,6 +287,12 @@ export default function PersonalplanungPage() {
   const dayShifts = shifts.filter(s => s.day_id === activeDayId)
   const workingStaff = staff.filter(s => workingIds.has(s.id))
   const totalHours = dayShifts.reduce((sum, s) => sum + (s.end_hour - s.start_hour), 0)
+  const totalCost = dayShifts
+    .filter(s => workingIds.has(s.staff_id))
+    .reduce((sum, s) => {
+      const member = staff.find(m => m.id === s.staff_id)
+      return sum + (s.end_hour - s.start_hour) * (member?.hourly_rate ?? 0)
+    }, 0)
   const rolesCovered = new Set(workingStaff.map(s => s.role_category).filter(Boolean)).size
   const coverageCounts = Array.from({ length: HOURS }, (_, i) => {
     const h = HOUR_START + i
@@ -451,7 +496,7 @@ export default function PersonalplanungPage() {
               { label: 'Im Einsatz', value: workingStaff.length, sub: `von ${staff.length} Mitarbeitern`, colorVal: '#1B5E20' },
               { label: 'Bereiche abgedeckt', value: rolesCovered, sub: `${Object.keys(ROLES).length} Bereiche gesamt`, colorVal: undefined },
               { label: 'Geplante Stunden', value: totalHours.toFixed(1), sub: `${dayShifts.length} Schichten`, unit: 'h', colorVal: undefined },
-              { label: 'Nicht im Einsatz', value: staff.length - workingStaff.length, sub: 'frei an diesem Tag', colorVal: staff.length - workingStaff.length > 0 ? '#FF9500' : undefined },
+              { label: 'Gesamtkosten', value: totalCost.toFixed(2), sub: 'Stundenlohn × Stunden', unit: '€', colorVal: totalCost > 0 ? '#1B5E20' : undefined },
             ] as { label: string; value: string | number; sub: string; unit?: string; colorVal?: string }[]).map((c, i) => (
               <div key={i} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontWeight: 500, marginBottom: 4 }}>{c.label}</div>
@@ -510,6 +555,47 @@ export default function PersonalplanungPage() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Programm row — only when active day = event date */}
+                  {activeDay && eventInfo?.date && activeDay.date === eventInfo.date && timelineEntries.length > 0 && (
+                    <React.Fragment>
+                      <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.05)', background: '#F8F4FF', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Programm</span>
+                      </div>
+                      <div style={{
+                        position: 'relative',
+                        borderBottom: '1px solid rgba(0,0,0,0.05)',
+                        background: '#F8F4FF',
+                        height: 44,
+                      }}>
+                        {timelineEntries.map(entry => {
+                          const startH = entry.start_minutes / 60
+                          const endH = entry.end_minutes != null ? entry.end_minutes / 60 : startH + 0.5
+                          const leftPct = Math.max(0, ((startH - HOUR_START) / HOURS) * 100)
+                          const widthPct = Math.max(0.5, ((endH - startH) / HOURS) * 100)
+                          const col = tlColor(entry.category)
+                          return (
+                            <div
+                              key={entry.id}
+                              title={`${entry.title}${entry.location ? ' · ' + entry.location : ''} (${minutesToTime(entry.start_minutes)}${entry.end_minutes != null ? '–' + minutesToTime(entry.end_minutes) : ''})`}
+                              style={{
+                                position: 'absolute', top: 7, bottom: 7,
+                                left: `${leftPct}%`, width: `${widthPct}%`,
+                                minWidth: 20, borderRadius: 6, padding: '2px 7px',
+                                background: col, color: '#fff',
+                                fontSize: 10.5, fontWeight: 600,
+                                display: 'flex', alignItems: 'center',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                                overflow: 'hidden', whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.title}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </React.Fragment>
+                  )}
 
                   {/* Employee rows */}
                   {staff.map(member => {
@@ -729,6 +815,46 @@ export default function PersonalplanungPage() {
                   </div>
                 </div>
               </div>
+              {/* Ablaufplan panel */}
+              {timelineEntries.length > 0 && (
+                <div style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>Ablaufplan</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>
+                      {eventInfo?.date
+                        ? new Date(eventInfo.date + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
+                        : 'Hochzeitsprogramm'}
+                    </div>
+                  </div>
+                  <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                    {timelineEntries.map((entry, i) => {
+                      const col = tlColor(entry.category)
+                      return (
+                        <div
+                          key={entry.id}
+                          style={{ display: 'flex', gap: 10, padding: '10px 16px', borderBottom: i < timelineEntries.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none', alignItems: 'flex-start' }}
+                        >
+                          <div style={{ width: 4, borderRadius: 4, background: col, alignSelf: 'stretch', flexShrink: 0, minHeight: 36 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>{entry.title}</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                              {minutesToTime(entry.start_minutes)}
+                              {entry.end_minutes != null ? ` – ${minutesToTime(entry.end_minutes)}` : ''}
+                              {entry.location && <span style={{ marginLeft: 6, opacity: 0.7 }}>· {entry.location}</span>}
+                            </div>
+                          </div>
+                          {entry.category && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: col, background: col + '18', padding: '2px 7px', borderRadius: 5, flexShrink: 0, alignSelf: 'center' }}>
+                              {entry.category}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </>
@@ -740,6 +866,16 @@ export default function PersonalplanungPage() {
           <Modal>
             <ModalHead title={editingDayId ? 'Tag bearbeiten' : 'Tag hinzufügen'} onClose={() => setShowDayModal(false)} />
             <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
+              {/* Quick-fill from event */}
+              {!editingDayId && eventInfo?.date && (
+                <button
+                  type="button"
+                  onClick={() => { setDayLabel('Hochzeitstag'); setDayDate(eventInfo.date ?? '') }}
+                  style={{ ...btnGhost, justifyContent: 'center', fontSize: 12.5, padding: '9px 14px', borderStyle: 'dashed', color: '#7C3AED', borderColor: '#7C3AED55', background: '#F8F4FF' }}
+                >
+                  ✨ Vom Event übernehmen — {new Date(eventInfo.date + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </button>
+              )}
               <div>
                 <label style={labelS}>Bezeichnung <span style={{ color: 'var(--accent)' }}>*</span></label>
                 <input
