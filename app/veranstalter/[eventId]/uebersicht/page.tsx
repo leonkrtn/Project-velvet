@@ -107,11 +107,9 @@ function MarginWaterfall({ einnahmen, veranstalterkosten, mitarbeiterkosten }: {
   for (let i = 0; i < rects.length - 1; i++) {
     const cur = rects[i]
     const next = rects[i + 1]
-    const connectY = cur.type === 'positive' ? cur.y : cur.y + cur.h
-    // Use the bottom of current bar for negative, top for positive
     const actualY = bars[i].type === 'positive'
-      ? cur.y               // top of positive bar = where negative starts
-      : cur.y + cur.h       // bottom of negative bar = where next starts
+      ? cur.y
+      : cur.y + cur.h
     connectors.push({ x1: cur.x + barW, y1: actualY, x2: next.x, y2: actualY })
   }
 
