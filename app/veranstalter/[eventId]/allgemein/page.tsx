@@ -26,6 +26,19 @@ export default async function AllgemeinPage({ params }: Props) {
 
   if (!event) redirect('/veranstalter')
 
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: preset } = user
+    ? await supabase.from('organizer_presets').select('location_name, location_street, location_zip, location_city, location_website').eq('user_id', user.id).single()
+    : { data: null }
+
+  if (preset) {
+    if (!event.location_name)    event.location_name    = preset.location_name
+    if (!event.location_street)  event.location_street  = preset.location_street
+    if (!event.location_zip)     event.location_zip     = preset.location_zip
+    if (!event.location_city)    event.location_city    = preset.location_city
+    if (!event.location_website) event.location_website = preset.location_website
+  }
+
   const [{ data: bpMembers }, { data: organizerCosts }] = await Promise.all([
     supabase
       .from('event_members')
