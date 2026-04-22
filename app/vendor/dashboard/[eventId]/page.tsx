@@ -25,7 +25,7 @@ export default async function VendorDashboardPage({ params, searchParams }: Prop
   // Event-Basisdaten
   const { data: event } = await supabase
     .from('events')
-    .select('title, date, couple_name')
+    .select('title, date, couple_name, event_code')
     .eq('id', eventId)
     .single()
 
@@ -35,6 +35,7 @@ export default async function VendorDashboardPage({ params, searchParams }: Prop
       permissions={permissions}
       eventTitle={event?.title ?? 'Event'}
       eventDate={event?.date ?? null}
+      eventCode={event?.event_code ?? null}
       initialTab={tab ?? null}
     />
   )

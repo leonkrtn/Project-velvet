@@ -37,10 +37,11 @@ interface Props {
   permissions:  string[]
   eventTitle:   string
   eventDate:    string | null
+  eventCode?:   string | null
   initialTab:   string | null
 }
 
-export default function VendorDashboardClient({ eventId, permissions, eventTitle, eventDate, initialTab }: Props) {
+export default function VendorDashboardClient({ eventId, permissions, eventTitle, eventDate, eventCode, initialTab }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
 
@@ -104,7 +105,8 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
         )}
       </div>
 
-      <div style={{ padding: '8px 8px', flex: 1 }}>
+      <div style={{ padding: '8px 8px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1 }}>
         {visibleModules.map(({ key, label, icon: Icon }) => {
           const active = resolvedTab === key
           return (
@@ -128,6 +130,17 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
             </button>
           )
         })}
+        </div>
+        {eventCode && (
+          <div style={{ padding: '12px 10px 8px', borderTop: '1px solid var(--border)', marginTop: 8 }}>
+            <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', margin: '0 0 3px' }}>
+              Event-Code
+            </p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.12em' }}>
+              #{eventCode}
+            </p>
+          </div>
+        )}
       </div>
     </nav>
   )

@@ -27,14 +27,14 @@ export default async function EventLayout({ children, params }: Props) {
   // Load event name for sidebar header
   const { data: event } = await supabase
     .from('events')
-    .select('id, title, date')
+    .select('id, title, date, event_code')
     .eq('id', eventId)
     .single()
 
   if (!event) redirect('/veranstalter')
 
   return (
-    <SidebarLayout eventId={eventId} eventTitle={event.title} eventDate={event.date}>
+    <SidebarLayout eventId={eventId} eventTitle={event.title} eventDate={event.date} eventCode={event.event_code ?? null}>
       {children}
     </SidebarLayout>
   )
