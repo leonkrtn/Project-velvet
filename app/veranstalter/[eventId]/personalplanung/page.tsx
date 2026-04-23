@@ -6,7 +6,7 @@ import { Plus, X, Pencil, Trash2 } from 'lucide-react'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const HOUR_START = 8
-const HOUR_END = 24
+const HOUR_END = 28 // 04:00 next day
 const HOURS = HOUR_END - HOUR_START
 
 const ROLES: Record<string, { label: string; color: string }> = {
@@ -75,6 +75,15 @@ type Shift = {
   end_hour: number
 }
 
+type DragState = {
+  shiftId: string
+  type: 'move' | 'resize-left' | 'resize-right'
+  startX: number
+  origStart: number
+  origEnd: number
+  containerWidth: number
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const TIMELINE_COLORS: Record<string, string> = {
   Zeremonie: '#7C3AED',
@@ -94,8 +103,9 @@ function tlColor(cat: string | null | undefined): string {
 }
 
 function fmtHour(h: number): string {
-  const hh = Math.floor(h)
-  const mm = Math.round((h - hh) * 60)
+  const norm = h >= 24 ? h - 24 : h
+  const hh = Math.floor(norm)
+  const mm = Math.round((norm - hh) * 60)
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
 }
 
@@ -228,6 +238,15 @@ export default function PersonalplanungPage() {
   const [shiftSubmitting, setShiftSubmitting] = useState(false)
   const [shiftError, setShiftError] = useState('')
 
+  const [hoveredShiftId, setHoveredShiftId] = useState<string | null>(null)
+  const [showAblaufplan, setShowAblaufplan] = useState(true)
+
+  // Drag-to-move / resize
+  const [drag, setDrag] = useState<DragState | null>(null)
+  const dragMovedRef = React.useRef(false)
+  const shiftsRef = React.useRef<Shift[]>([])
+  React.useEffect(() => { shiftsRef.current = shifts }, [shifts])
+
   const inputS: React.CSSProperties = {
     width: '100%', padding: '9px 11px', fontSize: 13.5,
     border: '1px solid rgba(0,0,0,0.13)', borderRadius: 8,
@@ -239,6 +258,53 @@ export default function PersonalplanungPage() {
   const btnPrimary: React.CSSProperties = { fontSize: 13, fontWeight: 500, padding: '8px 14px', borderRadius: 8, cursor: 'pointer', border: 'none', background: 'var(--text)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', whiteSpace: 'nowrap' }
   const btnGhost: React.CSSProperties = { fontSize: 13, fontWeight: 500, padding: '8px 14px', borderRadius: 8, cursor: 'pointer', border: '1px solid rgba(0,0,0,0.13)', background: '#fff', color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', whiteSpace: 'nowrap' }
   const btnGhostSm: React.CSSProperties = { fontSize: 12, fontWeight: 500, padding: '6px 10px', borderRadius: 7, cursor: 'pointer', border: '1px solid rgba(0,0,0,0.13)', background: '#fff', color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', whiteSpace: 'nowrap' }
+
+  // ── Drag effect ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!drag) return
+    const cursor = drag.type === 'move' ? 'grabbing' : drag.type === 'resize-left' ? 'w-resize' : 'e-resize'
+    document.body.style.cursor = cursor
+    document.body.style.userSelect = 'none'
+
+    function onMouseMove(e: MouseEvent) {
+      dragMovedRef.current = true
+      const deltaHours = ((e.clientX - drag!.startX) / drag!.containerWidth) * HOURS
+      setShifts(prev => prev.map(s => {
+        if (s.id !== drag!.shiftId) return s
+        const dur = drag!.origEnd - drag!.origStart
+        if (drag!.type === 'move') {
+          const snapped = Math.round((drag!.origStart + deltaHours) * 4) / 4
+          const clamped = Math.max(HOUR_START, Math.min(HOUR_END - dur, snapped))
+          return { ...s, start_hour: clamped, end_hour: clamped + dur }
+        }
+        if (drag!.type === 'resize-left') {
+          const snapped = Math.round((drag!.origStart + deltaHours) * 4) / 4
+          return { ...s, start_hour: Math.max(HOUR_START, Math.min(drag!.origEnd - 0.25, snapped)) }
+        }
+        const snapped = Math.round((drag!.origEnd + deltaHours) * 4) / 4
+        return { ...s, end_hour: Math.min(HOUR_END, Math.max(drag!.origStart + 0.25, snapped)) }
+      }))
+    }
+
+    async function onMouseUp() {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      if (dragMovedRef.current) {
+        const s = shiftsRef.current.find(s => s.id === drag!.shiftId)
+        if (s) await supabase.from('personalplanung_shifts').update({ start_hour: s.start_hour, end_hour: s.end_hour }).eq('id', s.id)
+      }
+      setDrag(null)
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [drag])
 
   // ── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => { loadData() }, [eventId])
@@ -394,7 +460,8 @@ export default function PersonalplanungPage() {
 
   async function saveShift() {
     const start = parseTime(shiftStart)
-    const end = parseTime(shiftEnd)
+    let end = parseTime(shiftEnd)
+    if (end < start) end += 24
     if (end <= start) { setShiftError('Endzeit muss nach Startzeit liegen.'); return }
     setShiftSubmitting(true); setShiftError('')
     try {
@@ -551,16 +618,16 @@ export default function PersonalplanungPage() {
                   <div style={{ background: '#FAFAFA', borderBottom: '1px solid var(--border)', display: 'grid', gridTemplateColumns: `repeat(${HOURS}, 1fr)` }}>
                     {Array.from({ length: HOURS }, (_, i) => (
                       <div key={i} style={{ fontSize: 10.5, color: 'var(--text-tertiary)', padding: '10px 0 8px', textAlign: 'center', borderLeft: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
-                        {String(HOUR_START + i).padStart(2, '0')}
+                        {String((HOUR_START + i) % 24).padStart(2, '0')}
                       </div>
                     ))}
                   </div>
 
-                  {/* Programm row — only when active day = event date */}
-                  {activeDay && eventInfo?.date && activeDay.date === eventInfo.date && timelineEntries.length > 0 && (
+                  {/* Ablaufplan row — only when active day = event date */}
+                  {showAblaufplan && activeDay && eventInfo?.date && activeDay.date === eventInfo.date && timelineEntries.length > 0 && (
                     <React.Fragment>
                       <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(0,0,0,0.05)', background: '#F8F4FF', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Programm</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Ablaufplan</span>
                       </div>
                       <div style={{
                         position: 'relative',
@@ -568,9 +635,12 @@ export default function PersonalplanungPage() {
                         background: '#F8F4FF',
                         height: 44,
                       }}>
-                        {timelineEntries.map(entry => {
+                        {timelineEntries.map((entry, idx) => {
                           const startH = entry.start_minutes / 60
-                          const endH = entry.end_minutes != null ? entry.end_minutes / 60 : startH + 0.5
+                          const nextStartMinutes = timelineEntries[idx + 1]?.start_minutes
+                          const endH = entry.end_minutes != null
+                            ? entry.end_minutes / 60
+                            : nextStartMinutes != null ? nextStartMinutes / 60 : startH + 1
                           const leftPct = Math.max(0, ((startH - HOUR_START) / HOURS) * 100)
                           const widthPct = Math.max(0.5, ((endH - startH) / HOURS) * 100)
                           const col = tlColor(entry.category)
@@ -581,16 +651,11 @@ export default function PersonalplanungPage() {
                               style={{
                                 position: 'absolute', top: 7, bottom: 7,
                                 left: `${leftPct}%`, width: `${widthPct}%`,
-                                minWidth: 20, borderRadius: 6, padding: '2px 7px',
-                                background: col, color: '#fff',
-                                fontSize: 10.5, fontWeight: 600,
-                                display: 'flex', alignItems: 'center',
+                                minWidth: 8, borderRadius: 6,
+                                background: col,
                                 boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                                overflow: 'hidden', whiteSpace: 'nowrap',
                               }}
-                            >
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.title}</span>
-                            </div>
+                            />
                           )
                         })}
                       </div>
@@ -624,29 +689,6 @@ export default function PersonalplanungPage() {
                               <span>{ROLES[member.role_category ?? '']?.label ?? '—'}</span>
                               {!usuallyAvail && <span style={{ color: '#FF9500', fontSize: 10.5, fontWeight: 600 }}>· übl. frei</span>}
                             </div>
-                            {/* Available days chips */}
-                            {member.available_days && member.available_days.length > 0 && (
-                              <div style={{ display: 'flex', gap: 2, marginTop: 4, flexWrap: 'wrap' }}>
-                                {WEEKDAYS.map(wd => {
-                                  const avail = member.available_days!.includes(wd)
-                                  const isToday = DOW_MAP[wd] === activeDow
-                                  return (
-                                    <span
-                                      key={wd}
-                                      style={{
-                                        fontSize: 9, fontWeight: 700, padding: '1px 4px', borderRadius: 3,
-                                        background: avail ? (isToday ? color + '30' : 'rgba(0,0,0,0.06)') : 'transparent',
-                                        color: avail ? (isToday ? color : 'var(--text-secondary)') : 'var(--text-tertiary)',
-                                        border: `1px solid ${avail ? (isToday ? color + '50' : 'rgba(0,0,0,0.08)') : 'transparent'}`,
-                                        opacity: avail ? 1 : 0.35,
-                                      }}
-                                    >
-                                      {WEEKDAY_LABEL[wd]}
-                                    </span>
-                                  )
-                                })}
-                              </div>
-                            )}
                           </div>
                         </div>
 
@@ -657,7 +699,7 @@ export default function PersonalplanungPage() {
                             style={{
                               borderBottom: '1px solid rgba(0,0,0,0.05)',
                               background: 'repeating-linear-gradient(135deg,#FAFAFA 0 8px,#F2F2F4 8px 16px)',
-                              height: 68, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                              minHeight: 68, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                             }}
                           >
                             <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
@@ -666,37 +708,83 @@ export default function PersonalplanungPage() {
                           </div>
                         ) : (
                           <div
-                            onClick={() => openAddShift(member.id)}
+                            data-track
+                            onClick={() => { if (!dragMovedRef.current) openAddShift(member.id) }}
                             style={{
                               position: 'relative',
                               borderBottom: '1px solid rgba(0,0,0,0.05)',
-                              background: `repeating-linear-gradient(90deg,transparent 0,transparent calc((100%/${HOURS}) - 1px),rgba(0,0,0,0.04) calc((100%/${HOURS}) - 1px),rgba(0,0,0,0.04) calc(100%/${HOURS}))`,
-                              height: 68, cursor: 'pointer',
+                              background: '#fff',
+                              minHeight: 68, cursor: 'pointer',
                             }}
                           >
+                            {/* Grid lines aligned to header */}
+                            <div style={{ position: 'absolute', inset: 0, display: 'grid', gridTemplateColumns: `repeat(${HOURS}, 1fr)`, pointerEvents: 'none' }}>
+                              {Array.from({ length: HOURS }, (_, i) => (
+                                <div key={i} style={{ borderLeft: i > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }} />
+                              ))}
+                            </div>
                             {empShifts.map(shift => {
                               const leftPct = ((shift.start_hour - HOUR_START) / HOURS) * 100
                               const widthPct = ((shift.end_hour - shift.start_hour) / HOURS) * 100
+                              const isActive = drag?.shiftId === shift.id
+
+                              function startDrag(type: DragState['type'], e: React.MouseEvent) {
+                                e.stopPropagation()
+                                dragMovedRef.current = false
+                                const rect = (e.currentTarget.closest('[data-track]') as HTMLElement).getBoundingClientRect()
+                                setDrag({ shiftId: shift.id, type, startX: e.clientX, origStart: shift.start_hour, origEnd: shift.end_hour, containerWidth: rect.width })
+                              }
+
                               return (
                                 <div
                                   key={shift.id}
-                                  onClick={e => { e.stopPropagation(); openEditShift(shift) }}
+                                  onMouseDown={e => startDrag('move', e)}
+                                  onClick={e => { e.stopPropagation(); if (!dragMovedRef.current) openEditShift(shift) }}
+                                  onMouseEnter={() => setHoveredShiftId(shift.id)}
+                                  onMouseLeave={() => setHoveredShiftId(null)}
                                   style={{
                                     position: 'absolute', top: 9, bottom: 9,
                                     left: `${leftPct}%`, width: `${widthPct}%`,
-                                    minWidth: 24, borderRadius: 8, padding: '4px 10px',
+                                    minWidth: 28, borderRadius: 8,
                                     background: color, color: '#fff',
                                     fontSize: 11.5, fontWeight: 600,
-                                    display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 1,
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                                    overflow: 'hidden', cursor: 'pointer',
+                                    display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                                    boxShadow: isActive ? '0 4px 14px rgba(0,0,0,0.28)' : '0 1px 3px rgba(0,0,0,0.15)',
+                                    overflow: 'hidden',
+                                    cursor: isActive ? 'grabbing' : 'grab',
+                                    userSelect: 'none',
+                                    zIndex: isActive ? 10 : 1,
+                                    transform: isActive ? 'scaleY(1.04)' : 'none',
+                                    transition: isActive ? 'none' : 'box-shadow 0.15s',
                                   }}
                                 >
-                                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{shift.task}</div>
-                                  <div style={{ fontSize: 10.5, opacity: 0.9 }}>{fmtHour(shift.start_hour)} – {fmtHour(shift.end_hour)}</div>
+                                  {/* Left resize handle */}
+                                  <div
+                                    onMouseDown={e => startDrag('resize-left', e)}
+                                    style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 10, cursor: 'w-resize', zIndex: 2 }}
+                                  />
+                                  {/* Content */}
+                                  <div style={{ padding: '0 10px', overflow: 'hidden' }}>
+                                    <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{shift.task}</div>
+                                    <div style={{ fontSize: 10.5, opacity: 0.9 }}>{fmtHour(shift.start_hour)} – {fmtHour(shift.end_hour)}</div>
+                                  </div>
+                                  {/* Right resize handle */}
+                                  <div
+                                    onMouseDown={e => startDrag('resize-right', e)}
+                                    style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 10, cursor: 'e-resize', zIndex: 2 }}
+                                  />
                                   <button
                                     onClick={e => { e.stopPropagation(); deleteShift(shift.id) }}
-                                    style={{ position: 'absolute', top: 3, right: 4, width: 16, height: 16, borderRadius: 4, background: 'rgba(255,255,255,0.25)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none', padding: 0 }}
+                                    style={{
+                                      position: 'absolute', top: 5, right: 5,
+                                      width: 16, height: 16, borderRadius: 4,
+                                      background: 'rgba(255,255,255,0.25)', color: '#fff',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      cursor: 'pointer', border: 'none', padding: 0, zIndex: 3,
+                                      opacity: hoveredShiftId === shift.id ? 1 : 0,
+                                      pointerEvents: hoveredShiftId === shift.id ? 'auto' : 'none',
+                                      transition: 'opacity 0.1s',
+                                    }}
                                     title="Schicht löschen"
                                   >
                                     <X size={9} />
@@ -809,7 +897,7 @@ export default function PersonalplanungPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${HOURS}, 1fr)`, marginTop: 4 }}>
                     {Array.from({ length: HOURS }, (_, i) => (
                       <span key={i} style={{ fontSize: 9.5, color: 'var(--text-tertiary)', textAlign: 'center' }}>
-                        {i % 2 === 0 ? String(HOUR_START + i).padStart(2, '0') : ''}
+                        {i % 2 === 0 ? String((HOUR_START + i) % 24).padStart(2, '0') : ''}
                       </span>
                     ))}
                   </div>
@@ -818,13 +906,29 @@ export default function PersonalplanungPage() {
               {/* Ablaufplan panel */}
               {timelineEntries.length > 0 && (
                 <div style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                  <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>Ablaufplan</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>
-                      {eventInfo?.date
-                        ? new Date(eventInfo.date + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
-                        : 'Hochzeitsprogramm'}
+                  <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700 }}>Ablaufplan</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>
+                        {eventInfo?.date
+                          ? new Date(eventInfo.date + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
+                          : 'Hochzeitsprogramm'}
+                      </div>
                     </div>
+                    <button
+                      onClick={() => setShowAblaufplan(v => !v)}
+                      title={showAblaufplan ? 'Im Schichtplan ausblenden' : 'Im Schichtplan anzeigen'}
+                      style={{
+                        flexShrink: 0, fontSize: 11, fontWeight: 600, padding: '4px 9px', borderRadius: 6,
+                        cursor: 'pointer', fontFamily: 'inherit', border: '1px solid',
+                        borderColor: showAblaufplan ? '#7C3AED44' : 'rgba(0,0,0,0.1)',
+                        background: showAblaufplan ? '#F3EEFF' : '#F5F5F7',
+                        color: showAblaufplan ? '#7C3AED' : 'var(--text-secondary)',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {showAblaufplan ? 'Eingeblendet' : 'Ausgeblendet'}
+                    </button>
                   </div>
                   <div style={{ maxHeight: 320, overflowY: 'auto' }}>
                     {timelineEntries.map((entry, i) => {
