@@ -52,14 +52,12 @@ function LoginForm() {
           } else if (nonVendor) {
             router.push('/dashboard?event=' + nonVendor.event_id)
           } else {
-            // Check via server (admin client bypasses RLS on vendor_signup_codes)
-            const res = await fetch('/api/auth/vendor-check', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: session!.user.id }),
-            })
-            const { isVendor } = await res.json()
-            if (isVendor) {
+            const { data: vsc } = await supabase
+              .from('vendor_signup_codes')
+              .select('id')
+              .eq('used_by', session!.user.id)
+              .limit(1)
+            if (vsc && vsc.length > 0) {
               router.push('/vendor/dashboard')
             } else {
               router.push('/signup')
