@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Pencil, Trash2, X, Check, MapPin, Clock } from 'lucide-react'
 
@@ -24,6 +24,24 @@ interface Responsibility {
   status: 'done' | 'pending'
 }
 
+interface AssignedStaff {
+  id: string
+  name: string
+  role_category: string | null
+}
+
+interface AssignedVendor {
+  id: string
+  name: string
+  category: string | null
+}
+
+interface AssignedMember {
+  id: string
+  name: string
+  role: string
+}
+
 interface TimelineEntry {
   id: string
   event_id: string
@@ -35,6 +53,9 @@ interface TimelineEntry {
   category: string | null
   checklist: ChecklistItem[]
   responsibilities: Responsibility[]
+  assigned_staff: AssignedStaff[]
+  assigned_vendors: AssignedVendor[]
+  assigned_members: AssignedMember[]
   created_at: string
 }
 
@@ -45,10 +66,15 @@ interface Member {
   profiles: { id: string; name: string } | null
 }
 
+interface StaffRow { id: string; name: string; role_category: string | null }
+interface VendorRow { id: string; name: string; category: string | null }
+
 interface Props {
   eventId: string
   initialEntries: TimelineEntry[]
   members: Member[]
+  staff: StaffRow[]
+  vendors: VendorRow[]
 }
 
 function minutesToTime(m: number | null | undefined): string {
@@ -84,15 +110,29 @@ const EMPTY_FORM = {
   duration_minutes: '60', category: 'Feier' as Category,
 }
 
-export default function AblaufplanClient({ eventId, initialEntries, members }: Props) {
-  const [entries, setEntries] = useState(initialEntries)
+export default function AblaufplanClient({ eventId, initialEntries, members, staff: initialStaff, vendors }: Props) {
+  const [entries, setEntries] = useState(initialEntries.map(e => ({
+    ...e,
+    assigned_staff: e.assigned_staff ?? [],
+    assigned_vendors: e.assigned_vendors ?? [],
+    assigned_members: e.assigned_members ?? [],
+  })))
   const [selected, setSelected] = useState<TimelineEntry | null>(null)
   const [filter, setFilter] = useState<Category | 'Alle'>('Alle')
+  const [staff, setStaff] = useState<StaffRow[]>(initialStaff)
   const [showModal, setShowModal] = useState(false)
   const [editEntry, setEditEntry] = useState<TimelineEntry | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('organizer_staff').select('id, name, role_category').eq('organizer_id', user.id).order('name')
+        .then(({ data }) => { if (data) setStaff(data) })
+    })
+  }, [])
 
   const filtered = filter === 'Alle' ? entries : entries.filter(e => e.category === filter)
 
@@ -156,11 +196,71 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
     setSelected(updated)
   }
 
+  async function deleteChecklistItem(entry: TimelineEntry, idx: number) {
+    const newList = entry.checklist.filter((_, i) => i !== idx)
+    await supabase.from('timeline_entries').update({ checklist: newList }).eq('id', entry.id)
+    const updated = { ...entry, checklist: newList }
+    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
+    setSelected(updated)
+  }
+
   async function addChecklistItem(entry: TimelineEntry, text: string) {
     if (!text.trim()) return
     const newList = [...entry.checklist, { text: text.trim(), done: false }]
     await supabase.from('timeline_entries').update({ checklist: newList }).eq('id', entry.id)
     const updated = { ...entry, checklist: newList }
+    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
+    setSelected(updated)
+  }
+
+  async function addStaff(entry: TimelineEntry, s: StaffRow) {
+    if (entry.assigned_staff.some(a => a.id === s.id)) return
+    const newList = [...entry.assigned_staff, { id: s.id, name: s.name, role_category: s.role_category }]
+    await supabase.from('timeline_entries').update({ assigned_staff: newList }).eq('id', entry.id)
+    const updated = { ...entry, assigned_staff: newList }
+    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
+    setSelected(updated)
+  }
+
+  async function removeStaff(entry: TimelineEntry, id: string) {
+    const newList = entry.assigned_staff.filter(a => a.id !== id)
+    await supabase.from('timeline_entries').update({ assigned_staff: newList }).eq('id', entry.id)
+    const updated = { ...entry, assigned_staff: newList }
+    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
+    setSelected(updated)
+  }
+
+  async function addVendor(entry: TimelineEntry, v: VendorRow) {
+    if (entry.assigned_vendors.some(a => a.id === v.id)) return
+    const newList = [...entry.assigned_vendors, { id: v.id, name: v.name, category: v.category }]
+    await supabase.from('timeline_entries').update({ assigned_vendors: newList }).eq('id', entry.id)
+    const updated = { ...entry, assigned_vendors: newList }
+    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
+    setSelected(updated)
+  }
+
+  async function removeVendor(entry: TimelineEntry, id: string) {
+    const newList = entry.assigned_vendors.filter(a => a.id !== id)
+    await supabase.from('timeline_entries').update({ assigned_vendors: newList }).eq('id', entry.id)
+    const updated = { ...entry, assigned_vendors: newList }
+    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
+    setSelected(updated)
+  }
+
+  async function addMember(entry: TimelineEntry, m: Member) {
+    if (entry.assigned_members.some(a => a.id === m.id)) return
+    const name = m.profiles?.name ?? '—'
+    const newList = [...entry.assigned_members, { id: m.id, name, role: m.role }]
+    await supabase.from('timeline_entries').update({ assigned_members: newList }).eq('id', entry.id)
+    const updated = { ...entry, assigned_members: newList }
+    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
+    setSelected(updated)
+  }
+
+  async function removeMember(entry: TimelineEntry, id: string) {
+    const newList = entry.assigned_members.filter(a => a.id !== id)
+    await supabase.from('timeline_entries').update({ assigned_members: newList }).eq('id', entry.id)
+    const updated = { ...entry, assigned_members: newList }
     setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
     setSelected(updated)
   }
@@ -283,9 +383,17 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
                 }}>
                   {item.done && <Check size={10} color="#fff" strokeWidth={3} />}
                 </div>
-                <span style={{ fontSize: 13, color: item.done ? 'var(--text-tertiary)' : 'var(--text)', textDecoration: item.done ? 'line-through' : 'none' }}>
+                <span style={{ flex: 1, fontSize: 13, color: item.done ? 'var(--text-tertiary)' : 'var(--text)', textDecoration: item.done ? 'line-through' : 'none' }}>
                   {item.text}
                 </span>
+                <button
+                  onClick={e => { e.stopPropagation(); deleteChecklistItem(selected, i) }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', flexShrink: 0, opacity: 0.5 }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}
+                >
+                  <X size={12} />
+                </button>
               </div>
             ))}
             <AddChecklistItem onAdd={text => addChecklistItem(selected, text)} />
@@ -293,7 +401,7 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
 
           {/* Responsibilities */}
           {selected.responsibilities.length > 0 && (
-            <div>
+            <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Verantwortliche</div>
               {selected.responsibilities.map((r, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
@@ -310,6 +418,114 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
                   }}>{r.status === 'done' ? 'Erledigt' : 'Ausstehend'}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Mitarbeiter */}
+          {staff.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Mitarbeiter</div>
+              {(selected.assigned_staff ?? []).map(a => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#E8F4FD', color: '#2563EB', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {initials(a.name)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                    {a.role_category && <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{a.role_category}</div>}
+                  </div>
+                  <button onClick={() => removeStaff(selected, a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', opacity: 0.5 }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              {(() => {
+                const unassigned = staff.filter(s => !(selected.assigned_staff ?? []).some(a => a.id === s.id))
+                if (unassigned.length === 0) return null
+                return (
+                  <select
+                    value=""
+                    onChange={e => { const s = staff.find(x => x.id === e.target.value); if (s) addStaff(selected, s) }}
+                    style={{ width: '100%', padding: '6px 10px', border: '1px dashed var(--border)', borderRadius: 8, fontSize: 12.5, background: '#fff', color: 'var(--text-tertiary)', fontFamily: 'inherit', cursor: 'pointer', outline: 'none', marginTop: 4 }}
+                  >
+                    <option value="">+ Mitarbeiter hinzufügen …</option>
+                    {unassigned.map(s => <option key={s.id} value={s.id}>{s.name}{s.role_category ? ` · ${s.role_category}` : ''}</option>)}
+                  </select>
+                )
+              })()}
+            </div>
+          )}
+
+          {/* Mitglieder */}
+          {members.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Mitglieder</div>
+              {(selected.assigned_members ?? []).map(a => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#FFF3E0', color: '#E65100', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {initials(a.name)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{a.role}</div>
+                  </div>
+                  <button onClick={() => removeMember(selected, a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', opacity: 0.5 }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              {(() => {
+                const unassigned = members.filter(m => !(selected.assigned_members ?? []).some(a => a.id === m.id) && m.profiles)
+                if (unassigned.length === 0) return null
+                return (
+                  <select
+                    value=""
+                    onChange={e => { const m = members.find(x => x.id === e.target.value); if (m) addMember(selected, m) }}
+                    style={{ width: '100%', padding: '6px 10px', border: '1px dashed var(--border)', borderRadius: 8, fontSize: 12.5, background: '#fff', color: 'var(--text-tertiary)', fontFamily: 'inherit', cursor: 'pointer', outline: 'none', marginTop: 4 }}
+                  >
+                    <option value="">+ Mitglied hinzufügen …</option>
+                    {unassigned.map(m => <option key={m.id} value={m.id}>{m.profiles?.name} · {m.role}</option>)}
+                  </select>
+                )
+              })()}
+            </div>
+          )}
+
+          {/* Dienstleister */}
+          {vendors.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Dienstleister</div>
+              {(selected.assigned_vendors ?? []).map(a => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#F3EEFF', color: '#7C3AED', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {initials(a.name)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</div>
+                    {a.category && <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{a.category}</div>}
+                  </div>
+                  <button onClick={() => removeVendor(selected, a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', opacity: 0.5 }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              {(() => {
+                const unassigned = vendors.filter(v => !(selected.assigned_vendors ?? []).some(a => a.id === v.id))
+                if (unassigned.length === 0) return null
+                return (
+                  <select
+                    value=""
+                    onChange={e => { const v = vendors.find(x => x.id === e.target.value); if (v) addVendor(selected, v) }}
+                    style={{ width: '100%', padding: '6px 10px', border: '1px dashed var(--border)', borderRadius: 8, fontSize: 12.5, background: '#fff', color: 'var(--text-tertiary)', fontFamily: 'inherit', cursor: 'pointer', outline: 'none', marginTop: 4 }}
+                  >
+                    <option value="">+ Dienstleister hinzufügen …</option>
+                    {unassigned.map(v => <option key={v.id} value={v.id}>{v.name}{v.category ? ` · ${v.category}` : ''}</option>)}
+                  </select>
+                )
+              })()}
             </div>
           )}
         </div>
@@ -338,6 +554,52 @@ export default function AblaufplanClient({ eventId, initialEntries, members }: P
                 <input type="number" min={5} step={5} style={inputSt} value={form.duration_minutes} onChange={e => setForm(f => ({ ...f, duration_minutes: e.target.value }))} />
               </div>
             </div>
+
+            {/* Neighbor entries — always rendered to avoid layout shift */}
+            {(() => {
+              const inputMin = form.start_minutes ? timeToMinutes(form.start_minutes) : null
+              const others = entries.filter(e => e.id !== editEntry?.id && e.start_minutes != null)
+              const before = inputMin != null
+                ? others.filter(e => (e.start_minutes ?? 0) <= inputMin).sort((a, b) => (b.start_minutes ?? 0) - (a.start_minutes ?? 0))[0] ?? null
+                : null
+              const after = inputMin != null
+                ? others.filter(e => (e.start_minutes ?? 0) > inputMin).sort((a, b) => (a.start_minutes ?? 0) - (b.start_minutes ?? 0))[0] ?? null
+                : null
+              const hasTime = inputMin != null
+              return (
+                <div style={{ marginBottom: 14, background: '#F8F8FA', borderRadius: 10, border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  {(['before', 'after'] as const).map((side, i) => {
+                    const entry = side === 'before' ? before : after
+                    const label = side === 'before' ? 'Davor' : 'Danach'
+                    const endMin = entry && entry.start_minutes != null && entry.duration_minutes != null
+                      ? entry.start_minutes + entry.duration_minutes : null
+                    const cat = entry?.category as Category | undefined
+                    const color = cat ? CATEGORY_COLORS[cat] : '#999'
+                    return (
+                      <div key={side} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderTop: i > 0 ? '1px solid var(--border)' : 'none' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', width: 46, flexShrink: 0 }}>{label}</span>
+                        {!hasTime ? (
+                          <span style={{ fontSize: 12.5, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Uhrzeit eingeben …</span>
+                        ) : entry ? (
+                          <>
+                            <span style={{ width: 3, height: 28, borderRadius: 2, background: color, flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.title ?? 'Unbenannt'}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>
+                                {minutesToTime(entry.start_minutes)}{endMin != null ? ` – ${minutesToTime(endMin)}` : ''}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>—</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+
             <div style={{ marginBottom: 14 }}>
               <label style={labelSt}>Ort / Location</label>
               <input style={inputSt} value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="z.B. Kapelle, Saal A" />
