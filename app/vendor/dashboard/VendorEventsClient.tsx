@@ -41,8 +41,11 @@ export default function VendorEventsClient({ events }: { events: EventRow[] }) {
 
       {events.length === 0 ? (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '40px 24px', textAlign: 'center' }}>
-          <p style={{ fontSize: 15, color: 'var(--text-dim)', marginBottom: 8 }}>Noch keine Events</p>
-          <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Sobald dich ein Veranstalter zu einem Event einlädt, erscheint es hier.</p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Noch keine Events zugewiesen</p>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+            Du erhältst vom Veranstalter einen persönlichen Einladungslink,<br />
+            über den du dem Event beitreten kannst.
+          </p>
         </div>
       ) : filtered.length === 0 ? (
         <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0' }}>

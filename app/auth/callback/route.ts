@@ -58,5 +58,15 @@ export async function GET(request: Request) {
     }
   }
 
+  // Check if account was created via vendor signup code → send to vendor dashboard even without memberships
+  const { data: vsc } = await supabase
+    .from('vendor_signup_codes')
+    .select('id')
+    .eq('used_by', user.id)
+    .limit(1)
+  if (vsc && vsc.length > 0) {
+    return NextResponse.redirect(`${origin}/vendor/dashboard`)
+  }
+
   return NextResponse.redirect(`${origin}/signup`)
 }
