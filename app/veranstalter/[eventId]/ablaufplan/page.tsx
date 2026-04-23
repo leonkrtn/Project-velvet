@@ -12,7 +12,7 @@ export default async function AblaufplanPage({ params }: Props) {
   const [entriesRes, membersRes, vendorsRes] = await Promise.all([
     supabase
       .from('timeline_entries')
-      .select('id, event_id, title, location, sort_order, start_minutes, duration_minutes, category, checklist, responsibilities, assigned_staff, assigned_vendors, assigned_members, created_at')
+      .select('*')
       .eq('event_id', eventId)
       .order('start_minutes', { ascending: true, nullsFirst: false })
       .order('sort_order', { ascending: true }),
@@ -22,6 +22,10 @@ export default async function AblaufplanPage({ params }: Props) {
       .eq('event_id', eventId),
     supabase.from('vendors').select('id, name, category').eq('event_id', eventId).order('name'),
   ])
+
+  if (entriesRes.error) console.error('[Ablaufplan] entries:', entriesRes.error.message)
+  if (membersRes.error) console.error('[Ablaufplan] members:', membersRes.error.message)
+  if (vendorsRes.error) console.error('[Ablaufplan] vendors:', vendorsRes.error.message)
 
   // Normalize Supabase joined arrays to single object
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
