@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -58,8 +59,9 @@ export async function GET(request: Request) {
     }
   }
 
-  // Check if account was created via vendor signup code → send to vendor dashboard even without memberships
-  const { data: vsc } = await supabase
+  // Check if account was created via vendor signup code — use admin client to bypass RLS
+  const admin = createAdminClient()
+  const { data: vsc } = await admin
     .from('vendor_signup_codes')
     .select('id')
     .eq('used_by', user.id)
