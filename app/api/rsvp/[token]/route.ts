@@ -46,9 +46,9 @@ function toNullIfEmpty(v: string | null | undefined): string | null {
 // Liefert minimale Public-Event-Daten + die Gast-Row anhand des Tokens.
 export async function GET(
   _request: Request,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
-  const token = params.token
+  const { token } = await params
   if (!token) return NextResponse.json({ error: 'Token fehlt' }, { status: 400 })
 
   const admin = createAdminClient()
@@ -143,9 +143,9 @@ export async function GET(
 // Hotel-Room-Delta wird atomar adjustiert.
 export async function POST(
   request: Request,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
-  const token = params.token
+  const { token } = await params
   if (!token) return NextResponse.json({ error: 'Token fehlt' }, { status: 400 })
 
   let body: RSVPPayload
