@@ -1,7 +1,8 @@
 'use client'
 import React, { useState, useCallback } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Save, Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Save, Plus, X, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 
 const FIXED_COST_CATEGORIES = [
   'Miete / Locationkosten',
@@ -71,6 +72,7 @@ interface Props {
   initialData: EventData
   bpMembers: BpMember[]
   initialCosts: OrganizerCost[]
+  cateringCosts: OrganizerCost[]
 }
 
 const input: React.CSSProperties = {
@@ -138,13 +140,12 @@ function Toggle({ checked, onChange, label: lbl }: { checked: boolean; onChange:
   )
 }
 
-export default function AllgemeinForm({ eventId, initialData, bpMembers, initialCosts }: Props) {
+export default function AllgemeinForm({ eventId, initialData, bpMembers, initialCosts, cateringCosts }: Props) {
   const [form, setForm] = useState(initialData)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
-  const [newMealOption, setNewMealOption] = useState('')
   const [costs, setCosts] = useState<OrganizerCost[]>(initialCosts)
   const [customCostLabel, setCustomCostLabel] = useState('')
   const [costAmounts, setCostAmounts] = useState<Record<string, string>>(
@@ -177,9 +178,6 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
         max_begleitpersonen: form.max_begleitpersonen,
         children_allowed: form.children_allowed,
         children_note: form.children_note,
-        meal_options: form.meal_options,
-        menu_type: form.menu_type,
-        collect_allergies: form.collect_allergies,
         budget_total: form.budget_total,
         organizer_fee: form.organizer_fee,
         organizer_fee_type: form.organizer_fee_type,
@@ -196,19 +194,6 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
       setDirty(false)
       setSuccess(true)
     }
-  }
-
-  const mealOptions = form.meal_options ?? DEFAULT_MEAL_OPTIONS
-
-  function addMealOption() {
-    const val = newMealOption.trim()
-    if (!val) return
-    update('meal_options', [...mealOptions, val])
-    setNewMealOption('')
-  }
-
-  function removeMealOption(opt: string) {
-    update('meal_options', mealOptions.filter(o => o !== opt))
   }
 
   async function addCost(category: string) {
@@ -362,48 +347,49 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
         )}
       </SectionWrap>
 
-      {/* 4. Catering & Menü */}
-      <SectionWrap title="Catering & Menü">
-        <div style={{ ...row, gridTemplateColumns: '1fr 1fr' }}>
-          <div>
-            <label style={label}>Menü-Art</label>
-            <select style={input} value={form.menu_type ?? 'Mehrgängiges Menü'} onChange={e => update('menu_type', e.target.value)}>
-              {['Mehrgängiges Menü', 'Buffet', 'À la carte', 'Fingerfood', 'BBQ'].map(o => (
-                <option key={o}>{o}</option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
-            <Toggle checked={form.collect_allergies ?? true} onChange={v => update('collect_allergies', v)} label="Allergien erfassen" />
-          </div>
-        </div>
-        <div>
-          <label style={label}>Essensoptionen</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-            {mealOptions.map(opt => (
-              <span key={opt} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                background: 'var(--accent-light)', border: '1px solid rgba(29,29,31,0.15)',
-                borderRadius: 20, padding: '4px 10px', fontSize: 13, color: 'var(--accent)',
-              }}>
-                {opt}
-                <button type="button" onClick={() => removeMealOption(opt)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--accent)' }}>
-                  <X size={13} />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input style={{ ...input, flex: 1 }} value={newMealOption} onChange={e => setNewMealOption(e.target.value)} onKeyDown={e => e.key === 'Enter' && addMealOption()} placeholder="Neue Option…" />
-            <button type="button" onClick={addMealOption} style={{ padding: '10px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500 }}>
-              <Plus size={14} /> Hinzufügen
-            </button>
-          </div>
-        </div>
-      </SectionWrap>
-
-      {/* 5. Veranstalterkosten */}
+      {/* 4. Veranstalterkosten */}
       <SectionWrap title="Veranstalterkosten">
+        {/* Catering-Kosten (read-only, verwaltet auf Catering-Seite) */}
+        {cateringCosts.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
+              Catering-Kosten
+            </div>
+            {cateringCosts.map(cost => (
+              <Link
+                key={cost.id}
+                href={`/veranstalter/${eventId}/catering`}
+                style={{ textDecoration: 'none' }}
+              >
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 14px', marginBottom: 8,
+                  background: 'var(--accent-light)',
+                  border: '1px solid rgba(29,29,31,0.12)',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  transition: 'opacity 0.15s',
+                }}>
+                  <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
+                    {cost.category}
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {cost.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                  </span>
+                  <ExternalLink size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                </div>
+              </Link>
+            ))}
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4, paddingLeft: 2 }}>
+              Catering-Kosten werden auf der{' '}
+              <Link href={`/veranstalter/${eventId}/catering`} style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+                Catering & Menü-Seite
+              </Link>{' '}
+              verwaltet.
+            </div>
+          </div>
+        )}
+
         {/* Aktive Kostenpositionen */}
         {costs.length > 0 && (
           <div style={{ marginBottom: 20 }}>
@@ -495,12 +481,22 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
         </div>
 
         {/* Summe */}
-        {costs.length > 0 && (
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>Summe Veranstalterkosten</span>
-            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-              {costs.reduce((s, c) => s + (c.amount ?? 0), 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-            </span>
+        {(costs.length > 0 || cateringCosts.length > 0) && (
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            {cateringCosts.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>davon Catering</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  {cateringCosts.reduce((s, c) => s + (c.amount ?? 0), 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                </span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>Summe Veranstalterkosten</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                {([...costs, ...cateringCosts]).reduce((s, c) => s + (c.amount ?? 0), 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+              </span>
+            </div>
           </div>
         )}
       </SectionWrap>

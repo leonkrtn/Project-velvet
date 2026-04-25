@@ -39,7 +39,7 @@ export default async function AllgemeinPage({ params }: Props) {
     if (!event.location_website) event.location_website = preset.location_website
   }
 
-  const [{ data: bpMembers }, { data: organizerCosts }] = await Promise.all([
+  const [{ data: bpMembers }, { data: organizerCosts }, { data: cateringCosts }] = await Promise.all([
     supabase
       .from('event_members')
       .select('id, user_id, profiles!user_id(id, name, email)')
@@ -49,6 +49,13 @@ export default async function AllgemeinPage({ params }: Props) {
       .from('event_organizer_costs')
       .select('id, category, amount, notes')
       .eq('event_id', eventId)
+      .neq('source', 'catering')
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('event_organizer_costs')
+      .select('id, category, amount, notes')
+      .eq('event_id', eventId)
+      .eq('source', 'catering')
       .order('created_at', { ascending: true }),
   ])
 
@@ -63,6 +70,7 @@ export default async function AllgemeinPage({ params }: Props) {
       initialData={event}
       bpMembers={bpNormalized}
       initialCosts={organizerCosts ?? []}
+      cateringCosts={cateringCosts ?? []}
     />
   )
 }
