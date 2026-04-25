@@ -9,9 +9,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { memberId: string } }
+  { params }: { params: Promise<{ memberId: string }> }
 ) {
-  const memberId = params.memberId
+  const { memberId } = await params
   if (!memberId) {
     return NextResponse.json({ error: 'memberId fehlt' }, { status: 400 })
   }
