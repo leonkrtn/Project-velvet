@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, ChevronDown, ChevronUp, Trash2, Copy, Check, MessageSquare, Phone, Mail, Euro, Tag, FileText, Edit2, Shield, X, Info } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, Trash2, Copy, Check, MessageSquare, Phone, Mail, Euro, Tag, FileText, Edit2, Shield, X, Info, Eye, Loader2 } from 'lucide-react'
 import { ALL_MODULES, ROLE_MODULE_DEFAULTS } from '@/lib/vendor-modules'
 
 type MemberRole = 'veranstalter' | 'brautpaar' | 'trauzeuge' | 'dienstleister'
@@ -159,6 +159,12 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const [moduleEditPerms, setModuleEditPerms]         = useState<Set<string>>(new Set())
   const [savingModules, setSavingModules]             = useState(false)
 
+  // Vendor view lightbox (what data the vendor can see)
+  const [vendorViewMemberId, setVendorViewMemberId]   = useState<string | null>(null)
+  const [vendorViewTab, setVendorViewTab]             = useState<string>('')
+  const [vendorViewData, setVendorViewData]           = useState<Record<string, unknown>>({})
+  const [vendorViewLoading, setVendorViewLoading]     = useState(false)
+
   const bpTz     = members.filter(m => m.role === 'brautpaar' || m.role === 'trauzeuge')
   const dlMembers = members.filter(m => m.role === 'dienstleister')
 
@@ -244,6 +250,55 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     ))
     setSavingModules(false)
     setModuleEditMemberId(null)
+  }
+
+  // ── Vendor view ───────────────────────────────────────────────────────────
+
+  async function openVendorView(m: Member) {
+    const perms = m.current_permissions.filter(p => p !== 'mod_chat')
+    const firstTab = perms[0] ?? 'mod_chat'
+    setVendorViewMemberId(m.id)
+    setVendorViewTab(firstTab)
+    setVendorViewData({})
+    setVendorViewLoading(true)
+
+    async function fetch(key: string, query: PromiseLike<unknown>) {
+      const v = await Promise.resolve(query)
+      setVendorViewData(d => ({ ...d, [key]: v }))
+    }
+
+    const jobs: Promise<void>[] = []
+    const has = (p: string) => m.current_permissions.includes(p)
+
+    if (has('mod_timeline')) jobs.push(fetch('mod_timeline',
+      supabase.from('timeline_entries').select('id, time, title, location, sort_order').eq('event_id', eventId).order('sort_order').then(r => r.data ?? [])))
+    if (has('mod_location')) jobs.push(fetch('mod_location',
+      supabase.from('location_details').select('*').eq('event_id', eventId).maybeSingle().then(r => r.data)))
+    if (has('mod_guests')) jobs.push(fetch('mod_guests',
+      supabase.from('guests').select('id, name, status, meal_choice, allergy_tags, allergy_custom, side').eq('event_id', eventId).order('name').then(r => r.data ?? [])))
+    if (has('mod_seating')) jobs.push(fetch('mod_seating',
+      supabase.from('seating_tables').select('id, name, capacity, shape').eq('event_id', eventId).order('name').then(r => r.data ?? [])))
+    if (has('mod_catering')) jobs.push(fetch('mod_catering',
+      supabase.from('catering_plans').select('*').eq('event_id', eventId).maybeSingle().then(r => r.data)))
+    if (has('mod_patisserie')) jobs.push(fetch('mod_patisserie',
+      supabase.from('patisserie_config').select('*').eq('event_id', eventId).maybeSingle().then(r => r.data)))
+    if (has('mod_media')) jobs.push(fetch('mod_media',
+      Promise.all([
+        supabase.from('media_briefing').select('*').eq('event_id', eventId).maybeSingle(),
+        supabase.from('media_shot_items').select('id, title, description, type, category, sort_order').eq('event_id', eventId).order('sort_order'),
+      ]).then(([brief, shots]) => ({ briefing: brief.data, shots: shots.data ?? [] }))))
+    if (has('mod_music')) jobs.push(fetch('mod_music',
+      Promise.all([
+        supabase.from('music_songs').select('id, title, artist, type, moment').eq('event_id', eventId).order('sort_order'),
+        supabase.from('music_requirements').select('*').eq('event_id', eventId).maybeSingle(),
+      ]).then(([songs, req]) => ({ songs: songs.data ?? [], requirements: req.data }))))
+    if (has('mod_decor')) jobs.push(fetch('mod_decor',
+      supabase.from('decor_setup_items').select('id, title, description, location_in_venue, setup_by, teardown_at').eq('event_id', eventId).order('sort_order').then(r => r.data ?? [])))
+    if (has('mod_files')) jobs.push(fetch('mod_files',
+      supabase.from('event_files').select('id, name, file_url, category, uploaded_at').eq('event_id', eventId).order('uploaded_at', { ascending: false }).then(r => r.data ?? [])))
+
+    await Promise.all(jobs)
+    setVendorViewLoading(false)
   }
 
   // ── Invite modal ───────────────────────────────────────────────────────────
@@ -596,6 +651,14 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
               >
                 <Shield size={13} /> Zugriffsmodule
               </button>
+              {m.current_permissions.length > 0 && (
+                <button
+                  onClick={e => { e.stopPropagation(); openVendorView(m) }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-primary)', background: 'var(--surface)', cursor: 'pointer' }}
+                >
+                  <Eye size={13} /> Vendor-Ansicht
+                </button>
+              )}
               <button onClick={() => setRemoveConfirm(m.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,59,48,0.2)', fontSize: 13, color: '#FF3B30', background: 'rgba(255,59,48,0.08)', cursor: 'pointer' }}>
                 <Trash2 size={13} /> Entfernen
               </button>
@@ -870,6 +933,351 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
         </div>
       )}
 
+      {/* ── Vendor View Lightbox ── */}
+      {vendorViewMemberId && (() => {
+        const vvm = members.find(m => m.id === vendorViewMemberId)
+        if (!vvm) return null
+        const visibleModules = ALL_MODULES.filter(mod => vvm.current_permissions.includes(mod.key) && mod.key !== 'mod_chat')
+        const activeData = vendorViewData[vendorViewTab]
+
+        function renderTabContent() {
+          if (vendorViewLoading && !activeData) {
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: 'var(--text-tertiary)', gap: 10 }}>
+                <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Daten laden…
+              </div>
+            )
+          }
+
+          switch (vendorViewTab) {
+            case 'mod_timeline': {
+              const entries = (activeData as Array<{ id: string; time: string | null; title: string | null; location: string | null }>) ?? []
+              if (!entries.length) return <Empty />
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {entries.map((e, i) => (
+                    <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 12, padding: '12px 0', borderBottom: i < entries.length - 1 ? '1px solid var(--border)' : 'none', alignItems: 'start' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>
+                        {e.time ? new Date(e.time).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </span>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{e.title ?? '—'}</div>
+                        {e.location && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{e.location}</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+            case 'mod_location': {
+              const loc = activeData as Record<string, string> | null
+              if (!loc) return <Empty />
+              const fields = [
+                ['Parkinfo', loc.parking_info], ['Kontaktperson', loc.contact_name],
+                ['Telefon', loc.contact_phone], ['E-Mail', loc.contact_email],
+                ['Zugangscode', loc.access_code], ['Strom', loc.power_connections],
+                ['Aufbau ab', loc.load_in_time], ['Abbau bis', loc.load_out_time],
+                ['Notizen', loc.notes],
+              ].filter(([, v]) => v)
+              if (!fields.length) return <Empty />
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {fields.map(([label, value]) => (
+                    <div key={label}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 3 }}>{label}</div>
+                      <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.5 }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+            case 'mod_guests': {
+              const guests = (activeData as Array<{ id: string; name: string; status: string; meal_choice: string | null; allergy_tags: string[]; side: string | null }>) ?? []
+              if (!guests.length) return <Empty />
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {guests.map((g, i) => (
+                    <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < guests.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                        {g.name.split(' ').map((p: string) => p[0]).join('').toUpperCase().slice(0, 2)}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 500 }}>{g.name}</div>
+                        {(g.meal_choice || g.allergy_tags?.length > 0) && (
+                          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>
+                            {[g.meal_choice, ...(g.allergy_tags ?? [])].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
+                      </div>
+                      {g.side && <span style={{ fontSize: 11, color: 'var(--text-tertiary)', background: '#F0F0F5', padding: '2px 7px', borderRadius: 10 }}>{g.side}</span>}
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+            case 'mod_seating': {
+              const tables = (activeData as Array<{ id: string; name: string | null; capacity: number | null; shape: string }>) ?? []
+              if (!tables.length) return <Empty />
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+                  {tables.map(t => (
+                    <div key={t.id} style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: '#F9F9FB' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{t.name ?? 'Tisch'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{t.capacity ? `${t.capacity} Plätze` : ''} {t.shape !== 'rectangular' ? `· ${t.shape}` : ''}</div>
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+            case 'mod_catering': {
+              const c = activeData as Record<string, unknown> | null
+              if (!c) return <Empty />
+              const fields: [string, string][] = [
+                ['Serviceform', c.service_style as string],
+                ['Küche vorhanden', c.location_has_kitchen ? 'Ja' : 'Nein'],
+                ['Mitternachtssnack', c.midnight_snack ? (c.midnight_snack_note as string || 'Ja') : 'Nein'],
+                ['Getränkeabrechnung', c.drinks_billing as string],
+                ['Sektempfang / Fingerfood', c.champagne_finger_food ? (c.champagne_finger_food_note as string || 'Ja') : 'Nein'],
+                ['Servicepersonal', c.service_staff ? 'Ja' : 'Nein'],
+              ].filter(([, v]) => v) as [string, string][]
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {fields.map(([label, value]) => (
+                    <div key={label}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 3 }}>{label}</div>
+                      <div style={{ fontSize: 14, color: 'var(--text-primary)' }}>{value}</div>
+                    </div>
+                  ))}
+                  {Array.isArray(c.drinks_selection) && (c.drinks_selection as string[]).length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 6 }}>Getränkeauswahl</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{(c.drinks_selection as string[]).map(d => <span key={d} style={{ padding: '3px 9px', borderRadius: 10, background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 12 }}>{d}</span>)}</div>
+                    </div>
+                  )}
+                  {Array.isArray(c.equipment_needed) && (c.equipment_needed as string[]).length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 6 }}>Equipment</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{(c.equipment_needed as string[]).map(e => <span key={e} style={{ padding: '3px 9px', borderRadius: 10, background: '#F0F0F5', fontSize: 12 }}>{e}</span>)}</div>
+                    </div>
+                  )}
+                </div>
+              )
+            }
+            case 'mod_patisserie': {
+              const p = activeData as Record<string, unknown> | null
+              if (!p) return <Empty />
+              const fields: [string, string][] = [
+                ['Tortenbeschreibung', p.cake_description as string],
+                ['Etagen', String(p.layers ?? '')],
+                ['Lieferdatum', p.delivery_date as string],
+                ['Lieferzeit', p.delivery_time as string],
+                ['Aufstellort', p.setup_location as string],
+                ['Kühlung benötigt', p.cooling_required ? (p.cooling_notes as string || 'Ja') : ''],
+                ['Dessertbuffet', p.dessert_buffet ? 'Ja' : ''],
+                ['Anmerkungen', p.vendor_notes as string],
+              ].filter(([, v]) => v) as [string, string][]
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {fields.map(([label, value]) => (
+                    <div key={label}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 3 }}>{label}</div>
+                      <div style={{ fontSize: 14, color: 'var(--text-primary)' }}>{value}</div>
+                    </div>
+                  ))}
+                  {Array.isArray(p.flavors) && (p.flavors as string[]).length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 6 }}>Geschmacksrichtungen</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{(p.flavors as string[]).map(f => <span key={f} style={{ padding: '3px 9px', borderRadius: 10, background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 12 }}>{f}</span>)}</div>
+                    </div>
+                  )}
+                </div>
+              )
+            }
+            case 'mod_media': {
+              const d = activeData as { briefing: Record<string, string> | null; shots: Array<{ id: string; title: string; description: string; type: string; category: string }> } | null
+              if (!d) return <Empty />
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  {d.briefing && (() => {
+                    const fields: [string, string][] = [
+                      ['Foto-Briefing', d.briefing!.photo_briefing],
+                      ['Video-Briefing', d.briefing!.video_briefing],
+                      ['Einschränkungen', d.briefing!.photo_restrictions],
+                      ['Upload-Anweisungen', d.briefing!.upload_instructions],
+                      ['Abgabefrist', d.briefing!.delivery_deadline],
+                    ].filter(([, v]) => v) as [string, string][]
+                    return fields.map(([label, value]) => (
+                      <div key={label}>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 3 }}>{label}</div>
+                        <div style={{ fontSize: 14, color: 'var(--text-primary)', lineHeight: 1.5 }}>{value}</div>
+                      </div>
+                    ))
+                  })()}
+                  {d.shots.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Shot-Liste ({d.shots.length})</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {d.shots.map(s => (
+                          <div key={s.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: s.type === 'must_have' ? '#EAF5EE' : s.type === 'forbidden' ? '#FDEAEA' : '#F0F0F5', color: s.type === 'must_have' ? '#3D7A56' : s.type === 'forbidden' ? '#A04040' : '#666', whiteSpace: 'nowrap', marginTop: 2 }}>
+                              {s.type === 'must_have' ? 'Pflicht' : s.type === 'forbidden' ? 'Verboten' : 'Optional'}
+                            </span>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 500 }}>{s.title}</div>
+                              {s.description && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 1 }}>{s.description}</div>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            }
+            case 'mod_music': {
+              const d = activeData as { songs: Array<{ id: string; title: string; artist: string; type: string; moment: string }>; requirements: Record<string, unknown> | null } | null
+              if (!d) return <Empty />
+              const songGroups: Record<string, typeof d.songs> = {}
+              for (const s of d.songs) { if (!songGroups[s.type]) songGroups[s.type] = []; songGroups[s.type].push(s) }
+              const typeLabel: Record<string, string> = { wish: 'Wunsch', no_go: 'No-Go', playlist: 'Playlist' }
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  {Object.entries(songGroups).map(([type, songs]) => (
+                    <div key={type}>
+                      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>{typeLabel[type] ?? type} ({songs.length})</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {songs.map(s => (
+                          <div key={s.id} style={{ display: 'flex', gap: 8, padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 500 }}>{s.title}</div>
+                              {s.artist && <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{s.artist}</div>}
+                            </div>
+                            {s.moment && s.moment !== 'Allgemein' && <span style={{ fontSize: 11, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>{s.moment}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {d.requirements && (() => {
+                    const req = d.requirements
+                    const fields: [string, string][] = [
+                      ['Soundcheck', [req.soundcheck_date, req.soundcheck_time].filter(Boolean).join(' ')],
+                      ['PA-Anlage', req.pa_notes as string],
+                      ['Bühne', req.stage_dimensions as string],
+                      ['Mikrofone', req.microphone_count ? String(req.microphone_count) : ''],
+                      ['Strom', req.power_required as string],
+                      ['Streaming', req.streaming_needed ? (req.streaming_notes as string || 'Ja') : ''],
+                      ['Notizen', req.notes as string],
+                    ].filter(([, v]) => v) as [string, string][]
+                    if (!fields.length) return null
+                    return (
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Technische Anforderungen</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {fields.map(([label, value]) => (
+                            <div key={label} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: 8, fontSize: 13 }}>
+                              <span style={{ color: 'var(--text-tertiary)' }}>{label}</span>
+                              <span style={{ color: 'var(--text-primary)' }}>{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )
+            }
+            case 'mod_decor': {
+              const items = (activeData as Array<{ id: string; title: string; description: string; location_in_venue: string; setup_by: string; teardown_at: string }>) ?? []
+              if (!items.length) return <Empty />
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {items.map((item, i) => (
+                    <div key={item.id} style={{ padding: '12px 0', borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{item.title}</div>
+                      {item.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>{item.description}</div>}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                        {item.location_in_venue && <span>Ort: {item.location_in_venue}</span>}
+                        {item.setup_by && <span>Aufbau: {item.setup_by}</span>}
+                        {item.teardown_at && <span>Abbau: {item.teardown_at}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            }
+            case 'mod_files': {
+              const files = (activeData as Array<{ id: string; name: string; file_url: string; category: string; uploaded_at: string }>) ?? []
+              if (!files.length) return <Empty />
+              const catLabel: Record<string, string> = { vertrag: 'Vertrag', versicherung: 'Versicherung', genehmigung: 'Genehmigung', rider: 'Rider', sonstiges: 'Sonstiges' }
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {files.map(f => (
+                    <a key={f.id} href={f.file_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', textDecoration: 'none', background: '#FAFAFA' }}>
+                      <FileText size={15} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>{catLabel[f.category] ?? f.category} · {new Date(f.uploaded_at).toLocaleDateString('de-DE')}</div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              )
+            }
+            default: return <Empty />
+          }
+        }
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setVendorViewMemberId(null)}>
+            <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', width: 780, maxWidth: '100%', height: '82vh', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-md)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <div>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>Vendor-Ansicht</h3>
+                  <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '2px 0 0' }}>
+                    Daten, auf die {categoryForMember(vvm)} <strong style={{ color: 'var(--text-primary)' }}>{vvm.display_name ?? vvm.profiles?.name ?? ''}</strong> zugreifen kann
+                  </p>
+                </div>
+                <button onClick={() => setVendorViewMemberId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}><X size={18} /></button>
+              </div>
+
+              {/* Body: tabs left + content right */}
+              <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                {/* Tab sidebar */}
+                <div style={{ width: 180, borderRight: '1px solid var(--border)', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0, overflowY: 'auto' }}>
+                  {visibleModules.length === 0 ? (
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', padding: '8px 10px' }}>Keine Module außer Chat</p>
+                  ) : visibleModules.map(mod => {
+                    const Icon = mod.icon
+                    const active = vendorViewTab === mod.key
+                    return (
+                      <button
+                        key={mod.key}
+                        onClick={() => setVendorViewTab(mod.key)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 'var(--radius-sm)', border: 'none', background: active ? 'var(--accent-light)' : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', width: '100%' }}
+                      >
+                        <Icon size={14} style={{ color: active ? 'var(--accent)' : 'var(--text-tertiary)', flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? 'var(--accent)' : 'var(--text-secondary)' }}>{mod.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Tab content */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+                  {vendorViewLoading && !activeData ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-tertiary)', paddingTop: 40, justifyContent: 'center' }}>
+                      <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Daten laden…
+                    </div>
+                  ) : renderTabContent()}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── Remove Confirm ── */}
       {removeConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setRemoveConfirm(null)}>
@@ -885,6 +1293,12 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
           </div>
         </div>
       )}
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )
+}
+
+function Empty() {
+  return <p style={{ color: 'var(--text-tertiary)', fontSize: 14, fontStyle: 'italic', paddingTop: 8 }}>Noch keine Daten vorhanden.</p>
 }
