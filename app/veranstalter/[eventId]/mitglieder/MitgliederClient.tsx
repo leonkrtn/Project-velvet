@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, ChevronDown, ChevronUp, Trash2, Copy, Check, MessageSquare, Phone, Mail, Euro, Tag, FileText, Edit2, Shield, X, Info, Eye, Loader2 } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, Trash2, Copy, Check, MessageSquare, Phone, Mail, Euro, Tag, FileText, Edit2, Shield, X, Info, Eye, Loader2, BookUser } from 'lucide-react'
 import { ALL_MODULES, ROLE_MODULE_DEFAULTS } from '@/lib/vendor-modules'
 
 type MemberRole = 'veranstalter' | 'brautpaar' | 'trauzeuge' | 'dienstleister'
@@ -25,6 +25,7 @@ interface Member {
   invitation_id: string | null
   invitation_category: string | null
   current_permissions: string[]
+  show_in_contacts: boolean
 }
 
 interface Vendor {
@@ -252,6 +253,14 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     setModuleEditMemberId(null)
   }
 
+  // ── Show in contacts toggle ────────────────────────────────────────────────
+
+  async function toggleShowInContacts(m: Member) {
+    const next = !m.show_in_contacts
+    setMembers(prev => prev.map(x => x.id === m.id ? { ...x, show_in_contacts: next } : x))
+    await supabase.from('event_members').update({ show_in_contacts: next }).eq('id', m.id)
+  }
+
   // ── Vendor view ───────────────────────────────────────────────────────────
 
   async function openVendorView(m: Member) {
@@ -271,7 +280,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     const has = (p: string) => m.current_permissions.includes(p)
 
     if (has('mod_timeline')) jobs.push(fetch('mod_timeline',
-      supabase.from('timeline_entries').select('id, time, title, location, sort_order').eq('event_id', eventId).order('sort_order').then(r => r.data ?? [])))
+      supabase.from('timeline_entries').select('id, start_minutes, duration_minutes, title, location, sort_order').eq('event_id', eventId).order('sort_order').then(r => r.data ?? [])))
     if (has('mod_location')) jobs.push(fetch('mod_location',
       supabase.from('location_details').select('*').eq('event_id', eventId).maybeSingle().then(r => r.data)))
     if (has('mod_guests')) jobs.push(fetch('mod_guests',
@@ -509,7 +518,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     const statusCfg = INVITE_STATUS_CFG[m.invite_status ?? 'invited'] ?? INVITE_STATUS_CFG.invited
     return (
       <div key={m.id} style={{ borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 130px 40px', gap: 0, padding: '14px 20px', alignItems: 'center', cursor: 'pointer' }} onClick={() => toggle(m.id)}>
+        <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 40px', gap: 0, padding: '14px 20px', alignItems: 'center', cursor: 'pointer' }} onClick={() => toggle(m.id)}>
           <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
             {initials(displayName)}
           </div>
@@ -517,7 +526,6 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
             <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{displayName}</div>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{ROLE_LABELS[m.role]}</div>
           </div>
-          <StatusBadge cfg={statusCfg} />
           <div style={{ display: 'flex', color: 'var(--text-tertiary)' }}>
             {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </div>
@@ -555,7 +563,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     return (
       <div key={m.id} style={{ borderBottom: '1px solid var(--border)' }}>
         {/* Row header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 150px 40px', gap: 0, padding: '14px 20px', alignItems: 'center', cursor: 'pointer' }} onClick={() => toggle(m.id)}>
+        <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 40px', gap: 0, padding: '14px 20px', alignItems: 'center', cursor: 'pointer' }} onClick={() => toggle(m.id)}>
           <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#F0F0F5', color: '#666', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
             {initials(displayName)}
           </div>
@@ -563,7 +571,6 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
             <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{displayName}</div>
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{category}</div>
           </div>
-          <StatusBadge cfg={vStatusCfg} />
           <div style={{ display: 'flex', color: 'var(--text-tertiary)' }}>
             {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </div>
@@ -659,6 +666,13 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
                   <Eye size={13} /> Vendor-Ansicht
                 </button>
               )}
+              <button
+                onClick={e => { e.stopPropagation(); toggleShowInContacts(m) }}
+                title={m.show_in_contacts ? 'Aus Wichtige Kontakte entfernen' : 'In Wichtige Kontakte anzeigen'}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: m.show_in_contacts ? '1px solid var(--accent)' : '1px solid var(--border)', fontSize: 13, color: m.show_in_contacts ? 'var(--accent)' : 'var(--text-primary)', background: m.show_in_contacts ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'var(--surface)', cursor: 'pointer' }}
+              >
+                <BookUser size={13} /> Kontakte
+              </button>
               <button onClick={() => setRemoveConfirm(m.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(255,59,48,0.2)', fontSize: 13, color: '#FF3B30', background: 'rgba(255,59,48,0.08)', cursor: 'pointer' }}>
                 <Trash2 size={13} /> Entfernen
               </button>
@@ -698,8 +712,8 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
       <div style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 12, color: 'var(--text-primary)' }}>Brautpaar & Trauzeugen</h2>
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 130px 40px', gap: 0, padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)' }}>
-            {['', 'Name', 'Status', ''].map((h, i) => (
+          <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 40px', gap: 0, padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)' }}>
+            {['', 'Name', ''].map((h, i) => (
               <span key={i} style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)' }}>{h}</span>
             ))}
           </div>
@@ -714,8 +728,8 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
       <div style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 12, color: 'var(--text-primary)' }}>Dienstleister</h2>
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 150px 40px', gap: 0, padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)' }}>
-            {['', 'Name & Kategorie', 'Status', ''].map((h, i) => (
+          <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 40px', gap: 0, padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)' }}>
+            {['', 'Name & Kategorie', ''].map((h, i) => (
               <span key={i} style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)' }}>{h}</span>
             ))}
           </div>
@@ -951,21 +965,25 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
 
           switch (vendorViewTab) {
             case 'mod_timeline': {
-              const entries = (activeData as Array<{ id: string; time: string | null; title: string | null; location: string | null }>) ?? []
+              const entries = (activeData as Array<{ id: string; start_minutes: number | null; duration_minutes: number | null; title: string | null; location: string | null }>) ?? []
               if (!entries.length) return <Empty />
+              const fmt = (m: number | null) => { if (m == null) return '—'; const h = Math.floor(m / 60); const min = m % 60; return `${h.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}` }
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {entries.map((e, i) => (
-                    <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 12, padding: '12px 0', borderBottom: i < entries.length - 1 ? '1px solid var(--border)' : 'none', alignItems: 'start' }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>
-                        {e.time ? new Date(e.time).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                      </span>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{e.title ?? '—'}</div>
-                        {e.location && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{e.location}</div>}
+                  {entries.map((e, i) => {
+                    const endMin = e.start_minutes != null && e.duration_minutes != null ? e.start_minutes + e.duration_minutes : null
+                    return (
+                      <div key={e.id} style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 12, padding: '12px 0', borderBottom: i < entries.length - 1 ? '1px solid var(--border)' : 'none', alignItems: 'start' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmt(e.start_minutes)}{endMin != null ? ` – ${fmt(endMin)}` : ''}
+                        </span>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{e.title ?? '—'}</div>
+                          {e.location && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{e.location}</div>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )
             }
@@ -1096,6 +1114,11 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
             case 'mod_media': {
               const d = activeData as { briefing: Record<string, string> | null; shots: Array<{ id: string; title: string; description: string; type: string; category: string }> } | null
               if (!d) return <Empty />
+              const briefingFields = d.briefing ? [
+                d.briefing.photo_briefing, d.briefing.video_briefing,
+                d.briefing.photo_restrictions, d.briefing.upload_instructions, d.briefing.delivery_deadline,
+              ].filter(Boolean) : []
+              if (!briefingFields.length && !d.shots.length) return <Empty />
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                   {d.briefing && (() => {
@@ -1137,6 +1160,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
             case 'mod_music': {
               const d = activeData as { songs: Array<{ id: string; title: string; artist: string; type: string; moment: string }>; requirements: Record<string, unknown> | null } | null
               if (!d) return <Empty />
+              if (!d.songs.length && !d.requirements) return <Empty />
               const songGroups: Record<string, typeof d.songs> = {}
               for (const s of d.songs) { if (!songGroups[s.type]) songGroups[s.type] = []; songGroups[s.type].push(s) }
               const typeLabel: Record<string, string> = { wish: 'Wunsch', no_go: 'No-Go', playlist: 'Playlist' }

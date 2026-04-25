@@ -15,7 +15,7 @@ export default async function MitgliederPage({ params }: Props) {
   const { data: members, error } = await admin
     .from('event_members')
     .select(`
-      id, user_id, role, display_name, invite_status,
+      id, user_id, role, display_name, invite_status, show_in_contacts,
       profiles!user_id(id, name, email, phone)
     `)
     .eq('event_id', eventId)
@@ -77,6 +77,7 @@ export default async function MitgliederPage({ params }: Props) {
     invitation_id: m.user_id ? (categoryByUserId[m.user_id]?.id ?? null) : null,
     invitation_category: m.user_id ? (categoryByUserId[m.user_id]?.category ?? null) : null,
     current_permissions: m.user_id ? (permissionsByUserId[m.user_id] ?? []) : [],
+    show_in_contacts: m.show_in_contacts ?? false,
   }))
 
   return (
