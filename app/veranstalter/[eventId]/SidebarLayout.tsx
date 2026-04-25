@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Settings, Users, MessageSquare, Lightbulb,
-  Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu,
+  Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
 } from 'lucide-react'
 
 interface Props {
@@ -18,6 +18,7 @@ interface Props {
 const NAV_ITEMS = [
   { key: 'uebersicht',     label: 'Übersicht',       icon: LayoutDashboard },
   { key: 'allgemein',      label: 'Allgemein',        icon: Settings },
+  { key: 'catering',       label: 'Catering & Menü',  icon: UtensilsCrossed },
   { key: 'mitglieder',     label: 'Mitglieder',       icon: Users },
   { key: 'chats',          label: 'Chats',            icon: MessageSquare },
   { key: 'vorschlaege',    label: 'Vorschläge',       icon: Lightbulb },
