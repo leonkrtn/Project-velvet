@@ -30,6 +30,7 @@ interface Member {
   id: string
   user_id: string
   role: string
+  category: string | null
   profiles: { id: string; name: string; email: string } | null
 }
 
@@ -374,7 +375,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
                             </div>
                             <div style={{ minWidth: 0 }}>
                               <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{m.profiles?.name ?? '—'}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.role}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.category ?? m.role}</div>
                             </div>
                             <div style={{ marginLeft: 'auto', fontSize: 18, color: 'var(--accent)', lineHeight: 1 }}>+</div>
                           </button>
@@ -457,7 +458,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
                       </div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 500 }}>{m.profiles?.name ?? '—'}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.role}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{m.category ?? m.role}</div>
                       </div>
                       {selected && <div style={{ marginLeft: 'auto', color: 'var(--accent)' }}><Check size={14} /></div>}
                     </div>

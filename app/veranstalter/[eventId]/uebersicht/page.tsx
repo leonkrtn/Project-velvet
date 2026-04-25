@@ -92,6 +92,7 @@ export default async function UebersichtPage({ params }: Props) {
     eventRes,
     membersRes,
     contactMembersRes,
+    dlContactMembersRes,
     inviteCodesRes,
     guestsRes,
     vendorsRes,
@@ -104,6 +105,7 @@ export default async function UebersichtPage({ params }: Props) {
     supabase.from('events').select('id, title, date, budget_total, projektphase, organizer_fee').eq('id', eventId).single(),
     supabase.from('event_members').select('id, role').eq('event_id', eventId),
     supabase.from('event_members').select('id, role, profiles!user_id(id, name, email, phone)').eq('event_id', eventId).in('role', ['brautpaar', 'trauzeuge']),
+    supabase.from('event_members').select('id, user_id, role, profiles!user_id(id, name, email, phone)').eq('event_id', eventId).eq('role', 'dienstleister').eq('show_in_contacts', true),
     supabase.from('invite_codes').select('id, status').eq('event_id', eventId).eq('status', 'offen'),
     supabase.from('guests').select('id, status').eq('event_id', eventId),
     supabase.from('vendors').select('id, name, status, price, category').eq('event_id', eventId),
@@ -130,6 +132,10 @@ export default async function UebersichtPage({ params }: Props) {
   }))
   const brautpaar = contactMembers.filter(m => m.role === 'brautpaar')
   const trauzeugen = contactMembers.filter(m => m.role === 'trauzeuge')
+  const dlContacts = (dlContactMembersRes.data ?? []).map(m => ({
+    ...m,
+    profiles: Array.isArray(m.profiles) ? (m.profiles[0] ?? null) : m.profiles,
+  }))
 
   // Margin calculation
   const einnahmen = event.organizer_fee ?? 0
@@ -218,13 +224,13 @@ export default async function UebersichtPage({ params }: Props) {
         </div>
 
         {/* Kontakt-Schnellzugriff */}
-        {(brautpaar.length > 0 || trauzeugen.length > 0) && (
+        {(brautpaar.length > 0 || trauzeugen.length > 0 || dlContacts.length > 0) && (
           <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
             <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid var(--border)' }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Wichtige Kontakte</span>
             </div>
             {brautpaar.length > 0 && (
-              <div style={{ padding: '14px 22px', borderBottom: trauzeugen.length > 0 ? '1px solid var(--border)' : undefined }}>
+              <div style={{ padding: '14px 22px', borderBottom: (trauzeugen.length > 0 || dlContacts.length > 0) ? '1px solid var(--border)' : undefined }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Brautpaar</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {brautpaar.map(m => <ContactRow key={m.id} profile={m.profiles} />)}
@@ -232,10 +238,18 @@ export default async function UebersichtPage({ params }: Props) {
               </div>
             )}
             {trauzeugen.length > 0 && (
-              <div style={{ padding: '14px 22px' }}>
+              <div style={{ padding: '14px 22px', borderBottom: dlContacts.length > 0 ? '1px solid var(--border)' : undefined }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Trauzeugen</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {trauzeugen.map(m => <ContactRow key={m.id} profile={m.profiles} />)}
+                </div>
+              </div>
+            )}
+            {dlContacts.length > 0 && (
+              <div style={{ padding: '14px 22px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Dienstleister</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {dlContacts.map(m => <ContactRow key={m.id} profile={m.profiles} />)}
                 </div>
               </div>
             )}

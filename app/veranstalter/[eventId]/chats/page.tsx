@@ -28,9 +28,39 @@ export default async function ChatsPage({ params }: Props) {
       .eq('event_id', eventId),
   ])
 
-  const membersNormalized = (membersRes.data ?? []).map(m => ({
+  const membersRaw = (membersRes.data ?? []).map(m => ({
     ...m,
     profiles: Array.isArray(m.profiles) ? (m.profiles[0] ?? null) : m.profiles,
+  }))
+
+  // Fetch invitation categories for dienstleister members
+  const dlUserIds = membersRaw
+    .filter(m => m.role === 'dienstleister')
+    .map(m => m.user_id)
+    .filter(Boolean) as string[]
+
+  const categoryByUserId: Record<string, string> = {}
+  if (dlUserIds.length > 0) {
+    const { data: invitations } = await admin
+      .from('event_invitations')
+      .select('accepted_by, metadata')
+      .eq('event_id', eventId)
+      .eq('status', 'accepted')
+      .in('accepted_by', dlUserIds)
+
+    for (const inv of (invitations ?? [])) {
+      if (inv.accepted_by) {
+        const meta = inv.metadata as Record<string, string> | null
+        if (meta?.category) categoryByUserId[inv.accepted_by] = meta.category
+      }
+    }
+  }
+
+  const membersNormalized = membersRaw.map(m => ({
+    ...m,
+    category: m.role === 'dienstleister' && m.user_id
+      ? (categoryByUserId[m.user_id] ?? null)
+      : null,
   }))
 
   // Normalize conversation_participants nested profiles
