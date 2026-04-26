@@ -5,12 +5,12 @@ import BottomNav from './BottomNav'
 import FrozenBanner from './FrozenBanner'
 import { EventProvider } from '@/lib/event-context'
 
-const NO_CHROME = ['/einstellungen', '/onboarding', '/', '/login', '/signup', '/bewerbung']
-const NO_NAV    = [...NO_CHROME, '/rsvp']
+const NO_CHROME_EXACT = ['/onboarding', '/', '/login', '/signup', '/bewerbung']
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const showHeader  = !NO_CHROME.some(p => pathname === p || pathname.startsWith('/rsvp'))
-  const showBottomNav = !NO_NAV.some(p => pathname === p || pathname.startsWith('/rsvp'))
+  const isBrautpaar = pathname.startsWith('/brautpaar')
+  const showHeader    = isBrautpaar && pathname !== '/brautpaar/einstellungen'
+  const showBottomNav = isBrautpaar && pathname !== '/brautpaar/einstellungen'
   const skipEventProvider =
     pathname.startsWith('/veranstalter') ||
     pathname.startsWith('/vendor') ||

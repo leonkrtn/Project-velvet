@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Plus, Flower2 } from 'lucide-react'
+import { ChevronRight, Plus, Flower2, Lightbulb } from 'lucide-react'
 import { Card, SectionTitle } from '@/components/ui'
 import { getStats, type Event } from '@/lib/store'
 
@@ -64,7 +64,7 @@ export function BudgetWidget({stats, budgetPct, overBudget}: {stats: Stats; budg
     <Card>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14}}>
         <SectionTitle>Budget</SectionTitle>
-        <Link href="/budget" style={{color:'var(--text-dim)', display:'flex', alignItems:'center'}}><ChevronRight size={14}/></Link>
+        <Link href="/brautpaar/budget" style={{color:'var(--text-dim)', display:'flex', alignItems:'center'}}><ChevronRight size={14}/></Link>
       </div>
       <div style={{display:'flex', alignItems:'center', gap:16}}>
         <div style={{width:72, height:72, borderRadius:'50%', flexShrink:0, background:`conic-gradient(${overBudget?'var(--red)':'var(--gold)'} 0% ${Math.min(budgetPct,100)}%, #E8E8E8 ${Math.min(budgetPct,100)}% 100%)`, display:'flex', alignItems:'center', justifyContent:'center'}}>
@@ -92,7 +92,7 @@ export function TasksWidget({taskPct, done, total}: {taskPct: number; done: numb
     <Card>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14}}>
         <SectionTitle>Aufgaben</SectionTitle>
-        <Link href="/tasks" style={{color:'var(--text-dim)', display:'flex', alignItems:'center'}}><ChevronRight size={14}/></Link>
+        <Link href="/brautpaar/tasks" style={{color:'var(--text-dim)', display:'flex', alignItems:'center'}}><ChevronRight size={14}/></Link>
       </div>
       <div style={{display:'flex', alignItems:'center', gap:16}}>
         <div style={{width:72, height:72, borderRadius:'50%', flexShrink:0, background:`conic-gradient(var(--gold) 0% ${taskPct}%, #E8E8E8 ${taskPct}% 100%)`, display:'flex', alignItems:'center', justifyContent:'center'}}>
@@ -116,7 +116,7 @@ export function SeatingWidget({seatedCount, confirmed}: {seatedCount: number; co
     <Card>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14}}>
         <SectionTitle>Sitzplan</SectionTitle>
-        <Link href="/seating" style={{color:'var(--text-dim)', display:'flex', alignItems:'center'}}><ChevronRight size={14}/></Link>
+        <Link href="/brautpaar/seating" style={{color:'var(--text-dim)', display:'flex', alignItems:'center'}}><ChevronRight size={14}/></Link>
       </div>
       <div style={{display:'flex', alignItems:'center', gap:16}}>
         <div style={{width:72, height:72, borderRadius:'50%', flexShrink:0, background:`conic-gradient(var(--gold) 0% ${pct}%, #E8E8E8 ${pct}% 100%)`, display:'flex', alignItems:'center', justifyContent:'center'}}>
@@ -162,7 +162,7 @@ export function RemindersWidget({open, total}: {open: number; total: number}) {
     <Card>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14}}>
         <SectionTitle>Erinnerungen</SectionTitle>
-        <Link href="/reminders" style={{color:'var(--text-dim)', display:'flex', alignItems:'center'}}><ChevronRight size={14}/></Link>
+        <Link href="/brautpaar/reminders" style={{color:'var(--text-dim)', display:'flex', alignItems:'center'}}><ChevronRight size={14}/></Link>
       </div>
       <p style={{fontSize:22, fontFamily:"'Playfair Display',serif", fontWeight:500, color:'var(--text)', lineHeight:1, marginBottom:4}}>{open}<span style={{fontSize:14, color:'var(--text-dim)'}}> / {total}</span></p>
       <p style={{fontSize:11, color:'var(--text-light)'}}>ausstehend</p>
@@ -175,7 +175,7 @@ export function SubEventsWidget({count}: {count: number}) {
     <Card>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14}}>
         <SectionTitle>Sub-Events</SectionTitle>
-        <Link href="/sub-events" style={{color:'var(--text-dim)', display:'flex', alignItems:'center'}}><ChevronRight size={14}/></Link>
+        <Link href="/brautpaar/sub-events" style={{color:'var(--text-dim)', display:'flex', alignItems:'center'}}><ChevronRight size={14}/></Link>
       </div>
       <p style={{fontSize:22, fontFamily:"'Playfair Display',serif", fontWeight:500, color:'var(--text)', lineHeight:1, marginBottom:4}}>{count}</p>
       <p style={{fontSize:11, color:'var(--text-light)'}}>Events geplant</p>
@@ -259,6 +259,39 @@ function TimelineEditor({event, onUpdate}: {event: Event; onUpdate: (e: Event) =
   )
 }
 
+export function ProposalsWidget({ pendingCount }: { pendingCount: number }) {
+  return (
+    <Card>
+      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14}}>
+        <SectionTitle>Vorschläge</SectionTitle>
+        <Lightbulb size={14} style={{color:'var(--gold)', opacity:0.7}}/>
+      </div>
+      <div style={{display:'flex', alignItems:'center', gap:14, marginBottom:14}}>
+        <div style={{
+          width:56, height:56, borderRadius:'50%', flexShrink:0,
+          background: pendingCount > 0 ? 'var(--gold-pale)' : 'var(--bg)',
+          border: `2px solid ${pendingCount > 0 ? 'var(--gold)' : 'var(--border)'}`,
+          display:'flex', alignItems:'center', justifyContent:'center',
+        }}>
+          <span style={{fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:500, color: pendingCount > 0 ? 'var(--gold)' : 'var(--text-dim)', lineHeight:1}}>
+            {pendingCount}
+          </span>
+        </div>
+        <div>
+          <p style={{fontSize:13, fontWeight:500, color:'var(--text)', lineHeight:1.3, marginBottom:4}}>
+            {pendingCount === 0 ? 'Keine offenen Vorschläge' : `${pendingCount} ${pendingCount === 1 ? 'Vorschlag' : 'Vorschläge'} ausstehend`}
+          </p>
+          <p style={{fontSize:11, color:'var(--text-dim)'}}>von Veranstalter & Dienstleistern</p>
+        </div>
+      </div>
+      <Link href="/brautpaar/vorschlaege" style={{display:'flex', alignItems:'center', justifyContent:'space-between', background:'none', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', padding:'9px 12px', fontSize:12, color:'var(--text)', textDecoration:'none', fontWeight:500}}>
+        <span>Alle Vorschläge ansehen</span>
+        <ChevronRight size={14} style={{color:'var(--text-dim)'}}/>
+      </Link>
+    </Card>
+  )
+}
+
 export function DekoWidget({ event }: { event: Event }) {
   const suggestions = event.organizer?.dekoSuggestions ?? []
   const accepted = suggestions.filter(s => s.status === 'angenommen').length
@@ -280,7 +313,7 @@ export function DekoWidget({ event }: { event: Event }) {
           <div style={{fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginTop:5}}>Wünsche</div>
         </div>
       </div>
-      <Link href="/deko" style={{display:'flex', alignItems:'center', justifyContent:'space-between', background:'none', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', padding:'9px 12px', fontSize:12, color:'var(--text)', textDecoration:'none', fontWeight:500}}>
+      <Link href="/brautpaar/deko" style={{display:'flex', alignItems:'center', justifyContent:'space-between', background:'none', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', padding:'9px 12px', fontSize:12, color:'var(--text)', textDecoration:'none', fontWeight:500}}>
         <span>Zur Deko-Planung</span>
         <ChevronRight size={14} style={{color:'var(--text-dim)'}}/>
       </Link>

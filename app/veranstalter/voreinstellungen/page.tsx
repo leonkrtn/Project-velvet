@@ -410,15 +410,6 @@ export default function VoreinstellungenPage() {
         )}
       </div>
 
-      {/* Mitarbeiter — coming soon */}
-      <div style={{ ...card, opacity: 0.55, pointerEvents: 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <p style={{ ...sectionTitle, marginBottom: 0 }}>Mitarbeiter</p>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)', background: 'var(--border)', borderRadius: 6, padding: '3px 8px' }}>Bald verfügbar</span>
-        </div>
-        <div style={{ height: 48, background: 'var(--border)', borderRadius: 'var(--radius-sm)', opacity: 0.4 }} />
-      </div>
-
       {/* Standard-Vorschläge (Menüoptionen) */}
       <div style={card}>
         <p style={sectionTitle}>Standard-Vorschläge</p>
@@ -465,7 +456,7 @@ export default function VoreinstellungenPage() {
 
       {/* Save button */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={save} disabled={saving} style={{ padding: '12px 28px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--text)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: saving ? 0.6 : 1, transition: 'opacity 0.15s' }}>
+        <button onClick={save} disabled={saving} style={{ padding: '12px 28px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
           {saving ? 'Speichern …' : 'Speichern'}
         </button>
         {saved && !saving && (

@@ -46,7 +46,7 @@ interface CateringPlan {
 interface MenuCourse {
   id: string
   name: string
-  description: string
+  descriptions: Record<string, string>
 }
 
 interface OrganizerCost {
@@ -70,9 +70,9 @@ interface Props {
 
 const DEFAULT_MEAL_OPTIONS = ['Fleisch', 'Fisch', 'Vegetarisch', 'Vegan']
 const DEFAULT_COURSES: MenuCourse[] = [
-  { id: '1', name: 'Vorspeise', description: '' },
-  { id: '2', name: 'Hauptgang', description: '' },
-  { id: '3', name: 'Dessert', description: '' },
+  { id: '1', name: 'Vorspeise', descriptions: {} },
+  { id: '2', name: 'Hauptgang', descriptions: {} },
+  { id: '3', name: 'Dessert', descriptions: {} },
 ]
 const MENU_TYPES = ['Mehrgängiges Menü', 'Buffet', 'À la carte', 'Fingerfood', 'BBQ']
 const SERVICE_STYLES = [
@@ -247,7 +247,11 @@ function parsePlan(raw: Record<string, unknown> | null): CateringPlan {
     weinbegleitung:           (raw?.weinbegleitung as boolean) ?? false,
     weinbegleitung_note:      (raw?.weinbegleitung_note as string) ?? '',
     kinder_meal_options:      (raw?.kinder_meal_options as string[]) ?? [],
-    menu_courses:             (raw?.menu_courses as MenuCourse[]) ?? DEFAULT_COURSES,
+    menu_courses:             ((raw?.menu_courses as any[]) ?? DEFAULT_COURSES).map((c: any) => ({
+      id: c.id ?? Date.now().toString(),
+      name: c.name ?? '',
+      descriptions: c.descriptions ?? {},
+    })),
     plan_guest_count_enabled: (raw?.plan_guest_count_enabled as boolean) ?? false,
     plan_guest_count:         (raw?.plan_guest_count as number) ?? 0,
   }
@@ -354,12 +358,31 @@ export default function CateringForm({
   function addCourse() {
     const name = newCourseName.trim()
     if (!name) return
-    updatePlan({ menu_courses: [...plan.menu_courses, { id: Date.now().toString(), name, description: '' }] })
+    updatePlan({ menu_courses: [...plan.menu_courses, { id: Date.now().toString(), name, descriptions: {} }] })
     setNewCourseName('')
   }
 
-  function updateCourse(id: string, patch: Partial<MenuCourse>) {
-    updatePlan({ menu_courses: plan.menu_courses.map(c => c.id === id ? { ...c, ...patch } : c) })
+  function updateCourseName(id: string, name: string) {
+    updatePlan({ menu_courses: plan.menu_courses.map(c => c.id === id ? { ...c, name } : c) })
+  }
+
+  function updateCourseDescription(courseId: string, option: string, value: string) {
+    updatePlan({
+      menu_courses: plan.menu_courses.map(c =>
+        c.id === courseId
+          ? { ...c, descriptions: { ...c.descriptions, [option]: value } }
+          : c
+      )
+    })
+  }
+
+  function copyOptionFrom(targetOption: string, sourceOption: string) {
+    updatePlan({
+      menu_courses: plan.menu_courses.map(c => ({
+        ...c,
+        descriptions: { ...c.descriptions, [targetOption]: c.descriptions[sourceOption] ?? '' },
+      }))
+    })
   }
 
   function removeCourse(id: string) {
@@ -506,50 +529,90 @@ export default function CateringForm({
         )}
       </SectionWrap>
 
-      {/* ── 2. Menügänge (only for multi-course) ─────────────────────────── */}
-      {event.menu_type === 'Mehrgängiges Menü' && (
-        <SectionWrap title="Menügänge">
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -4 }}>
-            Definiere die Gänge mit kurzer Beschreibung für Caterer und Gäste.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-            {plan.menu_courses.map((course, i) => (
-              <div key={course.id} style={{
-                background: '#F5F5F7', borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border)', padding: '12px 14px',
-                display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 10, alignItems: 'center',
-              }}>
-                <input
-                  style={{ ...input, background: '#fff', fontSize: 13 }}
-                  value={course.name}
-                  onChange={e => updateCourse(course.id, { name: e.target.value })}
-                  placeholder={`Gang ${i + 1}`}
-                />
-                <input
-                  style={{ ...input, background: '#fff', fontSize: 13 }}
-                  value={course.description}
-                  onChange={e => updateCourse(course.id, { description: e.target.value })}
-                  placeholder="Kurze Beschreibung (optional)…"
-                />
-                <button type="button" onClick={() => removeCourse(course.id)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-tertiary)' }}>
-                  <X size={16} />
-                </button>
+      {/* ── 2. Menüpositionen je Essensoption ────────────────────────────── */}
+      {mealOptions.length > 0 && (() => {
+        const isMultiCourse = event.menu_type === 'Mehrgängiges Menü'
+        const posLabel = isMultiCourse ? 'Gang' : 'Position'
+        const sectionTitle = isMultiCourse ? 'Menügänge je Essensoption' : 'Menüpositionen je Essensoption'
+        const addPlaceholder = isMultiCourse ? 'Neuer Gang (z.B. Suppe, Käsegang…)' : 'Neue Position (z.B. Hauptgericht, Beilage…)'
+        const cols = `160px repeat(${mealOptions.length}, 1fr) 32px`
+        return (
+          <SectionWrap title={sectionTitle}>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -4 }}>
+              Lege für jede Essensoption das konkrete Gericht fest. Mit „Von … übernehmen" kannst du eine Spalte kopieren und nur das Abweichende ändern.
+            </p>
+
+            {/* Header */}
+            <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, marginBottom: 4, overflowX: 'auto' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', padding: '0 2px' }}>
+                {posLabel}
               </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input style={{ ...input, flex: 1 }} value={newCourseName}
-              onChange={e => setNewCourseName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addCourse()}
-              placeholder="Neuer Gang (z.B. Suppe, Käsegang…)" />
-            <button type="button" onClick={addCourse}
-              style={{ padding: '10px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500 }}>
-              <Plus size={14} /> Gang hinzufügen
-            </button>
-          </div>
-        </SectionWrap>
-      )}
+              {mealOptions.map(opt => (
+                <div key={opt} style={{ minWidth: 140 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>{opt}</div>
+                  {mealOptions.length > 1 && (
+                    <select
+                      value=""
+                      onChange={e => { if (e.target.value) copyOptionFrom(opt, e.target.value) }}
+                      style={{
+                        width: '100%', fontSize: 11, padding: '3px 6px',
+                        border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)',
+                        background: '#fff', color: 'var(--text-tertiary)', cursor: 'pointer',
+                        fontFamily: 'inherit', outline: 'none',
+                      }}
+                    >
+                      <option value="">Von … übernehmen</option>
+                      {mealOptions.filter(o => o !== opt).map(o => (
+                        <option key={o} value={o}>Von {o}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              ))}
+              <div />
+            </div>
+
+            {/* Rows */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+              {plan.menu_courses.map((course, i) => (
+                <div key={course.id} style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, alignItems: 'center' }}>
+                  <input
+                    style={{ ...input, fontSize: 13 }}
+                    value={course.name}
+                    onChange={e => updateCourseName(course.id, e.target.value)}
+                    placeholder={`${posLabel} ${i + 1}`}
+                  />
+                  {mealOptions.map(opt => (
+                    <input
+                      key={opt}
+                      style={{ ...input, fontSize: 13, minWidth: 140 }}
+                      value={course.descriptions[opt] ?? ''}
+                      onChange={e => updateCourseDescription(course.id, opt, e.target.value)}
+                      placeholder="Gericht…"
+                    />
+                  ))}
+                  <button type="button" onClick={() => removeCourse(course.id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add row */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input style={{ ...input, flex: 1 }} value={newCourseName}
+                onChange={e => setNewCourseName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addCourse()}
+                placeholder={addPlaceholder} />
+              <button type="button" onClick={addCourse}
+                style={{ padding: '10px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                <Plus size={14} /> {posLabel} hinzufügen
+              </button>
+            </div>
+          </SectionWrap>
+        )
+      })()}
 
       {/* ── 3. Service & Ablauf ───────────────────────────────────────────── */}
       <SectionWrap title="Service & Ablauf">

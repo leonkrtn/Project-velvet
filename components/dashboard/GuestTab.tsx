@@ -102,7 +102,7 @@ export function GuestTabContent({ event, stats, search, setSearch, filteredGuest
           <p style={{fontSize:11, fontWeight:600, color:'var(--gold)'}}>RSVP testen</p>
           <ChevronRight size={13} color="var(--gold)"/>
         </Link>
-        <Link href="/gaeste" style={{marginLeft:'auto', width:40, height:40, borderRadius:'50%', border:'none', background:'var(--gold)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
+        <Link href="/brautpaar/gaeste" style={{marginLeft:'auto', width:40, height:40, borderRadius:'50%', border:'none', background:'var(--gold)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}>
           <Plus size={18}/>
         </Link>
       </div>

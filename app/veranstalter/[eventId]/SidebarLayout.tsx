@@ -1,11 +1,13 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Settings, Users, MessageSquare, Lightbulb,
-  Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
+  Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed, Inbox,
 } from 'lucide-react'
+import { fetchProposalsForEvent, subscribeToProposals } from '@/lib/proposals'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   eventId: string
@@ -16,21 +18,43 @@ interface Props {
 }
 
 const NAV_ITEMS = [
-  { key: 'uebersicht',     label: 'Übersicht',       icon: LayoutDashboard },
-  { key: 'allgemein',      label: 'Allgemein',        icon: Settings },
-  { key: 'catering',       label: 'Catering & Menü',  icon: UtensilsCrossed },
-  { key: 'mitglieder',     label: 'Mitglieder',       icon: Users },
-  { key: 'chats',          label: 'Chats',            icon: MessageSquare },
-  { key: 'vorschlaege',    label: 'Vorschläge',       icon: Lightbulb },
-  { key: 'ablaufplan',     label: 'Ablaufplan',       icon: Calendar },
-{ key: 'berechtigungen', label: 'Berechtigungen',   icon: Shield },
-  { key: 'sitzplan',       label: 'Sitzplan',         icon: Grid2X2,  disabled: true },
-  { key: 'personalplanung',label: 'Personalplanung',  icon: UserCog },
+  { key: 'uebersicht',      label: 'Übersicht',       icon: LayoutDashboard },
+  { key: 'allgemein',       label: 'Allgemein',        icon: Settings },
+  { key: 'catering',        label: 'Catering & Menü',  icon: UtensilsCrossed },
+  { key: 'mitglieder',      label: 'Mitglieder',       icon: Users },
+  { key: 'chats',           label: 'Chats',            icon: MessageSquare },
+  { key: 'vorschlaege',     label: 'Vorschläge',       icon: Lightbulb },
+  { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
+  { key: 'berechtigungen',  label: 'Berechtigungen',   icon: Shield },
+  { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2, disabled: true },
+  { key: 'personalplanung', label: 'Personalplanung',  icon: UserCog },
 ]
 
 export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCode, children }: Props) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [pendingProposals, setPendingProposals] = useState(0)
+
+  useEffect(() => {
+    let unsub: (() => void) | undefined
+    createClient().auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      const countPending = (proposals: import('@/lib/proposals').ProposalWithDetails[]) =>
+        proposals.filter(p =>
+          p.proposer_role === 'dienstleister' &&
+          (p.my_response?.status === 'pending' || p.status === 'conflict')
+        ).length
+      fetchProposalsForEvent(eventId).then(proposals => {
+        setPendingProposals(countPending(proposals))
+      })
+      unsub = subscribeToProposals(eventId, () => {
+        fetchProposalsForEvent(eventId).then(proposals => {
+          setPendingProposals(countPending(proposals))
+        })
+      })
+    })
+    return () => unsub?.()
+  }, [eventId])
 
   const base = `/veranstalter/${eventId}`
 
@@ -109,6 +133,7 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
               style={{
                 display: 'flex', alignItems: 'center', gap: 9,
                 padding: '8px 10px', borderRadius: 8,
+                paddingLeft: 10,
                 fontSize: 14, fontWeight: active ? 500 : 450,
                 color: 'var(--text-primary)',
                 textDecoration: 'none', marginBottom: 1,
@@ -123,16 +148,54 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
           )
         })}
         </div>
-        {eventCode && (
-          <div style={{ padding: '12px 10px 8px', borderTop: '1px solid var(--border)', marginTop: 8 }}>
-            <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', margin: '0 0 3px' }}>
-              Event-Code
-            </p>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.12em' }}>
-              #{eventCode}
-            </p>
-          </div>
-        )}
+
+        {/* Event-Code + Dienstl.-Vorschläge am unteren Rand */}
+        <div style={{ borderTop: '1px solid var(--border)', marginTop: 8 }}>
+          {eventCode && (
+            <div style={{ padding: '10px 10px 6px' }}>
+              <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', margin: '0 0 2px' }}>
+                Event-Code
+              </p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-tertiary)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.12em' }}>
+                #{eventCode}
+              </p>
+            </div>
+          )}
+          {/* Dienstl.-Vorschläge Inbox */}
+          {(() => {
+            const active = isActive('dienstleister-vorschlaege')
+            return (
+              <Link
+                href={`${base}/dienstleister-vorschlaege`}
+                onClick={() => setMobileOpen(false)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 9,
+                  padding: '8px 10px', borderRadius: 8, margin: '4px 0',
+                  fontSize: 13, fontWeight: active ? 500 : 400,
+                  color: 'var(--text-primary)',
+                  textDecoration: 'none',
+                  background: active ? 'var(--surface)' : 'transparent',
+                  boxShadow: active ? 'var(--shadow-sm)' : 'none',
+                  transition: 'background 0.12s',
+                }}
+              >
+                <Inbox size={14} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
+                <span>Dienstl.-Vorschläge</span>
+                {pendingProposals > 0 && (
+                  <span style={{
+                    marginLeft: 'auto', minWidth: 18, height: 18,
+                    borderRadius: 9, background: 'var(--gold)',
+                    color: '#fff', fontSize: 10, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 5px',
+                  }}>
+                    {pendingProposals}
+                  </span>
+                )}
+              </Link>
+            )
+          })()}
+        </div>
       </div>
     </nav>
   )

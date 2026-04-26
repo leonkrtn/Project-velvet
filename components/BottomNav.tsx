@@ -18,11 +18,11 @@ type NavItem = {
 }
 
 const ITEMS: NavItem[] = [
-  { label: 'Übersicht', icon: LayoutDashboard, href: '/dashboard',    dashTab: 'overview' },
-  { label: 'Gäste',     icon: Users,           href: '/gaeste' },
-  { label: 'Hotel',     icon: Hotel,           href: '/dashboard',    dashTab: 'hotel' },
-  { label: 'Catering',  icon: Utensils,        href: '/dashboard',    dashTab: 'catering', featureKey: 'catering' },
-  { label: 'Nachrichten', icon: MessageCircle, href: '/nachrichten',  featureKey: 'messaging' },
+  { label: 'Übersicht', icon: LayoutDashboard, href: '/brautpaar',    dashTab: 'overview' },
+  { label: 'Gäste',     icon: Users,           href: '/brautpaar/gaeste' },
+  { label: 'Hotel',     icon: Hotel,           href: '/brautpaar',    dashTab: 'hotel' },
+  { label: 'Catering',  icon: Utensils,        href: '/brautpaar',    dashTab: 'catering', featureKey: 'catering' },
+  { label: 'Nachrichten', icon: MessageCircle, href: '/brautpaar/nachrichten', featureKey: 'messaging' },
 ]
 
 export default function BottomNav() {
@@ -44,7 +44,7 @@ export default function BottomNav() {
   }, [])
 
   const isActive = (item: NavItem) => {
-    if (item.href === '/dashboard' && pathname === '/dashboard') {
+    if (item.href === '/brautpaar' && pathname === '/brautpaar') {
       return dashTab === (item.dashTab ?? 'overview')
     }
     return pathname === item.href && !item.dashTab
@@ -54,8 +54,8 @@ export default function BottomNav() {
     if (item.dashTab) {
       sessionStorage.setItem(TAB_KEY, item.dashTab)
       window.dispatchEvent(new Event('velvet-tab-change'))
-      if (pathname !== '/dashboard') {
-        router.push('/dashboard')
+      if (pathname !== '/brautpaar') {
+        router.push('/brautpaar')
       }
     } else {
       router.push(item.href)
