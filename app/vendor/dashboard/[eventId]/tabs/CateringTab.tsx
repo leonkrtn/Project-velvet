@@ -24,7 +24,7 @@ interface CateringPlan {
   weinbegleitung: boolean
   weinbegleitung_note: string
   kinder_meal_options: string[]
-  menu_courses: { id: string; name: string; description: string }[]
+  menu_courses: { id: string; name: string; descriptions: Record<string, string> }[]
   plan_guest_count_enabled: boolean
   plan_guest_count: number
 }
@@ -170,23 +170,41 @@ export default function CateringTab({ eventId }: { eventId: string }) {
           </Section>
         )}
 
-        {/* ── Menügänge ── */}
-        {event?.menu_type === 'Mehrgängiges Menü' && (plan?.menu_courses ?? []).length > 0 && (
-          <Section title="Menügänge">
-            {plan!.menu_courses.map((c, i) => (
-              <div key={c.id} style={{
-                display: 'flex', gap: 12, alignItems: 'baseline',
-                padding: '7px 0', borderBottom: '1px solid var(--border)', fontSize: 13,
-              }}>
-                <span style={{ fontWeight: 600, color: 'var(--text-tertiary)', minWidth: 18 }}>{i + 1}.</span>
-                <span style={{ fontWeight: 500 }}>{c.name}</span>
-                {c.description && (
-                  <span style={{ color: 'var(--text-secondary)', flex: 1 }}>{c.description}</span>
-                )}
-              </div>
-            ))}
-          </Section>
-        )}
+        {/* ── Menügänge / Positionen ── */}
+        {(plan?.menu_courses ?? []).length > 0 && (event?.meal_options ?? []).length > 0 && (() => {
+          const isMultiCourse = event?.menu_type === 'Mehrgängiges Menü'
+          const title = isMultiCourse ? 'Menügänge je Essensoption' : 'Menüpositionen je Essensoption'
+          const mealOpts = event!.meal_options!
+          return (
+            <Section title={title}>
+              {plan!.menu_courses.map((c, i) => {
+                const dishes = mealOpts.map(opt => ({ opt, dish: c.descriptions?.[opt] ?? '' })).filter(d => d.dish)
+                return (
+                  <div key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: dishes.length ? 6 : 0 }}>
+                      <span style={{ color: 'var(--text-tertiary)', marginRight: 8 }}>{i + 1}.</span>
+                      {c.name}
+                    </div>
+                    {dishes.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 24 }}>
+                        {dishes.map(({ opt, dish }) => (
+                          <div key={opt} style={{ display: 'flex', gap: 8, fontSize: 13 }}>
+                            <span style={{
+                              fontSize: 11, fontWeight: 600, color: 'var(--accent)',
+                              background: 'var(--accent-light)', borderRadius: 10,
+                              padding: '1px 8px', whiteSpace: 'nowrap', alignSelf: 'center',
+                            }}>{opt}</span>
+                            <span style={{ color: 'var(--text-secondary)' }}>{dish}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </Section>
+          )
+        })()}
 
         {/* ── Service & Ablauf ── */}
         {plan && (
