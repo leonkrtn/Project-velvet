@@ -50,7 +50,7 @@ function LoginForm() {
           if (isVendor) {
             router.push('/vendor/dashboard')
           } else if (nonVendor) {
-            router.push('/dashboard?event=' + nonVendor.event_id)
+            router.push('/brautpaar?event=' + nonVendor.event_id)
           } else {
             const { data: vsc } = await supabase
               .from('vendor_signup_codes')

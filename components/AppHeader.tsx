@@ -25,33 +25,38 @@ const ORBS = [
 ]
 
 const PAGE_TITLES: Record<string, string> = {
-  '/seating':       'Sitzplan',
-  '/budget':        'Budget',
-  '/vendors':       'Dienstleister',
-  '/tasks':         'Aufgaben',
-  '/reminders':     'Erinnerungen',
-  '/sub-events':    'Sub-Events',
-  '/invite':        'Einladen',
-  '/catering':      'Catering & Menü',
-  '/veranstalter':  'Veranstalter',
-  '/deko':          'Dekoration',
-  '/gaeste-fotos':  'Gäste-Fotos',
-  '/login':         'Anmelden',
-  '/signup':        'Registrieren',
+  '/brautpaar/seating':      'Sitzplan',
+  '/brautpaar/budget':       'Budget',
+  '/brautpaar/tasks':        'Aufgaben',
+  '/brautpaar/reminders':    'Erinnerungen',
+  '/brautpaar/sub-events':   'Sub-Events',
+  '/brautpaar/catering':     'Catering & Menü',
+  '/brautpaar/deko':         'Dekoration',
+  '/brautpaar/gaeste-fotos': 'Gäste-Fotos',
+  '/brautpaar/nachrichten':  'Nachrichten',
+  '/brautpaar/protokoll':    'Protokoll',
+  '/brautpaar/team':         'Team',
+  '/brautpaar/aenderungen':  'Änderungen',
+  '/brautpaar/vorschlaege':  'Vorschläge',
+  '/vendors':                'Dienstleister',
+  '/invite':                 'Einladen',
+  '/veranstalter':           'Veranstalter',
+  '/login':                  'Anmelden',
+  '/signup':                 'Registrieren',
 }
 
 const FEATURE_ROUTES: Record<FeatureKey, string> = {
-  budget:          '/budget',
+  budget:          '/brautpaar/budget',
   vendors:         '/vendors',
-  tasks:           '/tasks',
-  reminders:       '/reminders',
-  seating:         '/seating',
-  catering:        '/catering',
-  'sub-events':    '/sub-events',
+  tasks:           '/brautpaar/tasks',
+  reminders:       '/brautpaar/reminders',
+  seating:         '/brautpaar/seating',
+  catering:        '/brautpaar/catering',
+  'sub-events':    '/brautpaar/sub-events',
   invite:          '/invite',
-  deko:            '/deko',
-  'gaeste-fotos':  '/gaeste-fotos',
-  messaging:       '/nachrichten',
+  deko:            '/brautpaar/deko',
+  'gaeste-fotos':  '/brautpaar/gaeste-fotos',
+  messaging:       '/brautpaar/nachrichten',
 }
 
 const COLOR_PRESETS = [
@@ -83,11 +88,11 @@ function applyFontVar(preset: typeof FONT_PRESETS[0]) {
 
 const MENU_ITEMS = [
   { section: 'Hochzeit', items: [
-    { label: 'Hochzeit bearbeiten', href: '/einstellungen', icon: '✎' },
+    { label: 'Hochzeit bearbeiten', href: '/brautpaar/einstellungen', icon: '✎' },
   ]},
   { section: 'Planung', items: [
-    { label: 'Dekoration',          href: '/deko',          icon: '❀', featureKey: 'deko' as FeatureKey },
-    { label: 'Gäste-Fotos',         href: '/gaeste-fotos',  icon: '◻', featureKey: 'gaeste-fotos' as FeatureKey },
+    { label: 'Dekoration',          href: '/brautpaar/deko',          icon: '❀', featureKey: 'deko' as FeatureKey },
+    { label: 'Gäste-Fotos',         href: '/brautpaar/gaeste-fotos',  icon: '◻', featureKey: 'gaeste-fotos' as FeatureKey },
   ]},
   { section: 'Konto', items: [
     { label: 'Anmelden',            href: '/login',         icon: '→' },
@@ -122,7 +127,7 @@ export default function AppHeader() {
 
   // Track back target in sessionStorage — resilient to remounts and Strict Mode
   useEffect(() => {
-    const stored = sessionStorage.getItem('velvet_current_path') ?? '/dashboard'
+    const stored = sessionStorage.getItem('velvet_current_path') ?? '/brautpaar'
     if (stored !== pathname) {
       sessionStorage.setItem('velvet_back_target', stored)
       sessionStorage.setItem('velvet_current_path', pathname)
@@ -156,11 +161,11 @@ export default function AppHeader() {
     try { localStorage.setItem('velvet_display', JSON.stringify({ ai: accentIdx, fi: i })) } catch {}
   }
 
-  const isSubPage = pathname !== '/dashboard'
+  const isSubPage = pathname !== '/brautpaar'
   const title     = PAGE_TITLES[pathname] ?? ''
 
   const handleBack = () => {
-    router.push(sessionStorage.getItem('velvet_back_target') ?? '/dashboard')
+    router.push(sessionStorage.getItem('velvet_back_target') ?? '/brautpaar')
   }
 
   const handleNav = (href: string) => {
@@ -171,7 +176,7 @@ export default function AppHeader() {
   const handleReset = () => {
     setMenuOpen(false)
     localStorage.removeItem('velvet_event_v3')
-    router.push('/einstellungen')
+    router.push('/brautpaar/einstellungen')
   }
 
   const handlePlayAnimation = () => {

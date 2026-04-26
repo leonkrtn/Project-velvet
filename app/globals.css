@@ -126,6 +126,26 @@ button[style*="background: none"]:hover:not([data-sel]) {
   box-shadow: none !important;
 }
 
+/* ── Personalplanung responsive ── */
+.pp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.pp-content-grid {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 1480px) {
+  .pp-content-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .pp-stats-grid { grid-template-columns: 1fr; }
+}
+
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }

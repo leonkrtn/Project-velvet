@@ -905,16 +905,17 @@ export default function VeranstalterEventsPage() {
       {/* ── Mitarbeiter-Sektion ─────────────────────────────────────────── */}
       <div style={{ marginTop: 40 }}>
         <button
+          data-sel
           onClick={() => setStaffOpen(o => !o)}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             width: '100%', padding: '14px 18px',
             border: '1px solid var(--border)', borderRadius: staffOpen ? 'var(--radius) var(--radius) 0 0' : 'var(--radius)',
             background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit',
-            transition: 'border-color 0.15s',
+            transition: 'border-color 0.15s, background 0.15s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#1D1D1F'; e.currentTarget.style.background = 'rgba(29,29,31,0.06)' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.08)'; e.currentTarget.style.background = '#FFFFFF' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Meine Mitarbeiter</span>

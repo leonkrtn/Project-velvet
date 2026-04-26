@@ -197,7 +197,7 @@ function ModalFoot({ onCancel, onSave, saving, saveLabel }: { onCancel: () => vo
       <button onClick={onCancel} disabled={saving} style={{ fontSize: 13, fontWeight: 500, padding: '8px 14px', borderRadius: 8, cursor: 'pointer', border: '1px solid rgba(0,0,0,0.13)', background: '#fff', color: 'var(--text)', fontFamily: 'inherit' }}>
         Abbrechen
       </button>
-      <button onClick={onSave} disabled={saving} style={{ fontSize: 13, fontWeight: 500, padding: '8px 18px', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', border: 'none', background: 'var(--text)', color: '#fff', fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
+      <button onClick={onSave} disabled={saving} style={{ fontSize: 13, fontWeight: 500, padding: '8px 18px', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', border: 'none', background: 'var(--accent)', color: '#fff', fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
         {saving ? 'Speichert …' : (saveLabel ?? 'Speichern')}
       </button>
     </div>
@@ -255,7 +255,7 @@ export default function PersonalplanungPage() {
     transition: 'border-color 0.15s, box-shadow 0.15s',
   }
   const labelS: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }
-  const btnPrimary: React.CSSProperties = { fontSize: 13, fontWeight: 500, padding: '8px 14px', borderRadius: 8, cursor: 'pointer', border: 'none', background: 'var(--text)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', whiteSpace: 'nowrap' }
+  const btnPrimary: React.CSSProperties = { fontSize: 13, fontWeight: 500, padding: '8px 14px', borderRadius: 8, cursor: 'pointer', border: 'none', background: 'var(--accent)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', whiteSpace: 'nowrap' }
   const btnGhost: React.CSSProperties = { fontSize: 13, fontWeight: 500, padding: '8px 14px', borderRadius: 8, cursor: 'pointer', border: '1px solid rgba(0,0,0,0.13)', background: '#fff', color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit', whiteSpace: 'nowrap' }
   const btnGhostSm: React.CSSProperties = { fontSize: 12, fontWeight: 500, padding: '6px 10px', borderRadius: 7, cursor: 'pointer', border: '1px solid rgba(0,0,0,0.13)', background: '#fff', color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', whiteSpace: 'nowrap' }
 
@@ -542,6 +542,7 @@ export default function PersonalplanungPage() {
               <button
                 key={d.id}
                 onClick={() => setActiveDayId(d.id)}
+                {...(d.id === activeDayId ? { 'data-sel': '' } : {})}
                 style={{
                   padding: '8px 16px', borderRadius: 7, fontSize: 13, fontWeight: 500,
                   cursor: 'pointer', border: 'none', fontFamily: 'inherit',
@@ -558,26 +559,25 @@ export default function PersonalplanungPage() {
           </div>
 
           {/* Summary strip */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+          <div className="pp-stats-grid">
             {([
-              { label: 'Im Einsatz', value: workingStaff.length, sub: `von ${staff.length} Mitarbeitern`, colorVal: '#1B5E20' },
-              { label: 'Bereiche abgedeckt', value: rolesCovered, sub: `${Object.keys(ROLES).length} Bereiche gesamt`, colorVal: undefined },
-              { label: 'Geplante Stunden', value: totalHours.toFixed(1), sub: `${dayShifts.length} Schichten`, unit: 'h', colorVal: undefined },
-              { label: 'Gesamtkosten', value: totalCost.toFixed(2), sub: 'Stundenlohn × Stunden', unit: '€', colorVal: totalCost > 0 ? '#1B5E20' : undefined },
-            ] as { label: string; value: string | number; sub: string; unit?: string; colorVal?: string }[]).map((c, i) => (
+              { label: 'Im Einsatz', value: workingStaff.length, colorVal: '#1B5E20' },
+              { label: 'Bereiche', value: rolesCovered, colorVal: undefined },
+              { label: 'Geplante Stunden', value: totalHours.toFixed(1), unit: 'h', colorVal: undefined },
+              { label: 'Gesamtkosten', value: totalCost.toFixed(2), unit: '€', colorVal: totalCost > 0 ? '#1B5E20' : undefined },
+            ] as { label: string; value: string | number; unit?: string; colorVal?: string }[]).map((c, i) => (
               <div key={i} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                 <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', fontWeight: 500, marginBottom: 4 }}>{c.label}</div>
                 <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.5px', color: c.colorVal ?? 'var(--text)' }}>
                   {c.value}
                   {c.unit && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', marginLeft: 2 }}>{c.unit}</span>}
                 </div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)', marginTop: 2 }}>{c.sub}</div>
               </div>
             ))}
           </div>
 
           {/* Content grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, alignItems: 'start' }}>
+          <div className="pp-content-grid">
 
             {/* Timeline panel */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden' }}>

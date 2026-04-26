@@ -13,21 +13,33 @@ export default async function VendorDashboardPage({ params, searchParams }: Prop
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Berechtigungen laden
-  const { data: perms } = await supabase
-    .from('permissions')
-    .select('permission')
-    .eq('event_id', eventId)
-    .eq('user_id', user!.id)
+  const [permsRes, eventRes, membersRes] = await Promise.all([
+    supabase
+      .from('permissions')
+      .select('permission')
+      .eq('event_id', eventId)
+      .eq('user_id', user!.id),
+    supabase
+      .from('events')
+      .select('title, date, couple_name, event_code')
+      .eq('id', eventId)
+      .single(),
+    supabase
+      .from('event_members')
+      .select('user_id, role, profiles!user_id(name)')
+      .eq('event_id', eventId)
+      .in('role', ['veranstalter', 'brautpaar']),
+  ])
 
-  const permissions = (perms ?? []).map(p => p.permission)
+  const permissions = (permsRes.data ?? []).map(p => p.permission)
+  const event       = eventRes.data
 
-  // Event-Basisdaten
-  const { data: event } = await supabase
-    .from('events')
-    .select('title, date, couple_name, event_code')
-    .eq('id', eventId)
-    .single()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recipients = (membersRes.data ?? []).map((m: any) => ({
+    userId: m.user_id as string,
+    role: m.role as 'veranstalter' | 'brautpaar',
+    label: m.role === 'veranstalter' ? 'Veranstalter' : ((Array.isArray(m.profiles) ? m.profiles[0]?.name : m.profiles?.name) ?? 'Brautpaar'),
+  }))
 
   return (
     <VendorDashboardClient
@@ -37,6 +49,7 @@ export default async function VendorDashboardPage({ params, searchParams }: Prop
       eventDate={event?.date ?? null}
       eventCode={event?.event_code ?? null}
       initialTab={tab ?? null}
+      proposalRecipients={recipients}
     />
   )
 }
