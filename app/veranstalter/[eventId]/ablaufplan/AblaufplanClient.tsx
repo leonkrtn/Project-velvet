@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Pencil, Trash2, X, Check, MapPin, Clock } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, MapPin, Clock, Save } from 'lucide-react'
 
 type Category = 'Zeremonie' | 'Empfang' | 'Feier' | 'Logistik'
 
@@ -118,6 +118,9 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
     assigned_members: e.assigned_members ?? [],
   })))
   const [selected, setSelected] = useState<TimelineEntry | null>(null)
+  const [savedEntry, setSavedEntry] = useState<TimelineEntry | null>(null)
+  const [panelDirty, setPanelDirty] = useState(false)
+  const [panelSaving, setPanelSaving] = useState(false)
   const [filter, setFilter] = useState<Category | 'Alle'>('Alle')
   const [staff, setStaff] = useState<StaffRow[]>(initialStaff)
   const [showModal, setShowModal] = useState(false)
@@ -135,6 +138,39 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
   }, [])
 
   const filtered = filter === 'Alle' ? entries : entries.filter(e => e.category === filter)
+
+  function selectEntry(entry: TimelineEntry | null) {
+    setSelected(entry)
+    setSavedEntry(entry)
+    setPanelDirty(false)
+  }
+
+  function updatePanel(updated: TimelineEntry) {
+    setSelected(updated)
+    setEntries(prev => prev.map(e => e.id === updated.id ? updated : e))
+    setPanelDirty(true)
+  }
+
+  async function handlePanelSave() {
+    if (!selected) return
+    setPanelSaving(true)
+    await supabase.from('timeline_entries').update({
+      checklist: selected.checklist,
+      assigned_staff: selected.assigned_staff,
+      assigned_vendors: selected.assigned_vendors,
+      assigned_members: selected.assigned_members,
+    }).eq('id', selected.id)
+    setSavedEntry(selected)
+    setPanelDirty(false)
+    setPanelSaving(false)
+  }
+
+  function handlePanelCancel() {
+    if (!savedEntry) return
+    setSelected(savedEntry)
+    setEntries(prev => prev.map(e => e.id === savedEntry.id ? savedEntry : e))
+    setPanelDirty(false)
+  }
 
   function openAdd() {
     setEditEntry(null)
@@ -171,7 +207,7 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
       if (data) {
         const updated = { ...editEntry, ...data }
         setEntries(prev => prev.map(e => e.id === editEntry.id ? updated : e).sort((a, b) => (a.start_minutes ?? 9999) - (b.start_minutes ?? 9999)))
-        if (selected?.id === editEntry.id) setSelected(updated)
+        if (selected?.id === editEntry.id) { setSelected(updated); setSavedEntry(updated) }
       }
     } else {
       const { data } = await supabase.from('timeline_entries').insert({ ...payload, checklist: [], responsibilities: [] }).select().single()
@@ -185,84 +221,49 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
   async function handleDelete(id: string) {
     await supabase.from('timeline_entries').delete().eq('id', id)
     setEntries(prev => prev.filter(e => e.id !== id))
-    if (selected?.id === id) setSelected(null)
+    if (selected?.id === id) selectEntry(null)
   }
 
-  async function toggleChecklist(entry: TimelineEntry, idx: number) {
+  function toggleChecklist(entry: TimelineEntry, idx: number) {
     const newList = entry.checklist.map((item, i) => i === idx ? { ...item, done: !item.done } : item)
-    await supabase.from('timeline_entries').update({ checklist: newList }).eq('id', entry.id)
-    const updated = { ...entry, checklist: newList }
-    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
-    setSelected(updated)
+    updatePanel({ ...entry, checklist: newList })
   }
 
-  async function deleteChecklistItem(entry: TimelineEntry, idx: number) {
-    const newList = entry.checklist.filter((_, i) => i !== idx)
-    await supabase.from('timeline_entries').update({ checklist: newList }).eq('id', entry.id)
-    const updated = { ...entry, checklist: newList }
-    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
-    setSelected(updated)
+  function deleteChecklistItem(entry: TimelineEntry, idx: number) {
+    updatePanel({ ...entry, checklist: entry.checklist.filter((_, i) => i !== idx) })
   }
 
-  async function addChecklistItem(entry: TimelineEntry, text: string) {
+  function addChecklistItem(entry: TimelineEntry, text: string) {
     if (!text.trim()) return
-    const newList = [...entry.checklist, { text: text.trim(), done: false }]
-    await supabase.from('timeline_entries').update({ checklist: newList }).eq('id', entry.id)
-    const updated = { ...entry, checklist: newList }
-    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
-    setSelected(updated)
+    updatePanel({ ...entry, checklist: [...entry.checklist, { text: text.trim(), done: false }] })
   }
 
-  async function addStaff(entry: TimelineEntry, s: StaffRow) {
+  function addStaff(entry: TimelineEntry, s: StaffRow) {
     if (entry.assigned_staff.some(a => a.id === s.id)) return
-    const newList = [...entry.assigned_staff, { id: s.id, name: s.name, role_category: s.role_category }]
-    await supabase.from('timeline_entries').update({ assigned_staff: newList }).eq('id', entry.id)
-    const updated = { ...entry, assigned_staff: newList }
-    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
-    setSelected(updated)
+    updatePanel({ ...entry, assigned_staff: [...entry.assigned_staff, { id: s.id, name: s.name, role_category: s.role_category }] })
   }
 
-  async function removeStaff(entry: TimelineEntry, id: string) {
-    const newList = entry.assigned_staff.filter(a => a.id !== id)
-    await supabase.from('timeline_entries').update({ assigned_staff: newList }).eq('id', entry.id)
-    const updated = { ...entry, assigned_staff: newList }
-    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
-    setSelected(updated)
+  function removeStaff(entry: TimelineEntry, id: string) {
+    updatePanel({ ...entry, assigned_staff: entry.assigned_staff.filter(a => a.id !== id) })
   }
 
-  async function addVendor(entry: TimelineEntry, v: VendorRow) {
+  function addVendor(entry: TimelineEntry, v: VendorRow) {
     if (entry.assigned_vendors.some(a => a.id === v.id)) return
-    const newList = [...entry.assigned_vendors, { id: v.id, name: v.name, category: v.category }]
-    await supabase.from('timeline_entries').update({ assigned_vendors: newList }).eq('id', entry.id)
-    const updated = { ...entry, assigned_vendors: newList }
-    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
-    setSelected(updated)
+    updatePanel({ ...entry, assigned_vendors: [...entry.assigned_vendors, { id: v.id, name: v.name, category: v.category }] })
   }
 
-  async function removeVendor(entry: TimelineEntry, id: string) {
-    const newList = entry.assigned_vendors.filter(a => a.id !== id)
-    await supabase.from('timeline_entries').update({ assigned_vendors: newList }).eq('id', entry.id)
-    const updated = { ...entry, assigned_vendors: newList }
-    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
-    setSelected(updated)
+  function removeVendor(entry: TimelineEntry, id: string) {
+    updatePanel({ ...entry, assigned_vendors: entry.assigned_vendors.filter(a => a.id !== id) })
   }
 
-  async function addMember(entry: TimelineEntry, m: Member) {
+  function addMember(entry: TimelineEntry, m: Member) {
     if (entry.assigned_members.some(a => a.id === m.id)) return
     const name = m.profiles?.name ?? '—'
-    const newList = [...entry.assigned_members, { id: m.id, name, role: m.role }]
-    await supabase.from('timeline_entries').update({ assigned_members: newList }).eq('id', entry.id)
-    const updated = { ...entry, assigned_members: newList }
-    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
-    setSelected(updated)
+    updatePanel({ ...entry, assigned_members: [...entry.assigned_members, { id: m.id, name, role: m.role }] })
   }
 
-  async function removeMember(entry: TimelineEntry, id: string) {
-    const newList = entry.assigned_members.filter(a => a.id !== id)
-    await supabase.from('timeline_entries').update({ assigned_members: newList }).eq('id', entry.id)
-    const updated = { ...entry, assigned_members: newList }
-    setEntries(prev => prev.map(e => e.id === entry.id ? updated : e))
-    setSelected(updated)
+  function removeMember(entry: TimelineEntry, id: string) {
+    updatePanel({ ...entry, assigned_members: entry.assigned_members.filter(a => a.id !== id) })
   }
 
   return (
@@ -309,7 +310,7 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
             return (
               <div
                 key={entry.id}
-                onClick={() => setSelected(isSelected ? null : entry)}
+                onClick={() => selectEntry(isSelected ? null : entry)}
                 style={{
                   display: 'flex', gap: 16, padding: '14px 16px',
                   background: isSelected ? 'var(--accent-light)' : 'var(--surface)',
@@ -359,7 +360,7 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
         <div style={{ width: 320, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 22, overflowY: 'auto', height: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h3 style={{ fontSize: 16, fontWeight: 600 }}>{selected.title ?? 'Details'}</h3>
-            <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}>
+            <button onClick={() => { handlePanelCancel(); selectEntry(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}>
               <X size={16} />
             </button>
           </div>
@@ -632,6 +633,32 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
                 {saving ? 'Speichern…' : editEntry ? 'Speichern' : 'Hinzufügen'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save bar */}
+      {panelDirty && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          background: 'var(--surface)', borderTop: '1px solid var(--border)',
+          padding: '14px 36px', display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', zIndex: 100,
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
+        }}>
+          <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Ungespeicherte Änderungen</span>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              onClick={handlePanelCancel}
+              style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}
+            >
+              Abbrechen
+            </button>
+            <button onClick={handlePanelSave} disabled={panelSaving}
+              style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: panelSaving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Save size={14} />
+              {panelSaving ? 'Speichern…' : 'Speichern'}
+            </button>
           </div>
         </div>
       )}
