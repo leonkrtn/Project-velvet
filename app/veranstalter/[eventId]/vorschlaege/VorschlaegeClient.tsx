@@ -113,6 +113,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
   const [loading, setLoading] = useState(true)
   const [selectedProposal, setSelectedProposal] = useState<ProposalWithDetails | null>(null)
   const [activeModule, setActiveModule] = useState<ProposalModule | null>(null)
+  const [editingDraft, setEditingDraft] = useState<ProposalWithDetails | null>(null)
   const [showModulePicker, setShowModulePicker] = useState(false)
 
   // Legacy suggestion state
@@ -208,7 +209,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
             <EmptyState label="Noch keine Modul-Vorschläge gesendet." onAdd={handleAdd} />
           )}
           {!loading && visibleProposals.length > 0 && (
-            <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} />
+            <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} onEditDraft={setEditingDraft} />
           )}
         </>
       )}
@@ -221,7 +222,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           {!loading && visibleProposals.length > 0 && (
             <>
               <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} />
+              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} onEditDraft={setEditingDraft} />
             </>
           )}
           {/* Legacy suggestions */}
@@ -268,7 +269,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           {!loading && visibleProposals.length > 0 && (
             <>
               <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} />
+              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} onEditDraft={setEditingDraft} />
             </>
           )}
           {hotels.length > 0 && (
@@ -309,7 +310,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           {!loading && visibleProposals.length > 0 && (
             <>
               <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} />
+              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} onEditDraft={setEditingDraft} />
             </>
           )}
           {deko.length > 0 && (
@@ -374,8 +375,8 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
         </div>
       )}
 
-      {/* Proposal Lightbox */}
-      {activeModule && allRecipients.length > 0 && (
+      {/* Proposal Lightbox — new proposal */}
+      {activeModule && !editingDraft && allRecipients.length > 0 && (
         <ProposalLightbox
           eventId={eventId}
           module={activeModule}
@@ -383,6 +384,21 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           availableRecipients={allRecipients as { userId: string; role: ProposalRole; label: string }[]}
           onClose={() => setActiveModule(null)}
           onSent={() => { setActiveModule(null); loadProposals() }}
+        />
+      )}
+
+      {/* Proposal Lightbox — edit/send existing draft */}
+      {editingDraft && allRecipients.length > 0 && (
+        <ProposalLightbox
+          eventId={eventId}
+          module={editingDraft.module}
+          proposerRole="veranstalter"
+          availableRecipients={allRecipients as { userId: string; role: ProposalRole; label: string }[]}
+          existingProposalId={editingDraft.id}
+          initialData={editingDraft.latest_submission?.data}
+          initialSections={editingDraft.latest_submission?.sections_enabled}
+          onClose={() => setEditingDraft(null)}
+          onSent={() => { setEditingDraft(null); loadProposals() }}
         />
       )}
 
@@ -425,20 +441,22 @@ function EmptyState({ label, onAdd }: { label: string; onAdd: () => void }) {
   )
 }
 
-function ProposalList({ proposals, allRecipients, onSelect }: {
+function ProposalList({ proposals, allRecipients, onSelect, onEditDraft }: {
   proposals: ProposalWithDetails[]
   allRecipients: Recipient[]
   onSelect: (p: ProposalWithDetails) => void
+  onEditDraft?: (p: ProposalWithDetails) => void
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {proposals.map(p => {
         const status = p.status ?? 'draft'
+        const isDraft = status === 'draft'
         const recipientNames = allRecipients
           .filter(r => p.all_responses.some(res => res.recipient_id === r.userId))
           .map(r => r.label)
         return (
-          <button key={p.id} type="button" onClick={() => onSelect(p)} style={{
+          <button key={p.id} type="button" onClick={() => isDraft && onEditDraft ? onEditDraft(p) : onSelect(p)} style={{
             display: 'flex', alignItems: 'center', gap: 14,
             padding: '14px 16px', borderRadius: 10, textAlign: 'left', width: '100%',
             background: 'var(--surface)', border: '1px solid var(--border)',

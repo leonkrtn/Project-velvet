@@ -309,12 +309,8 @@ export async function saveProposalDraft(
   const { data: proposal } = await supabase
     .from('proposals').select('proposer_role').eq('id', proposalId).single()
 
-  if (existingSubmissionId) {
-    // Kein Update-Support in schema — neuen Eintrag erstellen ist nicht nötig für Drafts
-    // Stattdessen: delete old draft submission and re-insert
-    await supabase.from('proposal_submissions').delete().eq('id', existingSubmissionId)
-  }
-
+  // Always insert a new submission — multiple submissions per proposal are fine,
+  // fetchProposalsForEvent picks the latest one. No DELETE policy needed.
   const { data: submission, error } = await supabase
     .from('proposal_submissions')
     .insert({
