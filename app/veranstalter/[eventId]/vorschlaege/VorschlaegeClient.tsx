@@ -326,7 +326,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
       )}
 
       {/* Proposal Lightbox — edit/send existing draft */}
-      {editingDraft && allRecipients.length > 0 && (
+      {editingDraft && (
         <ProposalLightbox
           eventId={eventId}
           module={editingDraft.module}
