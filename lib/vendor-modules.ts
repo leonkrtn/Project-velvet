@@ -1,30 +1,29 @@
 import {
   MessageSquare, Calendar, MapPin, Users, Grid2X2,
-  UtensilsCrossed, Cake, Camera, Music2, Flower2, FileText, Lightbulb,
+  UtensilsCrossed, Cake, Camera, Music2, Flower2, FileText,
   type LucideIcon,
 } from 'lucide-react'
 
 export interface ModuleDef {
-  key:         string
-  label:       string
-  icon:        LucideIcon
-  required?:   boolean
+  key:          string
+  label:        string
+  icon:         LucideIcon
+  required?:    boolean
   readonlyKey?: string
 }
 
 export const ALL_MODULES: ModuleDef[] = [
   { key: 'mod_chat',       label: 'Kommunikation',      icon: MessageSquare, required: true },
-  { key: 'mod_timeline',   label: 'Regieplan',           icon: Calendar },
-  { key: 'mod_location',   label: 'Veranstaltungsort',   icon: MapPin },
-  { key: 'mod_guests',     label: 'Gästeliste',          icon: Users },
-  { key: 'mod_seating',    label: 'Tischordnung',        icon: Grid2X2 },
-  { key: 'mod_catering',   label: 'Catering',            icon: UtensilsCrossed },
-  { key: 'mod_patisserie', label: 'Patisserie',          icon: Cake },
-  { key: 'mod_media',      label: 'Medien & Aufnahmen',  icon: Camera },
-  { key: 'mod_music',      label: 'Musik',               icon: Music2 },
-  { key: 'mod_decor',      label: 'Dekoration',          icon: Flower2 },
-  { key: 'mod_files',      label: 'Dokumente',           icon: FileText },
-  { key: 'mod_proposals',  label: 'Vorschläge',          icon: Lightbulb, readonlyKey: 'mod_proposals_read' },
+  { key: 'mod_timeline',   label: 'Regieplan',           icon: Calendar,       readonlyKey: 'mod_timeline_read' },
+  { key: 'mod_location',   label: 'Veranstaltungsort',   icon: MapPin,         readonlyKey: 'mod_location_read' },
+  { key: 'mod_guests',     label: 'Gästeliste',          icon: Users,          readonlyKey: 'mod_guests_read' },
+  { key: 'mod_seating',    label: 'Tischordnung',        icon: Grid2X2,        readonlyKey: 'mod_seating_read' },
+  { key: 'mod_catering',   label: 'Catering',            icon: UtensilsCrossed, readonlyKey: 'mod_catering_read' },
+  { key: 'mod_patisserie', label: 'Patisserie',          icon: Cake,           readonlyKey: 'mod_patisserie_read' },
+  { key: 'mod_media',      label: 'Medien & Aufnahmen',  icon: Camera,         readonlyKey: 'mod_media_read' },
+  { key: 'mod_music',      label: 'Musik',               icon: Music2,         readonlyKey: 'mod_music_read' },
+  { key: 'mod_decor',      label: 'Dekoration',          icon: Flower2,        readonlyKey: 'mod_decor_read' },
+  { key: 'mod_files',      label: 'Dokumente',           icon: FileText,       readonlyKey: 'mod_files_read' },
 ]
 
 export const MODULE_MAP: Record<string, ModuleDef> = Object.fromEntries(

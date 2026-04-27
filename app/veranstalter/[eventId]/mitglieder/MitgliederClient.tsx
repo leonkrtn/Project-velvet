@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, ChevronDown, ChevronUp, Trash2, Copy, Check, MessageSquare, Phone, Mail, Euro, Tag, FileText, Edit2, Shield, X, Info, Eye, Loader2, BookUser } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, Trash2, Copy, Check, MessageSquare, Phone, Mail, Euro, Tag, FileText, Edit2, Shield, X, Info, Eye, Pencil, Loader2, BookUser } from 'lucide-react'
 import { ALL_MODULES, ROLE_MODULE_DEFAULTS } from '@/lib/vendor-modules'
 
 type MemberRole = 'veranstalter' | 'brautpaar' | 'trauzeuge' | 'dienstleister'
@@ -936,37 +936,34 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
                 const locked = mod.required
                 const Icon = mod.icon
                 return (
-                  <div key={mod.key} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                    <button
-                      onClick={() => toggleModuleEdit(mod)}
-                      disabled={locked}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: active && mod.readonlyKey ? 'var(--radius-sm) var(--radius-sm) 0 0' : 'var(--radius-sm)', border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--surface)', cursor: locked ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit', width: '100%' }}
-                    >
-                      <Icon size={15} style={{ color: active ? 'var(--accent)' : 'var(--text-tertiary)', flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, fontWeight: active ? 500 : 400, color: active ? 'var(--text-primary)' : 'var(--text-secondary)', flex: 1 }}>{mod.label}</span>
-                      {locked
-                        ? <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', background: 'rgba(0,0,0,0.06)', padding: '2px 6px', borderRadius: 4 }}>Pflicht</span>
-                        : <div style={{ width: 18, height: 18, borderRadius: 4, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border2)'}`, background: active ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{active && <Check size={11} color="#fff" />}</div>
-                      }
-                    </button>
-                    {active && mod.readonlyKey && (
-                      <div style={{ display: 'flex', border: '1px solid var(--accent)', borderTop: 'none', borderRadius: '0 0 var(--radius-sm) var(--radius-sm)', overflow: 'hidden' }}>
-                        {(['readonly', 'full'] as const).map(mode => {
-                          const sel = mode === 'readonly' ? isReadonly : !isReadonly
-                          return (
-                            <button
-                              key={mode}
-                              type="button"
-                              onClick={e => { e.stopPropagation(); setModuleMode(mod, mode) }}
-                              style={{ flex: 1, padding: '7px 10px', border: 'none', borderRight: mode === 'readonly' ? '1px solid var(--accent)' : 'none', background: sel ? 'var(--accent)' : 'var(--accent-light)', color: sel ? '#fff' : 'var(--accent)', fontSize: 12, fontWeight: sel ? 600 : 400, cursor: 'pointer', fontFamily: 'inherit' }}
-                            >
-                              {mode === 'readonly' ? 'Nur lesen' : 'Erstellen erlaubt'}
-                            </button>
-                          )
-                        })}
-                      </div>
+                  <button
+                    key={mod.key}
+                    onClick={() => toggleModuleEdit(mod)}
+                    disabled={locked}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--surface)', cursor: locked ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit', width: '100%' }}
+                  >
+                    <Icon size={15} style={{ color: active ? 'var(--accent)' : 'var(--text-tertiary)', flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, fontWeight: active ? 500 : 400, color: active ? 'var(--text-primary)' : 'var(--text-secondary)', flex: 1 }}>{mod.label}</span>
+                    {locked ? (
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', background: 'rgba(0,0,0,0.06)', padding: '2px 6px', borderRadius: 4 }}>Pflicht</span>
+                    ) : (
+                      <>
+                        {active && mod.readonlyKey && (
+                          <button
+                            type="button"
+                            title={isReadonly ? 'Nur lesen — klicken für Bearbeiten' : 'Bearbeiten — klicken für Nur lesen'}
+                            onClick={e => { e.stopPropagation(); setModuleMode(mod, isReadonly ? 'full' : 'readonly') }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 6, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', flexShrink: 0, padding: 0 }}
+                          >
+                            {isReadonly ? <Eye size={13} /> : <Pencil size={13} />}
+                          </button>
+                        )}
+                        <div style={{ width: 18, height: 18, borderRadius: 4, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border2)'}`, background: active ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {active && <Check size={11} color="#fff" />}
+                        </div>
+                      </>
                     )}
-                  </div>
+                  </button>
                 )
               })}
             </div>
