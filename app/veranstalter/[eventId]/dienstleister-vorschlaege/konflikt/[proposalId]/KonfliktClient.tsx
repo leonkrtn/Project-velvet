@@ -179,7 +179,7 @@ export default function KonfliktClient({
             )}
             {messages.map(msg => {
               const isMe = msg.user_id === currentUserId
-              const senderName = msg.profile?.full_name ?? 'Unbekannt'
+              const senderName = msg.profile?.name ?? 'Unbekannt'
               return (
                 <div key={msg.id} style={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: 8 }}>
                   {!isMe && (
