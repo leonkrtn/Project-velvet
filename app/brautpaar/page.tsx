@@ -88,7 +88,7 @@ export default function BrautpaarPage() {
       const load = async () => {
         const proposals = await fetchProposalsForEvent(member.event_id)
         const pending = proposals.filter(p =>
-          p.all_responses.some(r => r.recipient_id === user.id && r.status === 'pending')
+          p.recipients.some(r => r.user_id === user.id && r.status === 'pending')
         ).length
         setPendingProposals(pending)
       }

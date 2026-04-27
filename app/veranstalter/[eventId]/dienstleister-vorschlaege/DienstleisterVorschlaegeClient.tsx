@@ -2,19 +2,19 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { CheckCircle, XCircle, MessageSquare, Clock, ChevronRight, Package, AlertTriangle } from 'lucide-react'
+import { ChevronRight, Package, AlertTriangle } from 'lucide-react'
 import {
   type ProposalWithDetails,
-  type ProposalModuleData,
   MODULE_LABELS,
   fetchProposalsForEvent,
   subscribeToProposals,
-  respondToProposal,
+  acceptProposal,
+  rejectProposal,
 } from '@/lib/proposals'
 import { createClient } from '@/lib/supabase/client'
 import ProposalDetailSheet from '@/components/proposals/ProposalDetailSheet'
 
-const ProposalLightbox = dynamic(() => import('@/components/proposals/ProposalLightbox'), { ssr: false })
+const CounterProposalSheet = dynamic(() => import('@/components/proposals/CounterProposalSheet'), { ssr: false })
 
 interface Props {
   eventId: string
@@ -22,21 +22,19 @@ interface Props {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  sent: 'Ausstehend',
+  pending:  'Ausstehend',
   accepted: 'Angenommen',
   rejected: 'Abgelehnt',
-  conflict: 'Konflikt',
-  resolved: 'Erledigt',
-  draft: 'Entwurf',
+  in_case:  'In Klärung',
+  draft:    'Entwurf',
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  sent: 'var(--gold)',
+  pending:  'var(--gold)',
   accepted: '#16a34a',
   rejected: '#dc2626',
-  conflict: '#ea580c',
-  resolved: 'var(--text-tertiary)',
-  draft: 'var(--text-tertiary)',
+  in_case:  '#ea580c',
+  draft:    'var(--text-tertiary)',
 }
 
 function timeAgo(dateStr: string): string {
@@ -57,21 +55,19 @@ export default function DienstleisterVorschlaegeClient({ eventId, userId }: Prop
 
   const load = useCallback(async () => {
     const all = await fetchProposalsForEvent(eventId)
-    // Nur Vorschläge von Dienstleistern anzeigen
-    const vendorProposals = all.filter(p => p.proposer_role === 'dienstleister')
+    const vendorProposals = all.filter(p => p.created_by_role === 'dienstleister')
     setProposals(vendorProposals)
 
-    // Namen der Dienstleister laden
-    const ids = Array.from(new Set(vendorProposals.map(p => p.proposer_id)))
+    const ids = Array.from(new Set(vendorProposals.map(p => p.created_by)))
     if (ids.length > 0) {
       const supabase = createClient()
       const { data } = await supabase
         .from('profiles')
-        .select('id, name')
+        .select('id, full_name')
         .in('id', ids)
       if (data) {
         const map: Record<string, string> = {}
-        data.forEach(p => { map[p.id] = p.name ?? 'Unbekannt' })
+        data.forEach((p: { id: string; full_name: string | null }) => { map[p.id] = p.full_name ?? 'Unbekannt' })
         setVendorNames(map)
       }
     }
@@ -85,26 +81,22 @@ export default function DienstleisterVorschlaegeClient({ eventId, userId }: Prop
   }, [eventId, load])
 
   const pendingProposals = proposals.filter(p => {
-    const myResponse = p.all_responses.find(r => r.recipient_id === userId)
-    return myResponse?.status === 'pending'
+    const myRecipient = p.recipients.find(r => r.user_id === userId)
+    return myRecipient?.status === 'pending'
   })
   const otherProposals = proposals.filter(p => {
-    const myResponse = p.all_responses.find(r => r.recipient_id === userId)
-    return !myResponse || myResponse.status !== 'pending'
+    const myRecipient = p.recipients.find(r => r.user_id === userId)
+    return !myRecipient || myRecipient.status !== 'pending'
   })
 
   const handleAccept = async (proposal: ProposalWithDetails) => {
-    const myResponse = proposal.all_responses.find(r => r.recipient_id === userId)
-    if (!myResponse || !proposal.latest_submission) return
-    await respondToProposal(proposal.latest_submission.id, myResponse.id, 'accepted')
+    await acceptProposal(proposal.id)
     setSelected(null)
     load()
   }
 
   const handleReject = async (proposal: ProposalWithDetails) => {
-    const myResponse = proposal.all_responses.find(r => r.recipient_id === userId)
-    if (!myResponse || !proposal.latest_submission) return
-    await respondToProposal(proposal.latest_submission.id, myResponse.id, 'rejected')
+    await rejectProposal(proposal.id)
     setSelected(null)
     load()
   }
@@ -149,7 +141,7 @@ export default function DienstleisterVorschlaegeClient({ eventId, userId }: Prop
               <ProposalCard
                 key={p.id}
                 proposal={p}
-                vendorName={vendorNames[p.proposer_id] ?? '…'}
+                vendorName={vendorNames[p.created_by] ?? '…'}
                 userId={userId}
                 eventId={eventId}
                 onOpen={() => setSelected(p)}
@@ -170,7 +162,7 @@ export default function DienstleisterVorschlaegeClient({ eventId, userId }: Prop
               <ProposalCard
                 key={p.id}
                 proposal={p}
-                vendorName={vendorNames[p.proposer_id] ?? '…'}
+                vendorName={vendorNames[p.created_by] ?? '…'}
                 userId={userId}
                 eventId={eventId}
                 onOpen={() => setSelected(p)}
@@ -185,7 +177,7 @@ export default function DienstleisterVorschlaegeClient({ eventId, userId }: Prop
           proposal={selected}
           userId={userId}
           userRole="veranstalter"
-          vendorName={vendorNames[selected.proposer_id] ?? 'Dienstleister'}
+          vendorName={vendorNames[selected.created_by] ?? 'Dienstleister'}
           onClose={() => setSelected(null)}
           onAccept={() => handleAccept(selected)}
           onReject={() => handleReject(selected)}
@@ -194,18 +186,12 @@ export default function DienstleisterVorschlaegeClient({ eventId, userId }: Prop
         />
       )}
 
-      {counterTarget && counterTarget.latest_submission && (
-        <ProposalLightbox
+      {counterTarget && (
+        <CounterProposalSheet
+          proposal={counterTarget}
+          userId={userId}
+          userRole="veranstalter"
           eventId={eventId}
-          module={counterTarget.module}
-          proposerRole="veranstalter"
-          availableRecipients={[{
-            userId: counterTarget.proposer_id,
-            role: 'dienstleister',
-            label: vendorNames[counterTarget.proposer_id] ?? 'Dienstleister',
-          }]}
-          parentSubmissionId={counterTarget.latest_submission.id}
-          myResponseId={counterTarget.all_responses.find(r => r.recipient_id === userId)?.id}
           onClose={() => setCounterTarget(null)}
           onSent={() => { setCounterTarget(null); load() }}
         />
@@ -224,11 +210,10 @@ function ProposalCard({
   onOpen: () => void
   highlighted?: boolean
 }) {
-  const myResponse = proposal.all_responses.find(r => r.recipient_id === userId)
-  const status = myResponse?.status === 'pending' ? 'sent' : (proposal.status ?? 'sent')
-  const isConflict = proposal.status === 'conflict'
+  const myRecipient = proposal.recipients.find(r => r.user_id === userId)
+  const isInCase = proposal.status === 'in_case'
 
-  if (isConflict) {
+  if (isInCase) {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', gap: 14,
@@ -243,11 +228,11 @@ function ProposalCard({
               {MODULE_LABELS[proposal.module]}
             </span>
             <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#ea580c', background: '#ffedd5', padding: '2px 7px', borderRadius: 100 }}>
-              Konflikt
+              In Klärung
             </span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            {vendorName} · Veranstalter & Brautpaar haben unterschiedliche Gegenvorschläge
+            {vendorName} · Gegenvorschlag läuft
           </div>
         </div>
         <Link
@@ -256,11 +241,13 @@ function ProposalCard({
             padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
             background: '#ea580c', color: '#fff', textDecoration: 'none', flexShrink: 0,
           }}>
-          Lösen
+          Öffnen
         </Link>
       </div>
     )
   }
+
+  const status = myRecipient?.status === 'pending' ? 'pending' : (proposal.status ?? 'draft')
 
   return (
     <button

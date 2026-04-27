@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Menu, X, CalendarDays, ChevronLeft, Lightbulb, Inbox, Plus } from 'lucide-react'
 import { ALL_MODULES, MODULE_MAP } from '@/lib/vendor-modules'
-import type { ProposalModule, ProposalRole } from '@/lib/proposals'
-import { fetchProposalsForEvent, subscribeToProposals, respondToProposal } from '@/lib/proposals'
+import type { ProposalModule, ProposalRole, ProposalWithDetails } from '@/lib/proposals'
+import { fetchProposalsForEvent, subscribeToProposals, acceptProposal, rejectProposal, MODULE_LABELS } from '@/lib/proposals'
 import { createClient } from '@/lib/supabase/client'
 import dynamic from 'next/dynamic'
 
@@ -25,7 +25,6 @@ const ProposalLightbox      = dynamic(() => import('@/components/proposals/Propo
 const ProposalDetailSheet   = dynamic(() => import('@/components/proposals/ProposalDetailSheet'), { ssr: false })
 const CounterProposalSheet  = dynamic(() => import('@/components/proposals/CounterProposalSheet'), { ssr: false })
 
-// Registry: Permission-Key → Tab-Komponente
 const TAB_REGISTRY: Record<string, React.ComponentType<{ eventId: string }>> = {
   mod_chat:       ChatTab,
   mod_timeline:   TimelineTab,
@@ -40,7 +39,6 @@ const TAB_REGISTRY: Record<string, React.ComponentType<{ eventId: string }>> = {
   mod_files:      FilesTab,
 }
 
-// Tabs, für die ein Vorschlag erstellt werden kann
 const PROPOSAL_MODULE_MAP: Partial<Record<string, ProposalModule>> = {
   mod_catering:   'catering',
   mod_timeline:   'ablaufplan',
@@ -92,17 +90,15 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
   }, [])
 
-  // Zähle offene Counter-Proposals (Inbox)
   useEffect(() => {
     let unsub: (() => void) | undefined
     const load = async () => {
       if (!userId) return
       const proposals = await fetchProposalsForEvent(eventId)
-      // Inbox: Submissions die AN mich (vendor) gerichtet sind und pending
-      const count = proposals.filter(p =>
-        p.my_response?.status === 'pending' &&
-        p.latest_submission?.submitted_by !== userId
-      ).length
+      const count = proposals.filter(p => {
+        const myRecipient = p.recipients.find(r => r.user_id === userId)
+        return myRecipient?.status === 'pending' && p.created_by !== userId
+      }).length
       setPendingCount(count)
     }
     load()
@@ -277,7 +273,6 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
           </div>
         ) : (
           <main style={{ flex: 1, padding: '36px 40px 60px', width: '100%', boxSizing: 'border-box', position: 'relative' }}>
-            {/* Vorschlag-Button */}
             {currentModule && (
               <button
                 onClick={() => setShowProposal(true)}
@@ -310,7 +305,6 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
         )}
       </div>
 
-      {/* Proposal Lightbox */}
       {showProposal && currentModule && (
         <ProposalLightbox
           eventId={eventId}
@@ -333,10 +327,10 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
 // ── Vendor Inbox ──────────────────────────────────────────────────────────────
 
 function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId: string | null; onClose: () => void }) {
-  const [proposals, setProposals] = useState<Awaited<ReturnType<typeof fetchProposalsForEvent>>>([])
+  const [proposals, setProposals] = useState<ProposalWithDetails[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedProposal, setSelectedProposal] = useState<(typeof proposals)[0] | null>(null)
-  const [counterTarget, setCounterTarget] = useState<(typeof proposals)[0] | null>(null)
+  const [selectedProposal, setSelectedProposal] = useState<ProposalWithDetails | null>(null)
+  const [counterTarget, setCounterTarget] = useState<ProposalWithDetails | null>(null)
 
   const load = async () => {
     const data = await fetchProposalsForEvent(eventId)
@@ -350,34 +344,27 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
     return unsub
   }, [eventId])
 
-  async function handleAccept(p: (typeof proposals)[0]) {
-    const subId = p.latest_submission?.id
-    const responseId = p.my_response?.id
-    if (!subId || !responseId) return
-    await respondToProposal(subId, responseId, 'accepted')
+  async function handleAccept(p: ProposalWithDetails) {
+    await acceptProposal(p.id)
     setSelectedProposal(null)
     load()
   }
 
-  async function handleReject(p: (typeof proposals)[0]) {
-    const subId = p.latest_submission?.id
-    const responseId = p.my_response?.id
-    if (!subId || !responseId) return
-    await respondToProposal(subId, responseId, 'rejected')
+  async function handleReject(p: ProposalWithDetails) {
+    await rejectProposal(p.id)
     setSelectedProposal(null)
     load()
   }
 
-  function handleCounter(p: (typeof proposals)[0]) {
+  function handleCounter(p: ProposalWithDetails) {
     setSelectedProposal(null)
     setCounterTarget(p)
   }
 
-  // Inbox: alle Proposals bei denen ich als Empfänger eine pending response habe
-  const inbox = proposals.filter(p =>
-    p.my_response?.status === 'pending' &&
-    p.latest_submission?.submitted_by !== userId
-  )
+  const inbox = proposals.filter(p => {
+    const myRecipient = p.recipients.find(r => r.user_id === userId)
+    return myRecipient?.status === 'pending' && p.created_by !== userId
+  })
 
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '36px 40px 60px', boxSizing: 'border-box' }}>
@@ -400,37 +387,34 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {inbox.map(p => {
-            const sub = p.latest_submission
-            return (
-              <button key={p.id} onClick={() => setSelectedProposal(p)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '14px 18px', borderRadius: 12,
-                  border: '1px solid var(--border)',
-                  background: 'var(--surface)',
-                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                  width: '100%',
-                }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                      {require('@/lib/proposals').MODULE_LABELS[p.module]}
-                    </span>
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
-                      background: 'rgba(201,168,76,0.15)', color: 'var(--gold)',
-                    }}>Offen</span>
-                  </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    {sub ? new Date(sub.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
-                    {p.proposer_name ? ` · von ${p.proposer_name}` : ''}
-                  </p>
+          {inbox.map(p => (
+            <button key={p.id} onClick={() => setSelectedProposal(p)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 18px', borderRadius: 12,
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                width: '100%',
+              }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {MODULE_LABELS[p.module]}
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
+                    background: 'rgba(201,168,76,0.15)', color: 'var(--gold)',
+                  }}>Offen</span>
                 </div>
-                <span style={{ fontSize: 20, color: 'var(--text-tertiary)' }}>›</span>
-              </button>
-            )
-          })}
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {new Date(p.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  {p.creator_profile?.full_name ? ` · von ${p.creator_profile.full_name}` : ''}
+                </p>
+              </div>
+              <span style={{ fontSize: 20, color: 'var(--text-tertiary)' }}>›</span>
+            </button>
+          ))}
         </div>
       )}
 

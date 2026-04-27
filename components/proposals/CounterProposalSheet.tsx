@@ -15,7 +15,7 @@ import {
   type ProposalRole,
   MODULE_SECTIONS,
   MODULE_LABELS,
-  counterPropose,
+  counterProposal,
 } from '@/lib/proposals'
 import ProposalFormCatering from './ProposalFormCatering'
 import ProposalFormAblaufplan from './ProposalFormAblaufplan'
@@ -95,11 +95,11 @@ async function findOrCreateProposalConversation(
 export default function CounterProposalSheet({ proposal, userId, userRole, eventId, onClose, onSent }: Props) {
   const [activeTab, setActiveTab] = useState<'form' | 'chat'>('form')
 
-  const sub = proposal.latest_submission
+  const snapshotData = proposal.snapshot?.snapshot_json as ProposalModuleData | undefined
   const allSectionKeys = MODULE_SECTIONS[proposal.module].map(s => s.key)
 
-  const [data, setData] = useState<ProposalModuleData>(sub?.data ?? {} as ProposalModuleData)
-  const [enabledSections, setEnabledSections] = useState<string[]>(sub?.sections_enabled ?? allSectionKeys)
+  const [data, setData] = useState<ProposalModuleData>(snapshotData ?? {} as ProposalModuleData)
+  const [enabledSections, setEnabledSections] = useState<string[]>(allSectionKeys)
   const [sending, setSending] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -113,13 +113,13 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
 
   useEffect(() => {
     const participantIds = [
-      proposal.proposer_id,
-      ...proposal.all_responses.map(r => r.recipient_id),
+      proposal.created_by,
+      ...proposal.recipients.map(r => r.user_id),
     ]
     findOrCreateProposalConversation(supabase, proposal.id, eventId, userId, participantIds)
       .then(setConversationId)
       .catch(console.error)
-  }, [proposal.id, eventId, userId, supabase])
+  }, [proposal.id, proposal.created_by, proposal.recipients, eventId, userId, supabase])
 
   useEffect(() => {
     if (!conversationId) return
@@ -180,22 +180,10 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
   }
 
   const handleSend = async () => {
-    const subId = sub?.id
-    const responseId = proposal.my_response?.id
-    if (!subId || !responseId) return
-
     setSending(true)
     try {
-      await counterPropose(
-        proposal.id,
-        subId,
-        responseId,
-        data,
-        enabledSections,
-        userRole,
-        proposal.proposer_id,
-        proposal.proposer_role,
-      )
+      const { error } = await counterProposal(proposal.id, [])
+      if (error) throw new Error(error)
       setToast('Gegenvorschlag gesendet!')
       setTimeout(() => onSent(), 1000)
     } catch {
@@ -348,10 +336,10 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
           )}
           <button
             onClick={handleSend}
-            disabled={sending || !sub?.id || !proposal.my_response?.id}
+            disabled={sending}
             style={{
               width: '100%', padding: '12px', borderRadius: 'var(--r-md)',
-              border: 'none', background: sending ? 'var(--gold)' : 'var(--gold)',
+              border: 'none', background: 'var(--gold)',
               fontSize: 14, fontWeight: 600, color: '#fff',
               cursor: sending ? 'wait' : 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
