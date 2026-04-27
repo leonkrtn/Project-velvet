@@ -10,6 +10,7 @@ import {
   MODULE_LABELS,
   fetchProposalsForEvent,
   subscribeToProposals,
+  deleteProposal,
 } from '@/lib/proposals'
 import ProposalDetailSheet from '@/components/proposals/ProposalDetailSheet'
 
@@ -141,6 +142,12 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
     else setShowModulePicker(true)
   }
 
+  async function handleDeleteProposal(id: string) {
+    if (!confirm('Vorschlag wirklich löschen?')) return
+    await deleteProposal(id)
+    loadProposals()
+  }
+
   async function updateVendorStatus(id: string, status: SuggestionStatus) {
     await supabase.from('organizer_vendor_suggestions').update({ status }).eq('id', id)
     setVendors(v => v.map(x => x.id === id ? { ...x, status } : x))
@@ -209,7 +216,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
             <EmptyState label="Noch keine Modul-Vorschläge gesendet." onAdd={handleAdd} />
           )}
           {!loading && visibleProposals.length > 0 && (
-            <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} onEditDraft={setEditingDraft} />
+            <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={handleDeleteProposal} />
           )}
         </>
       )}
@@ -222,7 +229,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           {!loading && visibleProposals.length > 0 && (
             <>
               <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} onEditDraft={setEditingDraft} />
+              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={handleDeleteProposal} />
             </>
           )}
           {/* Legacy suggestions */}
@@ -269,7 +276,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           {!loading && visibleProposals.length > 0 && (
             <>
               <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} onEditDraft={setEditingDraft} />
+              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={handleDeleteProposal} />
             </>
           )}
           {hotels.length > 0 && (
@@ -310,7 +317,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           {!loading && visibleProposals.length > 0 && (
             <>
               <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} onSelect={setSelectedProposal} onEditDraft={setEditingDraft} />
+              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={handleDeleteProposal} />
             </>
           )}
           {deko.length > 0 && (
@@ -441,53 +448,63 @@ function EmptyState({ label, onAdd }: { label: string; onAdd: () => void }) {
   )
 }
 
-function ProposalList({ proposals, allRecipients, onSelect, onEditDraft }: {
+function ProposalList({ proposals, allRecipients, userId, onSelect, onEdit, onDelete }: {
   proposals: ProposalWithDetails[]
   allRecipients: Recipient[]
+  userId: string
   onSelect: (p: ProposalWithDetails) => void
-  onEditDraft?: (p: ProposalWithDetails) => void
+  onEdit: (p: ProposalWithDetails) => void
+  onDelete: (id: string) => void
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {proposals.map(p => {
         const status = p.status ?? 'draft'
-        const isDraft = status === 'draft'
+        const isOwn = p.proposer_id === userId
         const recipientNames = allRecipients
           .filter(r => p.all_responses.some(res => res.recipient_id === r.userId))
           .map(r => r.label)
         return (
-          <button key={p.id} type="button" onClick={() => isDraft && onEditDraft ? onEditDraft(p) : onSelect(p)} style={{
-            display: 'flex', alignItems: 'center', gap: 14,
-            padding: '14px 16px', borderRadius: 10, textAlign: 'left', width: '100%',
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                  {MODULE_LABELS[p.module]}
-                </span>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-                  color: STATUS_COLOR[status] ?? 'var(--text-tertiary)',
-                  background: `${STATUS_COLOR[status] ?? 'var(--border)'}18`,
-                  padding: '2px 7px', borderRadius: 100,
-                }}>
-                  {STATUS_LABEL[status] ?? status}
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                {timeAgo(p.created_at)}
-                {p.all_responses.length > 0 && ` · ${p.all_responses.filter(r => r.status !== 'pending').length}/${p.all_responses.length} geantwortet`}
-              </div>
-              {recipientNames.length > 0 && (
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                  An: {recipientNames.join(', ')}
+          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button type="button" onClick={() => isOwn ? onEdit(p) : onSelect(p)} style={{
+              display: 'flex', alignItems: 'center', gap: 14, flex: 1,
+              padding: '14px 16px', borderRadius: 10, textAlign: 'left',
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {MODULE_LABELS[p.module]}
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                    color: STATUS_COLOR[status] ?? 'var(--text-tertiary)',
+                    background: `${STATUS_COLOR[status] ?? 'var(--border)'}18`,
+                    padding: '2px 7px', borderRadius: 100,
+                  }}>
+                    {STATUS_LABEL[status] ?? status}
+                  </span>
                 </div>
-              )}
-            </div>
-            <ChevronRight size={16} style={{ opacity: 0.4, flexShrink: 0 }} />
-          </button>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {timeAgo(p.created_at)}
+                  {p.all_responses.length > 0 && ` · ${p.all_responses.filter(r => r.status !== 'pending').length}/${p.all_responses.length} geantwortet`}
+                </div>
+                {recipientNames.length > 0 && (
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                    An: {recipientNames.join(', ')}
+                  </div>
+                )}
+              </div>
+              <ChevronRight size={16} style={{ opacity: 0.4, flexShrink: 0 }} />
+            </button>
+            {isOwn && (
+              <button type="button" onClick={() => onDelete(p.id)} title="Vorschlag löschen"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
         )
       })}
     </div>

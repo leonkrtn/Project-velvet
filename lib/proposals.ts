@@ -511,6 +511,12 @@ export async function fetchProposalsForEvent(eventId: string): Promise<ProposalW
   })
 }
 
+export async function deleteProposal(proposalId: string): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase.from('proposals').delete().eq('id', proposalId)
+  if (error) throw error
+}
+
 export function subscribeToProposals(eventId: string, callback: () => void): () => void {
   const supabase = createClient()
   const channelName = `proposals:${eventId}:${Math.random().toString(36).slice(2)}`
