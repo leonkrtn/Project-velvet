@@ -953,20 +953,14 @@ export async function rejectProposal(proposalId: string): Promise<{ error?: stri
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'not_authenticated' }
 
-  const { error: rErr } = await supabase
+  // DB trigger (trg_auto_proposal_consensus) handles cascading proposal.status → 'rejected'
+  const { error } = await supabase
     .from('proposal_recipients')
     .update({ status: 'rejected', responded_at: new Date().toISOString() })
     .eq('proposal_id', proposalId)
     .eq('user_id', user.id)
 
-  if (rErr) return { error: rErr.message }
-
-  const { error: pErr } = await supabase
-    .from('proposals')
-    .update({ status: 'rejected', updated_at: new Date().toISOString() })
-    .eq('id', proposalId)
-
-  return { error: pErr?.message }
+  return { error: error?.message }
 }
 
 // Gegenvorschlag: öffnet einen Case via DB-Funktion (Reset-Modell)
@@ -1432,9 +1426,11 @@ export function subscribeToEventProposals(
   onProposalChange: (payload: RealtimePayload<Proposal>) => void
 ): ProposalSubscription {
   const supabase = createClient()
+  // Random suffix prevents channel-name collision when multiple components subscribe to same event
+  const channelId = `event_proposals:${eventId}:${Math.random().toString(36).slice(2)}`
 
   const channel = supabase
-    .channel(`event_proposals:${eventId}`)
+    .channel(channelId)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'proposals', filter: `event_id=eq.${eventId}` },
@@ -1443,6 +1439,24 @@ export function subscribeToEventProposals(
     .subscribe()
 
   return { unsubscribe: () => supabase.removeChannel(channel) }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE STATE — Master-Zustand für Pre-Population
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Holt den aktuellen Modul-Zustand aus proposal_module_states.
+// Rückgabe: geparste Daten oder null wenn noch kein Merge stattgefunden hat.
+export async function fetchMasterState(
+  eventId: string,
+  module: ProposalModule
+): Promise<ProposalModuleData | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .rpc('get_module_master_state', { p_event_id: eventId, p_module: module })
+  if (error || !data) return null
+  return data as ProposalModuleData
 }
 
 

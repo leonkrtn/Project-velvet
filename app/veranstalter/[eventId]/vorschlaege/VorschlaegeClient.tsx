@@ -7,8 +7,10 @@ import {
   type ProposalWithDetails,
   type ProposalModule,
   type ProposalRole,
+  type ProposalModuleData,
   MODULE_LABELS,
   fetchProposalsForEvent,
+  fetchMasterState,
   subscribeToProposals,
   deleteProposal,
 } from '@/lib/proposals'
@@ -111,6 +113,8 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [showModulePicker, setShowModulePicker] = useState(false)
+  const [masterStateData, setMasterStateData] = useState<ProposalModuleData | null>(null)
+  const [fetchingMaster, setFetchingMaster] = useState(false)
 
   // Legacy suggestion state
   const [vendors, setVendors] = useState(initialVendors)
@@ -291,8 +295,16 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Für welchen Bereich möchtest du einen Vorschlag senden?</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               {MODULE_PICKER_ITEMS.map(({ module: m, disabled }) => (
-                <button key={m} type="button" disabled={disabled}
-                  onClick={() => { if (!disabled) { setActiveModule(m); setShowModulePicker(false) } }}
+                <button key={m} type="button" disabled={disabled || fetchingMaster}
+                  onClick={async () => {
+                    if (disabled) return
+                    setFetchingMaster(true)
+                    const ms = await fetchMasterState(eventId, m)
+                    setMasterStateData(ms)
+                    setFetchingMaster(false)
+                    setActiveModule(m)
+                    setShowModulePicker(false)
+                  }}
                   style={{
                     padding: '14px 16px', borderRadius: 10, textAlign: 'left',
                     border: '1px solid var(--border)', background: 'var(--bg)',
@@ -313,15 +325,16 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
         </div>
       )}
 
-      {/* Proposal Lightbox — new proposal */}
+      {/* Proposal Lightbox — new proposal (pre-filled with master state) */}
       {activeModule && !editingDraft && allRecipients.length > 0 && (
         <ProposalLightbox
           eventId={eventId}
           module={activeModule}
           proposerRole="veranstalter"
           availableRecipients={allRecipients as { userId: string; role: ProposalRole; label: string }[]}
-          onClose={() => setActiveModule(null)}
-          onSent={() => { setActiveModule(null); loadProposals() }}
+          initialData={masterStateData ?? undefined}
+          onClose={() => { setActiveModule(null); setMasterStateData(null) }}
+          onSent={() => { setActiveModule(null); setMasterStateData(null); loadProposals() }}
         />
       )}
 
