@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, ChevronDown, ChevronUp, Trash2, Copy, Check, MessageSquare, Phone, Mail, Euro, Tag, FileText, Edit2, Shield, X, Info, Eye, Loader2, BookUser } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, Trash2, Copy, Check, MessageSquare, Phone, Mail, Euro, Tag, FileText, Edit2, Shield, X, Info, Eye, Pencil, Loader2, BookUser } from 'lucide-react'
 import { ALL_MODULES, ROLE_MODULE_DEFAULTS } from '@/lib/vendor-modules'
 
 type MemberRole = 'veranstalter' | 'brautpaar' | 'trauzeuge' | 'dienstleister'
@@ -219,11 +219,28 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     setModuleEditPerms(new Set(m.current_permissions.length > 0 ? m.current_permissions : ['mod_chat']))
   }
 
-  function toggleModuleEdit(key: string) {
-    if (key === 'mod_chat') return
+  function toggleModuleEdit(mod: import('@/lib/vendor-modules').ModuleDef) {
+    if (mod.required) return
     setModuleEditPerms(prev => {
       const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
+      const isActive = next.has(mod.key) || (mod.readonlyKey != null && next.has(mod.readonlyKey))
+      if (isActive) {
+        next.delete(mod.key)
+        if (mod.readonlyKey) next.delete(mod.readonlyKey)
+      } else {
+        next.add(mod.key)
+      }
+      return next
+    })
+  }
+
+  function setModuleMode(mod: import('@/lib/vendor-modules').ModuleDef, mode: 'full' | 'readonly') {
+    if (!mod.readonlyKey) return
+    setModuleEditPerms(prev => {
+      const next = new Set(prev)
+      next.delete(mod.key)
+      next.delete(mod.readonlyKey!)
+      next.add(mode === 'full' ? mod.key : mod.readonlyKey!)
       return next
     })
   }
@@ -876,11 +893,12 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
                   <p style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Keine Module zugewiesen</p>
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {ALL_MODULES.filter(mod => infoMember.current_permissions.includes(mod.key)).map(mod => {
+                    {ALL_MODULES.filter(mod => infoMember.current_permissions.includes(mod.key) || (mod.readonlyKey != null && infoMember.current_permissions.includes(mod.readonlyKey))).map(mod => {
+                      const isRO = mod.readonlyKey != null && infoMember.current_permissions.includes(mod.readonlyKey) && !infoMember.current_permissions.includes(mod.key)
                       const Icon = mod.icon
                       return (
                         <span key={mod.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 12, fontWeight: 500 }}>
-                          <Icon size={11} /> {mod.label}
+                          <Icon size={11} /> {mod.label}{isRO && <span style={{ fontSize: 10, opacity: 0.7 }}>(lesen)</span>}
                         </span>
                       )
                     })}
@@ -913,22 +931,38 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
               {ALL_MODULES.map(mod => {
-                const active = moduleEditPerms.has(mod.key)
+                const active = moduleEditPerms.has(mod.key) || (mod.readonlyKey != null && moduleEditPerms.has(mod.readonlyKey))
+                const isReadonly = active && mod.readonlyKey != null && moduleEditPerms.has(mod.readonlyKey) && !moduleEditPerms.has(mod.key)
                 const locked = mod.required
                 const Icon = mod.icon
                 return (
                   <button
                     key={mod.key}
-                    onClick={() => toggleModuleEdit(mod.key)}
+                    onClick={() => toggleModuleEdit(mod)}
                     disabled={locked}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--surface)', cursor: locked ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`, background: active ? 'var(--accent-light)' : 'var(--surface)', cursor: locked ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'inherit', width: '100%' }}
                   >
                     <Icon size={15} style={{ color: active ? 'var(--accent)' : 'var(--text-tertiary)', flexShrink: 0 }} />
                     <span style={{ fontSize: 13, fontWeight: active ? 500 : 400, color: active ? 'var(--text-primary)' : 'var(--text-secondary)', flex: 1 }}>{mod.label}</span>
-                    {locked
-                      ? <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', background: 'rgba(0,0,0,0.06)', padding: '2px 6px', borderRadius: 4 }}>Pflicht</span>
-                      : <div style={{ width: 18, height: 18, borderRadius: 4, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border2)'}`, background: active ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{active && <Check size={11} color="#fff" />}</div>
-                    }
+                    {locked ? (
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)', background: 'rgba(0,0,0,0.06)', padding: '2px 6px', borderRadius: 4 }}>Pflicht</span>
+                    ) : (
+                      <>
+                        {active && mod.readonlyKey && (
+                          <button
+                            type="button"
+                            title={isReadonly ? 'Nur lesen — klicken für Bearbeiten' : 'Bearbeiten — klicken für Nur lesen'}
+                            onClick={e => { e.stopPropagation(); setModuleMode(mod, isReadonly ? 'full' : 'readonly') }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 6, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', flexShrink: 0, padding: 0 }}
+                          >
+                            {isReadonly ? <Eye size={13} /> : <Pencil size={13} />}
+                          </button>
+                        )}
+                        <div style={{ width: 18, height: 18, borderRadius: 4, border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border2)'}`, background: active ? 'var(--accent)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {active && <Check size={11} color="#fff" />}
+                        </div>
+                      </>
+                    )}
                   </button>
                 )
               })}
