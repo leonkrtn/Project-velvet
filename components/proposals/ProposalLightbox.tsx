@@ -16,6 +16,7 @@ import {
   MODULE_SECTIONS,
   MODULE_LABELS,
   createProposalDraft,
+  updateSnapshot,
   addRecipient,
   sendProposal,
 } from '@/lib/proposals'
@@ -85,7 +86,11 @@ export default function ProposalLightbox({
   }, [])
 
   const ensureDraft = async (): Promise<string> => {
-    if (savedDraftId) return savedDraftId
+    if (savedDraftId) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateSnapshot(savedDraftId, data as any)
+      return savedDraftId
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await createProposalDraft({
       event_id: eventId,
