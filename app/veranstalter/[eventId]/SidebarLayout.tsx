@@ -41,8 +41,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
       if (!user) return
       const countPending = (proposals: import('@/lib/proposals').ProposalWithDetails[]) =>
         proposals.filter(p =>
-          p.proposer_role === 'dienstleister' &&
-          (p.my_response?.status === 'pending' || p.status === 'conflict')
+          p.created_by_role === 'dienstleister' &&
+          (p.recipients.some(r => r.user_id === user.id && r.status === 'pending') || p.status === 'in_case')
         ).length
       fetchProposalsForEvent(eventId).then(proposals => {
         setPendingProposals(countPending(proposals))

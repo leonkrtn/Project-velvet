@@ -60,12 +60,12 @@ const MODULE_PICKER_ITEMS: { module: ProposalModule; disabled?: boolean }[] = [
 ]
 
 const STATUS_LABEL: Record<string, string> = {
-  sent: 'Gesendet', accepted: 'Angenommen', rejected: 'Abgelehnt',
-  conflict: 'Konflikt', resolved: 'Erledigt', draft: 'Entwurf',
+  pending: 'Gesendet', accepted: 'Angenommen', rejected: 'Abgelehnt',
+  in_case: 'In Klärung', draft: 'Entwurf',
 }
 const STATUS_COLOR: Record<string, string> = {
-  sent: 'var(--gold)', accepted: '#16a34a', rejected: '#dc2626',
-  conflict: '#ea580c', resolved: 'var(--text-tertiary)', draft: 'var(--text-tertiary)',
+  pending: 'var(--gold)', accepted: '#16a34a', rejected: '#dc2626',
+  in_case: '#ea580c', draft: 'var(--text-tertiary)',
 }
 const SUGG_CFG: Record<SuggestionStatus, { label: string; bg: string; color: string }> = {
   vorschlag:  { label: 'Vorschlag',   bg: '#F0F0F0', color: '#666' },
@@ -119,7 +119,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
 
   const loadProposals = useCallback(async () => {
     const all = await fetchProposalsForEvent(eventId)
-    setProposals(all.filter(p => p.proposer_role === 'veranstalter'))
+    setProposals(all.filter(p => p.created_by_role === 'veranstalter'))
     setLoading(false)
   }, [eventId])
 
@@ -333,8 +333,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           proposerRole="veranstalter"
           availableRecipients={allRecipients as { userId: string; role: ProposalRole; label: string }[]}
           existingProposalId={editingDraft.id}
-          initialData={editingDraft.latest_submission?.data}
-          initialSections={editingDraft.latest_submission?.sections_enabled}
+          initialData={editingDraft.snapshot?.snapshot_json as import('@/lib/proposals').ProposalModuleData | undefined}
           onClose={() => setEditingDraft(null)}
           onSent={() => { setEditingDraft(null); loadProposals() }}
         />
@@ -414,9 +413,9 @@ function ProposalList({ proposals, allRecipients, userId, onSelect, onEdit, onDe
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {proposals.map(p => {
         const status = p.status ?? 'draft'
-        const isOwn = p.proposer_id === userId
+        const isOwn = p.created_by === userId
         const recipientNames = allRecipients
-          .filter(r => p.all_responses.some(res => res.recipient_id === r.userId))
+          .filter(r => p.recipients.some(r2 => r2.user_id === r.userId))
           .map(r => r.label)
         return (
           <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -442,7 +441,7 @@ function ProposalList({ proposals, allRecipients, userId, onSelect, onEdit, onDe
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   {timeAgo(p.created_at)}
-                  {p.all_responses.length > 0 && ` · ${p.all_responses.filter(r => r.status !== 'pending').length}/${p.all_responses.length} geantwortet`}
+                  {p.recipients.length > 0 && ` · ${p.recipients.filter(r => r.status !== 'pending').length}/${p.recipients.length} geantwortet`}
                 </div>
                 {recipientNames.length > 0 && (
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>

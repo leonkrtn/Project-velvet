@@ -16,7 +16,7 @@ import {
   MODULE_SECTIONS,
   MODULE_LABELS,
   createProposalDraft,
-  saveProposalDraft,
+  addRecipient,
   sendProposal,
 } from '@/lib/proposals'
 import ProposalFormCatering from './ProposalFormCatering'
@@ -38,14 +38,11 @@ interface Props {
   module: ProposalModule
   proposerRole: ProposalRole
   availableRecipients: Recipient[]
-  currentData?: Record<string, unknown>
   onClose: () => void
   onSent?: () => void
-  parentSubmissionId?: string
-  myResponseId?: string
+  existingProposalId?: string
   initialData?: ProposalModuleData
   initialSections?: string[]
-  existingProposalId?: string
 }
 
 function defaultData(module: ProposalModule): ProposalModuleData {
@@ -62,9 +59,8 @@ function defaultData(module: ProposalModule): ProposalModuleData {
 }
 
 export default function ProposalLightbox({
-  eventId, module, proposerRole, availableRecipients, currentData,
-  onClose, onSent, parentSubmissionId, myResponseId,
-  initialData, initialSections, existingProposalId,
+  eventId, module, proposerRole, availableRecipients,
+  onClose, onSent, existingProposalId, initialData, initialSections,
 }: Props) {
   const sections = MODULE_SECTIONS[module]
   const allSectionKeys = sections.map(s => s.key)
@@ -75,7 +71,6 @@ export default function ProposalLightbox({
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
   const [savedDraftId, setSavedDraftId] = useState<string | undefined>(existingProposalId)
-  const [savedSubmissionId, setSavedSubmissionId] = useState<string | undefined>()
   const [showSendConfirm, setShowSendConfirm] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -89,17 +84,26 @@ export default function ProposalLightbox({
     setData(d => ({ ...d, ...p }))
   }, [])
 
+  const ensureDraft = async (): Promise<string> => {
+    if (savedDraftId) return savedDraftId
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await createProposalDraft({
+      event_id: eventId,
+      module,
+      title: MODULE_LABELS[module],
+      created_by_role: proposerRole,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      snapshot: data as any,
+    })
+    if ('error' in result) throw new Error(result.error)
+    setSavedDraftId(result.proposal.id)
+    return result.proposal.id
+  }
+
   const handleSave = async () => {
     setSaving(true)
     try {
-      let proposalId = savedDraftId
-      if (!proposalId) {
-        const draft = await createProposalDraft(eventId, proposerRole, module)
-        proposalId = draft.id
-        setSavedDraftId(draft.id)
-      }
-      const submission = await saveProposalDraft(proposalId, data, enabledSections, savedSubmissionId)
-      setSavedSubmissionId(submission.id)
+      await ensureDraft()
       setToast('Entwurf gespeichert')
     } catch {
       setToast('Fehler beim Speichern')
@@ -111,27 +115,26 @@ export default function ProposalLightbox({
   const handleSend = async () => {
     setSending(true)
     try {
-      let proposalId = savedDraftId
-      let submissionId = savedSubmissionId
-      if (!proposalId) {
-        const draft = await createProposalDraft(eventId, proposerRole, module)
-        proposalId = draft.id
-      }
-      const submission = await saveProposalDraft(proposalId, data, enabledSections, submissionId)
-      submissionId = submission.id
+      const proposalId = await ensureDraft()
+
       const recipients = availableRecipients.filter(r => selectedRecipients.includes(r.userId))
-      await sendProposal(proposalId, submissionId, recipients)
+      await Promise.all(recipients.map(r =>
+        addRecipient({ proposal_id: proposalId, user_id: r.userId, role: r.role })
+      ))
+
+      const { error } = await sendProposal(proposalId)
+      if (error) throw new Error(error)
+
       setToast('Vorschlag gesendet!')
       setTimeout(() => { onSent?.(); onClose() }, 1200)
     } catch {
       setToast('Fehler beim Senden')
-    } finally {
       setSending(false)
     }
   }
 
   const renderForm = () => {
-    const formProps = { enabledSections, onToggleSection: toggleSection, currentData }
+    const formProps = { enabledSections, onToggleSection: toggleSection }
     switch (module) {
       case 'catering':
         return <ProposalFormCatering data={data as CateringProposalData} onChange={patch as (p: Partial<CateringProposalData>) => void} {...formProps} />
@@ -168,7 +171,7 @@ export default function ProposalLightbox({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 0', flexShrink: 0 }}>
           <div>
             <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--gold)', marginBottom: 2 }}>
-              {parentSubmissionId ? 'Gegenvorschlag' : 'Vorschlag machen'}
+              Vorschlag machen
             </p>
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: 'var(--text)', fontWeight: 500 }}>
               {MODULE_LABELS[module]}
@@ -192,8 +195,7 @@ export default function ProposalLightbox({
           flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10,
         }}>
 
-          {/* Empfänger — immer sichtbar wenn kein Gegenvorschlag */}
-          {!parentSubmissionId && availableRecipients.length > 0 && (
+          {availableRecipients.length > 0 && (
             <div>
               <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 8 }}>
                 Senden an

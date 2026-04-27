@@ -8,29 +8,28 @@ import {
   MODULE_LABELS,
   fetchProposalsForEvent,
   subscribeToProposals,
-  respondToProposal,
+  acceptProposal,
+  rejectProposal,
 } from '@/lib/proposals'
 import { createClient } from '@/lib/supabase/client'
 import ProposalDetailSheet from '@/components/proposals/ProposalDetailSheet'
 
-const ProposalLightbox = dynamic(() => import('@/components/proposals/ProposalLightbox'), { ssr: false })
+const CounterProposalSheet = dynamic(() => import('@/components/proposals/CounterProposalSheet'), { ssr: false })
 
 const STATUS_LABEL: Record<string, string> = {
-  sent: 'Ausstehend',
+  pending:  'Ausstehend',
   accepted: 'Angenommen',
   rejected: 'Abgelehnt',
-  conflict: 'Konflikt',
-  resolved: 'Erledigt',
-  draft: 'Entwurf',
+  in_case:  'In Klärung',
+  draft:    'Entwurf',
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  sent: 'var(--gold)',
+  pending:  'var(--gold)',
   accepted: '#16a34a',
   rejected: '#dc2626',
-  conflict: '#ea580c',
-  resolved: 'var(--text-tertiary)',
-  draft: 'var(--text-tertiary)',
+  in_case:  '#ea580c',
+  draft:    'var(--text-tertiary)',
 }
 
 function timeAgo(dateStr: string): string {
@@ -72,21 +71,19 @@ export default function BrautpaarVorschlaegePage() {
   const load = useCallback(async () => {
     if (!eventId || !userId) return
     const all = await fetchProposalsForEvent(eventId)
-    // Zeige alle Vorschläge die an Brautpaar gesendet wurden
     const myProposals = all.filter(p =>
-      p.all_responses.some(r => r.recipient_id === userId) ||
-      p.proposer_id === userId
+      p.recipients.some(r => r.user_id === userId) ||
+      p.created_by === userId
     )
     setProposals(myProposals)
 
-    // Proposer-Namen laden
-    const ids = Array.from(new Set(myProposals.map(p => p.proposer_id).filter(id => id !== userId)))
+    const ids = Array.from(new Set(myProposals.map(p => p.created_by).filter(id => id !== userId)))
     if (ids.length > 0) {
       const supabase = createClient()
-      const { data } = await supabase.from('profiles').select('id, name').in('id', ids)
+      const { data } = await supabase.from('profiles').select('id, full_name').in('id', ids)
       if (data) {
         const map: Record<string, string> = {}
-        data.forEach((p: { id: string; name: string | null }) => { map[p.id] = p.name ?? 'Unbekannt' })
+        data.forEach((p: { id: string; full_name: string | null }) => { map[p.id] = p.full_name ?? 'Unbekannt' })
         setProposerNames(map)
       }
     }
@@ -101,35 +98,31 @@ export default function BrautpaarVorschlaegePage() {
   }, [eventId, load])
 
   const handleAccept = async (proposal: ProposalWithDetails) => {
-    if (!userId || !proposal.latest_submission) return
-    const myResponse = proposal.all_responses.find(r => r.recipient_id === userId)
-    if (!myResponse) return
-    await respondToProposal(proposal.latest_submission.id, myResponse.id, 'accepted')
+    if (!userId) return
+    await acceptProposal(proposal.id)
     setSelected(null)
     load()
   }
 
   const handleReject = async (proposal: ProposalWithDetails) => {
-    if (!userId || !proposal.latest_submission) return
-    const myResponse = proposal.all_responses.find(r => r.recipient_id === userId)
-    if (!myResponse) return
-    await respondToProposal(proposal.latest_submission.id, myResponse.id, 'rejected')
+    if (!userId) return
+    await rejectProposal(proposal.id)
     setSelected(null)
     load()
   }
 
   const pendingProposals = proposals.filter(p => {
-    const myResponse = p.all_responses.find(r => r.recipient_id === userId)
-    return myResponse?.status === 'pending'
+    const myRecipient = p.recipients.find(r => r.user_id === userId)
+    return myRecipient?.status === 'pending'
   })
   const otherProposals = proposals.filter(p => {
-    const myResponse = p.all_responses.find(r => r.recipient_id === userId)
-    return !myResponse || myResponse.status !== 'pending'
+    const myRecipient = p.recipients.find(r => r.user_id === userId)
+    return !myRecipient || myRecipient.status !== 'pending'
   })
 
   const proposerLabel = (proposal: ProposalWithDetails) => {
-    if (proposal.proposer_role === 'dienstleister') return proposerNames[proposal.proposer_id] ?? 'Dienstleister'
-    if (proposal.proposer_role === 'veranstalter') return 'Veranstalter'
+    if (proposal.created_by_role === 'dienstleister') return proposerNames[proposal.created_by] ?? 'Dienstleister'
+    if (proposal.created_by_role === 'veranstalter') return 'Veranstalter'
     return 'Du'
   }
 
@@ -211,10 +204,10 @@ export default function BrautpaarVorschlaegePage() {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {otherProposals.map(p => {
-              const myResponse = p.all_responses.find(r => r.recipient_id === userId)
-              const status = myResponse?.status === 'pending' ? 'sent' : (p.status ?? 'sent')
+              const myRecipient = p.recipients.find(r => r.user_id === userId)
+              const status = myRecipient?.status === 'pending' ? 'pending' : (p.status ?? 'draft')
 
-              if (p.status === 'conflict') {
+              if (p.status === 'in_case') {
                 return (
                   <div key={p.id} style={{
                     display: 'flex', alignItems: 'center', gap: 14,
@@ -228,17 +221,17 @@ export default function BrautpaarVorschlaegePage() {
                           {MODULE_LABELS[p.module]}
                         </span>
                         <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#ea580c', background: '#ffedd5', padding: '2px 7px', borderRadius: 100 }}>
-                          Konflikt
+                          In Klärung
                         </span>
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                        Einigung mit Veranstalter nötig
+                        Gegenvorschlag läuft
                       </div>
                     </div>
                     <Link
                       href={`/brautpaar/vorschlaege/konflikt/${p.id}`}
                       style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: '#ea580c', color: '#fff', textDecoration: 'none', flexShrink: 0 }}>
-                      Lösen
+                      Öffnen
                     </Link>
                   </div>
                 )
@@ -287,7 +280,7 @@ export default function BrautpaarVorschlaegePage() {
           proposal={selected}
           userId={userId}
           userRole="brautpaar"
-          vendorName={proposerNames[selected.proposer_id]}
+          vendorName={proposerNames[selected.created_by]}
           onClose={() => setSelected(null)}
           onAccept={() => handleAccept(selected)}
           onReject={() => handleReject(selected)}
@@ -296,18 +289,12 @@ export default function BrautpaarVorschlaegePage() {
         />
       )}
 
-      {counterTarget && counterTarget.latest_submission && userId && eventId && (
-        <ProposalLightbox
+      {counterTarget && userId && eventId && (
+        <CounterProposalSheet
+          proposal={counterTarget}
+          userId={userId}
+          userRole="brautpaar"
           eventId={eventId}
-          module={counterTarget.module}
-          proposerRole="brautpaar"
-          availableRecipients={[{
-            userId: counterTarget.proposer_id,
-            role: counterTarget.proposer_role,
-            label: proposerLabel(counterTarget),
-          }]}
-          parentSubmissionId={counterTarget.latest_submission.id}
-          myResponseId={counterTarget.all_responses.find(r => r.recipient_id === userId)?.id}
           onClose={() => setCounterTarget(null)}
           onSent={() => { setCounterTarget(null); load() }}
         />

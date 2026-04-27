@@ -13,7 +13,6 @@ export default async function BrautpaarKonfliktPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Find which event the user belongs to as brautpaar
   const { data: member } = await supabase
     .from('event_members')
     .select('event_id, role')
@@ -26,60 +25,48 @@ export default async function BrautpaarKonfliktPage({ params }: Props) {
 
   const eventId = member.event_id
 
-  const [proposalRes, conflictRes] = await Promise.all([
+  const [{ data: proposal }, { data: caseData }, { data: recipient }] = await Promise.all([
     supabase
       .from('proposals')
-      .select('*')
+      .select('module, title')
       .eq('id', proposalId)
       .eq('event_id', eventId)
       .single(),
     supabase
-      .from('proposal_conflicts')
-      .select('*')
+      .from('cases')
+      .select('id, status')
       .eq('proposal_id', proposalId)
-      .eq('status', 'open')
+      .single(),
+    supabase
+      .from('proposal_recipients')
+      .select('status')
+      .eq('proposal_id', proposalId)
+      .eq('user_id', user.id)
       .single(),
   ])
 
-  if (!proposalRes.data || !conflictRes.data) {
+  if (!proposal || !caseData) {
     redirect('/brautpaar/vorschlaege')
   }
 
-  const { data: submissions } = await supabase
-    .from('proposal_submissions')
-    .select('*')
+  const { data: snapshot } = await supabase
+    .from('proposal_snapshots')
+    .select('snapshot_json')
     .eq('proposal_id', proposalId)
-    .order('created_at')
-
-  const { data: responses } = await supabase
-    .from('proposal_responses')
-    .select('*')
-    .in('submission_id', submissions?.map(s => s.id) ?? [])
-
-  const { data: members } = await supabase
-    .from('event_members')
-    .select('user_id, role, profiles!user_id(name)')
-    .eq('event_id', eventId)
-    .in('role', ['veranstalter', 'brautpaar'])
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const memberList = (members ?? []).map((m: any) => ({
-    userId: m.user_id as string,
-    role: m.role as 'veranstalter' | 'brautpaar',
-    name: (Array.isArray(m.profiles) ? m.profiles[0]?.name : m.profiles?.name) ?? m.role,
-  }))
+    .single()
 
   return (
-    <div style={{ padding: '28px 20px 80px', maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ padding: '28px 20px 80px' }}>
       <KonfliktClient
         eventId={eventId}
-        proposal={proposalRes.data}
-        conflict={conflictRes.data}
-        submissions={submissions ?? []}
-        responses={responses ?? []}
+        proposalId={proposalId}
+        module={proposal.module}
+        caseId={caseData.id}
+        snapshotData={(snapshot?.snapshot_json as Record<string, unknown>) ?? null}
         currentUserId={user.id}
         currentUserRole="brautpaar"
-        members={memberList}
+        myStatus={recipient?.status ?? null}
+        backUrl="/brautpaar/vorschlaege"
       />
     </div>
   )
