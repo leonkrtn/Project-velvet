@@ -13,11 +13,28 @@ export default async function VorschlaegePage({ params }: Props) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const membersRes = await admin
-    .from('event_members')
-    .select('user_id, role, profiles!user_id(name)')
-    .eq('event_id', eventId)
-    .in('role', ['brautpaar', 'dienstleister'])
+  const [membersRes, vendorsRes, hotelsRes, dekoRes] = await Promise.all([
+    admin
+      .from('event_members')
+      .select('user_id, role, profiles!user_id(name)')
+      .eq('event_id', eventId)
+      .in('role', ['brautpaar', 'dienstleister']),
+    supabase
+      .from('organizer_vendor_suggestions')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('organizer_hotel_suggestions')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('deko_suggestions')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending: false }),
+  ])
 
   // Fetch invitation categories for dienstleister (same as chats page)
   const dlUserIds = (membersRes.data ?? [])
@@ -61,6 +78,9 @@ export default async function VorschlaegePage({ params }: Props) {
       eventId={eventId}
       userId={user?.id ?? ''}
       allRecipients={allRecipients}
+      initialVendors={vendorsRes.data ?? []}
+      initialHotels={hotelsRes.data ?? []}
+      initialDeko={dekoRes.data ?? []}
     />
   )
 }
