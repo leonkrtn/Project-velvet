@@ -48,20 +48,14 @@ interface Props {
   initialDeko: DekoSuggestion[]
 }
 
-type Tab = 'module' | 'vendor' | 'hotel' | 'deko'
-
-const TAB_CFG: { key: Tab; label: string; modules: ProposalModule[]; directModule?: ProposalModule }[] = [
-  { key: 'module', label: 'Modul-Vorschläge',  modules: ['catering', 'ablaufplan', 'musik', 'patisserie'] },
-  { key: 'vendor', label: 'Dienstleister',      modules: ['vendor'],  directModule: 'vendor' },
-  { key: 'hotel',  label: 'Hotels',             modules: ['hotel'],   directModule: 'hotel' },
-  { key: 'deko',   label: 'Dekoration',         modules: ['deko'],    directModule: 'deko' },
-]
-
 const MODULE_PICKER_ITEMS: { module: ProposalModule; disabled?: boolean }[] = [
   { module: 'catering' },
   { module: 'ablaufplan' },
   { module: 'musik' },
   { module: 'patisserie' },
+  { module: 'vendor' },
+  { module: 'hotel' },
+  { module: 'deko' },
   { module: 'sitzplan', disabled: true },
 ]
 
@@ -109,7 +103,6 @@ function StatusPill({ status, onChange }: { status: SuggestionStatus; onChange?:
 
 export default function VorschlaegeClient({ eventId, userId, allRecipients, initialVendors, initialHotels, initialDeko }: Props) {
   const supabase = createClient()
-  const [tab, setTab] = useState<Tab>('module')
   const [proposals, setProposals] = useState<ProposalWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedProposal, setSelectedProposal] = useState<ProposalWithDetails | null>(null)
@@ -136,12 +129,8 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
     return unsub
   }, [eventId, loadProposals])
 
-  const currentTabCfg = TAB_CFG.find(t => t.key === tab)!
-  const visibleProposals = proposals.filter(p => currentTabCfg.modules.includes(p.module))
-
   function handleAdd() {
-    if (currentTabCfg.directModule) setActiveModule(currentTabCfg.directModule)
-    else setShowModulePicker(true)
+    setShowModulePicker(true)
   }
 
   async function confirmDelete() {
@@ -192,169 +181,106 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
         </button>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'inline-flex', background: '#EBEBEC', borderRadius: 10, padding: 3, marginBottom: 24, gap: 2 }}>
-        {TAB_CFG.map(t => {
-          const propCount = proposals.filter(p => t.modules.includes(p.module)).length
-          const legacyCount = t.key === 'vendor' ? vendors.length : t.key === 'hotel' ? hotels.length : t.key === 'deko' ? deko.length : 0
-          const total = propCount + legacyCount
-          return (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{
-              padding: '7px 16px', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 500,
-              borderRadius: 8, transition: 'all 0.15s',
-              background: tab === t.key ? 'var(--surface)' : 'transparent',
-              color: tab === t.key ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-            }}>
-              {t.label}
-              {total > 0 && <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 4 }}>({total})</span>}
-            </button>
-          )
-        })}
-      </div>
+      {/* ── All proposals (flat) ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {loading && <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Laden…</p>}
 
-      {/* ── Modul-Vorschläge Tab ── */}
-      {tab === 'module' && (
-        <>
-          {loading && <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Laden…</p>}
-          {!loading && visibleProposals.length === 0 && (
-            <EmptyState label="Noch keine Modul-Vorschläge gesendet." onAdd={handleAdd} />
-          )}
-          {!loading && visibleProposals.length > 0 && (
-            <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={setDeletingId} />
-          )}
-        </>
-      )}
+        {!loading && proposals.length > 0 && (
+          <ProposalList proposals={proposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={setDeletingId} />
+        )}
 
-      {/* ── Dienstleister Tab ── */}
-      {tab === 'vendor' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* New proposals */}
-          {loading && <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Laden…</p>}
-          {!loading && visibleProposals.length > 0 && (
-            <>
-              <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={setDeletingId} />
-            </>
-          )}
-          {/* Legacy suggestions */}
-          {vendors.length > 0 && (
-            <>
-              <SectionLabel label="Bestehende Einträge" />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-                {vendors.map(v => (
-                  <div key={v.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 18 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: 15 }}>{v.name ?? 'Unbenannt'}</div>
-                        {v.category && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{v.category}</div>}
+        {/* Legacy: Dienstleister */}
+        {vendors.length > 0 && (
+          <div>
+            <SectionLabel label="Dienstleister (Alteinträge)" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginTop: 10 }}>
+              {vendors.map(v => (
+                <div key={v.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 18 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 15 }}>{v.name ?? 'Unbenannt'}</div>
+                      {v.category && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{v.category}</div>}
+                    </div>
+                    <button onClick={() => deleteVendor(v.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  {v.description && <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{v.description}</p>}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{fmtMoney(v.price_estimate)}</span>
+                    <StatusPill status={v.status} onChange={s => updateVendorStatus(v.id, s)} />
+                  </div>
+                  {(v.contact_email || v.contact_phone) && (
+                    <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                      {v.contact_email && <div>{v.contact_email}</div>}
+                      {v.contact_phone && <div>{v.contact_phone}</div>}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Legacy: Hotels */}
+        {hotels.length > 0 && (
+          <div>
+            <SectionLabel label="Hotels (Alteinträge)" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+              {hotels.map(h => (
+                <div key={h.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '16px 18px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 15 }}>{h.name ?? 'Unbenannt'}</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                        {h.address ?? '—'} · {h.distance_km} km · {h.total_rooms} Zimmer · {fmtMoney(h.price_per_night)}/Nacht
                       </div>
-                      <button onClick={() => deleteVendor(v.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}>
+                      {h.description && <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>{h.description}</p>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 12 }}>
+                      <StatusPill status={h.status} onChange={s => updateHotelStatus(h.id, s)} />
+                      <button onClick={() => deleteHotel(h.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}>
                         <Trash2 size={14} />
                       </button>
                     </div>
-                    {v.description && <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{v.description}</p>}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: 14, fontWeight: 600 }}>{fmtMoney(v.price_estimate)}</span>
-                      <StatusPill status={v.status} onChange={s => updateVendorStatus(v.id, s)} />
-                    </div>
-                    {(v.contact_email || v.contact_phone) && (
-                      <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
-                        {v.contact_email && <div>{v.contact_email}</div>}
-                        {v.contact_phone && <div>{v.contact_phone}</div>}
-                      </div>
-                    )}
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-          {!loading && visibleProposals.length === 0 && vendors.length === 0 && (
-            <EmptyState label="Noch keine Dienstleister vorgeschlagen." onAdd={handleAdd} />
-          )}
-        </div>
-      )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-      {/* ── Hotels Tab ── */}
-      {tab === 'hotel' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {!loading && visibleProposals.length > 0 && (
-            <>
-              <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={setDeletingId} />
-            </>
-          )}
-          {hotels.length > 0 && (
-            <>
-              <SectionLabel label="Bestehende Einträge" />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {hotels.map(h => (
-                  <div key={h.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '16px 18px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: 15 }}>{h.name ?? 'Unbenannt'}</div>
-                        <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                          {h.address ?? '—'} · {h.distance_km} km · {h.total_rooms} Zimmer · {fmtMoney(h.price_per_night)}/Nacht
-                        </div>
-                        {h.description && <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>{h.description}</p>}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 12 }}>
-                        <StatusPill status={h.status} onChange={s => updateHotelStatus(h.id, s)} />
-                        <button onClick={() => deleteHotel(h.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
+        {/* Legacy: Dekoration */}
+        {deko.length > 0 && (
+          <div>
+            <SectionLabel label="Dekoration (Alteinträge)" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12, marginTop: 10 }}>
+              {deko.map(d => (
+                <div key={d.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  <div style={{ height: 140, background: '#F5F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    {d.image_url
+                      ? <img src={d.image_url} alt={d.title ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <ImageIcon size={28} color="var(--text-tertiary)" />
+                    }
+                    <button onClick={() => deleteDeko(d.id)} style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.5)', border: 'none', cursor: 'pointer', padding: 5, borderRadius: 6, color: '#fff', display: 'flex' }}>
+                      <Trash2 size={13} />
+                    </button>
                   </div>
-                ))}
-              </div>
-            </>
-          )}
-          {!loading && visibleProposals.length === 0 && hotels.length === 0 && (
-            <EmptyState label="Noch keine Hotels vorgeschlagen." onAdd={handleAdd} />
-          )}
-        </div>
-      )}
+                  <div style={{ padding: 12 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{d.title ?? 'Unbenannt'}</div>
+                    {d.description && <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>{d.description}</p>}
+                    <StatusPill status={d.status} onChange={s => updateDekoStatus(d.id, s)} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-      {/* ── Dekoration Tab ── */}
-      {tab === 'deko' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {!loading && visibleProposals.length > 0 && (
-            <>
-              <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={setDeletingId} />
-            </>
-          )}
-          {deko.length > 0 && (
-            <>
-              <SectionLabel label="Bestehende Einträge" />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-                {deko.map(d => (
-                  <div key={d.id} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
-                    <div style={{ height: 140, background: '#F5F5F7', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                      {d.image_url
-                        ? <img src={d.image_url} alt={d.title ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : <ImageIcon size={28} color="var(--text-tertiary)" />
-                      }
-                      <button onClick={() => deleteDeko(d.id)} style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.5)', border: 'none', cursor: 'pointer', padding: 5, borderRadius: 6, color: '#fff', display: 'flex' }}>
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                    <div style={{ padding: 12 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{d.title ?? 'Unbenannt'}</div>
-                      {d.description && <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>{d.description}</p>}
-                      <StatusPill status={d.status} onChange={s => updateDekoStatus(d.id, s)} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-          {!loading && visibleProposals.length === 0 && deko.length === 0 && (
-            <EmptyState label="Noch keine Deko-Vorschläge." onAdd={handleAdd} />
-          )}
-        </div>
-      )}
+        {!loading && proposals.length === 0 && vendors.length === 0 && hotels.length === 0 && deko.length === 0 && (
+          <EmptyState label="Noch keine Vorschläge erstellt." onAdd={handleAdd} />
+        )}
+      </div>
 
       {/* Module picker */}
       {showModulePicker && (

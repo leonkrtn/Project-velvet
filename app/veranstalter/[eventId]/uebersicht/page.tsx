@@ -101,6 +101,7 @@ export default async function UebersichtPage({ params }: Props) {
     organizerCostsRes,
     staffRes,
     daysRes,
+    proposalsRes,
   ] = await Promise.all([
     supabase.from('events').select('id, title, date, budget_total, projektphase, organizer_fee').eq('id', eventId).single(),
     supabase.from('event_members').select('id, role').eq('event_id', eventId),
@@ -114,6 +115,7 @@ export default async function UebersichtPage({ params }: Props) {
     supabase.from('event_organizer_costs').select('amount').eq('event_id', eventId),
     supabase.from('organizer_staff').select('id, hourly_rate').eq('organizer_id', user.id),
     supabase.from('personalplanung_days').select('id').eq('event_id', eventId),
+    supabase.from('proposals').select('id, status').eq('event_id', eventId).eq('proposer_role', 'veranstalter'),
   ])
 
   const event = eventRes.data
@@ -165,6 +167,9 @@ export default async function UebersichtPage({ params }: Props) {
   const totalSpent = budgetItems.reduce((s, b) => s + (b.actual ?? 0), 0)
   const budgetPercent = budgetTotal > 0 ? Math.min(100, (totalSpent / budgetTotal) * 100) : 0
   const confirmedVendors = vendors.filter(v => v.status === 'bestaetigt').length
+  const allProposals = proposalsRes.data ?? []
+  const draftProposals = allProposals.filter(p => p.status === 'draft').length
+  const sentProposals = allProposals.filter(p => p.status !== 'draft').length
 
   const phase = (event.projektphase as Projektphase | null) ?? 'Planung'
   const phaseStyle = PHASE_COLORS[phase]
@@ -216,9 +221,12 @@ export default async function UebersichtPage({ params }: Props) {
               <SectionItem label="Bestätigte Dienstleister" value={confirmedVendors.toString()} clickable />
             </Link>
           </div>
-          <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', background: 'rgba(0,0,0,0.015)' }}>
-            <Link href={`/veranstalter/${eventId}/vorschlaege`} style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '6px 12px', display: 'inline-block' }}>
-              Vorschläge verwalten
+          <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+            <Link href={`/veranstalter/${eventId}/vorschlaege`} style={{ textDecoration: 'none', display: 'block' }}>
+              <SectionItem label="Vorschläge (Entwurf)" value={draftProposals.toString()} clickable />
+            </Link>
+            <Link href={`/veranstalter/${eventId}/vorschlaege`} style={{ textDecoration: 'none', display: 'block' }}>
+              <SectionItem label="Vorschläge (Versendet)" value={sentProposals.toString()} clickable />
             </Link>
           </div>
         </div>
