@@ -21,7 +21,8 @@ import MusicTab      from './tabs/MusicTab'
 import DecorTab      from './tabs/DecorTab'
 import FilesTab      from './tabs/FilesTab'
 
-const ProposalLightbox = dynamic(() => import('@/components/proposals/ProposalLightbox'), { ssr: false })
+const ProposalLightbox    = dynamic(() => import('@/components/proposals/ProposalLightbox'), { ssr: false })
+const ProposalDetailSheet = dynamic(() => import('@/components/proposals/ProposalDetailSheet'), { ssr: false })
 
 // Registry: Permission-Key → Tab-Komponente
 const TAB_REGISTRY: Record<string, React.ComponentType<{ eventId: string }>> = {
@@ -333,8 +334,7 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
 function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId: string | null; onClose: () => void }) {
   const [proposals, setProposals] = useState<Awaited<ReturnType<typeof fetchProposalsForEvent>>>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<string | null>(null)
-  const [showCounter, setShowCounter] = useState(false)
+  const [selectedProposal, setSelectedProposal] = useState<(typeof proposals)[0] | null>(null)
 
   const load = async () => {
     const data = await fetchProposalsForEvent(eventId)
@@ -348,24 +348,19 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
     return unsub
   }, [eventId])
 
-  // Inbox: Proposals bei denen ich als vendor eine pending response habe
-  // (d.h. jemand hat einen Gegenvorschlag an mich gesendet)
+  // Inbox: alle Proposals bei denen ich als Empfänger eine pending response habe
   const inbox = proposals.filter(p =>
     p.my_response?.status === 'pending' &&
     p.latest_submission?.submitted_by !== userId
   )
 
-  const selectedProposal = inbox.find(p => p.id === selected)
-
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '36px 40px 60px', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-        <div>
-          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-tertiary)', marginBottom: 2 }}>
-            Posteingang
-          </p>
-          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.5px' }}>Gegenvorschläge</h1>
-        </div>
+      <div style={{ marginBottom: 28 }}>
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-tertiary)', marginBottom: 2 }}>
+          Posteingang
+        </p>
+        <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.5px' }}>Eingegangene Vorschläge</h1>
       </div>
 
       {loading ? (
@@ -373,43 +368,58 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
       ) : inbox.length === 0 ? (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '40px 24px', textAlign: 'center' }}>
           <Inbox size={32} style={{ color: 'var(--text-tertiary)', marginBottom: 12 }} />
-          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Keine offenen Gegenvorschläge</p>
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 6 }}>
-            Wenn Veranstalter oder Brautpaar einen Gegenvorschlag senden, erscheint er hier.
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>Keine offenen Vorschläge</p>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6 }}>
+            Wenn der Veranstalter einen Vorschlag sendet, erscheint er hier.
           </p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {inbox.map(p => {
             const sub = p.latest_submission
-            const { MODULE_LABELS } = require('@/lib/proposals')
             return (
-              <button key={p.id} onClick={() => setSelected(p.id === selected ? null : p.id)}
+              <button key={p.id} onClick={() => setSelectedProposal(p)}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '14px 18px', borderRadius: 12,
-                  border: `1px solid ${selected === p.id ? 'var(--gold)' : 'var(--border)'}`,
-                  background: selected === p.id ? 'var(--gold-pale)' : 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
                   cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                  width: '100%',
                 }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                      {MODULE_LABELS[p.module as keyof typeof MODULE_LABELS]}
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {require('@/lib/proposals').MODULE_LABELS[p.module]}
                     </span>
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
                       background: 'rgba(201,168,76,0.15)', color: 'var(--gold)',
-                    }}>Gegenvorschlag</span>
+                    }}>Offen</span>
                   </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {sub ? new Date(sub.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
+                    {p.proposer_name ? ` · von ${p.proposer_name}` : ''}
                   </p>
                 </div>
+                <span style={{ fontSize: 20, color: 'var(--text-tertiary)' }}>›</span>
               </button>
             )
           })}
         </div>
+      )}
+
+      {selectedProposal && userId && (
+        <ProposalDetailSheet
+          proposal={selectedProposal}
+          userId={userId}
+          userRole="dienstleister"
+          onClose={() => setSelectedProposal(null)}
+          onAccept={() => { setSelectedProposal(null); load() }}
+          onReject={() => { setSelectedProposal(null); load() }}
+          onCounter={() => { setSelectedProposal(null); load() }}
+          onRefresh={load}
+        />
       )}
     </div>
   )
