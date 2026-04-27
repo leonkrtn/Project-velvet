@@ -1,14 +1,15 @@
 import {
   MessageSquare, Calendar, MapPin, Users, Grid2X2,
-  UtensilsCrossed, Cake, Camera, Music2, Flower2, FileText,
+  UtensilsCrossed, Cake, Camera, Music2, Flower2, FileText, Lightbulb,
   type LucideIcon,
 } from 'lucide-react'
 
 export interface ModuleDef {
-  key:      string
-  label:    string
-  icon:     LucideIcon
-  required?: boolean
+  key:         string
+  label:       string
+  icon:        LucideIcon
+  required?:   boolean
+  readonlyKey?: string
 }
 
 export const ALL_MODULES: ModuleDef[] = [
@@ -23,6 +24,7 @@ export const ALL_MODULES: ModuleDef[] = [
   { key: 'mod_music',      label: 'Musik',               icon: Music2 },
   { key: 'mod_decor',      label: 'Dekoration',          icon: Flower2 },
   { key: 'mod_files',      label: 'Dokumente',           icon: FileText },
+  { key: 'mod_proposals',  label: 'Vorschläge',          icon: Lightbulb, readonlyKey: 'mod_proposals_read' },
 ]
 
 export const MODULE_MAP: Record<string, ModuleDef> = Object.fromEntries(
