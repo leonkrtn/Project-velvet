@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { Menu, X, CalendarDays, ChevronLeft, Lightbulb, Inbox, Plus } from 'lucide-react'
 import { ALL_MODULES, MODULE_MAP } from '@/lib/vendor-modules'
 import type { ProposalModule, ProposalRole } from '@/lib/proposals'
-import { fetchProposalsForEvent, subscribeToProposals } from '@/lib/proposals'
+import { fetchProposalsForEvent, subscribeToProposals, respondToProposal } from '@/lib/proposals'
 import { createClient } from '@/lib/supabase/client'
 import dynamic from 'next/dynamic'
 
@@ -21,8 +21,9 @@ import MusicTab      from './tabs/MusicTab'
 import DecorTab      from './tabs/DecorTab'
 import FilesTab      from './tabs/FilesTab'
 
-const ProposalLightbox    = dynamic(() => import('@/components/proposals/ProposalLightbox'), { ssr: false })
-const ProposalDetailSheet = dynamic(() => import('@/components/proposals/ProposalDetailSheet'), { ssr: false })
+const ProposalLightbox      = dynamic(() => import('@/components/proposals/ProposalLightbox'), { ssr: false })
+const ProposalDetailSheet   = dynamic(() => import('@/components/proposals/ProposalDetailSheet'), { ssr: false })
+const CounterProposalSheet  = dynamic(() => import('@/components/proposals/CounterProposalSheet'), { ssr: false })
 
 // Registry: Permission-Key → Tab-Komponente
 const TAB_REGISTRY: Record<string, React.ComponentType<{ eventId: string }>> = {
@@ -335,6 +336,7 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
   const [proposals, setProposals] = useState<Awaited<ReturnType<typeof fetchProposalsForEvent>>>([])
   const [loading, setLoading] = useState(true)
   const [selectedProposal, setSelectedProposal] = useState<(typeof proposals)[0] | null>(null)
+  const [counterTarget, setCounterTarget] = useState<(typeof proposals)[0] | null>(null)
 
   const load = async () => {
     const data = await fetchProposalsForEvent(eventId)
@@ -347,6 +349,29 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
     const unsub = subscribeToProposals(eventId, load)
     return unsub
   }, [eventId])
+
+  async function handleAccept(p: (typeof proposals)[0]) {
+    const subId = p.latest_submission?.id
+    const responseId = p.my_response?.id
+    if (!subId || !responseId) return
+    await respondToProposal(subId, responseId, 'accepted')
+    setSelectedProposal(null)
+    load()
+  }
+
+  async function handleReject(p: (typeof proposals)[0]) {
+    const subId = p.latest_submission?.id
+    const responseId = p.my_response?.id
+    if (!subId || !responseId) return
+    await respondToProposal(subId, responseId, 'rejected')
+    setSelectedProposal(null)
+    load()
+  }
+
+  function handleCounter(p: (typeof proposals)[0]) {
+    setSelectedProposal(null)
+    setCounterTarget(p)
+  }
 
   // Inbox: alle Proposals bei denen ich als Empfänger eine pending response habe
   const inbox = proposals.filter(p =>
@@ -415,10 +440,21 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
           userId={userId}
           userRole="dienstleister"
           onClose={() => setSelectedProposal(null)}
-          onAccept={() => { setSelectedProposal(null); load() }}
-          onReject={() => { setSelectedProposal(null); load() }}
-          onCounter={() => { setSelectedProposal(null); load() }}
+          onAccept={() => handleAccept(selectedProposal)}
+          onReject={() => handleReject(selectedProposal)}
+          onCounter={() => handleCounter(selectedProposal)}
           onRefresh={load}
+        />
+      )}
+
+      {counterTarget && userId && (
+        <CounterProposalSheet
+          proposal={counterTarget}
+          userId={userId}
+          userRole="dienstleister"
+          eventId={eventId}
+          onClose={() => setCounterTarget(null)}
+          onSent={() => { setCounterTarget(null); load() }}
         />
       )}
     </div>
