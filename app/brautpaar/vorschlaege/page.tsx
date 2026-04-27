@@ -80,10 +80,10 @@ export default function BrautpaarVorschlaegePage() {
     const ids = Array.from(new Set(myProposals.map(p => p.created_by).filter(id => id !== userId)))
     if (ids.length > 0) {
       const supabase = createClient()
-      const { data } = await supabase.from('profiles').select('id, full_name').in('id', ids)
+      const { data } = await supabase.from('profiles').select('id, name').in('id', ids)
       if (data) {
         const map: Record<string, string> = {}
-        data.forEach((p: { id: string; full_name: string | null }) => { map[p.id] = p.full_name ?? 'Unbekannt' })
+        data.forEach((p: { id: string; name: string | null }) => { map[p.id] = p.name ?? 'Unbekannt' })
         setProposerNames(map)
       }
     }

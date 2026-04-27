@@ -50,7 +50,7 @@ export interface ProposalRecipient {
   status: RecipientStatus
   responded_at: string | null
   // joined
-  profile?: { full_name: string | null; avatar_url: string | null }
+  profile?: { name: string | null; }
 }
 
 export interface ProposalSnapshot {
@@ -87,7 +87,7 @@ export interface CaseMessage {
   user_id: string
   content: string
   created_at: string
-  profile?: { full_name: string | null; avatar_url: string | null }
+  profile?: { name: string | null; }
 }
 
 export interface FieldLock {
@@ -110,7 +110,7 @@ export interface HistoryEntry {
   changed_by_role: string
   proposal_id: string | null
   created_at: string
-  profile?: { full_name: string | null }
+  profile?: { name: string | null }
 }
 
 // Angereicherter Typ für UI-Darstellung
@@ -119,7 +119,7 @@ export interface ProposalWithDetails extends Proposal {
   snapshot: ProposalSnapshot | null
   fields: ProposalField[]
   case: Case | null
-  creator_profile?: { full_name: string | null; avatar_url: string | null }
+  creator_profile?: { name: string | null; }
 }
 
 
@@ -720,7 +720,7 @@ export async function fetchProposal(proposalId: string): Promise<ProposalWithDet
 
   const { data: proposal } = await supabase
     .from('proposals')
-    .select('*, creator_profile:profiles!created_by(full_name, avatar_url)')
+    .select('*, creator_profile:profiles!created_by(name)')
     .eq('id', proposalId)
     .single()
 
@@ -734,7 +734,7 @@ export async function fetchProposal(proposalId: string): Promise<ProposalWithDet
   ] = await Promise.all([
     supabase
       .from('proposal_recipients')
-      .select('*, profile:profiles!user_id(full_name, avatar_url)')
+      .select('*, profile:profiles!user_id(name)')
       .eq('proposal_id', proposalId)
       .order('id'),
     supabase
@@ -769,7 +769,7 @@ export async function fetchProposalsForEvent(eventId: string): Promise<ProposalW
 
   const { data: proposals } = await supabase
     .from('proposals')
-    .select('*, creator_profile:profiles!created_by(full_name, avatar_url)')
+    .select('*, creator_profile:profiles!created_by(name)')
     .eq('event_id', eventId)
     .order('created_at', { ascending: false })
 
@@ -780,7 +780,7 @@ export async function fetchProposalsForEvent(eventId: string): Promise<ProposalW
   const [{ data: recipients }, { data: snapshots }] = await Promise.all([
     supabase
       .from('proposal_recipients')
-      .select('*, profile:profiles!user_id(full_name, avatar_url)')
+      .select('*, profile:profiles!user_id(name)')
       .in('proposal_id', ids),
     supabase
       .from('proposal_snapshots')
@@ -928,7 +928,7 @@ export async function fetchRecipients(proposalId: string): Promise<ProposalRecip
   const supabase = createClient()
   const { data } = await supabase
     .from('proposal_recipients')
-    .select('*, profile:profiles!user_id(full_name, avatar_url)')
+    .select('*, profile:profiles!user_id(name)')
     .eq('proposal_id', proposalId)
   return (data ?? []) as ProposalRecipient[]
 }
@@ -1021,7 +1021,7 @@ export async function fetchCaseMessages(caseId: string): Promise<CaseMessage[]> 
   const supabase = createClient()
   const { data } = await supabase
     .from('case_messages')
-    .select('*, profile:profiles!user_id(full_name, avatar_url)')
+    .select('*, profile:profiles!user_id(name)')
     .eq('case_id', caseId)
     .order('created_at', { ascending: true })
   return (data ?? []) as CaseMessage[]
@@ -1320,7 +1320,7 @@ export async function fetchProposalHistory(proposalId: string): Promise<HistoryE
   const supabase = createClient()
   const { data } = await supabase
     .from('history_log')
-    .select('*, profile:profiles!changed_by(full_name)')
+    .select('*, profile:profiles!changed_by(name)')
     .eq('proposal_id', proposalId)
     .order('created_at', { ascending: false })
   return (data ?? []) as HistoryEntry[]

@@ -409,7 +409,7 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                   {new Date(p.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  {p.creator_profile?.full_name ? ` · von ${p.creator_profile.full_name}` : ''}
+                  {p.creator_profile?.name ? ` · von ${p.creator_profile.name}` : ''}
                 </p>
               </div>
               <span style={{ fontSize: 20, color: 'var(--text-tertiary)' }}>›</span>

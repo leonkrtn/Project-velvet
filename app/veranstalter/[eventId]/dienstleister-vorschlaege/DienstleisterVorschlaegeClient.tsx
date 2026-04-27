@@ -63,11 +63,11 @@ export default function DienstleisterVorschlaegeClient({ eventId, userId }: Prop
       const supabase = createClient()
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, name')
         .in('id', ids)
       if (data) {
         const map: Record<string, string> = {}
-        data.forEach((p: { id: string; full_name: string | null }) => { map[p.id] = p.full_name ?? 'Unbekannt' })
+        data.forEach((p: { id: string; name: string | null }) => { map[p.id] = p.name ?? 'Unbekannt' })
         setVendorNames(map)
       }
     }

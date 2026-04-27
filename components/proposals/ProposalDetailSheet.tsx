@@ -112,7 +112,7 @@ export default function ProposalDetailSheet({
                 color: r.status === 'accepted' ? '#16a34a' : r.status === 'rejected' ? '#dc2626' : 'var(--text-secondary)',
                 border: '1px solid transparent',
               }}>
-                {r.profile?.full_name ?? r.role} · {r.status === 'accepted' ? '✓' : r.status === 'rejected' ? '✗' : r.status === 'countered' ? '↩' : '…'}
+                {r.profile?.name ?? r.role} · {r.status === 'accepted' ? '✓' : r.status === 'rejected' ? '✗' : r.status === 'countered' ? '↩' : '…'}
               </span>
             ))}
           </div>
