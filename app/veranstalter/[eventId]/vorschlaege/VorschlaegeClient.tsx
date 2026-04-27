@@ -115,6 +115,8 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
   const [selectedProposal, setSelectedProposal] = useState<ProposalWithDetails | null>(null)
   const [activeModule, setActiveModule] = useState<ProposalModule | null>(null)
   const [editingDraft, setEditingDraft] = useState<ProposalWithDetails | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [showModulePicker, setShowModulePicker] = useState(false)
 
   // Legacy suggestion state
@@ -142,9 +144,12 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
     else setShowModulePicker(true)
   }
 
-  async function handleDeleteProposal(id: string) {
-    if (!confirm('Vorschlag wirklich löschen?')) return
-    await deleteProposal(id)
+  async function confirmDelete() {
+    if (!deletingId) return
+    setDeleting(true)
+    await deleteProposal(deletingId)
+    setDeletingId(null)
+    setDeleting(false)
     loadProposals()
   }
 
@@ -216,7 +221,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
             <EmptyState label="Noch keine Modul-Vorschläge gesendet." onAdd={handleAdd} />
           )}
           {!loading && visibleProposals.length > 0 && (
-            <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={handleDeleteProposal} />
+            <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={setDeletingId} />
           )}
         </>
       )}
@@ -229,7 +234,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           {!loading && visibleProposals.length > 0 && (
             <>
               <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={handleDeleteProposal} />
+              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={setDeletingId} />
             </>
           )}
           {/* Legacy suggestions */}
@@ -276,7 +281,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           {!loading && visibleProposals.length > 0 && (
             <>
               <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={handleDeleteProposal} />
+              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={setDeletingId} />
             </>
           )}
           {hotels.length > 0 && (
@@ -317,7 +322,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           {!loading && visibleProposals.length > 0 && (
             <>
               <SectionLabel label="Versendete Vorschläge" />
-              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={handleDeleteProposal} />
+              <ProposalList proposals={visibleProposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={setDeletingId} />
             </>
           )}
           {deko.length > 0 && (
@@ -407,6 +412,29 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           onClose={() => setEditingDraft(null)}
           onSent={() => { setEditingDraft(null); loadProposals() }}
         />
+      )}
+
+      {/* Delete confirmation */}
+      {deletingId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={() => !deleting && setDeletingId(null)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 28, width: 380, maxWidth: '100%', boxShadow: 'var(--shadow-md)' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 8 }}>Vorschlag löschen?</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.5 }}>
+              Der Vorschlag wird unwiderruflich gelöscht — inklusive aller Antworten der Empfänger.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setDeletingId(null)} disabled={deleting}
+                style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit' }}>
+                Abbrechen
+              </button>
+              <button onClick={confirmDelete} disabled={deleting}
+                style={{ padding: '9px 20px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: deleting ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, fontFamily: 'inherit' }}>
+                {deleting ? 'Löschen…' : 'Löschen'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Detail Sheet */}
