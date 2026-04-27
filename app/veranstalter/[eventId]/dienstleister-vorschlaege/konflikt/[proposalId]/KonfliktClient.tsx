@@ -10,6 +10,7 @@ import {
   type MusikProposalData,
   type PatisserieProposalData,
   type CaseMessage,
+  type FieldLock,
   MODULE_LABELS,
   MODULE_SECTIONS,
   fetchCaseMessages,
@@ -17,6 +18,8 @@ import {
   subscribeToCaseMessages,
   acceptProposal,
   rejectProposal,
+  fetchActiveLocks,
+  subscribeToProposal,
 } from '@/lib/proposals'
 import ProposalFormCatering from '@/components/proposals/ProposalFormCatering'
 import ProposalFormAblaufplan from '@/components/proposals/ProposalFormAblaufplan'
@@ -72,6 +75,7 @@ export default function KonfliktClient({
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<'form' | 'chat'>('chat')
+  const [activeLocks, setActiveLocks] = useState<FieldLock[]>([])
   const chatBottomRef = useRef<HTMLDivElement>(null)
 
   const loadMessages = useCallback(async () => {
@@ -79,11 +83,20 @@ export default function KonfliktClient({
     setMessages(msgs)
   }, [caseId])
 
+  const loadLocks = useCallback(async () => {
+    const locks = await fetchActiveLocks(proposalId)
+    setActiveLocks(locks)
+  }, [proposalId])
+
   useEffect(() => {
     loadMessages()
-    const sub = subscribeToCaseMessages(caseId, () => loadMessages())
-    return () => sub.unsubscribe()
-  }, [caseId, loadMessages])
+    loadLocks()
+    const msgSub = subscribeToCaseMessages(caseId, () => loadMessages())
+    const lockSub = subscribeToProposal(proposalId, {
+      onLockChange: () => loadLocks(),
+    })
+    return () => { msgSub.unsubscribe(); lockSub.unsubscribe() }
+  }, [caseId, proposalId, loadMessages, loadLocks])
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -160,12 +173,44 @@ export default function KonfliktClient({
 
       {/* Form view */}
       {activeView === 'form' && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-          {snapshotData
-            ? renderReadonlyForm(module, snapshotData as ProposalModuleData, sections)
-            : <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Keine Snapshot-Daten vorhanden.</p>
-          }
-        </div>
+        <>
+          {/* Lock indicator panel */}
+          {activeLocks.length > 0 && (
+            <div style={{
+              background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10,
+              padding: '10px 14px', marginBottom: 14,
+            }}>
+              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#92400e', marginBottom: 6 }}>
+                🔒 Derzeit gesperrte Felder
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {activeLocks.map(lock => {
+                  const parts = lock.field_path.split('.')
+                  const fieldKey = parts[parts.length - 1]
+                  const segment = parts.slice(0, -2).join('.')
+                  const isMe = lock.locked_by === currentUserId
+                  const expiresIn = Math.max(0, Math.round((new Date(lock.expires_at).getTime() - Date.now()) / 1000))
+                  return (
+                    <div key={lock.id} style={{ fontSize: 12, color: '#78350f', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontWeight: 600 }}>{segment} · {fieldKey}</span>
+                      <span style={{ color: isMe ? '#16a34a' : '#dc2626', fontWeight: 500 }}>
+                        {isMe ? '(Du)' : '(Anderer Nutzer)'}
+                      </span>
+                      <span style={{ color: '#a16207', fontSize: 11 }}>noch {expiresIn}s</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
+            {snapshotData
+              ? renderReadonlyForm(module, snapshotData as ProposalModuleData, sections)
+              : <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Keine Snapshot-Daten vorhanden.</p>
+            }
+          </div>
+        </>
       )}
 
       {/* Chat view */}
