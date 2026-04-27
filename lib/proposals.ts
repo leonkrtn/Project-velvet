@@ -715,6 +715,18 @@ export async function createProposalDraft(params: {
   return { proposal: proposal as Proposal, snapshot: snap as ProposalSnapshot }
 }
 
+export async function updateSnapshot(
+  proposalId: string,
+  snapshot: SegmentData
+): Promise<{ error?: string }> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('proposal_snapshots')
+    .update({ snapshot_json: snapshot })
+    .eq('proposal_id', proposalId)
+  return { error: error?.message }
+}
+
 export async function fetchProposal(proposalId: string): Promise<ProposalWithDetails | null> {
   const supabase = createClient()
 
@@ -910,7 +922,7 @@ export async function addRecipient(params: {
   const supabase = createClient()
   const { error } = await supabase
     .from('proposal_recipients')
-    .insert({ ...params, status: 'pending' })
+    .upsert({ ...params, status: 'pending' }, { onConflict: 'proposal_id,user_id', ignoreDuplicates: true })
   return { error: error?.message }
 }
 

@@ -115,7 +115,7 @@ export default async function UebersichtPage({ params }: Props) {
     supabase.from('event_organizer_costs').select('amount').eq('event_id', eventId),
     supabase.from('organizer_staff').select('id, hourly_rate').eq('organizer_id', user.id),
     supabase.from('personalplanung_days').select('id').eq('event_id', eventId),
-    supabase.from('proposals').select('id, status').eq('event_id', eventId).eq('proposer_role', 'veranstalter'),
+    supabase.from('proposals').select('id, status').eq('event_id', eventId).eq('created_by_role', 'veranstalter'),
   ])
 
   const event = eventRes.data
