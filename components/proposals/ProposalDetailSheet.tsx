@@ -41,13 +41,11 @@ function noop() {}
 export default function ProposalDetailSheet({
   proposal, userId, userRole, vendorName, onClose, onAccept, onReject, onCounter, onRefresh,
 }: Props) {
-  // V2: Snapshot enthält die Formulardaten
   const formData = proposal.snapshot?.snapshot_json as Record<string, unknown> | undefined
   const myRecipient = proposal.recipients.find(r => r.user_id === userId)
   const isPending = myRecipient?.status === 'pending'
   const sections = MODULE_SECTIONS[proposal.module].map(s => s.key)
 
-  // Delta & Merge state
   const [showDelta, setShowDelta] = useState(false)
   const [showMerge, setShowMerge] = useState(false)
   const [mergeError, setMergeError] = useState<string | null>(null)
@@ -60,7 +58,6 @@ export default function ProposalDetailSheet({
 
   const deltas = buildDeltaFields(loadedFields)
 
-  // Load fields on demand when opening merge UI (list view doesn't include them)
   const handleOpenMerge = React.useCallback(async () => {
     if (loadedFields.length === 0 && proposal.fields.length === 0) {
       const { fetchProposalFields } = await import('@/lib/proposals')
@@ -73,7 +70,6 @@ export default function ProposalDetailSheet({
   const handleMerge = async (mergedState: SegmentData, _selections: FieldMergeSelection) => {
     setMerging(true)
     setMergeError(null)
-    // Validate before writing
     const { validateMerge: validate, finalizeMerge: finalize } = await import('@/lib/proposals')
     const validation = await validate(proposal.id)
     if (!validation.ok) {
@@ -81,7 +77,6 @@ export default function ProposalDetailSheet({
       setMerging(false)
       return
     }
-    // mergedState already computed by ProposalMergeUI → write directly
     const { error } = await finalize(proposal.id, mergedState)
     if (error) {
       setMergeError(error)
@@ -119,60 +114,75 @@ export default function ProposalDetailSheet({
     }
   }
 
-  // V2: created_by_role statt proposer_role
   const proposerLabel = proposal.created_by_role === 'dienstleister'
     ? (vendorName ?? 'Dienstleister')
     : proposal.created_by_role === 'veranstalter'
       ? 'Veranstalter'
       : 'Brautpaar'
 
-  // Empfänger-Status anzeigen
   const recipientStatus = myRecipient?.status
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }} />
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      />
       <div style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 201,
-        background: 'var(--bg)', borderRadius: '20px 20px 0 0',
-        maxHeight: '92dvh', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
-        animation: 'slideUp 0.3s ease',
+        position: 'fixed',
+        left: '50%', top: '50%',
+        transform: 'translate(-50%,-50%)',
+        zIndex: 201,
+        width: 'min(680px, calc(100dvw - 24px))',
+        maxHeight: 'min(92dvh, 840px)',
+        background: 'var(--bg)',
+        borderRadius: 20,
+        display: 'flex', flexDirection: 'column',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
+        animation: 'modalIn 0.22s ease',
+        overflow: 'hidden',
       }}>
+
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 14px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
-          <div>
-            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--gold)', marginBottom: 2 }}>
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          padding: '20px 20px 16px', flexShrink: 0, borderBottom: '1px solid var(--border)',
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--gold)', marginBottom: 3 }}>
               Vorschlag von {proposerLabel}
             </p>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: 'var(--text-primary)', fontWeight: 500 }}>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 21, color: 'var(--text-primary)', fontWeight: 500, lineHeight: 1.2 }}>
               {proposal.title || MODULE_LABELS[proposal.module]}
             </h2>
+
+            {/* Recipient status row */}
+            {proposal.recipients.length > 1 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                {proposal.recipients.map(r => (
+                  <span key={r.id} style={{
+                    fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100,
+                    background: r.status === 'accepted' ? '#dcfce7' : r.status === 'rejected' ? '#fee2e2' : 'var(--surface)',
+                    color: r.status === 'accepted' ? '#16a34a' : r.status === 'rejected' ? '#dc2626' : 'var(--text-secondary)',
+                  }}>
+                    {r.profile?.name ?? r.role}
+                    {' · '}
+                    {r.status === 'accepted' ? '✓' : r.status === 'rejected' ? '✗' : r.status === 'countered' ? '↩' : '…'}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex' }}>
-            <X size={20} />
+          <button
+            onClick={onClose}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--text-secondary)', padding: 7, display: 'flex', flexShrink: 0, marginLeft: 12, marginTop: 2 }}
+          >
+            <X size={16} />
           </button>
         </div>
 
-        {/* Empfänger-Übersicht */}
-        {proposal.recipients.length > 1 && (
-          <div style={{ padding: '10px 18px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
-            {proposal.recipients.map(r => (
-              <span key={r.id} style={{
-                fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 100,
-                background: r.status === 'accepted' ? '#dcfce7' : r.status === 'rejected' ? '#fee2e2' : 'var(--surface)',
-                color: r.status === 'accepted' ? '#16a34a' : r.status === 'rejected' ? '#dc2626' : 'var(--text-secondary)',
-                border: '1px solid transparent',
-              }}>
-                {r.profile?.name ?? r.role} · {r.status === 'accepted' ? '✓' : r.status === 'rejected' ? '✗' : r.status === 'countered' ? '↩' : '…'}
-              </span>
-            ))}
-          </div>
-        )}
-
         {/* Scroll area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 18px 0' }}>
-          {/* Merge-Modus */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 0' }}>
           {showMerge && proposal.snapshot ? (
             <>
               <p style={{
@@ -199,7 +209,6 @@ export default function ProposalDetailSheet({
             <>
               {renderForm()}
 
-              {/* Delta-Sektion */}
               {deltas.length > 0 && (
                 <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
                   <button
@@ -223,18 +232,18 @@ export default function ProposalDetailSheet({
           <div style={{ height: 24 }} />
         </div>
 
-        {/* Footer actions */}
+        {/* Footer */}
         {isPending && (
           <div style={{
-            padding: '14px 18px calc(env(safe-area-inset-bottom) + 14px)',
+            padding: '14px 20px',
             borderTop: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0,
           }}>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10, textAlign: 'center' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
               Wie möchtest du auf diesen Vorschlag reagieren?
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={onReject} style={{
-                flex: 1, padding: '11px', borderRadius: 'var(--r-md)',
+                flex: 1, padding: '11px', borderRadius: 10,
                 border: '1px solid var(--border)', background: 'none',
                 fontSize: 14, fontWeight: 600, color: '#dc2626',
                 cursor: 'pointer', fontFamily: 'inherit',
@@ -243,7 +252,7 @@ export default function ProposalDetailSheet({
                 <XCircle size={15} /> Ablehnen
               </button>
               <button onClick={onCounter} style={{
-                flex: 1, padding: '11px', borderRadius: 'var(--r-md)',
+                flex: 1, padding: '11px', borderRadius: 10,
                 border: '1px solid var(--border)', background: 'none',
                 fontSize: 14, fontWeight: 600, color: 'var(--text-primary)',
                 cursor: 'pointer', fontFamily: 'inherit',
@@ -252,7 +261,7 @@ export default function ProposalDetailSheet({
                 <MessageSquare size={15} /> Gegenvorschlag
               </button>
               <button onClick={onAccept} style={{
-                flex: 1, padding: '11px', borderRadius: 'var(--r-md)',
+                flex: 1, padding: '11px', borderRadius: 10,
                 border: 'none', background: 'var(--gold)',
                 fontSize: 14, fontWeight: 600, color: '#fff',
                 cursor: 'pointer', fontFamily: 'inherit',
@@ -266,7 +275,7 @@ export default function ProposalDetailSheet({
 
         {!isPending && myRecipient && !canMerge && (
           <div style={{
-            padding: '12px 18px calc(env(safe-area-inset-bottom) + 12px)',
+            padding: '12px 20px',
             borderTop: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0, textAlign: 'center',
           }}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -277,20 +286,19 @@ export default function ProposalDetailSheet({
           </div>
         )}
 
-        {/* Merge-Button: nur für Veranstalter + Ersteller wenn Proposal accepted */}
         {canMerge && !showMerge && (
           <div style={{
-            padding: '14px 18px calc(env(safe-area-inset-bottom) + 14px)',
+            padding: '14px 20px',
             borderTop: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0,
           }}>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10, textAlign: 'center' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
               <CheckCircle size={13} style={{ color: '#16a34a', verticalAlign: 'middle', marginRight: 5 }} />
-              Alle haben zugestimmt. Jetzt Änderungen in den Eventplan übernehmen.
+              Alle haben zugestimmt — Änderungen jetzt in den Eventplan übernehmen.
             </p>
             <button
               onClick={handleOpenMerge}
               style={{
-                width: '100%', padding: '12px', borderRadius: 'var(--r-md)',
+                width: '100%', padding: '13px', borderRadius: 12,
                 border: 'none', background: 'var(--gold)',
                 fontSize: 14, fontWeight: 600, color: '#fff',
                 cursor: 'pointer', fontFamily: 'inherit',
@@ -302,7 +310,13 @@ export default function ProposalDetailSheet({
           </div>
         )}
       </div>
-      <style>{`@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+
+      <style>{`
+        @keyframes modalIn {
+          from { transform: translate(-50%,-49%) scale(0.97); opacity: 0 }
+          to   { transform: translate(-50%,-50%) scale(1);    opacity: 1 }
+        }
+      `}</style>
     </>
   )
 }
