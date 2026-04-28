@@ -54,7 +54,7 @@ export default function BrautpaarVorschlaegePage() {
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
+      if (!user) { setLoading(false); return }
       setUserId(user.id)
 
       const { data: members } = await supabase
@@ -65,7 +65,11 @@ export default function BrautpaarVorschlaegePage() {
         .limit(1)
         .single()
 
-      if (members?.event_id) setEventId(members.event_id)
+      if (members?.event_id) {
+        setEventId(members.event_id)
+      } else {
+        setLoading(false)
+      }
     })
   }, [])
 
