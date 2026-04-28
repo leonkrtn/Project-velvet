@@ -1,7 +1,6 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
 import { ChevronRight, Package, AlertTriangle } from 'lucide-react'
 import {
   type ProposalWithDetails,
@@ -15,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import ProposalDetailSheet from '@/components/proposals/ProposalDetailSheet'
 
 const CounterProposalSheet = dynamic(() => import('@/components/proposals/CounterProposalSheet'), { ssr: false })
+const CaseLightbox = dynamic(() => import('@/components/proposals/CaseLightbox'), { ssr: false })
 
 interface Props {
   eventId: string
@@ -51,6 +51,7 @@ export default function DienstleisterVorschlaegeClient({ eventId, userId }: Prop
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<ProposalWithDetails | null>(null)
   const [counterTarget, setCounterTarget] = useState<ProposalWithDetails | null>(null)
+  const [caseProposal, setCaseProposal] = useState<ProposalWithDetails | null>(null)
   const [vendorNames, setVendorNames] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
@@ -143,8 +144,7 @@ export default function DienstleisterVorschlaegeClient({ eventId, userId }: Prop
                 proposal={p}
                 vendorName={vendorNames[p.created_by] ?? '…'}
                 userId={userId}
-                eventId={eventId}
-                onOpen={() => setSelected(p)}
+                onOpen={() => p.status === 'in_case' ? setCaseProposal(p) : setSelected(p)}
                 highlighted
               />
             ))}
@@ -164,8 +164,7 @@ export default function DienstleisterVorschlaegeClient({ eventId, userId }: Prop
                 proposal={p}
                 vendorName={vendorNames[p.created_by] ?? '…'}
                 userId={userId}
-                eventId={eventId}
-                onOpen={() => setSelected(p)}
+                onOpen={() => p.status === 'in_case' ? setCaseProposal(p) : setSelected(p)}
               />
             ))}
           </div>
@@ -196,17 +195,27 @@ export default function DienstleisterVorschlaegeClient({ eventId, userId }: Prop
           onSent={() => { setCounterTarget(null); load() }}
         />
       )}
+
+      {caseProposal && (
+        <CaseLightbox
+          proposal={caseProposal}
+          userId={userId}
+          userRole="veranstalter"
+          vendorName={vendorNames[caseProposal.created_by] ?? 'Dienstleister'}
+          onClose={() => setCaseProposal(null)}
+          onRefresh={load}
+        />
+      )}
     </div>
   )
 }
 
 function ProposalCard({
-  proposal, vendorName, userId, eventId, onOpen, highlighted,
+  proposal, vendorName, userId, onOpen, highlighted,
 }: {
   proposal: ProposalWithDetails
   vendorName: string
   userId: string
-  eventId: string
   onOpen: () => void
   highlighted?: boolean
 }) {
@@ -215,12 +224,16 @@ function ProposalCard({
 
   if (isInCase) {
     return (
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 14,
-        padding: '14px 16px', borderRadius: 10,
-        background: '#fff7ed', border: '1px solid #fed7aa',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-      }}>
+      <button
+        type="button"
+        onClick={onOpen}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left',
+          padding: '14px 16px', borderRadius: 10,
+          background: '#fff7ed', border: '1px solid #fed7aa',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+          cursor: 'pointer', fontFamily: 'inherit',
+        }}>
         <AlertTriangle size={18} style={{ color: '#ea580c', flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
@@ -235,15 +248,13 @@ function ProposalCard({
             {vendorName} · Gegenvorschlag läuft
           </div>
         </div>
-        <Link
-          href={`/veranstalter/${eventId}/dienstleister-vorschlaege/konflikt/${proposal.id}`}
-          style={{
-            padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-            background: '#ea580c', color: '#fff', textDecoration: 'none', flexShrink: 0,
-          }}>
+        <span style={{
+          padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+          background: '#ea580c', color: '#fff', flexShrink: 0,
+        }}>
           Öffnen
-        </Link>
-      </div>
+        </span>
+      </button>
     )
   }
 

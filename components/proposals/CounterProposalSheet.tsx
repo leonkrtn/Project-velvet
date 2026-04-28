@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   type ProposalWithDetails,
   type ProposalModuleData,
+  type SegmentData,
   type CateringProposalData,
   type AblaufplanProposalData,
   type DekoProposalData,
@@ -16,6 +17,8 @@ import {
   MODULE_SECTIONS,
   MODULE_LABELS,
   counterProposal,
+  computeDeltas,
+  updateSnapshot,
 } from '@/lib/proposals'
 import ProposalFormCatering from './ProposalFormCatering'
 import ProposalFormAblaufplan from './ProposalFormAblaufplan'
@@ -103,7 +106,6 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
   const [sending, setSending] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
-  // Chat
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [newMsg, setNewMsg] = useState('')
@@ -182,10 +184,18 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
   const handleSend = async () => {
     setSending(true)
     try {
-      const { error } = await counterProposal(proposal.id, [])
+      // Compute deltas between snapshot and edited data, then pass to counterProposal
+      const deltas = computeDeltas(
+        (snapshotData ?? null) as SegmentData | null,
+        data as SegmentData,
+        proposal.module
+      )
+      const { error } = await counterProposal(proposal.id, deltas)
       if (error) throw new Error(error)
+      // Persist the edited form state as the new snapshot
+      await updateSnapshot(proposal.id, data as SegmentData)
       setToast('Gegenvorschlag gesendet!')
-      setTimeout(() => onSent(), 1000)
+      setTimeout(() => onSent(), 900)
     } catch {
       setToast('Fehler beim Senden')
       setSending(false)
@@ -199,7 +209,7 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
     setNewMsg('')
     const { data: inserted } = await supabase
       .from('messages')
-      .insert({ conversation_id: conversationId, sender_id: userId, content, event_id: eventId })
+      .insert({ conversation_id: conversationId, sender_id: userId, content })
       .select('id, conversation_id, sender_id, content, created_at')
       .single()
     if (inserted) {
@@ -210,47 +220,63 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)' }} />
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      />
       <div style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 201,
-        background: 'var(--bg)', borderRadius: '20px 20px 0 0',
-        height: '92dvh', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.18)',
-        animation: 'slideUp 0.3s ease',
+        position: 'fixed',
+        left: '50%', top: '50%',
+        transform: 'translate(-50%,-50%)',
+        zIndex: 201,
+        width: 'min(680px, calc(100dvw - 24px))',
+        height: 'min(92dvh, 820px)',
+        background: 'var(--bg)',
+        borderRadius: 20,
+        display: 'flex', flexDirection: 'column',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
+        animation: 'modalIn 0.22s ease',
+        overflow: 'hidden',
       }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 18px 0', flexShrink: 0 }}>
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          padding: '20px 20px 0', flexShrink: 0,
+        }}>
           <div>
-            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--gold)', marginBottom: 2 }}>
-              Gegenvorschlag
+            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--gold)', marginBottom: 3 }}>
+              Gegenvorschlag · {userRole === 'veranstalter' ? 'Veranstalter' : 'Brautpaar'}
             </p>
-            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: 'var(--text-primary)', fontWeight: 500 }}>
+            <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 21, color: 'var(--text-primary)', fontWeight: 500, lineHeight: 1.2 }}>
               {MODULE_LABELS[proposal.module]}
             </h2>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex' }}>
-            <X size={20} />
+          <button
+            onClick={onClose}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--text-secondary)', padding: 7, display: 'flex', flexShrink: 0, marginTop: 2 }}
+          >
+            <X size={16} />
           </button>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', padding: '14px 18px 0', gap: 4, flexShrink: 0, borderBottom: '1px solid var(--border)', marginTop: 12 }}>
+        <div style={{ display: 'flex', padding: '14px 20px 0', gap: 2, flexShrink: 0, borderBottom: '1px solid var(--border)', marginTop: 14 }}>
           {([
-            { key: 'form', label: 'Vorschlag bearbeiten', Icon: Edit3 },
+            { key: 'form', label: 'Bearbeiten', Icon: Edit3 },
             { key: 'chat', label: 'Chat', Icon: MessageSquare },
           ] as const).map(({ key, label, Icon }) => (
             <button key={key} onClick={() => setActiveTab(key)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
-                padding: '8px 14px', borderRadius: '8px 8px 0 0',
-                border: 'none', background: 'none',
+                padding: '8px 16px', borderRadius: '8px 8px 0 0',
+                border: 'none', background: activeTab === key ? 'var(--bg)' : 'transparent',
                 fontFamily: 'inherit', cursor: 'pointer', fontSize: 13, fontWeight: 600,
                 color: activeTab === key ? 'var(--gold)' : 'var(--text-secondary)',
                 borderBottom: `2px solid ${activeTab === key ? 'var(--gold)' : 'transparent'}`,
-                marginBottom: -1,
+                marginBottom: -1, transition: 'color 0.15s',
               }}>
-              <Icon size={14} />
+              <Icon size={13} />
               {label}
             </button>
           ))}
@@ -259,30 +285,45 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
         {/* Content */}
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {activeTab === 'form' ? (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '18px 18px 0' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 0' }}>
               {renderForm()}
               <div style={{ height: 24 }} />
             </div>
           ) : (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10, background: '#FAFAFA' }}>
+              <div style={{
+                flex: 1, overflowY: 'auto', padding: '16px 20px',
+                display: 'flex', flexDirection: 'column', gap: 10,
+                background: 'var(--surface)',
+              }}>
                 {messages.length === 0 && (
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center', marginTop: 40 }}>
-                    Noch keine Nachrichten. Schreib eine erste Nachricht zum Vorschlag.
-                  </p>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <MessageSquare size={28} style={{ opacity: 0.2, marginBottom: 10 }} />
+                      <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                        Noch keine Nachrichten.<br />Schreib eine erste Nachricht.
+                      </p>
+                    </div>
+                  </div>
                 )}
                 {messages.map(msg => {
                   const isMe = msg.sender_id === userId
                   return (
                     <div key={msg.id} style={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: 8 }}>
                       {!isMe && (
-                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#E5E5EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#636366', flexShrink: 0 }}>
+                        <div style={{
+                          width: 26, height: 26, borderRadius: '50%', background: '#E5E5EA',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 9, fontWeight: 700, color: '#636366', flexShrink: 0,
+                        }}>
                           {initials(msg.sender?.name ?? '?')}
                         </div>
                       )}
                       <div style={{ maxWidth: '75%' }}>
                         {!isMe && msg.sender && (
-                          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 3, marginLeft: 4 }}>{msg.sender.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 3, marginLeft: 4 }}>
+                            {msg.sender.name}
+                          </div>
                         )}
                         <div style={{
                           padding: '10px 14px',
@@ -293,7 +334,11 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
                         }}>
                           {msg.content}
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 3, textAlign: isMe ? 'right' : 'left', marginLeft: isMe ? 0 : 4, marginRight: isMe ? 4 : 0 }}>
+                        <div style={{
+                          fontSize: 10, color: 'var(--text-tertiary)', marginTop: 3,
+                          textAlign: isMe ? 'right' : 'left',
+                          marginLeft: isMe ? 0 : 4, marginRight: isMe ? 4 : 0,
+                        }}>
                           {fmtTime(msg.created_at)}
                         </div>
                       </div>
@@ -302,18 +347,32 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
                 })}
                 <div ref={messagesEndRef} />
               </div>
-              <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, background: 'var(--surface)', flexShrink: 0 }}>
+              <div style={{
+                padding: '12px 20px', borderTop: '1px solid var(--border)',
+                display: 'flex', gap: 10, background: 'var(--bg)', flexShrink: 0,
+              }}>
                 <input
                   value={newMsg}
                   onChange={e => setNewMsg(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                   placeholder="Nachricht schreiben…"
-                  style={{ flex: 1, padding: '10px 16px', border: 'none', borderRadius: 22, fontSize: 14, outline: 'none', fontFamily: 'inherit', background: '#F0F0F2' }}
+                  style={{
+                    flex: 1, padding: '10px 16px', border: '1px solid var(--border)',
+                    borderRadius: 22, fontSize: 14, outline: 'none',
+                    fontFamily: 'inherit', background: 'var(--surface)',
+                  }}
                 />
                 <button
                   onClick={sendMessage}
                   disabled={!newMsg.trim() || sendingMsg || !conversationId}
-                  style={{ width: 40, height: 40, borderRadius: '50%', background: newMsg.trim() ? 'var(--gold)' : '#E5E5EA', border: 'none', cursor: newMsg.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', color: newMsg.trim() ? '#fff' : '#8E8E93', flexShrink: 0 }}
+                  style={{
+                    width: 40, height: 40, borderRadius: '50%',
+                    background: newMsg.trim() ? 'var(--gold)' : 'var(--border)',
+                    border: 'none', cursor: newMsg.trim() ? 'pointer' : 'default',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: newMsg.trim() ? '#fff' : 'var(--text-secondary)', flexShrink: 0,
+                    transition: 'background 0.15s',
+                  }}
                 >
                   <Send size={16} />
                 </button>
@@ -324,7 +383,7 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
 
         {/* Footer */}
         <div style={{
-          padding: '14px 18px calc(env(safe-area-inset-bottom) + 14px)',
+          padding: '14px 20px',
           borderTop: '1px solid var(--border)',
           background: 'var(--surface)',
           flexShrink: 0,
@@ -338,19 +397,24 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
             onClick={handleSend}
             disabled={sending}
             style={{
-              width: '100%', padding: '12px', borderRadius: 'var(--r-md)',
+              width: '100%', padding: '13px', borderRadius: 12,
               border: 'none', background: 'var(--gold)',
               fontSize: 14, fontWeight: 600, color: '#fff',
               cursor: sending ? 'wait' : 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              opacity: sending ? 0.7 : 1,
+              opacity: sending ? 0.7 : 1, transition: 'opacity 0.15s',
             }}>
             <CheckCircle size={16} />
             {sending ? 'Wird gesendet…' : 'Gegenvorschlag senden'}
           </button>
         </div>
       </div>
-      <style>{`@keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+      <style>{`
+        @keyframes modalIn {
+          from { transform: translate(-50%,-49%) scale(0.97); opacity: 0 }
+          to   { transform: translate(-50%,-50%) scale(1);    opacity: 1 }
+        }
+      `}</style>
     </>
   )
 }

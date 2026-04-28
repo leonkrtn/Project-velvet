@@ -1,7 +1,6 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
 import { Package, ChevronRight, AlertTriangle } from 'lucide-react'
 import {
   type ProposalWithDetails,
@@ -15,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import ProposalDetailSheet from '@/components/proposals/ProposalDetailSheet'
 
 const CounterProposalSheet = dynamic(() => import('@/components/proposals/CounterProposalSheet'), { ssr: false })
+const CaseLightbox = dynamic(() => import('@/components/proposals/CaseLightbox'), { ssr: false })
 
 const STATUS_LABEL: Record<string, string> = {
   pending:  'Ausstehend',
@@ -48,6 +48,7 @@ export default function BrautpaarVorschlaegePage() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<ProposalWithDetails | null>(null)
   const [counterTarget, setCounterTarget] = useState<ProposalWithDetails | null>(null)
+  const [caseProposal, setCaseProposal] = useState<ProposalWithDetails | null>(null)
   const [proposerNames, setProposerNames] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -209,11 +210,16 @@ export default function BrautpaarVorschlaegePage() {
 
               if (p.status === 'in_case') {
                 return (
-                  <div key={p.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 14,
-                    padding: '14px 16px', borderRadius: 14,
-                    background: '#fff7ed', border: '1px solid #fed7aa',
-                  }}>
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setCaseProposal(p)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left',
+                      padding: '14px 16px', borderRadius: 14,
+                      background: '#fff7ed', border: '1px solid #fed7aa',
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}>
                     <AlertTriangle size={18} style={{ color: '#ea580c', flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
@@ -228,12 +234,10 @@ export default function BrautpaarVorschlaegePage() {
                         Gegenvorschlag läuft
                       </div>
                     </div>
-                    <Link
-                      href={`/brautpaar/vorschlaege/konflikt/${p.id}`}
-                      style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: '#ea580c', color: '#fff', textDecoration: 'none', flexShrink: 0 }}>
+                    <span style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: '#ea580c', color: '#fff', flexShrink: 0 }}>
                       Öffnen
-                    </Link>
-                  </div>
+                    </span>
+                  </button>
                 )
               }
 
@@ -297,6 +301,17 @@ export default function BrautpaarVorschlaegePage() {
           eventId={eventId}
           onClose={() => setCounterTarget(null)}
           onSent={() => { setCounterTarget(null); load() }}
+        />
+      )}
+
+      {caseProposal && userId && (
+        <CaseLightbox
+          proposal={caseProposal}
+          userId={userId}
+          userRole="brautpaar"
+          vendorName={proposerNames[caseProposal.created_by]}
+          onClose={() => setCaseProposal(null)}
+          onRefresh={load}
         />
       )}
     </div>
