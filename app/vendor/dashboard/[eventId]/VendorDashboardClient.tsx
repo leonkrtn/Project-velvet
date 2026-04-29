@@ -24,6 +24,7 @@ import FilesTab      from './tabs/FilesTab'
 const ProposalLightbox      = dynamic(() => import('@/components/proposals/ProposalLightbox'), { ssr: false })
 const ProposalDetailSheet   = dynamic(() => import('@/components/proposals/ProposalDetailSheet'), { ssr: false })
 const CounterProposalSheet  = dynamic(() => import('@/components/proposals/CounterProposalSheet'), { ssr: false })
+const CaseLightbox          = dynamic(() => import('@/components/proposals/CaseLightbox'), { ssr: false })
 
 const TAB_REGISTRY: Record<string, React.ComponentType<{ eventId: string }>> = {
   mod_chat:       ChatTab,
@@ -331,6 +332,7 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
   const [loading, setLoading] = useState(true)
   const [selectedProposal, setSelectedProposal] = useState<ProposalWithDetails | null>(null)
   const [counterTarget, setCounterTarget] = useState<ProposalWithDetails | null>(null)
+  const [caseProposal, setCaseProposal] = useState<ProposalWithDetails | null>(null)
 
   const load = async () => {
     const data = await fetchProposalsForEvent(eventId)
@@ -363,7 +365,7 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
 
   const inbox = proposals.filter(p => {
     const myRecipient = p.recipients.find(r => r.user_id === userId)
-    return myRecipient?.status === 'pending' && p.created_by !== userId
+    return (myRecipient?.status === 'pending' && p.created_by !== userId) || p.status === 'in_case'
   })
 
   return (
@@ -387,34 +389,67 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {inbox.map(p => (
-            <button key={p.id} onClick={() => setSelectedProposal(p)}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 18px', borderRadius: 12,
-                border: '1px solid var(--border)',
-                background: 'var(--surface)',
-                cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                width: '100%',
-              }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {MODULE_LABELS[p.module]}
-                  </span>
+          {inbox.map(p => {
+            if (p.status === 'in_case') {
+              return (
+                <button key={p.id} onClick={() => setCaseProposal(p)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14, width: '100%', textAlign: 'left',
+                    padding: '14px 18px', borderRadius: 12,
+                    background: '#fff7ed', border: '1px solid #fed7aa',
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        {MODULE_LABELS[p.module]}
+                      </span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                        color: '#ea580c', background: '#ffedd5', padding: '2px 8px', borderRadius: 100,
+                      }}>In Klärung</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      Gegenvorschlag läuft
+                      {p.creator_profile?.name ? ` · ${p.creator_profile.name}` : ''}
+                    </p>
+                  </div>
                   <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
-                    background: 'rgba(201,168,76,0.15)', color: 'var(--gold)',
-                  }}>Offen</span>
+                    padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    background: '#ea580c', color: '#fff', flexShrink: 0,
+                  }}>Öffnen</span>
+                </button>
+              )
+            }
+            return (
+              <button key={p.id} onClick={() => setSelectedProposal(p)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 18px', borderRadius: 12,
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                  width: '100%',
+                }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {MODULE_LABELS[p.module]}
+                    </span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
+                      background: 'rgba(201,168,76,0.15)', color: 'var(--gold)',
+                    }}>Offen</span>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {new Date(p.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {p.creator_profile?.name ? ` · von ${p.creator_profile.name}` : ''}
+                  </p>
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {new Date(p.created_at).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  {p.creator_profile?.name ? ` · von ${p.creator_profile.name}` : ''}
-                </p>
-              </div>
-              <span style={{ fontSize: 20, color: 'var(--text-tertiary)' }}>›</span>
-            </button>
-          ))}
+                <span style={{ fontSize: 20, color: 'var(--text-tertiary)' }}>›</span>
+              </button>
+            )
+          })}
         </div>
       )}
 
@@ -439,6 +474,16 @@ function VendorInboxView({ eventId, userId, onClose }: { eventId: string; userId
           eventId={eventId}
           onClose={() => setCounterTarget(null)}
           onSent={() => { setCounterTarget(null); load() }}
+        />
+      )}
+
+      {caseProposal && userId && (
+        <CaseLightbox
+          proposal={caseProposal}
+          userId={userId}
+          userRole="dienstleister"
+          onClose={() => setCaseProposal(null)}
+          onRefresh={load}
         />
       )}
     </div>
