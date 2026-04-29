@@ -17,6 +17,8 @@ import {
 import ProposalDetailSheet from '@/components/proposals/ProposalDetailSheet'
 
 const ProposalLightbox = dynamic(() => import('@/components/proposals/ProposalLightbox'), { ssr: false })
+const CounterProposalSheet = dynamic(() => import('@/components/proposals/CounterProposalSheet'), { ssr: false })
+const CaseLightbox = dynamic(() => import('@/components/proposals/CaseLightbox'), { ssr: false })
 
 interface Recipient {
   userId: string
@@ -115,6 +117,8 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
   const [showModulePicker, setShowModulePicker] = useState(false)
   const [masterStateData, setMasterStateData] = useState<ProposalModuleData | null>(null)
   const [fetchingMaster, setFetchingMaster] = useState(false)
+  const [caseProposal, setCaseProposal] = useState<ProposalWithDetails | null>(null)
+  const [counterTarget, setCounterTarget] = useState<ProposalWithDetails | null>(null)
 
   // Legacy suggestion state
   const [vendors, setVendors] = useState(initialVendors)
@@ -190,7 +194,7 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
         {loading && <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Laden…</p>}
 
         {!loading && proposals.length > 0 && (
-          <ProposalList proposals={proposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={setDeletingId} />
+          <ProposalList proposals={proposals} allRecipients={allRecipients} userId={userId} onSelect={setSelectedProposal} onEdit={setEditingDraft} onDelete={setDeletingId} onCase={setCaseProposal} />
         )}
 
         {/* Legacy: Dienstleister */}
@@ -382,9 +386,32 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
           userId={userId}
           userRole="veranstalter"
           onClose={() => setSelectedProposal(null)}
-          onAccept={() => setSelectedProposal(null)}
-          onReject={() => setSelectedProposal(null)}
-          onCounter={() => setSelectedProposal(null)}
+          onAccept={() => { setSelectedProposal(null); loadProposals() }}
+          onReject={() => { setSelectedProposal(null); loadProposals() }}
+          onCounter={() => { setCounterTarget(selectedProposal); setSelectedProposal(null) }}
+          onRefresh={loadProposals}
+        />
+      )}
+
+      {/* Counter-Proposal Sheet */}
+      {counterTarget && (
+        <CounterProposalSheet
+          proposal={counterTarget}
+          userId={userId}
+          userRole="veranstalter"
+          eventId={eventId}
+          onClose={() => setCounterTarget(null)}
+          onSent={() => { setCounterTarget(null); loadProposals() }}
+        />
+      )}
+
+      {/* Case Lightbox (In Klärung) */}
+      {caseProposal && (
+        <CaseLightbox
+          proposal={caseProposal}
+          userId={userId}
+          userRole="veranstalter"
+          onClose={() => setCaseProposal(null)}
           onRefresh={loadProposals}
         />
       )}
@@ -414,13 +441,14 @@ function EmptyState({ label, onAdd }: { label: string; onAdd: () => void }) {
   )
 }
 
-function ProposalList({ proposals, allRecipients, userId, onSelect, onEdit, onDelete }: {
+function ProposalList({ proposals, allRecipients, userId, onSelect, onEdit, onDelete, onCase }: {
   proposals: ProposalWithDetails[]
   allRecipients: Recipient[]
   userId: string
   onSelect: (p: ProposalWithDetails) => void
   onEdit: (p: ProposalWithDetails) => void
   onDelete: (id: string) => void
+  onCase: (p: ProposalWithDetails) => void
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -430,9 +458,16 @@ function ProposalList({ proposals, allRecipients, userId, onSelect, onEdit, onDe
         const recipientNames = allRecipients
           .filter(r => p.recipients.some(r2 => r2.user_id === r.userId))
           .map(r => r.label)
+
+        const handleClick = () => {
+          if (status === 'in_case') return onCase(p)
+          if (isOwn && status === 'draft') return onEdit(p)
+          return onSelect(p)
+        }
+
         return (
           <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <button type="button" onClick={() => isOwn ? onEdit(p) : onSelect(p)} style={{
+            <button type="button" onClick={handleClick} style={{
               display: 'flex', alignItems: 'center', gap: 14, flex: 1,
               padding: '14px 16px', borderRadius: 10, textAlign: 'left',
               background: 'var(--surface)', border: '1px solid var(--border)',
