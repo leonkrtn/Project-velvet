@@ -196,8 +196,8 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
       await updateSnapshot(proposal.id, data as SegmentData)
       setToast('Gegenvorschlag gesendet!')
       setTimeout(() => onSent(), 900)
-    } catch {
-      setToast('Fehler beim Senden')
+    } catch (e) {
+      setToast(`Fehler: ${e instanceof Error ? e.message : String(e)}`)
       setSending(false)
     }
   }
