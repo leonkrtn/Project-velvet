@@ -487,19 +487,21 @@ export default function VeranstalterEventsPage() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <button
-            onClick={() => router.push('/veranstalter/voreinstellungen')}
-            title="Voreinstellungen"
+            onClick={() => router.push('/veranstalter/konfiguration')}
+            title="Konfiguration"
             style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 38, height: 38,
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px',
               border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-              background: 'none', cursor: 'pointer', color: 'var(--text-tertiary)',
+              background: 'none', cursor: 'pointer', color: 'var(--text-secondary)',
+              fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
               transition: 'border-color 0.15s, color 0.15s',
             }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text)'; e.currentTarget.style.color = 'var(--text)' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-tertiary)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
           >
-            <Settings size={16} />
+            <Settings size={14} />
+            Konfiguration
           </button>
           {!showWizard && (
             <button
