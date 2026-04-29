@@ -498,13 +498,13 @@ function diffEntities(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   oldList: any[] | undefined,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  newList: any[]
+  newList: any[] | undefined
 ): ProposalFieldInput[] {
   const deltas: ProposalFieldInput[] = []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const oldMap = new Map<string, any>((oldList ?? []).map((e: any) => [e[idKey] as string, e]))
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const newMap = new Map<string, any>(newList.map((e: any) => [e[idKey] as string, e]))
+  const newMap = new Map<string, any>((newList ?? []).map((e: any) => [e[idKey] as string, e]))
 
   // Neue oder geänderte Entities
   Array.from(newMap.entries()).forEach(([id, newEntity]) => {
@@ -588,15 +588,15 @@ function computeAblaufplanDeltas(snap: AblaufplanSegmentData | null, data: Ablau
 
 function computeHotelDeltas(snap: HotelSegmentData | null, data: HotelSegmentData): ProposalFieldInput[] {
   const deltas: ProposalFieldInput[] = []
-  for (const hotel of data.hotels) {
-    const snapHotel = snap?.hotels.find(h => h.hotel_id === hotel.hotel_id)
+  for (const hotel of (data.hotels ?? [])) {
+    const snapHotel = snap?.hotels?.find(h => h.hotel_id === hotel.hotel_id)
     const { room_types: _nr, ...hotelMeta } = hotel
     const { room_types: _sr, ...snapMeta } = snapHotel ?? { room_types: [] }
     deltas.push(...diffTopLevel('hotel.info', hotel.hotel_id, snapHotel ? snapMeta as Record<string,unknown> : null, hotelMeta as Record<string,unknown>))
     deltas.push(...diffEntities('hotel.room_type', 'room_type_id', snapHotel?.room_types, hotel.room_types))
   }
   for (const snapHotel of (snap?.hotels ?? [])) {
-    if (!data.hotels.find(h => h.hotel_id === snapHotel.hotel_id)) {
+    if (!(data.hotels ?? []).find(h => h.hotel_id === snapHotel.hotel_id)) {
       deltas.push({ segment: 'hotel.info', entity_id: snapHotel.hotel_id, field_key: '__entity__', value_old: snapHotel, value_new: null })
     }
   }
