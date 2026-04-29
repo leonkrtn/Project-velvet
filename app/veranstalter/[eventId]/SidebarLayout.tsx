@@ -26,7 +26,7 @@ const NAV_ITEMS = [
   { key: 'vorschlaege',     label: 'Vorschläge',       icon: Lightbulb },
   { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
   { key: 'berechtigungen',  label: 'Berechtigungen',   icon: Shield },
-  { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2, disabled: true },
+  { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
   { key: 'personalplanung', label: 'Personalplanung',  icon: UserCog },
 ]
 
@@ -104,8 +104,9 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
 
       <div style={{ padding: '4px 8px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1 }}>
-        {NAV_ITEMS.map(({ key, label, icon: Icon, disabled }) => {
+        {NAV_ITEMS.map(({ key, label, icon: Icon, ...rest }) => {
           const active = isActive(key)
+          const disabled = 'disabled' in rest ? (rest as { disabled?: boolean }).disabled : false
           if (disabled) {
             return (
               <div key={key} style={{
