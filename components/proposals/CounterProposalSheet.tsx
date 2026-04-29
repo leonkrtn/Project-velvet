@@ -62,7 +62,6 @@ async function findOrCreateProposalConversation(
   supabase: ReturnType<typeof createClient>,
   proposalId: string,
   eventId: string,
-  currentUserId: string,
   participantIds: string[],
 ): Promise<string> {
   const convName = `__proposal_${proposalId}`
@@ -76,23 +75,19 @@ async function findOrCreateProposalConversation(
 
   if (existing) return existing.id
 
-  const { data: conv, error } = await supabase
-    .from('conversations')
-    .insert({ event_id: eventId, name: convName, created_by: currentUserId })
-    .select('id')
-    .single()
-
-  if (error || !conv) throw error ?? new Error('Konversation konnte nicht erstellt werden')
-
   const seen = new Set<string>()
   const uniqueIds = participantIds.filter(id => id && !seen.has(id) && seen.add(id))
-  if (uniqueIds.length > 0) {
-    await supabase.from('conversation_participants').insert(
-      uniqueIds.map(uid => ({ conversation_id: conv.id, user_id: uid }))
-    )
-  }
 
-  return conv.id
+  const { data: convId, error } = await supabase
+    .rpc('create_conversation', {
+      p_event_id: eventId,
+      p_name: convName,
+      p_participant_ids: uniqueIds,
+    })
+
+  if (error || !convId) throw error ?? new Error('Konversation konnte nicht erstellt werden')
+
+  return convId as string
 }
 
 export default function CounterProposalSheet({ proposal, userId, userRole, eventId, onClose, onSent }: Props) {
@@ -118,7 +113,7 @@ export default function CounterProposalSheet({ proposal, userId, userRole, event
       proposal.created_by,
       ...proposal.recipients.map(r => r.user_id),
     ]
-    findOrCreateProposalConversation(supabase, proposal.id, eventId, userId, participantIds)
+    findOrCreateProposalConversation(supabase, proposal.id, eventId, participantIds)
       .then(setConversationId)
       .catch(console.error)
   }, [proposal.id, proposal.created_by, proposal.recipients, eventId, userId, supabase])
