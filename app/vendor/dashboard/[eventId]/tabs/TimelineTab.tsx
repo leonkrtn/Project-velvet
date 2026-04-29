@@ -66,7 +66,9 @@ export default function TimelineTab({ eventId }: { eventId: string }) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                         {time && (
                           <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                            <Clock size={11} /> {time}{e.duration_minutes ? ` (${e.duration_minutes} Min.)` : ''}
+                            <Clock size={11} />
+                            {time}
+                            {e.duration_minutes != null && ` – ${fmt((e.start_minutes ?? 0) + e.duration_minutes)}`}
                           </span>
                         )}
                         <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '2px 7px', borderRadius: 4, background: colors.bg, color: colors.color }}>

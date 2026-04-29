@@ -820,12 +820,8 @@ export async function sendProposal(proposalId: string): Promise<{ error?: string
 
   if (!recipients || recipients.length === 0) return { error: 'no_recipients' }
 
-  const { error } = await supabase
-    .from('proposals')
-    .update({ status: 'pending', updated_at: new Date().toISOString() })
-    .eq('id', proposalId)
-    .eq('status', 'draft')
-
+  // Use SECURITY DEFINER RPC to also add creator as 'accepted' recipient
+  const { error } = await supabase.rpc('send_proposal_with_creator', { p_proposal_id: proposalId })
   return { error: error?.message }
 }
 
@@ -1529,7 +1525,7 @@ export interface CateringProposalData {
 
 export interface AblaufplanProposalData {
   entries?: Array<{
-    id: string; start_minutes: number; title: string; description?: string
+    id: string; start_minutes: number; duration_minutes?: number; title: string; description?: string
     location?: string; sort_order: number; assigned_staff?: string[]; assigned_vendors?: string[]
   }>
 }

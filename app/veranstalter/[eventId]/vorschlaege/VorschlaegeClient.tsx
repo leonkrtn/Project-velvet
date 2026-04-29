@@ -303,7 +303,27 @@ export default function VorschlaegeClient({ eventId, userId, allRecipients, init
                   onClick={async () => {
                     if (disabled) return
                     setFetchingMaster(true)
-                    const ms = await fetchMasterState(eventId, m)
+                    let ms = await fetchMasterState(eventId, m)
+                    // Ablaufplan: fall back to timeline_entries if no master state yet
+                    if (!ms && m === 'ablaufplan') {
+                      const { data: entries } = await supabase
+                        .from('timeline_entries')
+                        .select('id, title, location, start_minutes, duration_minutes, sort_order')
+                        .eq('event_id', eventId)
+                        .order('sort_order')
+                      if (entries && entries.length > 0) {
+                        ms = {
+                          entries: entries.map((e: { id: string; title: string | null; location: string | null; start_minutes: number | null; duration_minutes: number | null; sort_order: number }) => ({
+                            id: e.id,
+                            title: e.title ?? '',
+                            location: e.location ?? undefined,
+                            start_minutes: e.start_minutes ?? 0,
+                            duration_minutes: e.duration_minutes ?? 60,
+                            sort_order: e.sort_order,
+                          }))
+                        }
+                      }
+                    }
                     setMasterStateData(ms)
                     setFetchingMaster(false)
                     setActiveModule(m)
