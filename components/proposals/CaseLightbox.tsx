@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { X, Send, CheckCircle, XCircle, MessageSquare, FileText } from 'lucide-react'
+import dynamic from 'next/dynamic'
+import { X, Send, CheckCircle, XCircle, MessageSquare, FileText, RotateCcw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
   type ProposalWithDetails,
@@ -32,6 +33,8 @@ import ProposalFormMusik from './ProposalFormMusik'
 import ProposalFormPatisserie from './ProposalFormPatisserie'
 import ProposalFormVendor from './ProposalFormVendor'
 import ProposalFormHotel from './ProposalFormHotel'
+
+const CounterProposalSheet = dynamic(() => import('./CounterProposalSheet'), { ssr: false })
 
 interface Props {
   proposal: ProposalWithDetails
@@ -78,6 +81,7 @@ export default function CaseLightbox({ proposal, userId, userRole, vendorName, o
   const [sendingMsg, setSendingMsg] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [showCounter, setShowCounter] = useState(false)
   const chatBottomRef = useRef<HTMLDivElement>(null)
   const supabase = useMemo(() => createClient(), [])
 
@@ -85,6 +89,11 @@ export default function CaseLightbox({ proposal, userId, userRole, vendorName, o
   const formData = proposal.snapshot?.snapshot_json as ProposalModuleData | undefined
   const myRecipient = proposal.recipients.find(r => r.user_id === userId)
   const isPending = myRecipient?.status === 'pending'
+  const isCountered = myRecipient?.status === 'countered'
+
+  // How many participants have responded (accepted/rejected)
+  const totalRecipients = proposal.recipients.length
+  const respondedCount = proposal.recipients.filter(r => r.status === 'accepted' || r.status === 'rejected').length
 
   const loadMessages = useCallback(async (cId: string) => {
     const msgs = await fetchCaseMessages(cId)
@@ -96,7 +105,6 @@ export default function CaseLightbox({ proposal, userId, userRole, vendorName, o
       if (!c) return
       setCaseData(c)
       loadMessages(c.id)
-
       const sub = subscribeToCaseMessages(c.id, () => loadMessages(c.id))
       return () => sub.unsubscribe()
     })
@@ -122,7 +130,7 @@ export default function CaseLightbox({ proposal, userId, userRole, vendorName, o
       setToast('Fehler beim Annehmen')
       setSubmitting(false)
     } else {
-      setToast('Vorschlag angenommen!')
+      setToast('Zugestimmt!')
       setTimeout(() => { onRefresh(); onClose() }, 900)
     }
   }
@@ -134,7 +142,7 @@ export default function CaseLightbox({ proposal, userId, userRole, vendorName, o
       setToast('Fehler beim Ablehnen')
       setSubmitting(false)
     } else {
-      setToast('Vorschlag abgelehnt.')
+      setToast('Abgelehnt.')
       setTimeout(() => { onRefresh(); onClose() }, 900)
     }
   }
@@ -142,6 +150,20 @@ export default function CaseLightbox({ proposal, userId, userRole, vendorName, o
   const proposerLabel = proposal.created_by_role === 'dienstleister'
     ? (vendorName ?? 'Dienstleister')
     : proposal.created_by_role === 'veranstalter' ? 'Veranstalter' : 'Brautpaar'
+
+  // Show CounterProposalSheet on top
+  if (showCounter) {
+    return (
+      <CounterProposalSheet
+        proposal={proposal}
+        userId={userId}
+        userRole={userRole}
+        eventId={proposal.event_id}
+        onClose={() => setShowCounter(false)}
+        onSent={() => { setShowCounter(false); onRefresh(); onClose() }}
+      />
+    )
+  }
 
   return (
     <>
@@ -184,6 +206,33 @@ export default function CaseLightbox({ proposal, userId, userRole, vendorName, o
             <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 21, color: 'var(--text-primary)', fontWeight: 500, lineHeight: 1.2 }}>
               {MODULE_LABELS[proposal.module]}
             </h2>
+            {/* Recipient status overview */}
+            {totalRecipients > 0 && (
+              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 8 }}>
+                {proposal.recipients.map(r => (
+                  <span key={r.id} style={{
+                    fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+                    background: r.status === 'accepted' ? '#dcfce7'
+                      : r.status === 'rejected' ? '#fee2e2'
+                      : r.status === 'countered' ? '#ffedd5'
+                      : 'var(--surface)',
+                    color: r.status === 'accepted' ? '#16a34a'
+                      : r.status === 'rejected' ? '#dc2626'
+                      : r.status === 'countered' ? '#ea580c'
+                      : 'var(--text-secondary)',
+                    border: '1px solid',
+                    borderColor: r.status === 'accepted' ? '#bbf7d0'
+                      : r.status === 'rejected' ? '#fecaca'
+                      : r.status === 'countered' ? '#fed7aa'
+                      : 'var(--border)',
+                  }}>
+                    {r.profile?.name ?? r.role}
+                    {' '}
+                    {r.status === 'accepted' ? '✓' : r.status === 'rejected' ? '✗' : r.status === 'countered' ? '↩' : '…'}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -281,6 +330,7 @@ export default function CaseLightbox({ proposal, userId, userRole, vendorName, o
                 })}
                 <div ref={chatBottomRef} />
               </div>
+              {/* Chat input */}
               <div style={{
                 padding: '12px 20px', borderTop: '1px solid var(--border)',
                 display: 'flex', gap: 10, background: 'var(--bg)', flexShrink: 0,
@@ -325,7 +375,7 @@ export default function CaseLightbox({ proposal, userId, userRole, vendorName, o
           )}
         </div>
 
-        {/* Footer actions */}
+        {/* Footer — pending: alle 3 Aktionen */}
         {isPending && (
           <div style={{
             padding: '14px 20px',
@@ -337,51 +387,76 @@ export default function CaseLightbox({ proposal, userId, userRole, vendorName, o
               </p>
             )}
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12, textAlign: 'center' }}>
-              Habt ihr euch geeinigt? Nehmt den Vorschlag an oder ab.
+              Stimme zu, lehne ab, oder mache einen eigenen Gegenvorschlag.
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={handleReject}
                 disabled={submitting}
                 style={{
-                  flex: 1, padding: '12px', borderRadius: 10,
+                  flex: 1, padding: '12px 8px', borderRadius: 10,
                   border: '1px solid var(--border)', background: 'none',
-                  fontSize: 14, fontWeight: 600, color: '#dc2626',
+                  fontSize: 13, fontWeight: 600, color: '#dc2626',
                   cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   opacity: submitting ? 0.6 : 1,
                 }}>
-                <XCircle size={15} /> Ablehnen
+                <XCircle size={14} /> Ablehnen
+              </button>
+              <button
+                onClick={() => setShowCounter(true)}
+                disabled={submitting}
+                style={{
+                  flex: 1, padding: '12px 8px', borderRadius: 10,
+                  border: '1px solid var(--border)', background: 'none',
+                  fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  opacity: submitting ? 0.6 : 1,
+                }}>
+                <RotateCcw size={14} /> Gegenvorschlag
               </button>
               <button
                 onClick={handleAccept}
                 disabled={submitting}
                 style={{
-                  flex: 2, padding: '12px', borderRadius: 10,
+                  flex: 1, padding: '12px 8px', borderRadius: 10,
                   border: 'none', background: 'var(--gold)',
-                  fontSize: 14, fontWeight: 600, color: '#fff',
+                  fontSize: 13, fontWeight: 600, color: '#fff',
                   cursor: 'pointer', fontFamily: 'inherit',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   opacity: submitting ? 0.6 : 1,
                 }}>
-                <CheckCircle size={15} /> Annehmen
+                <CheckCircle size={14} /> Annehmen
               </button>
             </div>
           </div>
         )}
 
-        {!isPending && myRecipient && (
+        {/* Footer — countered: warte auf andere */}
+        {isCountered && (
+          <div style={{
+            padding: '14px 20px',
+            borderTop: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0, textAlign: 'center',
+          }}>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              <RotateCcw size={13} style={{ color: '#ea580c', verticalAlign: 'middle', marginRight: 5 }} />
+              Du hast einen Gegenvorschlag gemacht.
+              {respondedCount < totalRecipients && ` Warte auf ${totalRecipients - respondedCount} weitere Antwort${totalRecipients - respondedCount !== 1 ? 'en' : ''}.`}
+            </p>
+          </div>
+        )}
+
+        {/* Footer — accepted/rejected */}
+        {!isPending && !isCountered && myRecipient && (
           <div style={{
             padding: '12px 20px',
             borderTop: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0, textAlign: 'center',
           }}>
-            {toast && (
-              <p style={{ fontSize: 12, color: '#16a34a', marginBottom: 4 }}>{toast}</p>
-            )}
+            {toast && <p style={{ fontSize: 12, color: '#16a34a', marginBottom: 4 }}>{toast}</p>}
             <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
               {myRecipient.status === 'accepted' && <><CheckCircle size={14} style={{ color: '#16a34a', verticalAlign: 'middle', marginRight: 5 }} />Du hast zugestimmt.</>}
               {myRecipient.status === 'rejected' && <><XCircle size={14} style={{ color: '#dc2626', verticalAlign: 'middle', marginRight: 5 }} />Du hast abgelehnt.</>}
-              {myRecipient.status === 'countered' && <>Du hast einen Gegenvorschlag gemacht. Warte auf Antwort.</>}
             </p>
           </div>
         )}
