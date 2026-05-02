@@ -166,6 +166,14 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const [vendorViewData, setVendorViewData]           = useState<Record<string, unknown>>({})
   const [vendorViewLoading, setVendorViewLoading]     = useState(false)
 
+  // Item-level permissions lightbox
+  const [itemPermMemberId, setItemPermMemberId]       = useState<string | null>(null)
+  const [itemPermModule, setItemPermModule]           = useState<string>('')
+  const [itemPermItems, setItemPermItems]             = useState<Array<{ id: string; label: string; sub?: string }>>([])
+  const [itemPermMap, setItemPermMap]                 = useState<Record<string, { can_view: boolean; can_edit: boolean }>>({})
+  const [itemPermLoading, setItemPermLoading]         = useState(false)
+  const [itemPermSaving, setItemPermSaving]           = useState(false)
+
   const bpTz     = members.filter(m => m.role === 'brautpaar' || m.role === 'trauzeuge')
   const dlMembers = members.filter(m => m.role === 'dienstleister')
 
@@ -325,6 +333,93 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
 
     await Promise.all(jobs)
     setVendorViewLoading(false)
+  }
+
+  // ── Item permissions ───────────────────────────────────────────────────────
+
+  const ITEM_PERM_MODULES: Array<{ key: string; modKey: string; label: string }> = [
+    { key: 'musik',      modKey: 'mod_music',      label: 'Musik' },
+    { key: 'dekoration', modKey: 'mod_decor',      label: 'Dekoration' },
+    { key: 'medien',     modKey: 'mod_media',      label: 'Medien & Aufnahmen' },
+  ]
+
+  async function openItemPerms(m: Member, moduleKey: string) {
+    setItemPermMemberId(m.id)
+    setItemPermModule(moduleKey)
+    setItemPermItems([])
+    setItemPermMap({})
+    setItemPermLoading(true)
+
+    const [existingPerms, items] = await Promise.all([
+      supabase.from('dienstleister_item_permissions')
+        .select('item_id, can_view, can_edit')
+        .eq('event_id', eventId)
+        .eq('dienstleister_user_id', m.user_id ?? '')
+        .eq('module', moduleKey)
+        .then(r => r.data ?? []),
+      (async () => {
+        if (moduleKey === 'musik') {
+          const { data } = await supabase.from('music_songs').select('id, title, artist').eq('event_id', eventId).order('sort_order')
+          return (data ?? []).map((s: { id: string; title: string; artist: string }) => ({ id: s.id, label: s.title || '(kein Titel)', sub: s.artist }))
+        }
+        if (moduleKey === 'dekoration') {
+          const [{ data: setup }, { data: wishes }] = await Promise.all([
+            supabase.from('decor_setup_items').select('id, title').eq('event_id', eventId).order('sort_order'),
+            supabase.from('deko_wishes').select('id, title').eq('event_id', eventId).order('created_at'),
+          ])
+          return [
+            ...(setup ?? []).map((x: { id: string; title: string }) => ({ id: x.id, label: x.title, sub: 'Aufbau-Aufgabe' })),
+            ...(wishes ?? []).map((x: { id: string; title: string }) => ({ id: x.id, label: x.title, sub: 'Dekor-Wunsch' })),
+          ]
+        }
+        if (moduleKey === 'medien') {
+          const { data } = await supabase.from('media_shot_items').select('id, title, category').eq('event_id', eventId).order('sort_order')
+          return (data ?? []).map((s: { id: string; title: string; category: string }) => ({ id: s.id, label: s.title, sub: s.category }))
+        }
+        return []
+      })(),
+    ])
+
+    const map: Record<string, { can_view: boolean; can_edit: boolean }> = {}
+    for (const p of existingPerms) {
+      map[p.item_id] = { can_view: p.can_view, can_edit: p.can_edit }
+    }
+    setItemPermMap(map)
+    setItemPermItems(items)
+    setItemPermLoading(false)
+  }
+
+  function toggleItemPerm(itemId: string, field: 'can_view' | 'can_edit', value: boolean) {
+    setItemPermMap(prev => {
+      const cur = prev[itemId] ?? { can_view: true, can_edit: false }
+      const next = { ...cur, [field]: value }
+      if (field === 'can_view' && !value) next.can_edit = false
+      if (field === 'can_edit' && value) next.can_view = true
+      return { ...prev, [itemId]: next }
+    })
+  }
+
+  async function saveItemPerms(m: Member) {
+    if (!m.user_id) return
+    setItemPermSaving(true)
+    const rows = Object.entries(itemPermMap).map(([item_id, perms]) => ({
+      event_id: eventId,
+      dienstleister_user_id: m.user_id!,
+      module: itemPermModule,
+      item_id,
+      can_view: perms.can_view,
+      can_edit: perms.can_edit,
+    }))
+    await supabase.from('dienstleister_item_permissions')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('dienstleister_user_id', m.user_id)
+      .eq('module', itemPermModule)
+    if (rows.length > 0) {
+      await supabase.from('dienstleister_item_permissions').insert(rows)
+    }
+    setItemPermSaving(false)
+    setItemPermMemberId(null)
   }
 
   // ── Invite modal ───────────────────────────────────────────────────────────
@@ -675,6 +770,30 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
               >
                 <Shield size={13} /> Zugriffsmodule
               </button>
+              {(() => {
+                const supportedMods = ITEM_PERM_MODULES.filter(x => m.current_permissions.some(p => p === x.modKey || p === `${x.modKey}_read`))
+                if (supportedMods.length === 0) return null
+                return (
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <details style={{ display: 'inline-block' }}>
+                      <summary style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-primary)', background: 'var(--surface)', cursor: 'pointer', listStyle: 'none' }}>
+                        <Pencil size={13} /> Item-Berechtigungen
+                      </summary>
+                      <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', boxShadow: 'var(--shadow-md)', padding: '6px', minWidth: 180, marginTop: 4 }}>
+                        {supportedMods.map(mod => (
+                          <button
+                            key={mod.key}
+                            onClick={e => { e.stopPropagation(); openItemPerms(m, mod.key) }}
+                            style={{ display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', color: 'var(--text-primary)' }}
+                          >
+                            {mod.label}
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )
+              })()}
               {m.current_permissions.length > 0 && (
                 <button
                   onClick={e => { e.stopPropagation(); openVendorView(m) }}
@@ -980,6 +1099,143 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
           </div>
         </div>
       )}
+
+      {/* ── Item Permissions Lightbox ── */}
+      {itemPermMemberId && (() => {
+        const ipm = members.find(m => m.id === itemPermMemberId)
+        if (!ipm || !ipm.user_id) return null
+        const modLabel = ITEM_PERM_MODULES.find(x => x.key === itemPermModule)?.label ?? itemPermModule
+        const hasFullAccess = ipm.current_permissions.includes(
+          ITEM_PERM_MODULES.find(x => x.key === itemPermModule)?.modKey ?? ''
+        )
+        return (
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+            onClick={() => setItemPermMemberId(null)}
+          >
+            <div
+              style={{ background: 'var(--bg)', borderRadius: 'var(--radius)', maxWidth: 560, width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-xl)', overflow: 'hidden' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+                    Item-Berechtigungen · {modLabel}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {categoryForMember(ipm)} · {ipm.profiles?.name ?? ipm.display_name ?? 'Unbekannt'}
+                  </p>
+                </div>
+                <button onClick={() => setItemPermMemberId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4 }}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Default info */}
+              <div style={{ padding: '12px 24px', background: hasFullAccess ? 'rgba(52,199,89,0.08)' : 'rgba(255,149,0,0.08)', borderBottom: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 12, color: hasFullAccess ? '#34A853' : '#FF9500' }}>
+                  {hasFullAccess
+                    ? 'Standard: alle Items sichtbar und bearbeitbar (voller Modulzugang). Abweichungen unten konfigurieren.'
+                    : 'Standard: alle Items nur lesbar (read-only Modulzugang). Bearbeitbarkeit kann hier nicht freigeschaltet werden.'}
+                </p>
+              </div>
+
+              {/* Bulk toggles */}
+              <div style={{ padding: '10px 24px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => {
+                    const next: Record<string, { can_view: boolean; can_edit: boolean }> = {}
+                    for (const item of itemPermItems) next[item.id] = { can_view: true, can_edit: false }
+                    setItemPermMap(next)
+                  }}
+                  style={{ padding: '5px 12px', fontSize: 11, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: 'var(--surface)', fontFamily: 'inherit' }}
+                >
+                  Alle sichtbar, nicht editierbar
+                </button>
+                {hasFullAccess && (
+                  <button
+                    onClick={() => {
+                      const next: Record<string, { can_view: boolean; can_edit: boolean }> = {}
+                      for (const item of itemPermItems) next[item.id] = { can_view: true, can_edit: true }
+                      setItemPermMap(next)
+                    }}
+                    style={{ padding: '5px 12px', fontSize: 11, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: 'var(--surface)', fontFamily: 'inherit' }}
+                  >
+                    Alle sichtbar & editierbar
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    const next: Record<string, { can_view: boolean; can_edit: boolean }> = {}
+                    for (const item of itemPermItems) next[item.id] = { can_view: false, can_edit: false }
+                    setItemPermMap(next)
+                  }}
+                  style={{ padding: '5px 12px', fontSize: 11, border: '1px solid rgba(255,59,48,0.3)', borderRadius: 6, cursor: 'pointer', background: 'rgba(255,59,48,0.06)', fontFamily: 'inherit', color: '#FF3B30' }}
+                >
+                  Alle ausblenden
+                </button>
+              </div>
+
+              {/* Items list */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+                {itemPermLoading ? (
+                  <div style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
+                ) : itemPermItems.length === 0 ? (
+                  <div style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Keine Items gefunden.</div>
+                ) : (
+                  itemPermItems.map(item => {
+                    const perm = itemPermMap[item.id] ?? { can_view: true, can_edit: hasFullAccess }
+                    return (
+                      <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 24px', borderBottom: '1px solid var(--border)', background: !perm.can_view ? 'rgba(255,59,48,0.04)' : 'transparent' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 500, color: perm.can_view ? 'var(--text-primary)' : 'var(--text-tertiary)', textDecoration: perm.can_view ? 'none' : 'line-through' }}>{item.label}</p>
+                          {item.sub && <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{item.sub}</p>}
+                        </div>
+                        {/* can_view toggle */}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0 }}>
+                          <input
+                            type="checkbox"
+                            checked={perm.can_view}
+                            onChange={e => toggleItemPerm(item.id, 'can_view', e.target.checked)}
+                            style={{ width: 14, height: 14 }}
+                          />
+                          Sichtbar
+                        </label>
+                        {/* can_edit toggle */}
+                        {hasFullAccess && (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer', flexShrink: 0 }}>
+                            <input
+                              type="checkbox"
+                              checked={perm.can_edit}
+                              disabled={!perm.can_view}
+                              onChange={e => toggleItemPerm(item.id, 'can_edit', e.target.checked)}
+                              style={{ width: 14, height: 14 }}
+                            />
+                            Bearbeitbar
+                          </label>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setItemPermMemberId(null)} style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer' }}>Abbrechen</button>
+                <button
+                  onClick={() => saveItemPerms(ipm)}
+                  disabled={itemPermSaving}
+                  style={{ padding: '8px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}
+                >
+                  {itemPermSaving ? 'Speichern…' : 'Speichern'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Vendor View Lightbox ── */}
       {vendorViewMemberId && (() => {
