@@ -8,36 +8,46 @@ import { fetchProposalsForEvent, subscribeToProposals, acceptProposal, rejectPro
 import { createClient } from '@/lib/supabase/client'
 import dynamic from 'next/dynamic'
 
-// Tab-Komponenten
-import ChatTab       from './tabs/ChatTab'
-import TimelineTab   from './tabs/TimelineTab'
-import LocationTab   from './tabs/LocationTab'
-import GuestsTab     from './tabs/GuestsTab'
-import SeatingTab    from './tabs/SeatingTab'
-import CateringTab   from './tabs/CateringTab'
-import PatisserieTab from './tabs/PatisserieTab'
-import MediaTab      from './tabs/MediaTab'
-import MusicTab      from './tabs/MusicTab'
-import DecorTab      from './tabs/DecorTab'
-import FilesTab      from './tabs/FilesTab'
+// Tab-Komponenten (legacy simple tabs)
+import ChatTab     from './tabs/ChatTab'
+import TimelineTab from './tabs/TimelineTab'
+import LocationTab from './tabs/LocationTab'
+import GuestsTab   from './tabs/GuestsTab'
+import SeatingTab  from './tabs/SeatingTab'
+import CateringTab from './tabs/CateringTab'
+import FilesTab    from './tabs/FilesTab'
+
+// Shared tab components with item-permission support
+import MusikTabContent      from '@/components/tabs/MusikTabContent'
+import PatisserieTabContent from '@/components/tabs/PatisserieTabContent'
+import DekoTabContent       from '@/components/tabs/DekoTabContent'
+import MediaTabContent      from '@/components/tabs/MediaTabContent'
 
 const ProposalLightbox      = dynamic(() => import('@/components/proposals/ProposalLightbox'), { ssr: false })
 const ProposalDetailSheet   = dynamic(() => import('@/components/proposals/ProposalDetailSheet'), { ssr: false })
 const CounterProposalSheet  = dynamic(() => import('@/components/proposals/CounterProposalSheet'), { ssr: false })
 const CaseLightbox          = dynamic(() => import('@/components/proposals/CaseLightbox'), { ssr: false })
 
-const TAB_REGISTRY: Record<string, React.ComponentType<{ eventId: string }>> = {
-  mod_chat:       ChatTab,
-  mod_timeline:   TimelineTab,
-  mod_location:   LocationTab,
-  mod_guests:     GuestsTab,
-  mod_seating:    SeatingTab,
-  mod_catering:   CateringTab,
-  mod_patisserie: PatisserieTab,
-  mod_media:      MediaTab,
-  mod_music:      MusicTab,
-  mod_decor:      DecorTab,
-  mod_files:      FilesTab,
+// Legacy tabs without item-level permission support
+const LEGACY_TAB_REGISTRY: Record<string, React.ComponentType<{ eventId: string }>> = {
+  mod_chat:     ChatTab,
+  mod_timeline: TimelineTab,
+  mod_location: LocationTab,
+  mod_guests:   GuestsTab,
+  mod_seating:  SeatingTab,
+  mod_catering: CateringTab,
+  mod_files:    FilesTab,
+}
+
+// Tabs that use the new shared components with item permissions
+const SHARED_TAB_MODULES = new Set(['mod_music', 'mod_patisserie', 'mod_decor', 'mod_media'])
+
+// Mapping from permission key to item-permission module name
+const MOD_TO_MODULE: Record<string, string> = {
+  mod_music:      'musik',
+  mod_patisserie: 'patisserie',
+  mod_decor:      'dekoration',
+  mod_media:      'medien',
 }
 
 const PROPOSAL_MODULE_MAP: Partial<Record<string, ProposalModule>> = {
@@ -78,9 +88,11 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
   const [showInbox, setShowInbox]         = useState(false)
   const [pendingCount, setPendingCount]   = useState(0)
   const [userId, setUserId]               = useState<string | null>(null)
+  const [itemPerms, setItemPerms]         = useState<Record<string, { can_view: boolean; can_edit: boolean }>>({})
 
   const resolvedTab = permissions.includes(activeTab) ? activeTab : defaultTab
   const currentModule = PROPOSAL_MODULE_MAP[resolvedTab]
+  const hasFullModuleAccess = permissions.includes(resolvedTab)
 
   useEffect(() => {
     if (resolvedTab !== activeTab) setActiveTab(resolvedTab)
@@ -107,6 +119,27 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
     return () => unsub?.()
   }, [eventId, userId])
 
+  // Load item-level permissions when switching to a shared-component tab
+  useEffect(() => {
+    if (!userId || !SHARED_TAB_MODULES.has(resolvedTab)) return
+    const moduleName = MOD_TO_MODULE[resolvedTab]
+    if (!moduleName) return
+    const supabase = createClient()
+    supabase
+      .from('dienstleister_item_permissions')
+      .select('item_id, can_view, can_edit')
+      .eq('event_id', eventId)
+      .eq('dienstleister_user_id', userId)
+      .eq('module', moduleName)
+      .then(({ data }) => {
+        const map: Record<string, { can_view: boolean; can_edit: boolean }> = {}
+        for (const row of data ?? []) {
+          map[row.item_id] = { can_view: row.can_view, can_edit: row.can_edit }
+        }
+        setItemPerms(map)
+      })
+  }, [resolvedTab, userId, eventId])
+
   function navigate(key: string) {
     setActiveTab(key)
     setMobileOpen(false)
@@ -114,7 +147,7 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
     router.replace(`${pathname}?tab=${key}`, { scroll: false })
   }
 
-  const TabComponent = TAB_REGISTRY[resolvedTab] ?? null
+  const TabComponent = LEGACY_TAB_REGISTRY[resolvedTab] ?? null
 
   const sidebar = (
     <nav style={{
@@ -295,7 +328,38 @@ export default function VendorDashboardClient({ eventId, permissions, eventTitle
               </button>
             )}
 
-            {TabComponent ? (
+            {resolvedTab === 'mod_music' ? (
+              <MusikTabContent
+                eventId={eventId}
+                mode="dienstleister"
+                hasFullModuleAccess={hasFullModuleAccess}
+                itemPermissions={itemPerms}
+                onPropose={currentModule ? () => setShowProposal(true) : undefined}
+              />
+            ) : resolvedTab === 'mod_patisserie' ? (
+              <PatisserieTabContent
+                eventId={eventId}
+                mode="dienstleister"
+                hasFullModuleAccess={hasFullModuleAccess}
+                onPropose={currentModule ? () => setShowProposal(true) : undefined}
+              />
+            ) : resolvedTab === 'mod_decor' ? (
+              <DekoTabContent
+                eventId={eventId}
+                mode="dienstleister"
+                hasFullModuleAccess={hasFullModuleAccess}
+                itemPermissions={itemPerms}
+                onPropose={currentModule ? () => setShowProposal(true) : undefined}
+              />
+            ) : resolvedTab === 'mod_media' ? (
+              <MediaTabContent
+                eventId={eventId}
+                mode="dienstleister"
+                hasFullModuleAccess={hasFullModuleAccess}
+                itemPermissions={itemPerms}
+                onPropose={currentModule ? () => setShowProposal(true) : undefined}
+              />
+            ) : TabComponent ? (
               <TabComponent eventId={eventId} />
             ) : (
               <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>

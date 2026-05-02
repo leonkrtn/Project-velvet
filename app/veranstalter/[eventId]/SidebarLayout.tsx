@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Settings, Users, MessageSquare, Lightbulb,
   Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed, Inbox,
+  Music2, Cake, Flower2, Camera,
 } from 'lucide-react'
 import { fetchProposalsForEvent, subscribeToProposals } from '@/lib/proposals'
 import { createClient } from '@/lib/supabase/client'
@@ -25,6 +26,10 @@ const NAV_ITEMS = [
   { key: 'chats',           label: 'Chats',            icon: MessageSquare },
   { key: 'vorschlaege',     label: 'Vorschläge',       icon: Lightbulb },
   { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
+  { key: 'musik',           label: 'Musik',             icon: Music2 },
+  { key: 'patisserie',      label: 'Patisserie',        icon: Cake },
+  { key: 'dekoration',      label: 'Dekoration',        icon: Flower2 },
+  { key: 'medien',          label: 'Medien & Aufnahmen', icon: Camera },
   { key: 'berechtigungen',  label: 'Berechtigungen',   icon: Shield },
   { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
   { key: 'personalplanung', label: 'Personalplanung',  icon: UserCog },
