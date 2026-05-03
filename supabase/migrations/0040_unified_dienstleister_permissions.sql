@@ -53,37 +53,39 @@ CREATE TRIGGER trg_dienstleister_permissions_updated_at
 -- Migrate existing permissions from old string-based system
 -- Maps mod_X strings → tab_key + access level
 INSERT INTO dienstleister_permissions (event_id, dienstleister_user_id, tab_key, item_id, access)
-SELECT
-  p.event_id,
-  p.user_id,
-  CASE p.permission
-    WHEN 'mod_chat'            THEN 'chats'
-    WHEN 'mod_timeline'        THEN 'ablaufplan'
-    WHEN 'mod_timeline_read'   THEN 'ablaufplan'
-    WHEN 'mod_seating'         THEN 'sitzplan'
-    WHEN 'mod_seating_read'    THEN 'sitzplan'
-    WHEN 'mod_catering'        THEN 'catering'
-    WHEN 'mod_catering_read'   THEN 'catering'
-    WHEN 'mod_music'           THEN 'musik'
-    WHEN 'mod_music_read'      THEN 'musik'
-    WHEN 'mod_patisserie'      THEN 'patisserie'
-    WHEN 'mod_patisserie_read' THEN 'patisserie'
-    WHEN 'mod_decor'           THEN 'dekoration'
-    WHEN 'mod_decor_read'      THEN 'dekoration'
-    WHEN 'mod_media'           THEN 'medien'
-    WHEN 'mod_media_read'      THEN 'medien'
-    WHEN 'mod_location'        THEN 'allgemein'
-    WHEN 'mod_guests'          THEN 'allgemein'
-    ELSE NULL
-  END AS tab_key,
-  NULL AS item_id,
-  CASE WHEN p.permission LIKE '%_read' THEN 'read' ELSE 'write' END AS access
-FROM permissions p
-INNER JOIN event_members em
-  ON em.event_id = p.event_id
-  AND em.user_id = p.user_id
-  AND em.role = 'dienstleister'
-WHERE p.permission LIKE 'mod_%'
+SELECT event_id, user_id, tab_key, NULL, access
+FROM (
+  SELECT
+    p.event_id,
+    p.user_id,
+    CASE p.permission
+      WHEN 'mod_chat'            THEN 'chats'
+      WHEN 'mod_timeline'        THEN 'ablaufplan'
+      WHEN 'mod_timeline_read'   THEN 'ablaufplan'
+      WHEN 'mod_seating'         THEN 'sitzplan'
+      WHEN 'mod_seating_read'    THEN 'sitzplan'
+      WHEN 'mod_catering'        THEN 'catering'
+      WHEN 'mod_catering_read'   THEN 'catering'
+      WHEN 'mod_music'           THEN 'musik'
+      WHEN 'mod_music_read'      THEN 'musik'
+      WHEN 'mod_patisserie'      THEN 'patisserie'
+      WHEN 'mod_patisserie_read' THEN 'patisserie'
+      WHEN 'mod_decor'           THEN 'dekoration'
+      WHEN 'mod_decor_read'      THEN 'dekoration'
+      WHEN 'mod_media'           THEN 'medien'
+      WHEN 'mod_media_read'      THEN 'medien'
+      WHEN 'mod_location'        THEN 'allgemein'
+      WHEN 'mod_guests'          THEN 'allgemein'
+    END AS tab_key,
+    CASE WHEN p.permission LIKE '%_read' THEN 'read' ELSE 'write' END AS access
+  FROM permissions p
+  INNER JOIN event_members em
+    ON em.event_id = p.event_id
+    AND em.user_id = p.user_id
+    AND em.role = 'dienstleister'
+  WHERE p.permission LIKE 'mod_%'
+) sub
+WHERE sub.tab_key IS NOT NULL
 ON CONFLICT DO NOTHING;
 
 -- Helper function: get effective access for a dienstleister on a specific item
