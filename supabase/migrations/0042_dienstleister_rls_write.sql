@@ -39,18 +39,18 @@ CREATE POLICY "catering_dl_write" ON catering_plans
   );
 
 -- ═══════════════════════════════════════════════════════════════════════
--- musik_songs: Dienstleister read + write
+-- music_songs: Dienstleister read + write
 -- ═══════════════════════════════════════════════════════════════════════
-DROP POLICY IF EXISTS "musiksong_select" ON musik_songs;
-CREATE POLICY "musiksong_select" ON musik_songs
+DROP POLICY IF EXISTS "musiksong_select" ON music_songs;
+CREATE POLICY "musiksong_select" ON music_songs
   FOR SELECT USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
     OR dl_has_tab_access(event_id, 'musik', 'read')
   );
 
-DROP POLICY IF EXISTS "musiksong_veranstalter" ON musik_songs;
-DROP POLICY IF EXISTS "musiksong_dl_write" ON musik_songs;
-CREATE POLICY "musiksong_dl_write" ON musik_songs
+DROP POLICY IF EXISTS "musiksong_veranstalter" ON music_songs;
+DROP POLICY IF EXISTS "musiksong_dl_write" ON music_songs;
+CREATE POLICY "musiksong_dl_write" ON music_songs
   FOR ALL USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar']::user_role[])
     OR dl_has_tab_access(event_id, 'musik', 'write')
@@ -110,17 +110,17 @@ CREATE POLICY "mediash_dl_write" ON media_shot_items
   );
 
 -- ═══════════════════════════════════════════════════════════════════════
--- timeline_items: Dienstleister read + write
+-- timeline_entries: Dienstleister read + write
 -- ═══════════════════════════════════════════════════════════════════════
-DROP POLICY IF EXISTS "timeline_select" ON timeline_items;
-DROP POLICY IF EXISTS "timeline_dl_write" ON timeline_items;
+DROP POLICY IF EXISTS "timeline_select" ON timeline_entries;
+DROP POLICY IF EXISTS "timeline_dl_write" ON timeline_entries;
 
-CREATE POLICY "timeline_select" ON timeline_items
+CREATE POLICY "timeline_select" ON timeline_entries
   FOR SELECT USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
     OR dl_has_tab_access(event_id, 'ablaufplan', 'read')
   );
-CREATE POLICY "timeline_dl_write" ON timeline_items
+CREATE POLICY "timeline_dl_write" ON timeline_entries
   FOR ALL USING (
     is_event_member(event_id, ARRAY['veranstalter']::user_role[])
     OR dl_has_tab_access(event_id, 'ablaufplan', 'write')
@@ -170,26 +170,17 @@ CREATE POLICY "guests_dl_select" ON guests
   );
 
 -- ═══════════════════════════════════════════════════════════════════════
--- location_details: Dienstleister read via allgemein tab
+-- patisserie_config: Dienstleister read + write
 -- ═══════════════════════════════════════════════════════════════════════
-DROP POLICY IF EXISTS "locdet_dl_select" ON location_details;
-CREATE POLICY "locdet_dl_select" ON location_details
-  FOR SELECT USING (
-    dl_has_tab_access(event_id, 'allgemein', 'read')
-  );
+DROP POLICY IF EXISTS "patisserie_dl_select" ON patisserie_config;
+DROP POLICY IF EXISTS "patisserie_dl_write" ON patisserie_config;
 
--- ═══════════════════════════════════════════════════════════════════════
--- patisserie_orders: Dienstleister read + write
--- ═══════════════════════════════════════════════════════════════════════
-DROP POLICY IF EXISTS "patisserie_dl_select" ON patisserie_orders;
-DROP POLICY IF EXISTS "patisserie_dl_write" ON patisserie_orders;
-
-CREATE POLICY "patisserie_dl_select" ON patisserie_orders
+CREATE POLICY "patisserie_dl_select" ON patisserie_config
   FOR SELECT USING (
     is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])
     OR dl_has_tab_access(event_id, 'patisserie', 'read')
   );
-CREATE POLICY "patisserie_dl_write" ON patisserie_orders
+CREATE POLICY "patisserie_dl_write" ON patisserie_config
   FOR ALL USING (
     is_event_member(event_id, ARRAY['veranstalter']::user_role[])
     OR dl_has_tab_access(event_id, 'patisserie', 'write')
@@ -197,7 +188,6 @@ CREATE POLICY "patisserie_dl_write" ON patisserie_orders
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- events: Dienstleister SELECT for basic info (needed by allgemein, uebersicht, catering)
--- Already handled by existing policies, but ensure DL with any tab access can read event basics
 -- ═══════════════════════════════════════════════════════════════════════
 DROP POLICY IF EXISTS "events_dl_select" ON events;
 CREATE POLICY "events_dl_select" ON events
