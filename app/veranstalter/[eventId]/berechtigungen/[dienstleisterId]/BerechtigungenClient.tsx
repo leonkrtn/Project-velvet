@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Check, ArrowLeft } from 'lucide-react'
+import { Check, ArrowLeft, LayoutDashboard, Settings, UtensilsCrossed, MessageSquare, Lightbulb, Calendar, Music2, Cake, Flower2, Camera, Grid2X2, LucideIcon } from 'lucide-react'
 import type { DienstleisterPermRow, MusicSong, DekorItem, MediaItem } from './page'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -12,22 +12,22 @@ type Access = 'none' | 'read' | 'write'
 interface TabConfig {
   key: string
   label: string
-  icon: string
+  icon: LucideIcon
   hasItems: boolean
 }
 
 const CONFIGURABLE_TABS: TabConfig[] = [
-  { key: 'uebersicht',  label: 'Übersicht',          icon: '📋', hasItems: false },
-  { key: 'allgemein',   label: 'Allgemein',           icon: '⚙️',  hasItems: false },
-  { key: 'catering',    label: 'Catering & Menü',     icon: '🍽️',  hasItems: false },
-  { key: 'chats',       label: 'Chats',               icon: '💬', hasItems: false },
-  { key: 'vorschlaege', label: 'Vorschläge',          icon: '💡', hasItems: false },
-  { key: 'ablaufplan',  label: 'Ablaufplan',          icon: '📅', hasItems: false },
-  { key: 'musik',       label: 'Musik',               icon: '🎵', hasItems: true  },
-  { key: 'patisserie',  label: 'Patisserie',          icon: '🎂', hasItems: false },
-  { key: 'dekoration',  label: 'Dekoration',          icon: '🌸', hasItems: true  },
-  { key: 'medien',      label: 'Medien & Aufnahmen',  icon: '📷', hasItems: true  },
-  { key: 'sitzplan',    label: 'Sitzplan',            icon: '🪑', hasItems: false },
+  { key: 'uebersicht',  label: 'Übersicht',          icon: LayoutDashboard,  hasItems: false },
+  { key: 'allgemein',   label: 'Allgemein',           icon: Settings,         hasItems: false },
+  { key: 'catering',    label: 'Catering & Menü',     icon: UtensilsCrossed,  hasItems: false },
+  { key: 'chats',       label: 'Chats',               icon: MessageSquare,    hasItems: false },
+  { key: 'vorschlaege', label: 'Vorschläge',          icon: Lightbulb,        hasItems: false },
+  { key: 'ablaufplan',  label: 'Ablaufplan',          icon: Calendar,         hasItems: false },
+  { key: 'musik',       label: 'Musik',               icon: Music2,           hasItems: true  },
+  { key: 'patisserie',  label: 'Patisserie',          icon: Cake,             hasItems: false },
+  { key: 'dekoration',  label: 'Dekoration',          icon: Flower2,          hasItems: true  },
+  { key: 'medien',      label: 'Medien & Aufnahmen',  icon: Camera,           hasItems: true  },
+  { key: 'sitzplan',    label: 'Sitzplan',            icon: Grid2X2,          hasItems: false },
 ]
 
 interface Props {
@@ -358,7 +358,7 @@ export default function BerechtigungenDLClient({
                 {/* Tab-level row */}
                 <div className={`tab-row ${hasAccess ? 'tab-row-has-access' : 'tab-row-no-access'}`}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 18, lineHeight: 1 }}>{tab.icon}</span>
+                    <tab.icon size={18} style={{ flexShrink: 0, color: 'var(--text-secondary)' }} />
                     <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
                       {tab.label}
                     </span>
@@ -450,7 +450,7 @@ export default function BerechtigungenDLClient({
                   return (
                     <div key={tab.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: 13, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 14 }}>{tab.icon}</span>
+                        <tab.icon size={14} style={{ flexShrink: 0, color: 'var(--text-secondary)' }} />
                         {tab.label}
                       </span>
                       <span style={{
