@@ -771,9 +771,9 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
               >
                 <Shield size={13} /> Zugriffsmodule
               </button>
-              {m.role === 'dienstleister' && (
+              {m.role === 'dienstleister' && m.user_id && (
                 <Link
-                  href={`/veranstalter/${eventId}/berechtigungen/${m.id}`}
+                  href={`/veranstalter/${eventId}/berechtigungen/${m.user_id}`}
                   onClick={e => e.stopPropagation()}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-primary)', background: 'var(--surface)', cursor: 'pointer', textDecoration: 'none' }}
                 >

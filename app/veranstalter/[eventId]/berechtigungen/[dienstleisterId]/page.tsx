@@ -54,7 +54,7 @@ export default async function DienstleisterBerechtigungenPage({ params }: Props)
     .from('profiles')
     .select('id, name, email')
     .eq('id', dienstleisterId)
-    .single()
+    .maybeSingle()
 
   if (!dlProfile) redirect(`/veranstalter/${eventId}/mitglieder`)
 
