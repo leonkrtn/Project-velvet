@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   Check, ArrowLeft, ChevronDown, ChevronRight, HelpCircle,
-  LayoutDashboard, Settings, UtensilsCrossed, MessageSquare, Lightbulb,
-  Calendar, Music2, Cake, Flower2, Camera, Grid2X2, MapPin, Users, FileText,
+  LayoutDashboard, Settings, UtensilsCrossed, MessageSquare,
+  Calendar, Music2, Cake, Flower2, Camera, Grid2X2, Users,
   LucideIcon,
 } from 'lucide-react'
 import type { DienstleisterPermRow } from './page'
@@ -33,128 +33,97 @@ const CONFIGURABLE_TABS: TabConfig[] = [
   {
     key: 'uebersicht', label: 'Übersicht', icon: LayoutDashboard,
     sections: [
-      { key: 'kpis',     label: 'KPI-Kacheln',       tooltip: 'Mitgliederanzahl, Gäste und Tage bis zur Veranstaltung' },
-      { key: 'budget',   label: 'Budget-Übersicht',   tooltip: 'Gesamtbudget und bisherige Ausgaben' },
-      { key: 'kontakte', label: 'Wichtige Kontakte',  tooltip: 'Hinterlegte Kontaktpersonen (Brautpaar, Trauzeugen)' },
-      { key: 'margin',   label: 'Kalkulation',        tooltip: 'Kostenaufstellung und Marge des Veranstalters (vertraulich)' },
-      { key: 'todos',    label: 'Aufgabenliste',      tooltip: 'Interne To-do-Liste des Veranstalters' },
+      { key: 'mitglieder',  label: 'Mitglieder',          tooltip: 'Anzahl der Team-Mitglieder' },
+      { key: 'einladungen', label: 'Offene Einladungen',   tooltip: 'Ausstehende Einladungen' },
+      { key: 'countdown',   label: 'Tage bis Event',       tooltip: 'Countdown bis zum Veranstaltungsdatum' },
+      { key: 'event',       label: 'Event',                tooltip: 'Eventname und grundlegende Infos' },
+      { key: 'kontakte',    label: 'Wichtige Kontakte',    tooltip: 'Kontaktpersonen wie Brautpaar und Trauzeugen' },
+      { key: 'margin',      label: 'Veranstalter-Marge',   tooltip: 'Interne Kalkulation und Marge (vertraulich)' },
+      { key: 'todos',       label: 'Meine To-Dos',         tooltip: 'Persönliche Aufgabenliste' },
     ],
   },
   {
     key: 'allgemein', label: 'Allgemein', icon: Settings,
     sections: [
-      { key: 'eventdetails', label: 'Event-Details',        tooltip: 'Datum, Titel, Uhrzeit und Beschreibung' },
-      { key: 'location',     label: 'Location-Details',     tooltip: 'Name, Adresse und Website der Veranstaltungslocation' },
-      { key: 'gaeste',       label: 'Gäste-Einstellungen',  tooltip: 'Max. Begleiter, Kinder-Regelung' },
-      { key: 'essen',        label: 'Essen & Menü',         tooltip: 'Menü-Typ und Essensoptionen' },
-      { key: 'kosten',       label: 'Veranstalterkosten',   tooltip: 'Interne Kostenkalkulation und Honorar (vertraulich)' },
-      { key: 'notizen',      label: 'Interne Notizen',      tooltip: 'Private Notizen des Veranstalters (vertraulich)' },
+      { key: 'eventdetails', label: 'Event-Details',       tooltip: 'Datum, Titel, Uhrzeit und Beschreibung' },
+      { key: 'location',     label: 'Location',            tooltip: 'Name, Adresse und Website der Veranstaltungslocation' },
+      { key: 'gaeste',       label: 'Gäste',               tooltip: 'Max. Begleiter, Kinder-Regelung' },
+      { key: 'kosten',       label: 'Veranstalterkosten',  tooltip: 'Interne Kostenkalkulation und Honorar (vertraulich)' },
+      { key: 'budget',       label: 'Budget',              tooltip: 'Gesamtbudget und bisherige Ausgaben' },
+      { key: 'brautpaar',    label: 'Kontakt Brautpaar',   tooltip: 'Kontaktdaten des Brautpaars' },
+      { key: 'notizen',      label: 'Interne Notizen',     tooltip: 'Private Notizen des Veranstalters (vertraulich)' },
     ],
   },
   {
     key: 'catering', label: 'Catering & Menü', icon: UtensilsCrossed,
     sections: [
-      { key: 'konzept',   label: 'Menükonzept',         tooltip: 'Service-Stil, Essensoptionen, Kinderspeisen' },
-      { key: 'getraenke', label: 'Getränke',            tooltip: 'Wein, Bier, Softdrinks, Cocktails' },
-      { key: 'menuplan',  label: 'Menüplan',            tooltip: 'Die einzelnen Gänge des Menüs' },
-      { key: 'zusatz',    label: 'Zusatzleistungen',    tooltip: 'Sektempfang, Fingerfood, Mitternachtssnack' },
-      { key: 'kosten',    label: 'Catering-Kosten',     tooltip: 'Kostenaufstellung (vertraulich)' },
-      { key: 'statistik', label: 'Gäste & Allergien',   tooltip: 'Aggregierte Essenswahl- und Allergie-Statistik' },
+      { key: 'konzept',    label: 'Menü & Essenskonzept',         tooltip: 'Service-Stil, Essensoptionen, Kinderspeisen' },
+      { key: 'menuplaene', label: 'Menügänge je Essensoption',    tooltip: 'Die einzelnen Gänge des Menüs pro Essensoption' },
+      { key: 'service',    label: 'Service & Ablauf',             tooltip: 'Servicestil, Küche, Personal und Zeitplanung' },
+      { key: 'getraenke',  label: 'Getränke',                     tooltip: 'Abrechnung, Sortiment, Wein und Sektempfang' },
+      { key: 'equipment',  label: 'Equipment & Ausstattung',      tooltip: 'Geschirr, Gläser, Tischdecken, Buffet-Tische' },
+      { key: 'budget',     label: 'Budget & Kalkulation',         tooltip: 'Budget pro Person und Gesamtkalkulation' },
+      { key: 'statistik',  label: 'Gäste-Statistik',              tooltip: 'Menüwahl-Übersicht und Allergien der Gäste' },
+      { key: 'kosten',     label: 'Catering-Kosten',              tooltip: 'Kostenaufstellung (vertraulich)' },
     ],
   },
   {
     key: 'chats', label: 'Chats', icon: MessageSquare,
     sections: [
-      { key: 'lesen',      label: 'Nachrichten lesen',       tooltip: 'Kann bestehende Konversationen lesen' },
-      { key: 'erstellen',  label: 'Konversationen erstellen', tooltip: 'Kann neue Gruppen-Chats anlegen' },
-      { key: 'teilnehmer', label: 'Teilnehmer verwalten',    tooltip: 'Kann Teilnehmer hinzufügen oder entfernen' },
-    ],
-  },
-  {
-    key: 'vorschlaege', label: 'Vorschläge', icon: Lightbulb,
-    sections: [
-      { key: 'dienstleister', label: 'Dienstleister-Vorschläge', tooltip: 'Vorschläge für weitere Dienstleister' },
-      { key: 'hotel',         label: 'Hotel-Vorschläge',         tooltip: 'Unterkunftsvorschläge für Gäste' },
-      { key: 'deko',          label: 'Deko-Vorschläge',          tooltip: 'Inspirationen und Deko-Ideen' },
+      { key: 'liste',       label: 'Chat-Liste',         tooltip: 'Übersicht aller Konversationen' },
+      { key: 'nachrichten', label: 'Nachrichten-Fenster', tooltip: 'Nachrichten lesen und senden' },
     ],
   },
   {
     key: 'ablaufplan', label: 'Ablaufplan', icon: Calendar,
     sections: [
-      { key: 'anzeigen',    label: 'Ablaufplan anzeigen',     tooltip: 'Alle Ablaufpunkte mit Zeit, Ort und Kategorie' },
-      { key: 'bearbeiten',  label: 'Ablaufpunkte bearbeiten', tooltip: 'Ablaufpunkte erstellen, ändern und löschen' },
-      { key: 'zuweisungen', label: 'Zuweisungen sehen',       tooltip: 'Wer welchen Ablaufpunkt betreut (Personal, Dienstleister)' },
+      { key: 'zeitplan', label: 'Zeitplan-Eintrag',             tooltip: 'Ablaufpunkte mit Zeit, Ort und Kategorie' },
+      { key: 'details',  label: 'Detailansicht Programmpunkt',  tooltip: 'Detaillierte Ansicht einzelner Programmpunkte' },
+    ],
+  },
+  {
+    key: 'gaesteliste', label: 'Gästeliste', icon: Users,
+    sections: [
+      { key: 'namen',     label: 'Gästenamen',      tooltip: 'Vor- und Nachname aller Gäste' },
+      { key: 'essen',     label: 'Essenswahl',      tooltip: 'Gewähltes Menü pro Gast' },
+      { key: 'allergien', label: 'Allergien',        tooltip: 'Unverträglichkeiten und spezielle Ernährungsanforderungen' },
+      { key: 'tische',    label: 'Tischzuordnung',  tooltip: 'Welcher Gast an welchem Tisch sitzt' },
+      { key: 'status',    label: 'Status',           tooltip: 'Zusage/Absage-Status pro Gast' },
     ],
   },
   {
     key: 'musik', label: 'Musik', icon: Music2,
     sections: [
       { key: 'anforderungen', label: 'Technische Anforderungen', tooltip: 'Soundcheck, PA-System, Bühne, Mikrofone, Strom' },
-      { key: 'wunschliste',   label: 'Wunschliste',             tooltip: 'Vom Brautpaar gewünschte Songs' },
-      { key: 'nogos',         label: 'No-Go-Liste',             tooltip: 'Explizit ausgeschlossene Songs' },
-      { key: 'playlist',      label: 'Playlist',                tooltip: 'Geplante Playlist für die Feier' },
+      { key: 'songliste',     label: 'Songliste',                tooltip: 'Wunsch-, No-Go- und Playlist-Songs' },
     ],
   },
   {
     key: 'patisserie', label: 'Patisserie', icon: Cake,
     sections: [
-      { key: 'lieferung', label: 'Lieferung & Aufbau',      tooltip: 'Lieferdatum, -uhrzeit und Aufbauort' },
-      { key: 'torte',     label: 'Tortendetails',           tooltip: 'Beschreibung, Schichten, Geschmacksrichtungen' },
-      { key: 'dessert',   label: 'Dessert-Buffet',          tooltip: 'Zusätzliche Desserts und Süßigkeiten' },
-      { key: 'kuehlung',  label: 'Kühlungsanforderungen',   tooltip: 'Kühllagerung und besondere Hinweise' },
-      { key: 'preis',     label: 'Preis & Notizen',         tooltip: 'Preisangabe und interne Anmerkungen (vertraulich)' },
+      { key: 'lieferung', label: 'Lieferung',            tooltip: 'Lieferdatum, Uhrzeit und Aufstellort' },
+      { key: 'kuehlung',  label: 'Kühlung erforderlich',  tooltip: 'Kühllagerung und besondere Hinweise' },
+      { key: 'torte',     label: 'Hochzeitstorte',        tooltip: 'Beschreibung, Schichten und Geschmacksrichtungen' },
     ],
   },
   {
     key: 'dekoration', label: 'Dekoration', icon: Flower2,
     sections: [
-      { key: 'aufbau',     label: 'Aufbau-Checkliste', tooltip: 'Aufgaben und Dekorations-Aufbaupunkte mit Ort und Zeiten' },
-      { key: 'wunschboard', label: 'Deko-Wunschboard', tooltip: 'Inspirationsbilder und Moodboard-Einträge' },
+      { key: 'aufbau',   label: 'Aufbau-Aufgaben', tooltip: 'Aufgaben und Dekorations-Aufbaupunkte mit Ort und Zeiten' },
+      { key: 'wuensche', label: 'Dekor-Wünsche',   tooltip: 'Inspirationsbilder und Moodboard-Einträge' },
     ],
   },
   {
     key: 'medien', label: 'Medien & Aufnahmen', icon: Camera,
     sections: [
-      { key: 'foto',            label: 'Foto-Briefing',    tooltip: 'Anweisungen und Wünsche für die Fotografie' },
-      { key: 'video',           label: 'Video-Briefing',   tooltip: 'Anweisungen und Wünsche für die Videografie' },
-      { key: 'einschraenkungen', label: 'Einschränkungen', tooltip: 'Verbotene Aufnahmen und No-Go-Zonen' },
-      { key: 'shotliste',       label: 'Shot-Liste',       tooltip: 'Gewünschte und obligatorische Aufnahmen' },
+      { key: 'briefing',  label: 'Briefing',   tooltip: 'Anweisungen und Wünsche für Foto und Video' },
+      { key: 'shotliste', label: 'Shot-Liste',  tooltip: 'Gewünschte und obligatorische Aufnahmen' },
     ],
   },
   {
     key: 'sitzplan', label: 'Sitzplan', icon: Grid2X2,
     sections: [
-      { key: 'plan', label: 'Sitzplan', tooltip: 'Tischübersicht und Gast-Zuweisungen' },
-    ],
-  },
-  {
-    key: 'veranstaltungsort', label: 'Veranstaltungsort', icon: MapPin,
-    sections: [
-      { key: 'adresse',   label: 'Adresse',          tooltip: 'Name und vollständige Adresse der Location' },
-      { key: 'kontakt',   label: 'Ansprechpartner',  tooltip: 'Kontaktperson vor Ort mit Telefon und E-Mail' },
-      { key: 'zugang',    label: 'Zugangscode',      tooltip: 'PIN und Zugangsinformationen für das Gebäude (vertraulich)' },
-      { key: 'logistik',  label: 'Logistik',         tooltip: 'Auf- und Abbauzeiten, Stromversorgung, Parkplätze' },
-      { key: 'grundriss', label: 'Grundriss',        tooltip: 'Raumplan und Grundrissdokument' },
-    ],
-  },
-  {
-    key: 'gaesteliste', label: 'Gästeliste', icon: Users,
-    sections: [
-      { key: 'namen',    label: 'Gästenamen',      tooltip: 'Vor- und Nachname aller Gäste' },
-      { key: 'essen',    label: 'Essenswahl',       tooltip: 'Gewähltes Menü pro Gast' },
-      { key: 'allergien', label: 'Allergien',       tooltip: 'Unverträglichkeiten und spezielle Ernährungsanforderungen' },
-      { key: 'tische',   label: 'Tischzuordnung',  tooltip: 'Welcher Gast an welchem Tisch sitzt' },
-      { key: 'status',   label: 'Status',           tooltip: 'Zusage/Absage-Status pro Gast' },
-    ],
-  },
-  {
-    key: 'dokumente', label: 'Dokumente', icon: FileText,
-    sections: [
-      { key: 'vertraege',     label: 'Verträge',           tooltip: 'Vertragsdokumente' },
-      { key: 'versicherungen', label: 'Versicherungen',    tooltip: 'Versicherungsdokumente' },
-      { key: 'genehmigungen', label: 'Genehmigungen',      tooltip: 'Behördliche Genehmigungen' },
-      { key: 'rider',         label: 'Rider',              tooltip: 'Technische Rider-Dokumente' },
-      { key: 'sonstige',      label: 'Sonstige Dokumente', tooltip: 'Weitere relevante Dateien' },
+      { key: 'grundriss', label: 'Grundriss', tooltip: 'Tischübersicht und Gast-Zuweisungen' },
     ],
   },
 ]

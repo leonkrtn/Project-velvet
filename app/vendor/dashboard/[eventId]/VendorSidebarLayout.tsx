@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Settings, MessageSquare, Lightbulb,
+  LayoutDashboard, Settings, MessageSquare,
   Calendar, Grid2X2, ChevronLeft, Menu, UtensilsCrossed,
-  Music2, Cake, Flower2, Camera, MapPin, Users, FileText,
+  Music2, Cake, Flower2, Camera, Users,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -18,20 +18,17 @@ interface Props {
 }
 
 const ALL_NAV_ITEMS = [
-  { key: 'uebersicht',  label: 'Übersicht',        icon: LayoutDashboard },
-  { key: 'allgemein',   label: 'Allgemein',         icon: Settings },
-  { key: 'catering',    label: 'Catering & Menü',   icon: UtensilsCrossed },
-  { key: 'chats',       label: 'Chats',             icon: MessageSquare },
-  { key: 'vorschlaege', label: 'Vorschläge',        icon: Lightbulb },
-  { key: 'ablaufplan',  label: 'Ablaufplan',        icon: Calendar },
-  { key: 'musik',       label: 'Musik',             icon: Music2 },
-  { key: 'patisserie',  label: 'Patisserie',        icon: Cake },
-  { key: 'dekoration',  label: 'Dekoration',        icon: Flower2 },
+  { key: 'uebersicht',  label: 'Übersicht',         icon: LayoutDashboard },
+  { key: 'allgemein',   label: 'Allgemein',          icon: Settings },
+  { key: 'catering',    label: 'Catering & Menü',    icon: UtensilsCrossed },
+  { key: 'chats',       label: 'Chats',              icon: MessageSquare },
+  { key: 'ablaufplan',  label: 'Ablaufplan',         icon: Calendar },
+  { key: 'gaesteliste', label: 'Gästeliste',         icon: Users },
+  { key: 'musik',       label: 'Musik',              icon: Music2 },
+  { key: 'patisserie',  label: 'Patisserie',         icon: Cake },
+  { key: 'dekoration',  label: 'Dekoration',         icon: Flower2 },
   { key: 'medien',      label: 'Medien & Aufnahmen', icon: Camera },
-  { key: 'sitzplan',         label: 'Sitzplan',           icon: Grid2X2 },
-  { key: 'veranstaltungsort', label: 'Veranstaltungsort',  icon: MapPin },
-  { key: 'gaesteliste',       label: 'Gästeliste',         icon: Users },
-  { key: 'dokumente',         label: 'Dokumente',          icon: FileText },
+  { key: 'sitzplan',    label: 'Sitzplan',           icon: Grid2X2 },
 ]
 
 export default function VendorSidebarLayout({ eventId, eventTitle, eventDate, children, initialTabPerms }: Props) {
@@ -129,9 +126,6 @@ export default function VendorSidebarLayout({ eventId, eventTitle, eventDate, ch
             >
               <Icon size={16} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
               <span>{label}</span>
-              {key === 'vorschlaege' && tabPerms[key] !== 'none' && (
-                <PendingBadge eventId={eventId} />
-              )}
             </Link>
           )
         })}
@@ -200,38 +194,3 @@ export default function VendorSidebarLayout({ eventId, eventTitle, eventDate, ch
   )
 }
 
-// Minimal pending-proposals badge for Vorschläge tab
-function PendingBadge({ eventId }: { eventId: string }) {
-  const [count, setCount] = useState(0)
-
-  useEffect(() => {
-    const supabase = createClient()
-    let cancelled = false
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user || cancelled) return
-      supabase
-        .from('proposal_recipients')
-        .select('id', { count: 'exact', head: true })
-        .eq('event_id', eventId)
-        .eq('user_id', user.id)
-        .eq('status', 'pending')
-        .then(({ count: c }) => {
-          if (!cancelled) setCount(c ?? 0)
-        })
-    })
-    return () => { cancelled = true }
-  }, [eventId])
-
-  if (count === 0) return null
-  return (
-    <span style={{
-      marginLeft: 'auto', minWidth: 18, height: 18,
-      borderRadius: 9, background: 'var(--gold)',
-      color: '#fff', fontSize: 10, fontWeight: 700,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '0 5px',
-    }}>
-      {count}
-    </span>
-  )
-}

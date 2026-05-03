@@ -17,7 +17,7 @@ export default async function VendorAblaufplanPage({ params }: Props) {
     .eq('dienstleister_user_id', user.id)
     .eq('tab_key', 'ablaufplan')
     .is('item_id', null)
-    .single()
+    .maybeSingle()
 
   const tabAccess = (tabPerm?.access ?? 'none') as 'none' | 'read' | 'write'
   if (tabAccess === 'none') redirect(`/vendor/dashboard/${eventId}/uebersicht`)

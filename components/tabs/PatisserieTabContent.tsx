@@ -22,10 +22,14 @@ interface PatisserieConfig {
   vendor_notes: string
 }
 
+type Access = 'none' | 'read' | 'write'
+
 interface Props {
   eventId: string
   mode: 'veranstalter' | 'dienstleister'
   hasFullModuleAccess?: boolean
+  tabAccess?: Access
+  sectionPerms?: Record<string, Access>
   onPropose?: () => void
 }
 
@@ -199,12 +203,18 @@ function PatisserieEditForm({ config, eventId, onSaved, onCancel }: {
 
 // ── Read View ─────────────────────────────────────────────────────────────────
 
-function PatisserieReadView({ config, canEdit, onEdit, mode, onPropose }: {
+function secVis(sectionPerms: Record<string, Access> | undefined, tabAccess: Access, key: string): boolean {
+  return (sectionPerms?.[key] ?? tabAccess) !== 'none'
+}
+
+function PatisserieReadView({ config, canEdit, onEdit, mode, onPropose, tabAccess = 'write', sectionPerms }: {
   config: PatisserieConfig | null
   canEdit: boolean
   onEdit: () => void
   mode: 'veranstalter' | 'dienstleister'
   onPropose?: () => void
+  tabAccess?: Access
+  sectionPerms?: Record<string, Access>
 }) {
   if (!config) {
     return (
@@ -223,6 +233,7 @@ function PatisserieReadView({ config, canEdit, onEdit, mode, onPropose }: {
   return (
     <div style={{ maxWidth: 640 }}>
       {/* Lieferung */}
+      {secVis(sectionPerms, tabAccess, 'lieferung') && (
       <div style={{ marginBottom: 16 }}>
         <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Lieferung</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
@@ -231,8 +242,9 @@ function PatisserieReadView({ config, canEdit, onEdit, mode, onPropose }: {
           {config.setup_location && <InfoCard icon={<MapPin size={13} />} label="Aufstellort" value={config.setup_location} />}
         </div>
       </div>
+      )}
 
-      {config.cooling_required && (
+      {secVis(sectionPerms, tabAccess, 'kuehlung') && config.cooling_required && (
         <div style={{ background: 'rgba(255,149,0,0.08)', border: '1px solid rgba(255,149,0,0.25)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <Thermometer size={16} style={{ color: '#FF9500', flexShrink: 0, marginTop: 1 }} />
           <div>
@@ -242,6 +254,7 @@ function PatisserieReadView({ config, canEdit, onEdit, mode, onPropose }: {
         </div>
       )}
 
+      {secVis(sectionPerms, tabAccess, 'torte') && (<>
       <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '18px 20px', marginBottom: 16 }}>
         <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Hochzeitstorte</p>
         {config.cake_description && <p style={{ fontSize: 14, color: 'var(--text-primary)', marginBottom: 10, lineHeight: 1.6 }}>{config.cake_description}</p>}
@@ -273,6 +286,7 @@ function PatisserieReadView({ config, canEdit, onEdit, mode, onPropose }: {
           )}
         </div>
       )}
+      </>)}
 
       {config.vendor_notes && (
         <div style={{ background: '#F5F5F7', borderRadius: 'var(--radius)', padding: '16px 20px', border: '1px solid var(--border)', marginBottom: 16 }}>
@@ -299,7 +313,7 @@ function PatisserieReadView({ config, canEdit, onEdit, mode, onPropose }: {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function PatisserieTabContent({ eventId, mode, hasFullModuleAccess = true, onPropose }: Props) {
+export default function PatisserieTabContent({ eventId, mode, hasFullModuleAccess = true, tabAccess = 'write', sectionPerms, onPropose }: Props) {
   const [config, setConfig]   = useState<PatisserieConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -328,7 +342,7 @@ export default function PatisserieTabContent({ eventId, mode, hasFullModuleAcces
       ) : editing ? (
         <PatisserieEditForm config={config} eventId={eventId} onSaved={c => { setConfig(c); setEditing(false) }} onCancel={() => setEditing(false)} />
       ) : (
-        <PatisserieReadView config={config} canEdit={canEdit} onEdit={() => setEditing(true)} mode={mode} onPropose={onPropose} />
+        <PatisserieReadView config={config} canEdit={canEdit} onEdit={() => setEditing(true)} mode={mode} onPropose={onPropose} tabAccess={tabAccess} sectionPerms={sectionPerms} />
       )}
     </div>
   )

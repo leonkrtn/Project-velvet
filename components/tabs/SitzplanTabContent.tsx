@@ -289,9 +289,29 @@ function SitzplanReadOnly({ eventId }: { eventId: string }) {
   )
 }
 
-export default function SitzplanTabContent({ eventId, mode, tabAccess }: TabContentProps) {
+type Access = 'none' | 'read' | 'write'
+
+function secVis(sectionPerms: Record<string, Access> | undefined, tabAccess: Access, key: string): boolean {
+  return (sectionPerms?.[key] ?? tabAccess) !== 'none'
+}
+
+export default function SitzplanTabContent({ eventId, mode, tabAccess, itemPermissions }: TabContentProps) {
   if (mode === 'veranstalter' || tabAccess === 'write') {
     return <SitzplanEditor eventId={eventId} />
   }
+
+  const showGrundriss = secVis(itemPermissions, (tabAccess ?? 'read') as Access, 'grundriss')
+
+  if (!showGrundriss) {
+    return (
+      <div>
+        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Sitzplan</h1>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px 24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
+          Kein Zugriff auf den Grundriss.
+        </div>
+      </div>
+    )
+  }
+
   return <SitzplanReadOnly eventId={eventId} />
 }

@@ -23,7 +23,13 @@ function fmt(min: number | null) {
   return `${h}:${m}`
 }
 
-export default function TimelineTab({ eventId }: { eventId: string }) {
+type Access = 'none' | 'read' | 'write'
+
+function secVis(sectionPerms: Record<string, Access> | undefined, tabAccess: Access, key: string): boolean {
+  return (sectionPerms?.[key] ?? tabAccess) !== 'none'
+}
+
+export default function TimelineTab({ eventId, tabAccess = 'read', sectionPerms }: { eventId: string; tabAccess?: Access; sectionPerms?: Record<string, Access> }) {
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -33,11 +39,18 @@ export default function TimelineTab({ eventId }: { eventId: string }) {
       .then(({ data }) => { setEntries(data ?? []); setLoading(false) })
   }, [eventId])
 
+  const showZeitplan = secVis(sectionPerms, tabAccess, 'zeitplan')
+  const showDetails = secVis(sectionPerms, tabAccess, 'details')
+
   return (
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Regieplan</h1>
 
-      {loading ? (
+      {!showZeitplan ? (
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px 24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
+          Kein Zugriff auf den Zeitplan.
+        </div>
+      ) : loading ? (
         <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
       ) : entries.length === 0 ? (
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px 24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
@@ -75,10 +88,10 @@ export default function TimelineTab({ eventId }: { eventId: string }) {
                           {cat}
                         </span>
                       </div>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: e.location ? 2 : 0 }}>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: (showDetails && e.location) ? 2 : 0 }}>
                         {e.title ?? '—'}
                       </p>
-                      {e.location && (
+                      {showDetails && e.location && (
                         <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{e.location}</p>
                       )}
                     </div>

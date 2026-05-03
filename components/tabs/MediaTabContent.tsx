@@ -24,12 +24,24 @@ interface ShotItem {
 
 export interface ItemPerm { can_view: boolean; can_edit: boolean }
 
+type Access = 'none' | 'read' | 'write'
+
 interface Props {
   eventId: string
   mode: 'veranstalter' | 'dienstleister'
   hasFullModuleAccess?: boolean
   itemPermissions?: Record<string, ItemPerm>
+  tabAccess?: Access
+  sectionPerms?: Record<string, Access>
   onPropose?: () => void
+}
+
+function secVis(sectionPerms: Record<string, Access> | undefined, tabAccess: Access, key: string): boolean {
+  return (sectionPerms?.[key] ?? tabAccess) !== 'none'
+}
+
+function secReadOnly(sectionPerms: Record<string, Access> | undefined, tabAccess: Access, key: string): boolean {
+  return (sectionPerms?.[key] ?? tabAccess) === 'read'
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -275,7 +287,7 @@ function AddShotForm({ eventId, count, onAdded }: { eventId: string; count: numb
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = true, itemPermissions = {}, onPropose }: Props) {
+export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = true, tabAccess = 'write', sectionPerms, onPropose }: Props) {
   const [briefing, setBriefing] = useState<Briefing | null>(null)
   const [shots, setShots]       = useState<ShotItem[]>([])
   const [loading, setLoading]   = useState(true)
@@ -293,16 +305,14 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
     })
   }, [eventId])
 
-  function canView(id: string) {
-    if (mode === 'veranstalter') return true
-    const p = itemPermissions[id]
-    return p ? p.can_view : true
-  }
+  const briefingVisible = secVis(sectionPerms, tabAccess, 'briefing')
+  const briefingReadOnly = secReadOnly(sectionPerms, tabAccess, 'briefing')
+  const shotlisteVisible = secVis(sectionPerms, tabAccess, 'shotliste')
+  const shotlisteReadOnly = secReadOnly(sectionPerms, tabAccess, 'shotliste')
 
-  function canEditItem(id: string) {
+  function canEditShot() {
     if (mode === 'veranstalter') return true
-    const p = itemPermissions[id]
-    return p ? p.can_edit : hasFullModuleAccess
+    return !shotlisteReadOnly && hasFullModuleAccess
   }
 
   async function deleteShot(id: string) {
@@ -311,9 +321,8 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
     if (!error) setShots(prev => prev.filter(s => s.id !== id))
   }
 
-  const briefingCanEdit = mode === 'veranstalter' || hasFullModuleAccess
-  const visibleShots    = shots.filter(s => canView(s.id))
-  const filtered        = typeFilter === 'all' ? visibleShots : visibleShots.filter(s => s.type === typeFilter)
+  const briefingCanEdit = (mode === 'veranstalter' || hasFullModuleAccess) && !briefingReadOnly
+  const filtered        = typeFilter === 'all' ? shots : shots.filter(s => s.type === typeFilter)
   const categories      = Array.from(new Set(filtered.map(s => s.category))).filter(Boolean)
 
   return (
@@ -331,13 +340,16 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
         <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
       ) : (
         <div style={{ maxWidth: 760 }}>
-          <BriefingSection briefing={briefing} eventId={eventId} canEdit={briefingCanEdit} onSaved={setBriefing} />
+          {briefingVisible && (
+            <BriefingSection briefing={briefing} eventId={eventId} canEdit={briefingCanEdit} onSaved={setBriefing} />
+          )}
 
           {/* Shot-Liste */}
+          {shotlisteVisible && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)' }}>
-                Shot-Liste ({visibleShots.length})
+                Shot-Liste ({shots.length})
               </p>
               <div style={{ display: 'flex', gap: 6 }}>
                 {['all', 'must_have', 'optional', 'forbidden'].map(f => (
@@ -348,7 +360,7 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
               </div>
             </div>
 
-            {visibleShots.length === 0 ? (
+            {shots.length === 0 ? (
               <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px 24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
                 Noch keine Shot-Liste hinterlegt.
               </div>
@@ -360,7 +372,7 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
                     {filtered.filter(s => s.category === cat).map(s => (
                       <ShotItemRow
                         key={s.id} item={s}
-                        canEdit={canEditItem(s.id)} mode={mode}
+                        canEdit={canEditShot()} mode={mode}
                         onUpdate={updated => setShots(prev => prev.map(x => x.id === updated.id ? updated : x))}
                         onDelete={() => deleteShot(s.id)}
                         onPropose={onPropose}
@@ -371,10 +383,11 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
               ))
             )}
 
-            {mode === 'veranstalter' && (
+            {(mode === 'veranstalter' || canEditShot()) && (
               <AddShotForm eventId={eventId} count={shots.length} onAdded={s => setShots(prev => [...prev, s])} />
             )}
           </div>
+          )}
         </div>
       )}
     </div>

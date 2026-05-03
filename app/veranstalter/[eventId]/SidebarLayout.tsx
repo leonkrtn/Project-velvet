@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { key: 'chats',           label: 'Chats',            icon: MessageSquare },
   { key: 'vorschlaege',     label: 'Vorschläge',       icon: Lightbulb },
   { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
+  { key: 'gaesteliste',     label: 'Gästeliste',        icon: Users },
   { key: 'musik',           label: 'Musik',             icon: Music2 },
   { key: 'patisserie',      label: 'Patisserie',        icon: Cake },
   { key: 'dekoration',      label: 'Dekoration',        icon: Flower2 },

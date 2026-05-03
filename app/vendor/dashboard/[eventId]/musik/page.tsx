@@ -17,12 +17,12 @@ export default async function VendorMusikPage({ params }: Props) {
     .eq('dienstleister_user_id', user.id)
     .eq('tab_key', 'musik')
     .is('item_id', null)
-    .single()
+    .maybeSingle()
 
   const tabAccess = (tabPerm?.access ?? 'none') as 'none' | 'read' | 'write'
   if (tabAccess === 'none') redirect(`/vendor/dashboard/${eventId}/uebersicht`)
 
-  const { data: itemPermsData } = await supabase
+  const { data: sectionPermsData } = await supabase
     .from('dienstleister_permissions')
     .select('item_id, access')
     .eq('event_id', eventId)
@@ -30,23 +30,18 @@ export default async function VendorMusikPage({ params }: Props) {
     .eq('tab_key', 'musik')
     .not('item_id', 'is', null)
 
-  const itemPermissions: Record<string, { can_view: boolean; can_edit: boolean }> = {}
-  for (const r of itemPermsData ?? []) {
-    if (r.item_id) {
-      const access = r.access as 'none' | 'read' | 'write'
-      itemPermissions[r.item_id] = {
-        can_view: access !== 'none',
-        can_edit: access === 'write',
-      }
-    }
+  const sectionPerms: Record<string, 'none' | 'read' | 'write'> = {}
+  for (const r of sectionPermsData ?? []) {
+    if (r.item_id) sectionPerms[r.item_id] = r.access as 'none' | 'read' | 'write'
   }
 
   return (
     <MusikTabContent
       eventId={eventId}
       mode="dienstleister"
+      tabAccess={tabAccess}
       hasFullModuleAccess={tabAccess === 'write'}
-      itemPermissions={itemPermissions}
+      sectionPerms={sectionPerms}
     />
   )
 }

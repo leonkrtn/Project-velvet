@@ -17,16 +17,31 @@ export default async function VendorPatisseriePage({ params }: Props) {
     .eq('dienstleister_user_id', user.id)
     .eq('tab_key', 'patisserie')
     .is('item_id', null)
-    .single()
+    .maybeSingle()
 
   const tabAccess = (tabPerm?.access ?? 'none') as 'none' | 'read' | 'write'
   if (tabAccess === 'none') redirect(`/vendor/dashboard/${eventId}/uebersicht`)
+
+  const { data: sectionPermsData } = await supabase
+    .from('dienstleister_permissions')
+    .select('item_id, access')
+    .eq('event_id', eventId)
+    .eq('dienstleister_user_id', user.id)
+    .eq('tab_key', 'patisserie')
+    .not('item_id', 'is', null)
+
+  const sectionPerms: Record<string, 'none' | 'read' | 'write'> = {}
+  for (const r of sectionPermsData ?? []) {
+    if (r.item_id) sectionPerms[r.item_id] = r.access as 'none' | 'read' | 'write'
+  }
 
   return (
     <PatisserieTabContent
       eventId={eventId}
       mode="dienstleister"
+      tabAccess={tabAccess}
       hasFullModuleAccess={tabAccess === 'write'}
+      sectionPerms={sectionPerms}
     />
   )
 }

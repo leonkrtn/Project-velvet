@@ -28,10 +28,14 @@ interface Requirements {
 
 export interface ItemPerm { can_view: boolean; can_edit: boolean }
 
+type Access = 'none' | 'read' | 'write'
+
 interface Props {
   eventId: string
   mode: 'veranstalter' | 'dienstleister'
   hasFullModuleAccess?: boolean
+  tabAccess?: Access
+  sectionPerms?: Record<string, Access>
   itemPermissions?: Record<string, ItemPerm>
   onPropose?: () => void
 }
@@ -381,7 +385,7 @@ function AddSongForm({ eventId, onAdded }: { eventId: string; onAdded: (s: Song)
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = true, itemPermissions = {}, onPropose }: Props) {
+export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = true, tabAccess = 'write', sectionPerms, itemPermissions = {}, onPropose }: Props) {
   const [songs, setSongs]       = useState<Song[]>([])
   const [reqs, setReqs]         = useState<Requirements | null>(null)
   const [loading, setLoading]   = useState(true)
@@ -425,6 +429,16 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
 
   const reqsCanEdit = mode === 'veranstalter' || hasFullModuleAccess
 
+  function secVis(key: string): boolean {
+    if (mode === 'veranstalter') return true
+    return (sectionPerms?.[key] ?? tabAccess) !== 'none'
+  }
+  function secReadOnly(key: string): boolean {
+    if (mode === 'veranstalter') return false
+    const access = sectionPerms?.[key] ?? tabAccess
+    return access === 'read'
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
@@ -441,9 +455,12 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
       ) : (
         <div style={{ maxWidth: 760 }}>
           {/* Technische Anforderungen */}
-          <RequirementsForm reqs={reqs} eventId={eventId} canEdit={reqsCanEdit} onSaved={setReqs} />
+          {secVis('anforderungen') && (
+            <RequirementsForm reqs={reqs} eventId={eventId} canEdit={reqsCanEdit && !secReadOnly('anforderungen')} onSaved={setReqs} />
+          )}
 
           {/* Songliste */}
+          {secVis('songliste') && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)' }}>
@@ -487,6 +504,7 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
               <AddSongForm eventId={eventId} onAdded={s => setSongs(prev => [...prev, s])} />
             )}
           </div>
+          )}
         </div>
       )}
     </div>
