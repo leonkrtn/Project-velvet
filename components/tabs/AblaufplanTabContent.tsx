@@ -92,9 +92,9 @@ function AblaufplanClientWrapper({ eventId }: { eventId: string }) {
   )
 }
 
-export default function AblaufplanTabContent({ eventId, mode, tabAccess }: TabContentProps) {
+export default function AblaufplanTabContent({ eventId, mode, tabAccess, itemPermissions }: TabContentProps) {
   if (mode === 'veranstalter' || tabAccess === 'write') {
     return <AblaufplanClientWrapper eventId={eventId} />
   }
-  return <TimelineTab eventId={eventId} />
+  return <TimelineTab eventId={eventId} tabAccess={tabAccess} sectionPerms={itemPermissions} />
 }

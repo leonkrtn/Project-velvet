@@ -59,7 +59,13 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   )
 }
 
-function ReadOnlyView({ eventId }: { eventId: string }) {
+type Access = 'none' | 'read' | 'write'
+
+function secVis(sectionPerms: Record<string, Access> | undefined, tabAccess: Access, key: string): boolean {
+  return (sectionPerms?.[key] ?? tabAccess) !== 'none'
+}
+
+function ReadOnlyView({ eventId, tabAccess = 'read', sectionPerms }: { eventId: string; tabAccess?: Access; sectionPerms?: Record<string, Access> }) {
   const [data, setData] = useState<EventSummary | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -85,32 +91,38 @@ function ReadOnlyView({ eventId }: { eventId: string }) {
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Allgemein</h1>
       <div style={{ maxWidth: 680 }}>
-        <Card title="Event-Details">
-          <Field label="Titel" value={data.title} />
-          <Field label="Brautpaar" value={data.couple_name} />
-          <Field label="Datum" value={data.date} />
-          <Field label="Zeremonie-Beginn" value={data.ceremony_start} />
-          <Field label="Beschreibung" value={data.description} />
-          <Field label="Dresscode" value={data.dresscode} />
-        </Card>
+        {secVis(sectionPerms, tabAccess, 'eventdetails') && (
+          <Card title="Event-Details">
+            <Field label="Titel" value={data.title} />
+            <Field label="Brautpaar" value={data.couple_name} />
+            <Field label="Datum" value={data.date} />
+            <Field label="Zeremonie-Beginn" value={data.ceremony_start} />
+            <Field label="Beschreibung" value={data.description} />
+            <Field label="Dresscode" value={data.dresscode} />
+          </Card>
+        )}
 
-        <Card title="Location">
-          <Field label="Location-Name" value={data.location_name} />
-          <Field label="Venue" value={data.venue} />
-          <Field label="Adresse" value={locationParts} />
-          {data.location_website && (
-            <div style={{ marginBottom: 12 }}>
-              <span style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 3 }}>Website</span>
-              <a href={data.location_website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: 'var(--accent)', textDecoration: 'none' }}>{data.location_website}</a>
-            </div>
-          )}
-        </Card>
+        {secVis(sectionPerms, tabAccess, 'location') && (
+          <Card title="Location">
+            <Field label="Location-Name" value={data.location_name} />
+            <Field label="Venue" value={data.venue} />
+            <Field label="Adresse" value={locationParts} />
+            {data.location_website && (
+              <div style={{ marginBottom: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 3 }}>Website</span>
+                <a href={data.location_website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: 'var(--accent)', textDecoration: 'none' }}>{data.location_website}</a>
+              </div>
+            )}
+          </Card>
+        )}
 
-        <Card title="Gäste">
-          <Field label="Max. Begleitpersonen" value={data.max_begleitpersonen} />
-          <Field label="Kinder erlaubt" value={data.children_allowed} />
-          <Field label="Kinder-Hinweis" value={data.children_note} />
-        </Card>
+        {secVis(sectionPerms, tabAccess, 'gaeste') && (
+          <Card title="Gäste">
+            <Field label="Max. Begleitpersonen" value={data.max_begleitpersonen} />
+            <Field label="Kinder erlaubt" value={data.children_allowed} />
+            <Field label="Kinder-Hinweis" value={data.children_note} />
+          </Card>
+        )}
       </div>
     </div>
   )
@@ -163,9 +175,9 @@ function AllgemeinFormWrapper({ eventId }: { eventId: string }) {
   )
 }
 
-export default function AllgemeinTabContent({ eventId, mode, tabAccess }: TabContentProps) {
+export default function AllgemeinTabContent({ eventId, mode, tabAccess, itemPermissions }: TabContentProps) {
   if (mode === 'veranstalter' || tabAccess === 'write') {
     return <AllgemeinFormWrapper eventId={eventId} />
   }
-  return <ReadOnlyView eventId={eventId} />
+  return <ReadOnlyView eventId={eventId} tabAccess={tabAccess} sectionPerms={itemPermissions} />
 }

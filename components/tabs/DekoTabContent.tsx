@@ -24,12 +24,24 @@ interface DekorWish {
 
 export interface ItemPerm { can_view: boolean; can_edit: boolean }
 
+type Access = 'none' | 'read' | 'write'
+
 interface Props {
   eventId: string
   mode: 'veranstalter' | 'dienstleister'
   hasFullModuleAccess?: boolean
   itemPermissions?: Record<string, ItemPerm>
+  tabAccess?: Access
+  sectionPerms?: Record<string, Access>
   onPropose?: () => void
+}
+
+function secVis(sectionPerms: Record<string, Access> | undefined, tabAccess: Access, key: string): boolean {
+  return (sectionPerms?.[key] ?? tabAccess) !== 'none'
+}
+
+function secReadOnly(sectionPerms: Record<string, Access> | undefined, tabAccess: Access, key: string): boolean {
+  return (sectionPerms?.[key] ?? tabAccess) === 'read'
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -260,7 +272,7 @@ function AddWishForm({ eventId, onAdded }: { eventId: string; onAdded: (w: Dekor
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function DekoTabContent({ eventId, mode, hasFullModuleAccess = true, itemPermissions = {}, onPropose }: Props) {
+export default function DekoTabContent({ eventId, mode, hasFullModuleAccess = true, tabAccess = 'write', sectionPerms, onPropose }: Props) {
   const [items, setItems]     = useState<SetupItem[]>([])
   const [wishes, setWishes]   = useState<DekorWish[]>([])
   const [loading, setLoading] = useState(true)
@@ -277,16 +289,15 @@ export default function DekoTabContent({ eventId, mode, hasFullModuleAccess = tr
     })
   }, [eventId])
 
-  function canView(id: string) {
-    if (mode === 'veranstalter') return true
-    const p = itemPermissions[id]
-    return p ? p.can_view : true
-  }
+  const aufbauVisible = secVis(sectionPerms, tabAccess, 'aufbau')
+  const aufbauReadOnly = secReadOnly(sectionPerms, tabAccess, 'aufbau')
+  const wuenscheVisible = secVis(sectionPerms, tabAccess, 'wuensche')
+  const wuenscheReadOnly = secReadOnly(sectionPerms, tabAccess, 'wuensche')
 
-  function canEdit(id: string) {
+  function canEditItem(section: 'aufbau' | 'wuensche') {
     if (mode === 'veranstalter') return true
-    const p = itemPermissions[id]
-    return p ? p.can_edit : hasFullModuleAccess
+    if (section === 'aufbau') return !aufbauReadOnly && hasFullModuleAccess
+    return !wuenscheReadOnly && hasFullModuleAccess
   }
 
   async function deleteSetupItem(id: string) {
@@ -300,9 +311,6 @@ export default function DekoTabContent({ eventId, mode, hasFullModuleAccess = tr
     const { error } = await supabase.from('deko_wishes').delete().eq('id', id)
     if (!error) setWishes(prev => prev.filter(x => x.id !== id))
   }
-
-  const visibleItems  = items.filter(i => canView(i.id))
-  const visibleWishes = wishes.filter(w => canView(w.id))
 
   return (
     <div>
@@ -320,52 +328,56 @@ export default function DekoTabContent({ eventId, mode, hasFullModuleAccess = tr
       ) : (
         <div style={{ maxWidth: 760 }}>
           {/* Aufbau-Aufgaben */}
+          {aufbauVisible && (
           <div style={{ marginBottom: 28 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Aufbau-Aufgaben ({visibleItems.length})</p>
-            {visibleItems.length === 0 && mode !== 'veranstalter' && (
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Aufbau-Aufgaben ({items.length})</p>
+            {items.length === 0 && mode !== 'veranstalter' && (
               <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
                 Noch keine Aufgaben hinterlegt.
               </div>
             )}
-            {visibleItems.map((item, idx) => (
+            {items.map((item, idx) => (
               <SetupItemRow
                 key={item.id} item={item} index={idx}
-                canEdit={canEdit(item.id)} mode={mode}
+                canEdit={canEditItem('aufbau')} mode={mode}
                 onUpdate={updated => setItems(prev => prev.map(x => x.id === updated.id ? updated : x))}
                 onDelete={() => deleteSetupItem(item.id)}
                 onPropose={onPropose}
               />
             ))}
-            {mode === 'veranstalter' && (
+            {(mode === 'veranstalter' || canEditItem('aufbau')) && (
               <AddSetupItemForm eventId={eventId} count={items.length} onAdded={i => setItems(prev => [...prev, i])} />
             )}
           </div>
+          )}
 
           {/* Dekor-Wünsche */}
+          {wuenscheVisible && (
           <div>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Dekor-Wünsche ({visibleWishes.length})</p>
-            {visibleWishes.length === 0 && mode !== 'veranstalter' && (
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Dekor-Wünsche ({wishes.length})</p>
+            {wishes.length === 0 && mode !== 'veranstalter' && (
               <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
                 Noch keine Wünsche hinterlegt.
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
-              {visibleWishes.map(w => (
+              {wishes.map(w => (
                 <WishCard
                   key={w.id} wish={w}
-                  canEdit={canEdit(w.id)} mode={mode}
+                  canEdit={canEditItem('wuensche')} mode={mode}
                   onUpdate={updated => setWishes(prev => prev.map(x => x.id === updated.id ? updated : x))}
                   onDelete={() => deleteWish(w.id)}
                   onPropose={onPropose}
                 />
               ))}
             </div>
-            {mode === 'veranstalter' && (
+            {(mode === 'veranstalter' || canEditItem('wuensche')) && (
               <AddWishForm eventId={eventId} onAdded={w => setWishes(prev => [...prev, w])} />
             )}
           </div>
+          )}
 
-          {visibleItems.length === 0 && visibleWishes.length === 0 && mode !== 'veranstalter' && (
+          {!aufbauVisible && !wuenscheVisible && mode !== 'veranstalter' && (
             <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px 24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
               Noch keine Dekoration-Informationen hinterlegt.
             </div>

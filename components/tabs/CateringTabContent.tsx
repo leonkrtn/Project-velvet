@@ -98,9 +98,9 @@ function CateringFormWrapper({ eventId }: { eventId: string }) {
   )
 }
 
-export default function CateringTabContent({ eventId, mode, tabAccess }: TabContentProps) {
+export default function CateringTabContent({ eventId, mode, tabAccess, itemPermissions }: TabContentProps) {
   if (mode === 'veranstalter' || tabAccess === 'write') {
     return <CateringFormWrapper eventId={eventId} />
   }
-  return <CateringTab eventId={eventId} />
+  return <CateringTab eventId={eventId} tabAccess={tabAccess} sectionPerms={itemPermissions} />
 }

@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import PatisserieTabContent from '@/components/tabs/PatisserieTabContent'
+import GuestsTab from '@/app/vendor/dashboard/[eventId]/tabs/GuestsTab'
 
 interface Props { params: Promise<{ eventId: string }> }
 
-export default async function VendorPatisseriePage({ params }: Props) {
+export default async function VendorGaestelistePage({ params }: Props) {
   const { eventId } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -15,7 +15,7 @@ export default async function VendorPatisseriePage({ params }: Props) {
     .select('access')
     .eq('event_id', eventId)
     .eq('dienstleister_user_id', user.id)
-    .eq('tab_key', 'patisserie')
+    .eq('tab_key', 'gaesteliste')
     .is('item_id', null)
     .maybeSingle()
 
@@ -27,7 +27,7 @@ export default async function VendorPatisseriePage({ params }: Props) {
     .select('item_id, access')
     .eq('event_id', eventId)
     .eq('dienstleister_user_id', user.id)
-    .eq('tab_key', 'patisserie')
+    .eq('tab_key', 'gaesteliste')
     .not('item_id', 'is', null)
 
   const sectionPerms: Record<string, 'none' | 'read' | 'write'> = {}
@@ -35,13 +35,5 @@ export default async function VendorPatisseriePage({ params }: Props) {
     if (r.item_id) sectionPerms[r.item_id] = r.access as 'none' | 'read' | 'write'
   }
 
-  return (
-    <PatisserieTabContent
-      eventId={eventId}
-      mode="dienstleister"
-      tabAccess={tabAccess}
-      hasFullModuleAccess={tabAccess === 'write'}
-      sectionPerms={sectionPerms}
-    />
-  )
+  return <GuestsTab eventId={eventId} tabAccess={tabAccess} sectionPerms={sectionPerms} />
 }

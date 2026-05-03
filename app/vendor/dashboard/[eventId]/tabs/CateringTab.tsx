@@ -103,7 +103,13 @@ function Chip({ label, accent }: { label: string; accent?: boolean }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 
-export default function CateringTab({ eventId }: { eventId: string }) {
+type Access = 'none' | 'read' | 'write'
+
+function vis(sectionPerms: Record<string, Access> | undefined, tabAccess: Access, key: string): boolean {
+  return (sectionPerms?.[key] ?? tabAccess) !== 'none'
+}
+
+export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms }: { eventId: string; tabAccess?: Access; sectionPerms?: Record<string, Access> }) {
   const [plan, setPlan]       = useState<CateringPlan | null>(null)
   const [event, setEvent]     = useState<EventInfo | null>(null)
   const [guests, setGuests]   = useState<Guest[]>([])
@@ -148,7 +154,7 @@ export default function CateringTab({ eventId }: { eventId: string }) {
       <div style={{ maxWidth: 700 }}>
 
         {/* ── Menükonzept ── */}
-        {event && (
+        {vis(sectionPerms, tabAccess, 'konzept') && event && (
           <Section title="Menükonzept">
             {event.menu_type && <Row label="Menü-Art" value={event.menu_type} />}
             {(event.meal_options ?? []).length > 0 && (
@@ -171,7 +177,7 @@ export default function CateringTab({ eventId }: { eventId: string }) {
         )}
 
         {/* ── Menügänge / Positionen ── */}
-        {(plan?.menu_courses ?? []).length > 0 && (event?.meal_options ?? []).length > 0 && (() => {
+        {vis(sectionPerms, tabAccess, 'menuplaene') && (plan?.menu_courses ?? []).length > 0 && (event?.meal_options ?? []).length > 0 && (() => {
           const isMultiCourse = event?.menu_type === 'Mehrgängiges Menü'
           const title = isMultiCourse ? 'Menügänge je Essensoption' : 'Menüpositionen je Essensoption'
           const mealOpts = event!.meal_options!
@@ -207,7 +213,7 @@ export default function CateringTab({ eventId }: { eventId: string }) {
         })()}
 
         {/* ── Service & Ablauf ── */}
-        {plan && (
+        {vis(sectionPerms, tabAccess, 'service') && plan && (
           <Section title="Service & Ablauf">
             {plan.service_style && (
               <Row label="Servicestil" value={SERVICE_LABELS[plan.service_style] ?? plan.service_style} />
@@ -226,7 +232,7 @@ export default function CateringTab({ eventId }: { eventId: string }) {
         )}
 
         {/* ── Getränke ── */}
-        {plan && (
+        {vis(sectionPerms, tabAccess, 'getraenke') && plan && (
           <Section title="Getränke">
             <Row
               label="Abrechnung"
@@ -256,7 +262,7 @@ export default function CateringTab({ eventId }: { eventId: string }) {
         )}
 
         {/* ── Equipment ── */}
-        {(plan?.equipment_needed ?? []).length > 0 && (
+        {vis(sectionPerms, tabAccess, 'equipment') && (plan?.equipment_needed ?? []).length > 0 && (
           <Section title="Benötigtes Equipment">
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {plan!.equipment_needed.map(e => (
@@ -267,7 +273,7 @@ export default function CateringTab({ eventId }: { eventId: string }) {
         )}
 
         {/* ── Budget ── */}
-        {plan && plan.budget_per_person > 0 && (
+        {vis(sectionPerms, tabAccess, 'budget') && plan && plan.budget_per_person > 0 && (
           <Section title="Budget">
             <Row
               label="Budget pro Person"
@@ -284,72 +290,75 @@ export default function CateringTab({ eventId }: { eventId: string }) {
           </Section>
         )}
 
-        {/* ── Menüwahl-Übersicht ── */}
-        <Section title={`Menüwahl (${guests.length} bestätigte Gäste)`}>
-          {Object.entries(mealCounts).length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Noch keine Angaben</p>
-          ) : (
-            <>
-              {Object.entries(mealCounts).map(([meal, count]) => (
-                <div key={meal} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '7px 0', borderBottom: '1px solid var(--border)', fontSize: 13,
-                }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>{meal}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 80, height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 2,
-                        background: 'var(--accent, #4F46E5)',
-                        width: `${Math.round((count / guests.length) * 100)}%`,
-                      }} />
+        {/* ── Menüwahl + Allergien (statistik) ── */}
+        {vis(sectionPerms, tabAccess, 'statistik') && (
+          <>
+            <Section title={`Menüwahl (${guests.length} bestätigte Gäste)`}>
+              {Object.entries(mealCounts).length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Noch keine Angaben</p>
+              ) : (
+                <>
+                  {Object.entries(mealCounts).map(([meal, count]) => (
+                    <div key={meal} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '7px 0', borderBottom: '1px solid var(--border)', fontSize: 13,
+                    }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>{meal}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 80, height: 4, borderRadius: 2, background: 'var(--border)', overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', borderRadius: 2,
+                            background: 'var(--accent, #4F46E5)',
+                            width: `${Math.round((count / guests.length) * 100)}%`,
+                          }} />
+                        </div>
+                        <span style={{ fontWeight: 600, minWidth: 32, textAlign: 'right' }}>{count}×</span>
+                        <span style={{ color: 'var(--text-tertiary)', fontSize: 11, minWidth: 36 }}>
+                          {Math.round((count / guests.length) * 100)} %
+                        </span>
+                      </div>
                     </div>
-                    <span style={{ fontWeight: 600, minWidth: 32, textAlign: 'right' }}>{count}×</span>
-                    <span style={{ color: 'var(--text-tertiary)', fontSize: 11, minWidth: 36 }}>
-                      {Math.round((count / guests.length) * 100)} %
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
-        </Section>
+                  ))}
+                </>
+              )}
+            </Section>
 
-        {/* ── Allergien-Übersicht ── */}
-        {Object.keys(allergyCounts).length > 0 && (
-          <Section title={`Allergien & Unverträglichkeiten (${withAllergies.length} Gäste)`}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-              {Object.entries(allergyCounts)
-                .sort((a, b) => b[1] - a[1])
-                .map(([tag, n]) => (
-                  <span key={tag} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                    background: '#FEF2F2', border: '1px solid rgba(220,38,38,0.2)',
-                    borderRadius: 20, padding: '4px 10px', fontSize: 12, color: '#DC2626',
-                  }}>
-                    <AlertTriangle size={11} />
-                    {tag} · {n}×
-                  </span>
-                ))}
-            </div>
-            <div>
-              <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
-                Gästeliste
-              </p>
-              {withAllergies.map(g => (
-                <div key={g.id} style={{ padding: '7px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
-                  <span style={{ fontWeight: 500, marginRight: 10 }}>{g.name}</span>
-                  <span style={{ color: 'var(--text-secondary)' }}>
-                    {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).join(', ')}
-                  </span>
+            {Object.keys(allergyCounts).length > 0 && (
+              <Section title={`Allergien & Unverträglichkeiten (${withAllergies.length} Gäste)`}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                  {Object.entries(allergyCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([tag, n]) => (
+                      <span key={tag} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        background: '#FEF2F2', border: '1px solid rgba(220,38,38,0.2)',
+                        borderRadius: 20, padding: '4px 10px', fontSize: 12, color: '#DC2626',
+                      }}>
+                        <AlertTriangle size={11} />
+                        {tag} · {n}×
+                      </span>
+                    ))}
                 </div>
-              ))}
-            </div>
-          </Section>
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
+                    Gästeliste
+                  </p>
+                  {withAllergies.map(g => (
+                    <div key={g.id} style={{ padding: '7px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                      <span style={{ fontWeight: 500, marginRight: 10 }}>{g.name}</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>
+                        {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).join(', ')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+          </>
         )}
 
-        {/* ── Hinweise ── */}
-        {plan?.catering_notes && (
+        {/* ── Hinweise (part of konzept) ── */}
+        {vis(sectionPerms, tabAccess, 'konzept') && plan?.catering_notes && (
           <Section title="Hinweise für den Caterer">
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
               {plan.catering_notes}
