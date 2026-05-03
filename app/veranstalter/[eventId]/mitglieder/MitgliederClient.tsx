@@ -1,5 +1,6 @@
 'use client'
 import React, { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, ChevronDown, ChevronUp, Trash2, Copy, Check, MessageSquare, Phone, Mail, Euro, Tag, FileText, Edit2, Shield, X, Info, Eye, Pencil, Loader2, BookUser } from 'lucide-react'
@@ -770,30 +771,15 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
               >
                 <Shield size={13} /> Zugriffsmodule
               </button>
-              {(() => {
-                const supportedMods = ITEM_PERM_MODULES.filter(x => m.current_permissions.some(p => p === x.modKey || p === `${x.modKey}_read`))
-                if (supportedMods.length === 0) return null
-                return (
-                  <div style={{ position: 'relative', display: 'inline-block' }}>
-                    <details style={{ display: 'inline-block' }}>
-                      <summary style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-primary)', background: 'var(--surface)', cursor: 'pointer', listStyle: 'none' }}>
-                        <Pencil size={13} /> Item-Berechtigungen
-                      </summary>
-                      <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', boxShadow: 'var(--shadow-md)', padding: '6px', minWidth: 180, marginTop: 4 }}>
-                        {supportedMods.map(mod => (
-                          <button
-                            key={mod.key}
-                            onClick={e => { e.stopPropagation(); openItemPerms(m, mod.key) }}
-                            style={{ display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', color: 'var(--text-primary)' }}
-                          >
-                            {mod.label}
-                          </button>
-                        ))}
-                      </div>
-                    </details>
-                  </div>
-                )
-              })()}
+              {m.role === 'dienstleister' && (
+                <Link
+                  href={`/veranstalter/${eventId}/berechtigungen/${m.id}`}
+                  onClick={e => e.stopPropagation()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-primary)', background: 'var(--surface)', cursor: 'pointer', textDecoration: 'none' }}
+                >
+                  <Pencil size={13} /> Berechtigungen
+                </Link>
+              )}
               {m.current_permissions.length > 0 && (
                 <button
                   onClick={e => { e.stopPropagation(); openVendorView(m) }}
