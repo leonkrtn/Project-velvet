@@ -9,13 +9,12 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })
 
     const body = await req.json()
-    const { eventId, category, permissions } = body as {
-      eventId:     string
-      category:    string
-      permissions: string[]
+    const { eventId, category } = body as {
+      eventId:  string
+      category: string
     }
 
-    if (!eventId || !category || !Array.isArray(permissions)) {
+    if (!eventId || !category) {
       return NextResponse.json({ error: 'Pflichtfelder fehlen' }, { status: 400 })
     }
 
@@ -31,18 +30,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
     }
 
-    // mod_chat ist immer enthalten
-    const finalPermissions = Array.from(new Set(['mod_chat', ...permissions]))
-
     const admin = createAdmin()
     const { data: invitation, error } = await admin
       .from('event_invitations')
       .insert({
-        event_id:    eventId,
-        role:        'dienstleister',
-        permissions: finalPermissions,
-        created_by:  user.id,
-        metadata:    { category },
+        event_id:   eventId,
+        role:       'dienstleister',
+        created_by: user.id,
+        metadata:   { category },
       })
       .select('code')
       .single()
