@@ -8,3 +8,4 @@ build/
 .env.*.local
 .claude/
 tsconfig.tsbuildinfo
+graphify-out/
