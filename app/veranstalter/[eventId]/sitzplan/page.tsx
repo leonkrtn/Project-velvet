@@ -8,6 +8,21 @@ import type { RaumPoint, RaumElement, RaumTablePool, PlacedTablePreview } from '
 const RaumKonfigurator = dynamic(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
 const SitzplanEditor   = dynamic(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
 
+const EMPTY_POOL: RaumTablePool = { types: [] }
+
+function normalizePool(raw: unknown): RaumTablePool {
+  if (!raw || typeof raw !== 'object') return EMPTY_POOL
+  const r = raw as Record<string, unknown>
+  if (Array.isArray(r.types)) return { types: r.types as RaumTablePool['types'] }
+  // Legacy format: {round: {count, diameter}, rect: {count, length, width}}
+  const types: RaumTablePool['types'] = []
+  const round = r.round as Record<string, number> | undefined
+  const rect  = r.rect  as Record<string, number> | undefined
+  if (round?.count) types.push({ id: 'legacy-round', shape: 'round', count: round.count, diameter: round.diameter ?? 1.5, length: round.diameter ?? 1.5, width: round.diameter ?? 1.5 })
+  if (rect?.count)  types.push({ id: 'legacy-rect',  shape: 'rectangular', count: rect.count, diameter: 1.5, length: rect.length ?? 2.0, width: rect.width ?? 0.8 })
+  return { types }
+}
+
 export default function SitzplanPage() {
   const params  = useParams()
   const eventId = params.eventId as string
@@ -53,7 +68,7 @@ export default function SitzplanPage() {
       if (eventRow)   {
         setEventPoints(eventRow.points ?? [])
         setEventElements(eventRow.elements ?? [])
-        setEventTablePool(eventRow.table_pool ?? null)
+        setEventTablePool(normalizePool(eventRow.table_pool))
         setHasEventConfig(true)
       }
       if (eventData)  setCoupleName(eventData.couple_name ?? '')
@@ -65,7 +80,7 @@ export default function SitzplanPage() {
 
   const displayPoints   = (hasEventConfig && eventPoints)   ? eventPoints   : globalPoints
   const displayElements = (hasEventConfig && eventElements) ? eventElements : globalElements
-  const displayPool: RaumTablePool = eventTablePool ?? { types: [] }
+  const displayPool: RaumTablePool = eventTablePool ?? EMPTY_POOL
 
   const handleSaveEventConfig = useCallback(async (
     points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool

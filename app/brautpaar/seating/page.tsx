@@ -5,6 +5,18 @@ import { createClient } from '@/lib/supabase/client'
 import { useEvent } from '@/lib/event-context'
 import type { RaumPoint, RaumElement, RaumTablePool } from '@/components/room/RaumKonfigurator'
 
+function normalizePool(raw: unknown): RaumTablePool {
+  if (!raw || typeof raw !== 'object') return { types: [] }
+  const r = raw as Record<string, unknown>
+  if (Array.isArray(r.types)) return { types: r.types as RaumTablePool['types'] }
+  const types: RaumTablePool['types'] = []
+  const round = r.round as Record<string, number> | undefined
+  const rect  = r.rect  as Record<string, number> | undefined
+  if (round?.count) types.push({ id: 'legacy-round', shape: 'round',        count: round.count, diameter: round.diameter ?? 1.5, length: round.diameter ?? 1.5, width: round.diameter ?? 1.5 })
+  if (rect?.count)  types.push({ id: 'legacy-rect',  shape: 'rectangular', count: rect.count,  diameter: 1.5, length: rect.length ?? 2.0, width: rect.width ?? 0.8 })
+  return { types }
+}
+
 const SitzplanEditor = dynamic(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
 
 export default function BrautpaarSeatingPage() {
@@ -37,7 +49,7 @@ export default function BrautpaarSeatingPage() {
 
       const points: RaumPoint[]   = evConfigRow?.points   ?? globalRow?.points   ?? []
       const elems:  RaumElement[] = evConfigRow?.elements ?? globalRow?.elements ?? []
-      const pool:   RaumTablePool = evConfigRow?.table_pool ?? { types: [] }
+      const pool:   RaumTablePool = normalizePool(evConfigRow?.table_pool)
 
       setRoomPoints(points)
       setRoomElements(elems)
