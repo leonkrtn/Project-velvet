@@ -306,9 +306,11 @@ export default function SitzplanEditor({
     (p.subtitle ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
+  const poolTypes = tablePool?.types ?? []
+
   // Pool type for selected table
   const selectedType: RaumTableType | undefined = selectedTable?.pool_type_id
-    ? tablePool.types.find(t => t.id === selectedTable.pool_type_id)
+    ? poolTypes.find(t => t.id === selectedTable.pool_type_id)
     : undefined
 
   // ── Actions ─────────────────────────────────────────────────────────────────
@@ -448,7 +450,7 @@ export default function SitzplanEditor({
     </div>
   )
 
-  const hasPool = tablePool.types.length > 0
+  const hasPool = poolTypes.length > 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -467,7 +469,7 @@ export default function SitzplanEditor({
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
                   Noch keine Tische konfiguriert (Raum → Schritt 3).
                 </p>
-              ) : tablePool.types.map(pt => {
+              ) : poolTypes.map(pt => {
                 const placed = placedByType(pt.id)
                 const avail = Math.max(0, pt.count - placed)
                 const isRound = pt.shape === 'round'
@@ -709,7 +711,7 @@ export default function SitzplanEditor({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
             {tables.map(table => {
               const tas = assignmentsForTable(table.id)
-              const pt = tablePool.types.find(t => t.id === table.pool_type_id)
+              const pt = poolTypes.find(t => t.id === table.pool_type_id)
               return (
                 <div key={table.id}
                   onClick={() => { setSelectedTableId(table.id); setSearch(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
