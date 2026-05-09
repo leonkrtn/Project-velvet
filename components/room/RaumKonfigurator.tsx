@@ -789,7 +789,7 @@ export default function RaumKonfigurator({
           <React.Fragment key={s.n}>
             {i>0 && <div style={{width:1,height:20,background:'rgba(0,0,0,0.08)',margin:'0 2px'}}/>}
             <button
-              onClick={s.n===1?handleGoToStep1:s.n===2?(()=>{if(step>1)handleGoToStep2()}):(()=>{if(step>2)handleGoToStep3()})}
+              onClick={s.n===1?handleGoToStep1:s.n===2?handleGoToStep2:handleGoToStep3}
               style={{
                 display:'flex', alignItems:'center', gap:7, padding:'6px 14px',
                 borderRadius:7, fontSize:13, fontWeight:500, cursor:'pointer',
