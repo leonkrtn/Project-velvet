@@ -5,20 +5,37 @@ import React, { useRef, useEffect, useState, useCallback } from 'react'
 export interface RaumPoint { x: number; y: number }
 export interface RaumElement { id: number; type: string; x: number; y: number }
 
-export interface RaumTablePool {
-  round: { count: number; diameter: number }
-  rect:  { count: number; length: number; width: number }
+export interface RaumTableType {
+  id: string
+  shape: 'round' | 'rectangular'
+  count: number
+  diameter: number   // used for round (length = width = diameter)
+  length: number     // used for rectangular
+  width: number      // used for rectangular
 }
 
-const DEFAULT_TABLE_POOL: RaumTablePool = {
-  round: { count: 0, diameter: 1.5 },
-  rect:  { count: 0, length: 2.0, width: 0.8 },
+export interface RaumTablePool {
+  types: RaumTableType[]
+}
+
+const DEFAULT_TABLE_POOL: RaumTablePool = { types: [] }
+
+function makeTypeId() { return Math.random().toString(36).slice(2, 9) }
+
+/** Placed table preview passed in from the parent (loaded from seating_tables DB). */
+export interface PlacedTablePreview {
+  pos_x: number; pos_y: number
+  rotation: number
+  shape: 'round' | 'rectangular'
+  table_length: number; table_width: number
+  name: string
 }
 
 export interface RaumKonfiguratorProps {
   initialPoints?: RaumPoint[]
   initialElements?: RaumElement[]
   initialTablePool?: RaumTablePool
+  placedTables?: PlacedTablePreview[]
   onSave?: (points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool) => Promise<void> | void
   saving?: boolean
   saved?: boolean
@@ -274,6 +291,7 @@ export default function RaumKonfigurator({
   initialPoints,
   initialElements = [],
   initialTablePool,
+  placedTables = [],
   onSave,
   saving,
   saved,
@@ -290,6 +308,7 @@ export default function RaumKonfigurator({
     showDimensions: true,
     showCorners:    true,
     step:           1 as 1 | 2,
+    showPlacedTables: false,
     selectedElemType: null as string | null,
     selectedElemId:   null as number | null,
     draggedPtIdx:     null as number | null,
@@ -320,6 +339,9 @@ export default function RaumKonfigurator({
   const [tablePool, setTablePool] = useState<RaumTablePool>(
     initialTablePool ?? DEFAULT_TABLE_POOL
   )
+  const [showPlacedTables, setShowPlacedTables] = useState(false)
+  const placedTablesRef = useRef<PlacedTablePreview[]>(placedTables)
+  useEffect(() => { placedTablesRef.current = placedTables }, [placedTables])
 
   /* ── Canvas helpers ── */
   const m2c = useCallback((x: number, y: number) => {
@@ -484,6 +506,35 @@ export default function RaumKonfigurator({
         ctx.font=`500 ${labelSize}px -apple-system,Helvetica,sans-serif`
         ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle='#6E6E73'
         ctx.fillText(def.label, bpTL.x+bpW/2, bpTL.y+bpH+3)
+        ctx.restore()
+      }
+    }
+
+    // Placed seating tables overlay
+    if (s.showPlacedTables && placedTablesRef.current.length > 0) {
+      for (const t of placedTablesRef.current) {
+        const cx2 = m2c(t.pos_x, t.pos_y)
+        const len = t.table_length * s.meterToPx
+        const wid = t.table_width * s.meterToPx
+        ctx.save()
+        ctx.translate(cx2.x, cx2.y)
+        ctx.rotate((t.rotation * Math.PI) / 180)
+        ctx.strokeStyle = '#6366F1'
+        ctx.lineWidth = 1.5
+        ctx.setLineDash([4, 3])
+        ctx.fillStyle = 'rgba(99,102,241,0.10)'
+        if (t.shape === 'round') {
+          ctx.beginPath(); ctx.arc(0, 0, len / 2, 0, Math.PI * 2)
+          ctx.fill(); ctx.stroke()
+        } else {
+          ctx.beginPath(); ctx.roundRect(-len / 2, -wid / 2, len, wid, 3)
+          ctx.fill(); ctx.stroke()
+        }
+        ctx.setLineDash([])
+        ctx.fillStyle = '#4338CA'
+        ctx.font = `600 ${Math.max(9, Math.min(11, len * 0.15))}px -apple-system,Helvetica,sans-serif`
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText(t.name, 0, 0)
         ctx.restore()
       }
     }
@@ -669,6 +720,7 @@ export default function RaumKonfigurator({
   useEffect(() => { stateRef.current.showDimensions = showDimensions; draw() }, [showDimensions, draw])
   useEffect(() => { stateRef.current.showCorners = showCorners; draw() }, [showCorners, draw])
   useEffect(() => { stateRef.current.step = Math.min(step, 2) as 1 | 2; draw() }, [step, draw])
+  useEffect(() => { stateRef.current.showPlacedTables = showPlacedTables; draw() }, [showPlacedTables, draw])
   useEffect(() => { stateRef.current.selectedElemType = selectedElemType }, [selectedElemType])
   useEffect(() => { stateRef.current.selectedElemId = selectedElemId; draw() }, [selectedElemId, draw])
 
@@ -833,54 +885,83 @@ export default function RaumKonfigurator({
               </div>
             </div>
           )}
-          {/* Step 3: table pool config */}
+          {/* Step 3: table pool config — multi-type */}
           {step===3 && (
-            <div style={{ padding:'16px 16px 14px' }}>
-              <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.09em', color:'#AEAEB2', marginBottom:14 }}>Runde Tische</p>
-              <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
-                <label style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                  <span style={{ fontSize:12, color:'#6E6E73' }}>Anzahl</span>
-                  <input
-                    type="number" min={0} max={50} value={tablePool.round.count}
-                    onChange={e => setTablePool(p => ({ ...p, round: { ...p.round, count: Math.max(0, parseInt(e.target.value)||0) } }))}
-                    style={{ width:'100%', padding:'6px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.14)', fontSize:13, fontFamily:'inherit', outline:'none' }}
-                  />
-                </label>
-                <label style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                  <span style={{ fontSize:12, color:'#6E6E73' }}>Durchmesser (m)</span>
-                  <input
-                    type="number" min={0.5} max={5} step={0.1} value={tablePool.round.diameter}
-                    onChange={e => setTablePool(p => ({ ...p, round: { ...p.round, diameter: Math.max(0.5, parseFloat(e.target.value)||1.5) } }))}
-                    style={{ width:'100%', padding:'6px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.14)', fontSize:13, fontFamily:'inherit', outline:'none' }}
-                  />
-                </label>
-              </div>
-              <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.09em', color:'#AEAEB2', marginBottom:14 }}>Eckige Tische</p>
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                <label style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                  <span style={{ fontSize:12, color:'#6E6E73' }}>Anzahl</span>
-                  <input
-                    type="number" min={0} max={50} value={tablePool.rect.count}
-                    onChange={e => setTablePool(p => ({ ...p, rect: { ...p.rect, count: Math.max(0, parseInt(e.target.value)||0) } }))}
-                    style={{ width:'100%', padding:'6px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.14)', fontSize:13, fontFamily:'inherit', outline:'none' }}
-                  />
-                </label>
-                <label style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                  <span style={{ fontSize:12, color:'#6E6E73' }}>Länge (m)</span>
-                  <input
-                    type="number" min={0.5} max={10} step={0.1} value={tablePool.rect.length}
-                    onChange={e => setTablePool(p => ({ ...p, rect: { ...p.rect, length: Math.max(0.5, parseFloat(e.target.value)||2.0) } }))}
-                    style={{ width:'100%', padding:'6px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.14)', fontSize:13, fontFamily:'inherit', outline:'none' }}
-                  />
-                </label>
-                <label style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                  <span style={{ fontSize:12, color:'#6E6E73' }}>Breite (m)</span>
-                  <input
-                    type="number" min={0.3} max={5} step={0.1} value={tablePool.rect.width}
-                    onChange={e => setTablePool(p => ({ ...p, rect: { ...p.rect, width: Math.max(0.3, parseFloat(e.target.value)||0.8) } }))}
-                    style={{ width:'100%', padding:'6px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.14)', fontSize:13, fontFamily:'inherit', outline:'none' }}
-                  />
-                </label>
+            <div style={{ overflowY:'auto', maxHeight:'calc(100vh - 260px)' }}>
+              {tablePool.types.length === 0 && (
+                <p style={{ padding:'16px', fontSize:12, color:'#AEAEB2', lineHeight:1.5 }}>
+                  Noch keine Tischtypen. Unten hinzufügen.
+                </p>
+              )}
+              {tablePool.types.map((type, idx) => (
+                <div key={type.id} style={{ padding:'12px 14px', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
+                    <div style={{ width:20, height:20, flexShrink:0 }}>
+                      {type.shape==='round'
+                        ? <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="#EEF2FF" stroke="#6366F1" strokeWidth="1.5"/></svg>
+                        : <svg viewBox="0 0 20 20"><rect x="2" y="5" width="16" height="10" rx="2" fill="#F0FDF4" stroke="#22C55E" strokeWidth="1.5"/></svg>
+                      }
+                    </div>
+                    <span style={{ fontSize:12, fontWeight:600, flex:1 }}>
+                      {type.shape==='round' ? 'Rund' : 'Eckig'} #{idx+1}
+                    </span>
+                    <button
+                      onClick={() => setTablePool(p => ({ types: p.types.filter(t => t.id !== type.id) }))}
+                      style={{ background:'none', border:'none', cursor:'pointer', color:'#FF3B30', fontSize:16, lineHeight:1, padding:'0 2px' }}
+                    >×</button>
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+                    <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
+                      <span style={{ fontSize:11, color:'#6E6E73' }}>Anzahl</span>
+                      <input type="number" min={0} max={50} value={type.count}
+                        onChange={e => setTablePool(p => ({ types: p.types.map(t => t.id===type.id ? { ...t, count: Math.max(0, parseInt(e.target.value)||0) } : t) }))}
+                        style={{ width:56, padding:'4px 7px', borderRadius:6, border:'1px solid rgba(0,0,0,0.14)', fontSize:12, fontFamily:'inherit', textAlign:'center' }}
+                      />
+                    </label>
+                    {type.shape==='round' ? (
+                      <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
+                        <span style={{ fontSize:11, color:'#6E6E73' }}>⌀ (m)</span>
+                        <input type="number" min={0.5} max={6} step={0.1} value={type.diameter}
+                          onChange={e => setTablePool(p => ({ types: p.types.map(t => t.id===type.id ? { ...t, diameter: Math.max(0.5, parseFloat(e.target.value)||1.5) } : t) }))}
+                          style={{ width:56, padding:'4px 7px', borderRadius:6, border:'1px solid rgba(0,0,0,0.14)', fontSize:12, fontFamily:'inherit', textAlign:'center' }}
+                        />
+                      </label>
+                    ) : (
+                      <>
+                        <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
+                          <span style={{ fontSize:11, color:'#6E6E73' }}>Länge (m)</span>
+                          <input type="number" min={0.5} max={10} step={0.1} value={type.length}
+                            onChange={e => setTablePool(p => ({ types: p.types.map(t => t.id===type.id ? { ...t, length: Math.max(0.5, parseFloat(e.target.value)||2) } : t) }))}
+                            style={{ width:56, padding:'4px 7px', borderRadius:6, border:'1px solid rgba(0,0,0,0.14)', fontSize:12, fontFamily:'inherit', textAlign:'center' }}
+                          />
+                        </label>
+                        <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
+                          <span style={{ fontSize:11, color:'#6E6E73' }}>Breite (m)</span>
+                          <input type="number" min={0.3} max={5} step={0.1} value={type.width}
+                            onChange={e => setTablePool(p => ({ types: p.types.map(t => t.id===type.id ? { ...t, width: Math.max(0.3, parseFloat(e.target.value)||0.8) } : t) }))}
+                            style={{ width:56, padding:'4px 7px', borderRadius:6, border:'1px solid rgba(0,0,0,0.14)', fontSize:12, fontFamily:'inherit', textAlign:'center' }}
+                          />
+                        </label>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <div style={{ padding:'12px 14px', display:'flex', flexDirection:'column', gap:6 }}>
+                <button
+                  onClick={() => setTablePool(p => ({ types: [...p.types, { id: makeTypeId(), shape:'round', count:1, diameter:1.5, length:1.5, width:1.5 }] }))}
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:8, border:'1px dashed rgba(99,102,241,0.5)', background:'rgba(99,102,241,0.04)', cursor:'pointer', fontSize:12, color:'#6366F1', fontFamily:'inherit', fontWeight:500 }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Runden Tischtyp
+                </button>
+                <button
+                  onClick={() => setTablePool(p => ({ types: [...p.types, { id: makeTypeId(), shape:'rectangular', count:1, diameter:1.5, length:2.0, width:0.8 }] }))}
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:8, border:'1px dashed rgba(34,197,94,0.5)', background:'rgba(34,197,94,0.04)', cursor:'pointer', fontSize:12, color:'#16A34A', fontFamily:'inherit', fontWeight:500 }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Eckigen Tischtyp
+                </button>
               </div>
             </div>
           )}
@@ -901,7 +982,13 @@ export default function RaumKonfigurator({
                 </span>
               )}
             </div>
-            <div style={{ display:'flex', gap:6 }}>
+            <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+              {placedTables.length > 0 && (
+                <button onClick={() => setShowPlacedTables(v => !v)} style={{ ...btnXs, background: showPlacedTables ? '#EEF2FF' : '#fff', borderColor: showPlacedTables ? '#6366F1' : undefined, color: showPlacedTables ? '#4338CA' : '#6E6E73' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="6" width="7" height="4" rx="1"/><rect x="14" y="14" width="7" height="4" rx="1"/><ellipse cx="6.5" cy="15" rx="3.5" ry="3.5"/><ellipse cx="17.5" cy="7" rx="3.5" ry="3.5"/></svg>
+                  Tische
+                </button>
+              )}
               <button onClick={handleZoomReset} style={btnXs}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 Zoom zurücksetzen

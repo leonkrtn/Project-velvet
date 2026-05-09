@@ -3,34 +3,35 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
-import type { RaumPoint, RaumElement, RaumTablePool } from '@/components/room/RaumKonfigurator'
+import type { RaumPoint, RaumElement, RaumTablePool, PlacedTablePreview } from '@/components/room/RaumKonfigurator'
 
 const RaumKonfigurator = dynamic(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
-const SitzplanEditor = dynamic(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
+const SitzplanEditor   = dynamic(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
 
 export default function SitzplanPage() {
-  const params = useParams()
+  const params  = useParams()
   const eventId = params.eventId as string
   const supabase = createClient()
 
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
-  const [coupleName, setCoupleName] = useState<string>('')
+  const [coupleName, setCoupleName] = useState('')
 
-  /* Global room (organizer-wide) */
-  const [globalPoints, setGlobalPoints] = useState<RaumPoint[]>([])
+  // Room config
+  const [globalPoints,   setGlobalPoints]   = useState<RaumPoint[]>([])
   const [globalElements, setGlobalElements] = useState<RaumElement[]>([])
-
-  /* Event-specific room override */
-  const [eventPoints, setEventPoints] = useState<RaumPoint[] | null>(null)
-  const [eventElements, setEventElements] = useState<RaumElement[] | null>(null)
+  const [eventPoints,    setEventPoints]    = useState<RaumPoint[] | null>(null)
+  const [eventElements,  setEventElements]  = useState<RaumElement[] | null>(null)
   const [eventTablePool, setEventTablePool] = useState<RaumTablePool | null>(null)
   const [hasEventConfig, setHasEventConfig] = useState(false)
 
-  /* UI */
+  // Placed tables (for overlay in RaumKonfigurator)
+  const [placedTables, setPlacedTables] = useState<PlacedTablePreview[]>([])
+
+  // UI
   const [showConfigurator, setShowConfigurator] = useState(false)
   const [configSaving, setConfigSaving] = useState(false)
-  const [configSaved, setConfigSaved] = useState(false)
+  const [configSaved,  setConfigSaved]  = useState(false)
 
   useEffect(() => { load() }, [eventId]) // eslint-disable-line
 
@@ -41,23 +42,22 @@ export default function SitzplanPage() {
       if (!user) return
       setUserId(user.id)
 
-      const [{ data: globalRow }, { data: eventRow }, { data: eventData }] = await Promise.all([
+      const [{ data: globalRow }, { data: eventRow }, { data: eventData }, { data: tablesData }] = await Promise.all([
         supabase.from('organizer_room_configs').select('*').eq('user_id', user.id).single(),
         supabase.from('event_room_configs').select('*').eq('event_id', eventId).single(),
         supabase.from('events').select('couple_name').eq('id', eventId).single(),
+        supabase.from('seating_tables').select('pos_x,pos_y,rotation,shape,table_length,table_width,name').eq('event_id', eventId),
       ])
 
-      if (globalRow) {
-        setGlobalPoints(globalRow.points ?? [])
-        setGlobalElements(globalRow.elements ?? [])
-      }
-      if (eventRow) {
+      if (globalRow)  { setGlobalPoints(globalRow.points ?? []); setGlobalElements(globalRow.elements ?? []) }
+      if (eventRow)   {
         setEventPoints(eventRow.points ?? [])
         setEventElements(eventRow.elements ?? [])
         setEventTablePool(eventRow.table_pool ?? null)
         setHasEventConfig(true)
       }
-      if (eventData) setCoupleName(eventData.couple_name ?? '')
+      if (eventData)  setCoupleName(eventData.couple_name ?? '')
+      if (tablesData) setPlacedTables(tablesData as PlacedTablePreview[])
     } finally {
       setLoading(false)
     }
@@ -65,7 +65,7 @@ export default function SitzplanPage() {
 
   const displayPoints   = (hasEventConfig && eventPoints)   ? eventPoints   : globalPoints
   const displayElements = (hasEventConfig && eventElements) ? eventElements : globalElements
-  const displayPool: RaumTablePool = eventTablePool ?? { round: { count: 0, diameter: 1.5 }, rect: { count: 0, length: 2.0, width: 0.8 } }
+  const displayPool: RaumTablePool = eventTablePool ?? { types: [] }
 
   const handleSaveEventConfig = useCallback(async (
     points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool
@@ -77,12 +77,8 @@ export default function SitzplanPage() {
         { event_id: eventId, user_id: userId, points, elements, table_pool: tablePool, updated_at: new Date().toISOString() },
         { onConflict: 'event_id' }
       )
-      setEventPoints(points)
-      setEventElements(elements)
-      setEventTablePool(tablePool)
-      setHasEventConfig(true)
-      setConfigSaved(true)
-      setTimeout(() => setConfigSaved(false), 3000)
+      setEventPoints(points); setEventElements(elements); setEventTablePool(tablePool); setHasEventConfig(true)
+      setConfigSaved(true); setTimeout(() => setConfigSaved(false), 3000)
       setShowConfigurator(false)
     } finally {
       setConfigSaving(false)
@@ -90,7 +86,6 @@ export default function SitzplanPage() {
   }, [userId, eventId, supabase])
 
   async function resetToGlobal() {
-    if (!eventId) return
     await supabase.from('event_room_configs').delete().eq('event_id', eventId)
     setEventPoints(null); setEventElements(null); setEventTablePool(null); setHasEventConfig(false)
     setShowConfigurator(false)
@@ -144,6 +139,7 @@ export default function SitzplanPage() {
             initialPoints={hasEventConfig ? (eventPoints ?? []) : globalPoints}
             initialElements={hasEventConfig ? (eventElements ?? []) : globalElements}
             initialTablePool={displayPool}
+            placedTables={placedTables}
             onSave={handleSaveEventConfig}
             saving={configSaving}
             saved={configSaved}
@@ -157,6 +153,7 @@ export default function SitzplanPage() {
           eventId={eventId}
           canEditRoom={true}
           roomPoints={displayPoints}
+          roomElements={displayElements}
           tablePool={displayPool}
           coupleName={coupleName}
         />
