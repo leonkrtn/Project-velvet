@@ -224,6 +224,7 @@ export default function SitzplanEditor({
     startMx: number; startMy: number
     startPosX: number; startPosY: number
   } | null>(null)
+  const dragOccurred = useRef(false)
 
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
@@ -321,9 +322,10 @@ export default function SitzplanEditor({
     const name = `Tisch ${globalNum}`
     const len = poolType.shape === 'round' ? poolType.diameter : poolType.length
     const wid = poolType.shape === 'round' ? poolType.diameter : poolType.width
-    const cap = poolType.shape === 'round'
-      ? Math.max(2, Math.round(poolType.diameter * Math.PI))
-      : Math.max(2, Math.round(poolType.length * 2))
+    const cap = poolType.seats
+      ?? (poolType.shape === 'round'
+        ? Math.max(2, Math.round(poolType.diameter * Math.PI))
+        : Math.max(2, Math.round(poolType.length * 2)))
 
     const bounds = roomBounds(roomPoints)
     const cx = (bounds.minX + bounds.maxX) / 2 + (num % 3 - 1) * (len + 0.5)
@@ -374,13 +376,13 @@ export default function SitzplanEditor({
   // ── SVG drag ────────────────────────────────────────────────────────────────
 
   const onTableMouseDown = useCallback((e: React.MouseEvent, tableId: string) => {
-    e.preventDefault()
     const svg = svgRef.current; if (!svg) return
     const rect = svg.getBoundingClientRect()
     const px = (e.clientX - rect.left) * (CANVAS_W / rect.width)
     const py = (e.clientY - rect.top) * (CANVAS_H / rect.height)
     const { x: mx, y: my } = px2m(px, py, scale, offX, offY)
     const table = tables.find(t => t.id === tableId); if (!table) return
+    dragOccurred.current = false
     dragState.current = { tableId, startMx: mx, startMy: my, startPosX: table.pos_x, startPosY: table.pos_y }
   }, [tables, scale, offX, offY])
 
@@ -393,6 +395,7 @@ export default function SitzplanEditor({
     const { x: mx, y: my } = px2m(px, py, scale, offX, offY)
     const dx = mx - dragState.current.startMx
     const dy = my - dragState.current.startMy
+    if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) dragOccurred.current = true
     setTables(prev => prev.map(t =>
       t.id === dragState.current!.tableId
         ? { ...t, pos_x: dragState.current!.startPosX + dx, pos_y: dragState.current!.startPosY + dy }
@@ -403,6 +406,8 @@ export default function SitzplanEditor({
   const onSvgMouseUp = useCallback(async () => {
     if (!dragState.current) return
     const ds = dragState.current; dragState.current = null
+    if (!dragOccurred.current) return
+    dragOccurred.current = false
     const table = tables.find(t => t.id === ds.tableId)
     if (table) await supabase.from('seating_tables').update({ pos_x: table.pos_x, pos_y: table.pos_y }).eq('id', ds.tableId)
   }, [tables, supabase])
@@ -673,17 +678,8 @@ export default function SitzplanEditor({
                 const br = m2px(group.maxX + GRID_SIZE, group.maxY + GRID_SIZE, scale, offX, offY)
                 const gw = br.x - tl.x; const gh = br.y - tl.y
                 return (
-                  <g key={gi}>
-                    <rect x={tl.x} y={tl.y} width={gw} height={gh} rx={3}
-                      fill={style.fill} stroke={style.stroke} strokeWidth={1.2} />
-                    <text x={tl.x + gw / 2} y={tl.y + gh / 2}
-                      textAnchor="middle" dominantBaseline="middle"
-                      fontSize={Math.max(7, Math.min(10, gw * 0.3))}
-                      fontFamily="-apple-system,Helvetica,sans-serif" fontWeight="600"
-                      fill={style.stroke} style={{ pointerEvents: 'none', userSelect: 'none' }}>
-                      {style.label}
-                    </text>
-                  </g>
+                  <rect key={gi} x={tl.x} y={tl.y} width={gw} height={gh} rx={3}
+                    fill={style.fill} stroke={style.stroke} strokeWidth={1.2} />
                 )
               })}
 
@@ -701,6 +697,23 @@ export default function SitzplanEditor({
           <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-tertiary)' }}>
             Tisch anklicken = auswählen · Ziehen = verschieben · Scroll = zoom
           </div>
+
+          {/* Legend */}
+          {elemGroups.length > 0 && (() => {
+            const seen = new Map<string, typeof ELEM_STYLE[string]>()
+            elemGroups.forEach(g => { if (ELEM_STYLE[g.type] && !seen.has(g.type)) seen.set(g.type, ELEM_STYLE[g.type]) })
+            return (
+              <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 14px' }}>
+                <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-tertiary)' }}>Legende</span>
+                {Array.from(seen.entries()).map(([type, s]) => (
+                  <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: s.fill, border: `1.5px solid ${s.stroke}`, flexShrink: 0, display: 'inline-block' }}/>
+                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{s.label}</span>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
         </div>
       </div>
 
