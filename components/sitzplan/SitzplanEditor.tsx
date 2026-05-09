@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { RaumPoint, RaumTablePool } from '@/components/room/RaumKonfigurator'
+import type { RaumPoint, RaumElement, RaumTablePool, RaumTableType } from '@/components/room/RaumKonfigurator'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -16,6 +16,7 @@ interface SitzTable {
   rotation: number
   table_length: number
   table_width: number
+  pool_type_id: string | null
 }
 
 interface SitzAssignment {
@@ -38,17 +39,36 @@ export interface SitzplanEditorProps {
   eventId: string
   canEditRoom: boolean
   roomPoints: RaumPoint[]
+  roomElements?: RaumElement[]
   tablePool: RaumTablePool
   coupleName?: string
 }
 
-// ── Constants ───────────────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const CANVAS_W = 680
 const CANVAS_H = 480
-const PAD = 2.0 // meters of padding around room
+const PAD = 2.0
+const CHAIR_PAD = 0.5           // meters of chair-space dashed border
+const GRID_SIZE = 0.5           // must match RaumKonfigurator
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// Elements excluded from seating view
+const HIDDEN_ELEM_TYPES = new Set(['strom', 'wasser', 'netzwerk'])
+
+// Element display settings for SVG
+const ELEM_STYLE: Record<string, { fill: string; stroke: string; label: string }> = {
+  heizung:    { fill: '#FFF7ED', stroke: '#F97316', label: 'Heizung' },
+  saeule:     { fill: '#D1D5DB', stroke: '#374151', label: 'Säule' },
+  tuer:       { fill: '#FEF9C3', stroke: '#CA8A04', label: 'Tür' },
+  fenster:    { fill: '#DBEAFE', stroke: '#3B82F6', label: 'Fenster' },
+  notausgang: { fill: '#DCFCE7', stroke: '#16A34A', label: 'Notausgang' },
+  treppe:     { fill: '#F3F4F6', stroke: '#6B7280', label: 'Treppe' },
+  buehne:     { fill: '#FAF5FF', stroke: '#9333EA', label: 'Bühne' },
+  pflanze:    { fill: '#DCFCE7', stroke: '#22C55E', label: 'Pflanze' },
+  baum:       { fill: '#DCFCE7', stroke: '#15803D', label: 'Baum' },
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function roomBounds(points: RaumPoint[]) {
   if (points.length === 0) return { minX: -5, maxX: 5, minY: -4, maxY: 4 }
@@ -84,11 +104,53 @@ function coupleNames(coupleName?: string): [string, string] {
   return [parts[0] ?? 'Partner 1', parts[1] ?? 'Partner 2']
 }
 
-// ── Sub-components ──────────────────────────────────────────────────────────
+// ── Element groups (same logic as RaumKonfigurator, simplified for SVG) ─────
+
+interface ElemGroup {
+  type: string
+  cells: RaumElement[]
+  minX: number; minY: number; maxX: number; maxY: number
+}
+
+function groupElements(elements: RaumElement[]): ElemGroup[] {
+  const visible = elements.filter(e => !HIDDEN_ELEM_TYPES.has(e.type))
+  const visited = new Set<string>()
+  const key = (x: number, y: number) => `${Math.round(x * 100)}_${Math.round(y * 100)}`
+  const byPos: Record<string, RaumElement> = {}
+  visible.forEach(e => { byPos[key(e.x, e.y)] = e })
+  const groups: ElemGroup[] = []
+  for (const el of visible) {
+    const k = key(el.x, el.y)
+    if (visited.has(k)) continue
+    const cells: RaumElement[] = []
+    const queue = [el]
+    visited.add(k)
+    while (queue.length) {
+      const cur = queue.shift()!
+      cells.push(cur)
+      const neighbors = [
+        byPos[key(cur.x + GRID_SIZE, cur.y)],
+        byPos[key(cur.x - GRID_SIZE, cur.y)],
+        byPos[key(cur.x, cur.y + GRID_SIZE)],
+        byPos[key(cur.x, cur.y - GRID_SIZE)],
+      ]
+      for (const nb of neighbors) {
+        if (nb && nb.type === el.type && !visited.has(key(nb.x, nb.y))) {
+          visited.add(key(nb.x, nb.y)); queue.push(nb)
+        }
+      }
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    cells.forEach(c => { minX = Math.min(minX, c.x); minY = Math.min(minY, c.y); maxX = Math.max(maxX, c.x); maxY = Math.max(maxY, c.y) })
+    groups.push({ type: el.type, cells, minX, minY, maxX, maxY })
+  }
+  return groups
+}
+
+// ── Table shape SVG component ─────────────────────────────────────────────────
 
 function TableShape({
-  table, scale, offX, offY, selected, onClick,
-  onMouseDown,
+  table, scale, offX, offY, selected, onClick, onMouseDown,
 }: {
   table: SitzTable
   scale: number; offX: number; offY: number
@@ -99,53 +161,49 @@ function TableShape({
   const cx = table.pos_x * scale + offX
   const cy = table.pos_y * scale + offY
   const len = table.table_length * scale
-  const wid = table.table_width * scale
+  const wid = (table.shape === 'round' ? table.table_length : table.table_width) * scale
+  const chairLen = (table.table_length + CHAIR_PAD * 2) * scale
+  const chairWid = ((table.shape === 'round' ? table.table_length : table.table_width) + CHAIR_PAD * 2) * scale
   const rot = table.rotation
 
   return (
-    <g
-      transform={`rotate(${rot}, ${cx}, ${cy})`}
-      onClick={e => { e.stopPropagation(); onClick() }}
-      onMouseDown={onMouseDown}
-      style={{ cursor: 'grab' }}
-    >
+    <g transform={`rotate(${rot}, ${cx}, ${cy})`} onClick={e => { e.stopPropagation(); onClick() }} onMouseDown={onMouseDown} style={{ cursor: 'grab' }}>
+      {/* Chair-space dashed border */}
       {table.shape === 'round' ? (
-        <ellipse
-          cx={cx} cy={cy}
-          rx={len / 2} ry={len / 2}
-          fill={selected ? '#EEF2FF' : '#F5F5F7'}
-          stroke={selected ? '#6366F1' : '#1D1D1F'}
-          strokeWidth={selected ? 2.5 : 1.5}
-        />
+        <ellipse cx={cx} cy={cy} rx={chairLen / 2} ry={chairLen / 2}
+          fill="none" stroke={selected ? '#6366F1' : '#AEAEB2'} strokeWidth={1} strokeDasharray="4 3" />
       ) : (
-        <rect
-          x={cx - len / 2} y={cy - wid / 2}
-          width={len} height={wid}
-          rx={4}
+        <rect x={cx - chairLen / 2} y={cy - chairWid / 2} width={chairLen} height={chairWid} rx={6}
+          fill="none" stroke={selected ? '#6366F1' : '#AEAEB2'} strokeWidth={1} strokeDasharray="4 3" />
+      )}
+      {/* Table body */}
+      {table.shape === 'round' ? (
+        <ellipse cx={cx} cy={cy} rx={len / 2} ry={len / 2}
           fill={selected ? '#EEF2FF' : '#F5F5F7'}
           stroke={selected ? '#6366F1' : '#1D1D1F'}
-          strokeWidth={selected ? 2.5 : 1.5}
-        />
+          strokeWidth={selected ? 2.5 : 1.5} />
+      ) : (
+        <rect x={cx - len / 2} y={cy - wid / 2} width={len} height={wid} rx={4}
+          fill={selected ? '#EEF2FF' : '#F5F5F7'}
+          stroke={selected ? '#6366F1' : '#1D1D1F'}
+          strokeWidth={selected ? 2.5 : 1.5} />
       )}
-      <text
-        x={cx} y={cy}
-        textAnchor="middle" dominantBaseline="middle"
+      {/* Label */}
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
         fontSize={Math.max(9, Math.min(13, len * 0.14))}
-        fontFamily="-apple-system,Helvetica,sans-serif"
-        fontWeight="600"
+        fontFamily="-apple-system,Helvetica,sans-serif" fontWeight="600"
         fill={selected ? '#4338CA' : '#1D1D1F'}
-        style={{ pointerEvents: 'none', userSelect: 'none' }}
-      >
+        style={{ pointerEvents: 'none', userSelect: 'none' }}>
         {table.name}
       </text>
     </g>
   )
 }
 
-// ── Main component ───────────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function SitzplanEditor({
-  eventId, canEditRoom, roomPoints, tablePool, coupleName,
+  eventId, canEditRoom: _canEditRoom, roomPoints, roomElements = [], tablePool, coupleName,
 }: SitzplanEditorProps) {
   const supabase = createClient()
 
@@ -160,7 +218,6 @@ export default function SitzplanEditor({
   const [editingName, setEditingName] = useState<string | null>(null)
   const [nameInput, setNameInput] = useState('')
 
-  // Drag state
   const svgRef = useRef<SVGSVGElement>(null)
   const dragState = useRef<{
     tableId: string
@@ -179,7 +236,9 @@ export default function SitzplanEditor({
 
   const [partner1, partner2] = coupleNames(coupleName)
 
-  // ── Load data ──────────────────────────────────────────────────────────────
+  const elemGroups = groupElements(roomElements)
+
+  // ── Load ────────────────────────────────────────────────────────────────────
 
   useEffect(() => { loadAll() }, [eventId]) // eslint-disable-line
 
@@ -201,10 +260,8 @@ export default function SitzplanEditor({
       setAssignments(assignmentsData ?? [])
       setGuests(guestsData ?? [])
       const mapped = (begleitData ?? []).map((b: { id: string; name: string; guest_id: string; guests: { name: string } | { name: string }[] }) => ({
-        id: b.id,
-        name: b.name,
-        guest_id: b.guest_id,
-        guest_name: Array.isArray(b.guests) ? (b.guests[0]?.name ?? '') : (b.guests?.name ?? ''),
+        id: b.id, name: b.name, guest_id: b.guest_id,
+        guest_name: Array.isArray(b.guests) ? (b.guests[0]?.name ?? '') : ((b.guests as { name: string })?.name ?? ''),
       }))
       setBegleit(mapped)
     } finally {
@@ -212,16 +269,14 @@ export default function SitzplanEditor({
     }
   }
 
-  // ── Derived state ──────────────────────────────────────────────────────────
+  // ── Derived ─────────────────────────────────────────────────────────────────
 
-  const placedRound = tables.filter(t => t.shape === 'round').length
-  const placedRect  = tables.filter(t => t.shape === 'rectangular').length
-  const availRound  = Math.max(0, tablePool.round.count - placedRound)
-  const availRect   = Math.max(0, tablePool.rect.count - placedRect)
+  // Count placed tables per pool type
+  const placedByType = (typeId: string) => tables.filter(t => t.pool_type_id === typeId).length
 
-  const assignedGuestIds      = new Set(assignments.map(a => a.guest_id).filter(Boolean) as string[])
-  const assignedBegleitIds    = new Set(assignments.map(a => a.begleitperson_id).filter(Boolean) as string[])
-  const assignedBrautpaar     = new Set(assignments.map(a => a.brautpaar_slot).filter(Boolean) as number[])
+  const assignedGuestIds   = new Set(assignments.map(a => a.guest_id).filter(Boolean) as string[])
+  const assignedBegleitIds = new Set(assignments.map(a => a.begleitperson_id).filter(Boolean) as string[])
+  const assignedBrautpaar  = new Set(assignments.map(a => a.brautpaar_slot).filter(Boolean) as number[])
 
   const assignmentsForTable = (tableId: string) => assignments.filter(a => a.table_id === tableId)
 
@@ -240,41 +295,42 @@ export default function SitzplanEditor({
   const selectedAssignments = selectedTableId ? assignmentsForTable(selectedTableId) : []
   const selectedCount = selectedAssignments.length
 
-  // Persons available to assign (not yet assigned)
   const allPersons: PersonEntry[] = [
     ...(assignedBrautpaar.has(1) ? [] : [{ type: 'brautpaar' as const, id: 'bp1', name: partner1, subtitle: 'Brautpaar' }]),
     ...(assignedBrautpaar.has(2) ? [] : [{ type: 'brautpaar' as const, id: 'bp2', name: partner2, subtitle: 'Brautpaar' }]),
-    ...guests.filter(g => !assignedGuestIds.has(g.id)).map(g => ({
-      type: 'guest' as const, id: g.id, name: g.name, subtitle: g.status,
-    })),
-    ...begleit.filter(b => !assignedBegleitIds.has(b.id)).map(b => ({
-      type: 'begleitperson' as const, id: b.id, name: b.name, subtitle: `Begl. ${b.guest_name}`,
-    })),
+    ...guests.filter(g => !assignedGuestIds.has(g.id)).map(g => ({ type: 'guest' as const, id: g.id, name: g.name, subtitle: g.status })),
+    ...begleit.filter(b => !assignedBegleitIds.has(b.id)).map(b => ({ type: 'begleitperson' as const, id: b.id, name: b.name, subtitle: `Begl. ${b.guest_name}` })),
   ]
-
   const filteredPersons = allPersons.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.subtitle ?? '').toLowerCase().includes(search.toLowerCase())
   )
 
-  // ── Actions ────────────────────────────────────────────────────────────────
+  // Pool type for selected table
+  const selectedType: RaumTableType | undefined = selectedTable?.pool_type_id
+    ? tablePool.types.find(t => t.id === selectedTable.pool_type_id)
+    : undefined
 
-  async function addTable(shape: 'round' | 'rectangular') {
-    const num = tables.filter(t => t.shape === shape).length + 1
-    const name = shape === 'round' ? `Runder Tisch ${num}` : `Tisch ${num}`
-    const defaultLen = shape === 'round' ? tablePool.round.diameter : tablePool.rect.length
-    const defaultWid = shape === 'round' ? tablePool.round.diameter : tablePool.rect.width
-    const defaultCap = shape === 'round' ? Math.max(2, Math.round(tablePool.round.diameter * 4)) : Math.max(2, Math.round(tablePool.rect.length * 2))
+  // ── Actions ─────────────────────────────────────────────────────────────────
 
-    // Place near center of room
+  async function addTable(poolType: RaumTableType) {
+    const num = tables.filter(t => t.pool_type_id === poolType.id).length + 1
+    const globalNum = tables.length + 1
+    const name = `Tisch ${globalNum}`
+    const len = poolType.shape === 'round' ? poolType.diameter : poolType.length
+    const wid = poolType.shape === 'round' ? poolType.diameter : poolType.width
+    const cap = poolType.shape === 'round'
+      ? Math.max(2, Math.round(poolType.diameter * Math.PI))
+      : Math.max(2, Math.round(poolType.length * 2))
+
     const bounds = roomBounds(roomPoints)
-    const cx = (bounds.minX + bounds.maxX) / 2 + (Math.random() - 0.5) * 2
-    const cy = (bounds.minY + bounds.maxY) / 2 + (Math.random() - 0.5) * 2
+    const cx = (bounds.minX + bounds.maxX) / 2 + (num % 3 - 1) * (len + 0.5)
+    const cy = (bounds.minY + bounds.maxY) / 2 + Math.floor(num / 3) * (wid + 0.5)
 
     const { data, error } = await supabase.from('seating_tables').insert({
-      event_id: eventId, name, shape, capacity: defaultCap,
-      pos_x: cx, pos_y: cy, rotation: 0,
-      table_length: defaultLen, table_width: defaultWid,
+      event_id: eventId, name, shape: poolType.shape,
+      capacity: cap, pos_x: cx, pos_y: cy, rotation: 0,
+      table_length: len, table_width: wid, pool_type_id: poolType.id,
     }).select().single()
     if (!error && data) setTables(prev => [...prev, data])
   }
@@ -284,11 +340,6 @@ export default function SitzplanEditor({
     setTables(prev => prev.filter(t => t.id !== tableId))
     setAssignments(prev => prev.filter(a => a.table_id !== tableId))
     if (selectedTableId === tableId) setSelectedTableId(null)
-  }
-
-  async function updateTablePos(tableId: string, pos_x: number, pos_y: number) {
-    setTables(prev => prev.map(t => t.id === tableId ? { ...t, pos_x, pos_y } : t))
-    await supabase.from('seating_tables').update({ pos_x, pos_y }).eq('id', tableId)
   }
 
   async function updateTableName(tableId: string, name: string) {
@@ -318,57 +369,51 @@ export default function SitzplanEditor({
     setAssignments(prev => prev.filter(a => a.id !== assignmentId))
   }
 
-  // ── SVG drag handling ──────────────────────────────────────────────────────
+  // ── SVG drag ────────────────────────────────────────────────────────────────
 
   const onTableMouseDown = useCallback((e: React.MouseEvent, tableId: string) => {
     e.preventDefault()
-    const svg = svgRef.current
-    if (!svg) return
+    const svg = svgRef.current; if (!svg) return
     const rect = svg.getBoundingClientRect()
     const px = (e.clientX - rect.left) * (CANVAS_W / rect.width)
     const py = (e.clientY - rect.top) * (CANVAS_H / rect.height)
     const { x: mx, y: my } = px2m(px, py, scale, offX, offY)
-    const table = tables.find(t => t.id === tableId)
-    if (!table) return
+    const table = tables.find(t => t.id === tableId); if (!table) return
     dragState.current = { tableId, startMx: mx, startMy: my, startPosX: table.pos_x, startPosY: table.pos_y }
   }, [tables, scale, offX, offY])
 
   const onSvgMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragState.current) return
-    const svg = svgRef.current
-    if (!svg) return
+    const svg = svgRef.current; if (!svg) return
     const rect = svg.getBoundingClientRect()
     const px = (e.clientX - rect.left) * (CANVAS_W / rect.width)
     const py = (e.clientY - rect.top) * (CANVAS_H / rect.height)
     const { x: mx, y: my } = px2m(px, py, scale, offX, offY)
     const dx = mx - dragState.current.startMx
     const dy = my - dragState.current.startMy
-    const newX = dragState.current.startPosX + dx
-    const newY = dragState.current.startPosY + dy
-    setTables(prev => prev.map(t => t.id === dragState.current!.tableId ? { ...t, pos_x: newX, pos_y: newY } : t))
+    setTables(prev => prev.map(t =>
+      t.id === dragState.current!.tableId
+        ? { ...t, pos_x: dragState.current!.startPosX + dx, pos_y: dragState.current!.startPosY + dy }
+        : t
+    ))
   }, [scale, offX, offY])
 
   const onSvgMouseUp = useCallback(async () => {
     if (!dragState.current) return
-    const ds = dragState.current
-    dragState.current = null
+    const ds = dragState.current; dragState.current = null
     const table = tables.find(t => t.id === ds.tableId)
     if (table) await supabase.from('seating_tables').update({ pos_x: table.pos_x, pos_y: table.pos_y }).eq('id', ds.tableId)
   }, [tables, supabase])
 
-  // Pan with middle-mouse or empty-space drag
   const onSvgMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button !== 1 && e.button !== 0) return
-    if ((e.target as SVGElement).closest('g')) return // clicking a table
+    if ((e.target as SVGElement).closest('g')) return
     panState.current = { startX: e.clientX, startY: e.clientY, startPanX: pan.x, startPanY: pan.y }
   }, [pan])
 
   useEffect(() => {
     function onMove(e: MouseEvent) {
       if (!panState.current) return
-      const dx = e.clientX - panState.current.startX
-      const dy = e.clientY - panState.current.startY
-      setPan({ x: panState.current.startPanX + dx, y: panState.current.startPanY + dy })
+      setPan({ x: panState.current.startPanX + e.clientX - panState.current.startX, y: panState.current.startPanY + e.clientY - panState.current.startY })
     }
     function onUp() { panState.current = null }
     window.addEventListener('mousemove', onMove)
@@ -381,24 +426,19 @@ export default function SitzplanEditor({
     setZoom(z => Math.max(0.4, Math.min(4, z - e.deltaY * 0.001)))
   }
 
-  // ── Inline name editing ────────────────────────────────────────────────────
+  // ── Name editing ────────────────────────────────────────────────────────────
 
-  function startEditing(table: SitzTable) {
-    setEditingName(table.id)
-    setNameInput(table.name)
-  }
+  function startEditing(table: SitzTable) { setEditingName(table.id); setNameInput(table.name) }
 
   async function commitName() {
     if (editingName && nameInput.trim()) await updateTableName(editingName, nameInput.trim())
     setEditingName(null)
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   if (loading) return (
-    <div style={{ height: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
-      Lade Sitzplan…
-    </div>
+    <div style={{ height: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Lade Sitzplan…</div>
   )
 
   if (roomPoints.length < 3) return (
@@ -408,11 +448,10 @@ export default function SitzplanEditor({
     </div>
   )
 
-  const noPool = tablePool.round.count === 0 && tablePool.rect.count === 0
+  const hasPool = tablePool.types.length > 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* ── Editor area ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 16, alignItems: 'start' }}>
 
         {/* ── Sidebar ── */}
@@ -423,106 +462,88 @@ export default function SitzplanEditor({
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>
               Verfügbare Tische
             </div>
-            <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {noPool ? (
+            <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {!hasPool ? (
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
-                  Noch keine Tische konfiguriert. Bitte zuerst den Raum in Schritt 3 einrichten.
+                  Noch keine Tische konfiguriert (Raum → Schritt 3).
                 </p>
-              ) : (
-                <>
-                  {tablePool.round.count > 0 && (
-                    <button
-                      onClick={() => availRound > 0 && addTable('round')}
-                      disabled={availRound === 0}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                        borderRadius: 8, border: '1px solid var(--border)',
-                        background: availRound === 0 ? '#F5F5F7' : 'var(--surface)',
-                        cursor: availRound === 0 ? 'not-allowed' : 'pointer',
-                        opacity: availRound === 0 ? 0.5 : 1,
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      <svg width="32" height="32" viewBox="0 0 32 32">
-                        <circle cx="16" cy="16" r="13" fill="#EEF2FF" stroke="#6366F1" strokeWidth="1.5"/>
-                      </svg>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>Runder Tisch</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                          {availRound === 0 ? 'Alle platziert' : `${availRound} verfügbar`}
-                        </div>
+              ) : tablePool.types.map(pt => {
+                const placed = placedByType(pt.id)
+                const avail = Math.max(0, pt.count - placed)
+                const isRound = pt.shape === 'round'
+                const accentColor = isRound ? '#6366F1' : '#22C55E'
+                const bgColor = isRound ? '#EEF2FF' : '#F0FDF4'
+                return (
+                  <button key={pt.id} onClick={() => avail > 0 && addTable(pt)} disabled={avail === 0}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+                      borderRadius: 8, border: `1px solid ${avail === 0 ? 'var(--border)' : accentColor + '66'}`,
+                      background: avail === 0 ? '#F5F5F7' : bgColor,
+                      cursor: avail === 0 ? 'not-allowed' : 'pointer',
+                      opacity: avail === 0 ? 0.55 : 1, fontFamily: 'inherit',
+                    }}>
+                    <svg width="28" height="28" viewBox="0 0 28 28" style={{ flexShrink: 0 }}>
+                      {isRound
+                        ? <ellipse cx="14" cy="14" rx="11" ry="11" fill={bgColor} stroke={accentColor} strokeWidth="1.5"/>
+                        : <rect x="3" y="8" width="22" height="12" rx="3" fill={bgColor} stroke={accentColor} strokeWidth="1.5"/>
+                      }
+                    </svg>
+                    <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {isRound ? `Rund ⌀${pt.diameter}m` : `Eckig ${pt.length}×${pt.width}m`}
                       </div>
-                      {availRound > 0 && (
-                        <span style={{ marginLeft: 'auto', fontSize: 11, background: '#6366F1', color: '#fff', borderRadius: 10, padding: '2px 7px', fontWeight: 600 }}>+</span>
-                      )}
-                    </button>
-                  )}
-                  {tablePool.rect.count > 0 && (
-                    <button
-                      onClick={() => availRect > 0 && addTable('rectangular')}
-                      disabled={availRect === 0}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                        borderRadius: 8, border: '1px solid var(--border)',
-                        background: availRect === 0 ? '#F5F5F7' : 'var(--surface)',
-                        cursor: availRect === 0 ? 'not-allowed' : 'pointer',
-                        opacity: availRect === 0 ? 0.5 : 1,
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      <svg width="32" height="32" viewBox="0 0 32 32">
-                        <rect x="3" y="10" width="26" height="12" rx="3" fill="#F0FDF4" stroke="#22C55E" strokeWidth="1.5"/>
-                      </svg>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>Eckiger Tisch</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                          {availRect === 0 ? 'Alle platziert' : `${availRect} verfügbar`}
-                        </div>
+                      <div style={{ fontSize: 10, color: avail === 0 ? '#FF3B30' : 'var(--text-tertiary)' }}>
+                        {avail === 0 ? 'Alle platziert' : `${avail} von ${pt.count} verfügbar`}
                       </div>
-                      {availRect > 0 && (
-                        <span style={{ marginLeft: 'auto', fontSize: 11, background: '#22C55E', color: '#fff', borderRadius: 10, padding: '2px 7px', fontWeight: 600 }}>+</span>
-                      )}
-                    </button>
-                  )}
-                </>
-              )}
+                    </div>
+                    {avail > 0 && (
+                      <span style={{ flexShrink: 0, fontSize: 16, color: accentColor, fontWeight: 700, lineHeight: 1 }}>+</span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          {/* Selected table panel OR guest list */}
+          {/* Selected table panel OR guest overview */}
           {selectedTable ? (
             <div style={{ background: 'var(--surface)', border: '2px solid #6366F1', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-              {/* Table header */}
-              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Header */}
+              <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 {editingName === selectedTable.id ? (
-                  <input
-                    autoFocus value={nameInput}
+                  <input autoFocus value={nameInput}
                     onChange={e => setNameInput(e.target.value)}
                     onBlur={commitName}
                     onKeyDown={e => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') setEditingName(null) }}
                     style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: '3px 6px', borderRadius: 6, border: '1px solid #6366F1', fontFamily: 'inherit', outline: 'none' }}
                   />
                 ) : (
-                  <button
-                    onClick={() => startEditing(selectedTable)}
+                  <button onClick={() => startEditing(selectedTable)}
                     style={{ flex: 1, textAlign: 'left', fontSize: 13, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
-                    title="Klicken zum Umbenennen"
-                  >
+                    title="Klicken zum Umbenennen">
                     {selectedTable.name}
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: 5, opacity: 0.4, verticalAlign: 'middle' }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
                 )}
-                <span style={{ fontSize: 11, color: selectedCount >= selectedTable.capacity ? '#FF3B30' : 'var(--text-tertiary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap', color: selectedCount >= selectedTable.capacity ? '#FF3B30' : 'var(--text-tertiary)' }}>
                   {selectedCount}/{selectedTable.capacity}
                 </span>
-                <button
-                  onClick={() => setSelectedTableId(null)}
-                  style={{ padding: '2px 6px', borderRadius: 6, border: 'none', background: 'rgba(0,0,0,0.06)', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1 }}
-                >✕</button>
+                <button onClick={() => setSelectedTableId(null)}
+                  style={{ padding: '2px 6px', borderRadius: 6, border: 'none', background: 'rgba(0,0,0,0.06)', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1 }}>
+                  ✕
+                </button>
               </div>
 
-              {/* Table properties */}
-              <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Pool type info + editable fields */}
+              <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {selectedType && (
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', background: '#F5F5F7', borderRadius: 6, padding: '5px 8px' }}>
+                    {selectedType.shape === 'round'
+                      ? `Runder Tisch · ⌀ ${selectedType.diameter} m`
+                      : `Eckiger Tisch · ${selectedType.length} × ${selectedType.width} m`}
+                  </div>
+                )}
+                {/* Capacity is still editable */}
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Plätze</span>
                   <input type="number" min={1} max={50} value={selectedTable.capacity}
@@ -530,118 +551,86 @@ export default function SitzplanEditor({
                     style={{ width: 56, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12, fontFamily: 'inherit', textAlign: 'center' }}
                   />
                 </label>
-                {selectedTable.shape === 'round' ? (
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>⌀ (m)</span>
-                    <input type="number" min={0.5} max={6} step={0.1} value={selectedTable.table_length}
-                      onChange={e => updateTableProp(selectedTable.id, 'table_length', Math.max(0.5, parseFloat(e.target.value) || 1.5))}
-                      style={{ width: 56, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12, fontFamily: 'inherit', textAlign: 'center' }}
-                    />
-                  </label>
-                ) : (
-                  <>
-                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Länge (m)</span>
-                      <input type="number" min={0.5} max={10} step={0.1} value={selectedTable.table_length}
-                        onChange={e => updateTableProp(selectedTable.id, 'table_length', Math.max(0.5, parseFloat(e.target.value) || 2))}
-                        style={{ width: 56, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12, fontFamily: 'inherit', textAlign: 'center' }}
-                      />
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Breite (m)</span>
-                      <input type="number" min={0.3} max={5} step={0.1} value={selectedTable.table_width}
-                        onChange={e => updateTableProp(selectedTable.id, 'table_width', Math.max(0.3, parseFloat(e.target.value) || 0.8))}
-                        style={{ width: 56, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12, fontFamily: 'inherit', textAlign: 'center' }}
-                      />
-                    </label>
-                  </>
-                )}
+                {/* Rotation */}
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => updateTableProp(selectedTable.id, 'rotation', (selectedTable.rotation - 15 + 360) % 360)} style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>↺ -15°</button>
-                  <button onClick={() => updateTableProp(selectedTable.id, 'rotation', (selectedTable.rotation + 15) % 360)} style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>↻ +15°</button>
+                  <button onClick={() => updateTableProp(selectedTable.id, 'rotation', (selectedTable.rotation - 15 + 360) % 360)}
+                    style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                    ↺ −15°
+                  </button>
+                  <button onClick={() => updateTableProp(selectedTable.id, 'rotation', (selectedTable.rotation + 15) % 360)}
+                    style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                    ↻ +15°
+                  </button>
                 </div>
               </div>
 
               {/* Assigned persons */}
               {selectedAssignments.length > 0 && (
-                <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 150, overflowY: 'auto' }}>
+                <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 140, overflowY: 'auto' }}>
                   {selectedAssignments.map(a => (
                     <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{personName(a)}</span>
-                      <button onClick={() => removeAssignment(a.id)} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#FF3B30', fontSize: 14, lineHeight: 1, padding: '2px 4px' }}>✕</button>
+                      <button onClick={() => removeAssignment(a.id)}
+                        style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#FF3B30', fontSize: 14, lineHeight: 1, padding: '2px 4px' }}>
+                        ✕
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Search to add */}
-              <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <input
-                  placeholder="Gast suchen…" value={search}
-                  onChange={e => setSearch(e.target.value)}
+              {/* Search + add */}
+              <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input placeholder="Gast suchen…" value={search} onChange={e => setSearch(e.target.value)}
                   style={{ width: '100%', padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
-                <div style={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {selectedCount >= selectedTable.capacity ? (
-                    <p style={{ fontSize: 11, color: '#FF3B30', textAlign: 'center', padding: '4px 0' }}>Tisch ist voll</p>
-                  ) : filteredPersons.length === 0 ? (
-                    <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', padding: '4px 0' }}>Keine weiteren Personen</p>
-                  ) : (
-                    filteredPersons.map(p => (
-                      <button
-                        key={`${p.type}-${p.id}`}
-                        onClick={() => assignPerson(p)}
-                        style={{
-                          display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '5px 8px',
-                          borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)',
-                          cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                        }}
-                      >
-                        <span style={{ fontSize: 12, fontWeight: 500 }}>{p.name}</span>
-                        {p.subtitle && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.subtitle}</span>}
-                      </button>
-                    ))
-                  )}
+                <div style={{ maxHeight: 150, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {selectedCount >= selectedTable.capacity
+                    ? <p style={{ fontSize: 11, color: '#FF3B30', textAlign: 'center', padding: '4px 0' }}>Tisch ist voll</p>
+                    : filteredPersons.length === 0
+                      ? <p style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', padding: '4px 0' }}>Keine weiteren Personen</p>
+                      : filteredPersons.map(p => (
+                        <button key={`${p.type}-${p.id}`} onClick={() => assignPerson(p)}
+                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                          <span style={{ fontSize: 12, fontWeight: 500 }}>{p.name}</span>
+                          {p.subtitle && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.subtitle}</span>}
+                        </button>
+                      ))
+                  }
                 </div>
               </div>
 
-              {/* Delete table */}
-              <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)' }}>
-                <button
-                  onClick={() => { if (confirm(`"${selectedTable.name}" löschen?`)) deleteTable(selectedTable.id) }}
-                  style={{ width: '100%', padding: '6px 0', borderRadius: 7, border: '1px solid rgba(255,59,48,0.3)', background: 'rgba(255,59,48,0.06)', color: '#FF3B30', cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }}
-                >
+              {/* Delete */}
+              <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
+                <button onClick={() => { if (confirm(`"${selectedTable.name}" löschen?`)) deleteTable(selectedTable.id) }}
+                  style={{ width: '100%', padding: '6px 0', borderRadius: 7, border: '1px solid rgba(255,59,48,0.3)', background: 'rgba(255,59,48,0.06)', color: '#FF3B30', cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }}>
                   Tisch löschen
                 </button>
               </div>
             </div>
           ) : (
-            /* Guest overview when no table selected */
+            /* Guest overview when nothing selected */
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
               <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Personen</div>
-                <input
-                  placeholder="Suchen…" value={search}
-                  onChange={e => setSearch(e.target.value)}
+                <input placeholder="Suchen…" value={search} onChange={e => setSearch(e.target.value)}
                   style={{ width: '100%', padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
-              <div style={{ maxHeight: 280, overflowY: 'auto', padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ maxHeight: 260, overflowY: 'auto', padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {filteredPersons.length === 0 ? (
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', padding: '8px 0' }}>
                     {allPersons.length === 0 ? 'Alle Personen sitzen' : 'Kein Treffer'}
                   </p>
-                ) : (
-                  filteredPersons.map(p => (
-                    <div key={`${p.type}-${p.id}`} style={{ display: 'flex', flexDirection: 'column', padding: '5px 8px', borderRadius: 6, background: '#F5F5F7', fontSize: 12 }}>
-                      <span style={{ fontWeight: 500 }}>{p.name}</span>
-                      {p.subtitle && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.subtitle}</span>}
-                    </div>
-                  ))
-                )}
+                ) : filteredPersons.map(p => (
+                  <div key={`${p.type}-${p.id}`} style={{ display: 'flex', flexDirection: 'column', padding: '5px 8px', borderRadius: 6, background: '#F5F5F7', fontSize: 12 }}>
+                    <span style={{ fontWeight: 500 }}>{p.name}</span>
+                    {p.subtitle && <span style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.subtitle}</span>}
+                  </div>
+                ))}
               </div>
               <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-tertiary)' }}>
-                {allPersons.length} noch nicht platziert · Tisch anklicken zum Zuordnen
+                {allPersons.length} noch nicht platziert · Tisch anklicken
               </div>
             </div>
           )}
@@ -649,46 +638,56 @@ export default function SitzplanEditor({
 
         {/* ── SVG Canvas ── */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-          {/* Toolbar */}
           <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
-            <span>{tables.length} Tische platziert · {guests.length + begleit.length + 2} Personen gesamt</span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }} style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>Ansicht zurücksetzen</button>
-            </div>
+            <span>{tables.length} Tische · {guests.length + begleit.length + 2} Personen</span>
+            <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }}
+              style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+              Ansicht zurücksetzen
+            </button>
           </div>
 
-          {/* SVG */}
-          <div style={{ background: '#F5F5F7', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <svg
-              ref={svgRef}
-              width={CANVAS_W} height={CANVAS_H}
-              style={{ display: 'block', cursor: dragState.current ? 'grabbing' : 'default' }}
+          <div style={{ background: '#F5F5F7' }}>
+            <svg ref={svgRef} width={CANVAS_W} height={CANVAS_H} style={{ display: 'block' }}
               onMouseDown={onSvgMouseDown}
               onMouseMove={onSvgMouseMove}
               onMouseUp={onSvgMouseUp}
               onMouseLeave={onSvgMouseUp}
               onWheel={onWheel}
-              onClick={() => setSelectedTableId(null)}
-            >
+              onClick={() => setSelectedTableId(null)}>
+
               {/* Room polygon */}
               {roomPoints.length >= 3 && (
                 <polygon
-                  points={roomPoints.map(p => {
-                    const c = m2px(p.x, p.y, scale, offX, offY)
-                    return `${c.x},${c.y}`
-                  }).join(' ')}
-                  fill="rgba(29,29,31,0.04)"
-                  stroke="#1D1D1F"
-                  strokeWidth="2"
+                  points={roomPoints.map(p => { const c = m2px(p.x, p.y, scale, offX, offY); return `${c.x},${c.y}` }).join(' ')}
+                  fill="rgba(29,29,31,0.04)" stroke="#1D1D1F" strokeWidth="2"
                 />
               )}
 
+              {/* Room elements (filtered) */}
+              {elemGroups.map((group, gi) => {
+                const style = ELEM_STYLE[group.type]
+                if (!style) return null
+                const tl = m2px(group.minX, group.minY, scale, offX, offY)
+                const br = m2px(group.maxX + GRID_SIZE, group.maxY + GRID_SIZE, scale, offX, offY)
+                const gw = br.x - tl.x; const gh = br.y - tl.y
+                return (
+                  <g key={gi}>
+                    <rect x={tl.x} y={tl.y} width={gw} height={gh} rx={3}
+                      fill={style.fill} stroke={style.stroke} strokeWidth={1.2} />
+                    <text x={tl.x + gw / 2} y={tl.y + gh / 2}
+                      textAnchor="middle" dominantBaseline="middle"
+                      fontSize={Math.max(7, Math.min(10, gw * 0.3))}
+                      fontFamily="-apple-system,Helvetica,sans-serif" fontWeight="600"
+                      fill={style.stroke} style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                      {style.label}
+                    </text>
+                  </g>
+                )
+              })}
+
               {/* Tables */}
               {tables.map(table => (
-                <TableShape
-                  key={table.id}
-                  table={table}
-                  scale={scale} offX={offX} offY={offY}
+                <TableShape key={table.id} table={table} scale={scale} offX={offX} offY={offY}
                   selected={selectedTableId === table.id}
                   onClick={() => { setSelectedTableId(table.id); setSearch('') }}
                   onMouseDown={e => onTableMouseDown(e, table.id)}
@@ -697,7 +696,6 @@ export default function SitzplanEditor({
             </svg>
           </div>
 
-          {/* Status bar */}
           <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-tertiary)' }}>
             Tisch anklicken = auswählen · Ziehen = verschieben · Scroll = zoom
           </div>
@@ -711,35 +709,37 @@ export default function SitzplanEditor({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
             {tables.map(table => {
               const tas = assignmentsForTable(table.id)
+              const pt = tablePool.types.find(t => t.id === table.pool_type_id)
               return (
-                <div
-                  key={table.id}
+                <div key={table.id}
                   onClick={() => { setSelectedTableId(table.id); setSearch(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                   style={{
                     background: selectedTableId === table.id ? '#EEF2FF' : 'var(--surface)',
                     border: selectedTableId === table.id ? '1.5px solid #6366F1' : '1px solid var(--border)',
                     borderRadius: 'var(--radius)', padding: '14px 16px', cursor: 'pointer',
-                    transition: 'background 0.15s, border-color 0.15s',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{table.name}</span>
-                    <span style={{ fontSize: 11, color: tas.length >= table.capacity ? '#FF3B30' : 'var(--text-tertiary)', fontWeight: 500 }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, color: tas.length >= table.capacity ? '#FF3B30' : 'var(--text-tertiary)' }}>
                       {tas.length}/{table.capacity}
                     </span>
                   </div>
-                  {tas.length === 0 ? (
-                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Noch niemand zugeordnet</p>
-                  ) : (
-                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      {tas.map(a => (
-                        <li key={a.id} style={{ fontSize: 12, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', flexShrink: 0 }}/>
-                          {personName(a)}
-                        </li>
-                      ))}
-                    </ul>
+                  {pt && (
+                    <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 8 }}>
+                      {pt.shape === 'round' ? `Rund ⌀${pt.diameter}m` : `Eckig ${pt.length}×${pt.width}m`}
+                    </p>
                   )}
+                  {tas.length === 0
+                    ? <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Noch niemand zugeordnet</p>
+                    : <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {tas.map(a => (
+                          <li key={a.id} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', flexShrink: 0 }}/>
+                            {personName(a)}
+                          </li>
+                        ))}
+                      </ul>
+                  }
                 </div>
               )
             })}

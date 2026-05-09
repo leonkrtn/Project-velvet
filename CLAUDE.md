@@ -226,8 +226,11 @@ app/brautpaar/seating/page.tsx        Brautpaar seating — SitzplanEditor (no r
 
 components/
   room/RaumKonfigurator.tsx            3-step room editor (1=Grundriss, 2=Raumdetails, 3=Tische)
-                                       Exports: RaumPoint, RaumElement, RaumTablePool
-  sitzplan/SitzplanEditor.tsx          Seating editor: SVG canvas + sidebar + list view
+                                       Exports: RaumPoint, RaumElement, RaumTablePool, RaumTableType, PlacedTablePreview
+                                       table_pool.types[] = array of typed pools (multi-round + multi-rect supported)
+                                       placedTables prop: toggleable seating_tables overlay on canvas
+  sitzplan/SitzplanEditor.tsx          SVG seating editor: room polygon + filtered elements + tables with 0.5m chair buffer
+                                       Table sizes fixed from pool type; only capacity + rotation editable in panel
 
 app/vendor/dashboard/[eventId]/
   VendorDashboardClient.tsx     Vendor portal (reads OLD system for tab visibility)
@@ -246,4 +249,5 @@ supabase/migrations/
   0042_dienstleister_rls_write.sql           RLS using dl_has_tab_access
   0043_remove_allgemein_from_dienstleister.sql  Purges allgemein rows + CHECK constraint
   0044_seating_v2.sql           Replaces seating_tables/seating_assignments; adds table_pool to event_room_configs
+  0045_seating_pool_type_id.sql Adds pool_type_id TEXT to seating_tables; updates table_pool default to {types:[]}
 ```

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { useEvent } from '@/lib/event-context'
-import type { RaumPoint, RaumTablePool } from '@/components/room/RaumKonfigurator'
+import type { RaumPoint, RaumElement, RaumTablePool } from '@/components/room/RaumKonfigurator'
 
 const SitzplanEditor = dynamic(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
 
@@ -12,8 +12,9 @@ export default function BrautpaarSeatingPage() {
   const supabase = createClient()
 
   const [loading, setLoading] = useState(true)
-  const [roomPoints, setRoomPoints] = useState<RaumPoint[]>([])
-  const [tablePool, setTablePool] = useState<RaumTablePool>({ round: { count: 0, diameter: 1.5 }, rect: { count: 0, length: 2.0, width: 0.8 } })
+  const [roomPoints,   setRoomPoints]   = useState<RaumPoint[]>([])
+  const [roomElements, setRoomElements] = useState<RaumElement[]>([])
+  const [tablePool,    setTablePool]    = useState<RaumTablePool>({ types: [] })
 
   useEffect(() => {
     if (!event?.id) return
@@ -29,15 +30,17 @@ export default function BrautpaarSeatingPage() {
 
       const [{ data: globalRow }, { data: evConfigRow }] = await Promise.all([
         organizerUserId
-          ? supabase.from('organizer_room_configs').select('points').eq('user_id', organizerUserId).single()
+          ? supabase.from('organizer_room_configs').select('points, elements').eq('user_id', organizerUserId).single()
           : Promise.resolve({ data: null }),
-        supabase.from('event_room_configs').select('points, table_pool').eq('event_id', eventId).single(),
+        supabase.from('event_room_configs').select('points, elements, table_pool').eq('event_id', eventId).single(),
       ])
 
-      const points: RaumPoint[] = evConfigRow?.points ?? globalRow?.points ?? []
-      const pool: RaumTablePool = evConfigRow?.table_pool ?? { round: { count: 0, diameter: 1.5 }, rect: { count: 0, length: 2.0, width: 0.8 } }
+      const points: RaumPoint[]   = evConfigRow?.points   ?? globalRow?.points   ?? []
+      const elems:  RaumElement[] = evConfigRow?.elements ?? globalRow?.elements ?? []
+      const pool:   RaumTablePool = evConfigRow?.table_pool ?? { types: [] }
 
       setRoomPoints(points)
+      setRoomElements(elems)
       setTablePool(pool)
     } finally {
       setLoading(false)
@@ -67,6 +70,7 @@ export default function BrautpaarSeatingPage() {
         eventId={event.id}
         canEditRoom={false}
         roomPoints={roomPoints}
+        roomElements={roomElements}
         tablePool={tablePool}
         coupleName={event.coupleName}
       />
