@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import VendorInboxClient from './VendorInboxClient'
+import FilesTab from '@/app/vendor/dashboard/[eventId]/tabs/FilesTab'
 
 interface Props { params: Promise<{ eventId: string }> }
 
-export default async function VendorVorschlaegePage({ params }: Props) {
+export default async function VendorFilesPage({ params }: Props) {
   const { eventId } = await params
   const supabase = await createClient()
 
@@ -16,12 +16,12 @@ export default async function VendorVorschlaegePage({ params }: Props) {
     .select('access')
     .eq('event_id', eventId)
     .eq('dienstleister_user_id', user.id)
-    .eq('tab_key', 'vorschlaege')
+    .eq('tab_key', 'files')
     .is('item_id', null)
     .maybeSingle()
 
   const tabAccess = (tabPerm?.access ?? 'none') as 'none' | 'read' | 'write'
   if (tabAccess === 'none') redirect(`/vendor/dashboard/${eventId}/uebersicht`)
 
-  return <VendorInboxClient eventId={eventId} userId={user.id} />
+  return <FilesTab eventId={eventId} />
 }

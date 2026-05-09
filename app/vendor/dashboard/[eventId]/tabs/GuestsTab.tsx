@@ -5,10 +5,14 @@ import { Search } from 'lucide-react'
 
 type Access = 'none' | 'read' | 'write'
 
+interface SeatingTable { name: string }
+interface SeatingAssignment { seating_tables: SeatingTable | SeatingTable[] | null }
+
 interface Guest {
   id: string; name: string; status: string
   side: string | null; allergy_tags: string[]; allergy_custom: string | null
   meal_choice: string | null
+  seating_assignments?: SeatingAssignment[]
 }
 
 interface Props {
@@ -49,7 +53,7 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.from('guests').select('id, name, status, side, allergy_tags, allergy_custom, meal_choice').eq('event_id', eventId).order('name')
+    supabase.from('guests').select('id, name, status, side, allergy_tags, allergy_custom, meal_choice, seating_assignments(seating_tables(name))').eq('event_id', eventId).order('name')
       .then(({ data }) => { setGuests(data ?? []); setLoading(false) })
   }, [eventId])
 
@@ -61,9 +65,15 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
     { key: 'side', label: 'Seite', visible: showNamen },
     { key: 'meal', label: 'Menü', visible: showEssen },
     { key: 'allergy', label: 'Allergien', visible: showAllergien },
+    { key: 'tisch', label: 'Tisch', visible: showTische },
   ]
   const visibleCols = columns.filter(c => c.visible)
-  const gridCols = visibleCols.map(c => c.key === 'name' ? '1fr' : c.key === 'side' ? '100px' : c.key === 'meal' ? '120px' : '160px').join(' ')
+  const gridCols = visibleCols.map(c => {
+    if (c.key === 'name') return '1fr'
+    if (c.key === 'side' || c.key === 'tisch') return '100px'
+    if (c.key === 'meal') return '120px'
+    return '160px'
+  }).join(' ')
 
   if (!showNamen && !showEssen && !showAllergien && !showStatus) {
     return <div style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Keine Berechtigung für diese Inhalte.</div>
@@ -121,6 +131,13 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
                     {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).join(', ') || '—'}
                   </div>
                 )}
+                {showTische && (() => {
+                  const assignment = g.seating_assignments?.[0]
+                  const table = Array.isArray(assignment?.seating_tables)
+                    ? assignment?.seating_tables?.[0]
+                    : assignment?.seating_tables
+                  return <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{table?.name ?? '—'}</div>
+                })()}
               </div>
             )
           })}

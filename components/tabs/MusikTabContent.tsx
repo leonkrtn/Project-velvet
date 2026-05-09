@@ -26,8 +26,6 @@ interface Requirements {
   notes: string
 }
 
-export interface ItemPerm { can_view: boolean; can_edit: boolean }
-
 type Access = 'none' | 'read' | 'write'
 
 interface Props {
@@ -36,7 +34,6 @@ interface Props {
   hasFullModuleAccess?: boolean
   tabAccess?: Access
   sectionPerms?: Record<string, Access>
-  itemPermissions?: Record<string, ItemPerm>
   onPropose?: () => void
 }
 
@@ -385,7 +382,7 @@ function AddSongForm({ eventId, onAdded }: { eventId: string; onAdded: (s: Song)
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = true, tabAccess = 'write', sectionPerms, itemPermissions = {}, onPropose }: Props) {
+export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = true, tabAccess = 'write', sectionPerms, onPropose }: Props) {
   const [songs, setSongs]       = useState<Song[]>([])
   const [reqs, setReqs]         = useState<Requirements | null>(null)
   const [loading, setLoading]   = useState(true)
@@ -403,18 +400,9 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
     })
   }, [eventId])
 
-  function canViewItem(id: string) {
+  function canEditItem() {
     if (mode === 'veranstalter') return true
-    const p = itemPermissions[id]
-    if (p) return p.can_view
-    return true
-  }
-
-  function canEditItem(id: string) {
-    if (mode === 'veranstalter') return true
-    const p = itemPermissions[id]
-    if (p) return p.can_edit
-    return hasFullModuleAccess
+    return hasFullModuleAccess && !secReadOnly('songliste')
   }
 
   async function deleteSong(id: string) {
@@ -423,7 +411,7 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
     if (!error) setSongs(prev => prev.filter(s => s.id !== id))
   }
 
-  const visibleSongs = songs.filter(s => canViewItem(s.id))
+  const visibleSongs = songs
   const filtered     = filter === 'all' ? visibleSongs : visibleSongs.filter(s => s.type === filter)
   const moments      = Array.from(new Set(filtered.map(s => s.moment))).filter(Boolean)
 
@@ -488,7 +476,7 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
                       <SongRow
                         key={s.id}
                         song={s}
-                        canEdit={canEditItem(s.id)}
+                        canEdit={canEditItem()}
                         mode={mode}
                         onUpdate={updated => setSongs(prev => prev.map(x => x.id === updated.id ? updated : x))}
                         onDelete={() => deleteSong(s.id)}

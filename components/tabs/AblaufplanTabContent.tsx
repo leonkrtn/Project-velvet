@@ -30,6 +30,7 @@ function AblaufplanClientWrapper({ eventId }: { eventId: string }) {
   const [props, setProps] = useState<{
     initialEntries: unknown[]
     members: unknown[]
+    staff: unknown[]
     vendors: unknown[]
   } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -53,7 +54,8 @@ function AblaufplanClientWrapper({ eventId }: { eventId: string }) {
         .select('id, user_id, role, profiles!user_id(id, name)')
         .eq('event_id', eventId),
       supabase.from('vendors').select('id, name, category').eq('event_id', eventId).order('name'),
-    ]).then(([entriesRes, membersRes, vendorsRes]) => {
+      supabase.from('organizer_staff').select('id, name, role').eq('event_id', eventId),
+    ]).then(([entriesRes, membersRes, vendorsRes, staffRes]) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const members = (membersRes.data ?? []).map((m: any) => ({
         ...m,
@@ -69,6 +71,7 @@ function AblaufplanClientWrapper({ eventId }: { eventId: string }) {
           assigned_members: e.assigned_members ?? [],
         })),
         members,
+        staff: staffRes.data ?? [],
         vendors: vendorsRes.data ?? [],
       })
       setLoading(false)
@@ -86,14 +89,14 @@ function AblaufplanClientWrapper({ eventId }: { eventId: string }) {
       eventId={eventId}
       initialEntries={props.initialEntries}
       members={props.members}
-      staff={[]}
+      staff={props.staff}
       vendors={props.vendors}
     />
   )
 }
 
 export default function AblaufplanTabContent({ eventId, mode, tabAccess, itemPermissions }: TabContentProps) {
-  if (mode === 'veranstalter' || tabAccess === 'write') {
+  if (mode === 'veranstalter') {
     return <AblaufplanClientWrapper eventId={eventId} />
   }
   return <TimelineTab eventId={eventId} tabAccess={tabAccess} sectionPerms={itemPermissions} />
