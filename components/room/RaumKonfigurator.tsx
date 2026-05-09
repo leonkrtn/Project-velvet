@@ -5,10 +5,21 @@ import React, { useRef, useEffect, useState, useCallback } from 'react'
 export interface RaumPoint { x: number; y: number }
 export interface RaumElement { id: number; type: string; x: number; y: number }
 
+export interface RaumTablePool {
+  round: { count: number; diameter: number }
+  rect:  { count: number; length: number; width: number }
+}
+
+const DEFAULT_TABLE_POOL: RaumTablePool = {
+  round: { count: 0, diameter: 1.5 },
+  rect:  { count: 0, length: 2.0, width: 0.8 },
+}
+
 export interface RaumKonfiguratorProps {
   initialPoints?: RaumPoint[]
   initialElements?: RaumElement[]
-  onSave?: (points: RaumPoint[], elements: RaumElement[]) => Promise<void> | void
+  initialTablePool?: RaumTablePool
+  onSave?: (points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool) => Promise<void> | void
   saving?: boolean
   saved?: boolean
 }
@@ -262,6 +273,7 @@ const ELEM_ICONS: Record<string, React.ReactNode> = {
 export default function RaumKonfigurator({
   initialPoints,
   initialElements = [],
+  initialTablePool,
   onSave,
   saving,
   saved,
@@ -298,13 +310,16 @@ export default function RaumKonfigurator({
   })
 
   /* ── React state for panel / UI ── */
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [showDimensions, setShowDimensions] = useState(true)
   const [showCorners, setShowCorners] = useState(true)
   const [selectedElemType, setSelectedElemType] = useState<string | null>(null)
   const [selectedElemId, setSelectedElemIdState] = useState<number | null>(null)
   const [dimLabel, setDimLabel] = useState('10,00 m × 10,00 m')
   const [elemCount, setElemCount] = useState(0)
+  const [tablePool, setTablePool] = useState<RaumTablePool>(
+    initialTablePool ?? DEFAULT_TABLE_POOL
+  )
 
   /* ── Canvas helpers ── */
   const m2c = useCallback((x: number, y: number) => {
@@ -653,7 +668,7 @@ export default function RaumKonfigurator({
   /* ── Sync React state ↔ stateRef ── */
   useEffect(() => { stateRef.current.showDimensions = showDimensions; draw() }, [showDimensions, draw])
   useEffect(() => { stateRef.current.showCorners = showCorners; draw() }, [showCorners, draw])
-  useEffect(() => { stateRef.current.step = step; draw() }, [step, draw])
+  useEffect(() => { stateRef.current.step = Math.min(step, 2) as 1 | 2; draw() }, [step, draw])
   useEffect(() => { stateRef.current.selectedElemType = selectedElemType }, [selectedElemType])
   useEffect(() => { stateRef.current.selectedElemId = selectedElemId; draw() }, [selectedElemId, draw])
 
@@ -692,8 +707,9 @@ export default function RaumKonfigurator({
     setSelectedElemIdState(null)
     draw()
   }
+  function handleGoToStep3() { setStep(3) }
   function handleSave() {
-    onSave?.(stateRef.current.points, stateRef.current.elements)
+    onSave?.(stateRef.current.points, stateRef.current.elements, tablePool)
   }
 
   const selectedElem = stateRef.current.elements.find(e => e.id === selectedElemId)
@@ -716,10 +732,11 @@ export default function RaumKonfigurator({
 
       {/* Step bar */}
       <div style={{ display:'flex', alignItems:'center', background:'#fff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:10, padding:4, width:'fit-content', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
-        {[{n:1,label:'Grundriss'},{n:2,label:'Raumdetails'}].map((s,i) => (
+        {[{n:1,label:'Grundriss'},{n:2,label:'Raumdetails'},{n:3,label:'Tische'}].map((s,i) => (
           <React.Fragment key={s.n}>
             {i>0 && <div style={{width:1,height:20,background:'rgba(0,0,0,0.08)',margin:'0 2px'}}/>}
-            <button onClick={s.n===1?handleGoToStep1:()=>{if(step===2||step>1)handleGoToStep2()}}
+            <button
+              onClick={s.n===1?handleGoToStep1:s.n===2?(()=>{if(step>1)handleGoToStep2()}):(()=>{if(step>2)handleGoToStep3()})}
               style={{
                 display:'flex', alignItems:'center', gap:7, padding:'6px 14px',
                 borderRadius:7, fontSize:13, fontWeight:500, cursor:'pointer',
@@ -816,6 +833,57 @@ export default function RaumKonfigurator({
               </div>
             </div>
           )}
+          {/* Step 3: table pool config */}
+          {step===3 && (
+            <div style={{ padding:'16px 16px 14px' }}>
+              <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.09em', color:'#AEAEB2', marginBottom:14 }}>Runde Tische</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:20 }}>
+                <label style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  <span style={{ fontSize:12, color:'#6E6E73' }}>Anzahl</span>
+                  <input
+                    type="number" min={0} max={50} value={tablePool.round.count}
+                    onChange={e => setTablePool(p => ({ ...p, round: { ...p.round, count: Math.max(0, parseInt(e.target.value)||0) } }))}
+                    style={{ width:'100%', padding:'6px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.14)', fontSize:13, fontFamily:'inherit', outline:'none' }}
+                  />
+                </label>
+                <label style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  <span style={{ fontSize:12, color:'#6E6E73' }}>Durchmesser (m)</span>
+                  <input
+                    type="number" min={0.5} max={5} step={0.1} value={tablePool.round.diameter}
+                    onChange={e => setTablePool(p => ({ ...p, round: { ...p.round, diameter: Math.max(0.5, parseFloat(e.target.value)||1.5) } }))}
+                    style={{ width:'100%', padding:'6px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.14)', fontSize:13, fontFamily:'inherit', outline:'none' }}
+                  />
+                </label>
+              </div>
+              <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.09em', color:'#AEAEB2', marginBottom:14 }}>Eckige Tische</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                <label style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  <span style={{ fontSize:12, color:'#6E6E73' }}>Anzahl</span>
+                  <input
+                    type="number" min={0} max={50} value={tablePool.rect.count}
+                    onChange={e => setTablePool(p => ({ ...p, rect: { ...p.rect, count: Math.max(0, parseInt(e.target.value)||0) } }))}
+                    style={{ width:'100%', padding:'6px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.14)', fontSize:13, fontFamily:'inherit', outline:'none' }}
+                  />
+                </label>
+                <label style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  <span style={{ fontSize:12, color:'#6E6E73' }}>Länge (m)</span>
+                  <input
+                    type="number" min={0.5} max={10} step={0.1} value={tablePool.rect.length}
+                    onChange={e => setTablePool(p => ({ ...p, rect: { ...p.rect, length: Math.max(0.5, parseFloat(e.target.value)||2.0) } }))}
+                    style={{ width:'100%', padding:'6px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.14)', fontSize:13, fontFamily:'inherit', outline:'none' }}
+                  />
+                </label>
+                <label style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  <span style={{ fontSize:12, color:'#6E6E73' }}>Breite (m)</span>
+                  <input
+                    type="number" min={0.3} max={5} step={0.1} value={tablePool.rect.width}
+                    onChange={e => setTablePool(p => ({ ...p, rect: { ...p.rect, width: Math.max(0.3, parseFloat(e.target.value)||0.8) } }))}
+                    style={{ width:'100%', padding:'6px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.14)', fontSize:13, fontFamily:'inherit', outline:'none' }}
+                  />
+                </label>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Canvas card */}
@@ -861,12 +929,14 @@ export default function RaumKonfigurator({
                   <span>Auf Kante klicken = neuer Punkt</span><span>·</span>
                   <span>Doppelklick = löschen</span>
                 </>
-              ) : (
+              ) : step===2 ? (
                 <>
                   <span>Element wählen → Zelle klicken</span><span>·</span>
                   <span>Ziehen = verschieben</span><span>·</span>
                   <span>Doppelklick = löschen</span>
                 </>
+              ) : (
+                <span>Anzahl und Größe der verfügbaren Tische festlegen</span>
               )}
             </div>
             {onSave && (
@@ -880,7 +950,7 @@ export default function RaumKonfigurator({
 
       {/* Action buttons */}
       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-        {step===1 ? (
+        {step===1 && (
           <>
             <button onClick={handleReset} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:10, fontSize:14, fontWeight:500, cursor:'pointer', border:'1px solid rgba(0,0,0,0.14)', background:'#fff', color:'#1D1D1F', fontFamily:'inherit' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.07"/></svg>
@@ -891,11 +961,24 @@ export default function RaumKonfigurator({
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </>
-        ) : (
+        )}
+        {step===2 && (
           <>
             <button onClick={handleGoToStep1} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:10, fontSize:14, fontWeight:500, cursor:'pointer', border:'1px solid rgba(0,0,0,0.14)', background:'#fff', color:'#1D1D1F', fontFamily:'inherit' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
               Zurück zu Schritt 1
+            </button>
+            <button onClick={handleGoToStep3} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 20px', borderRadius:10, fontSize:14, fontWeight:500, cursor:'pointer', border:'none', background:'#1D1D1F', color:'#fff', fontFamily:'inherit' }}>
+              Weiter zu Schritt 3
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </>
+        )}
+        {step===3 && (
+          <>
+            <button onClick={handleGoToStep2} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:10, fontSize:14, fontWeight:500, cursor:'pointer', border:'1px solid rgba(0,0,0,0.14)', background:'#fff', color:'#1D1D1F', fontFamily:'inherit' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+              Zurück zu Schritt 2
             </button>
             {onSave && (
               <button onClick={handleSave} disabled={saving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 20px', borderRadius:10, fontSize:14, fontWeight:500, cursor: saving ? 'not-allowed' : 'pointer', border:'none', background:'#34C759', color:'#fff', fontFamily:'inherit', opacity: saving ? 0.7 : 1 }}>
