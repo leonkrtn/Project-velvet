@@ -322,9 +322,10 @@ export default function SitzplanEditor({
     const name = `Tisch ${globalNum}`
     const len = poolType.shape === 'round' ? poolType.diameter : poolType.length
     const wid = poolType.shape === 'round' ? poolType.diameter : poolType.width
-    const cap = poolType.shape === 'round'
-      ? Math.max(2, Math.round(poolType.diameter * Math.PI))
-      : Math.max(2, Math.round(poolType.length * 2))
+    const cap = poolType.seats
+      ?? (poolType.shape === 'round'
+        ? Math.max(2, Math.round(poolType.diameter * Math.PI))
+        : Math.max(2, Math.round(poolType.length * 2)))
 
     const bounds = roomBounds(roomPoints)
     const cx = (bounds.minX + bounds.maxX) / 2 + (num % 3 - 1) * (len + 0.5)

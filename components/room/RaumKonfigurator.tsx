@@ -12,6 +12,7 @@ export interface RaumTableType {
   diameter: number   // used for round (length = width = diameter)
   length: number     // used for rectangular
   width: number      // used for rectangular
+  seats?: number     // suggested capacity per table (overrides auto-calculation)
 }
 
 export interface RaumTablePool {
@@ -944,6 +945,17 @@ export default function RaumKonfigurator({
                         </label>
                       </>
                     )}
+                    <label style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:6 }}>
+                      <span style={{ fontSize:11, color:'#6E6E73' }}>Plätze</span>
+                      <input type="number" min={1} max={50} value={type.seats ?? ''}
+                        placeholder="auto"
+                        onChange={e => {
+                          const v = parseInt(e.target.value)
+                          setTablePool(p => ({ types: p.types.map(t => t.id===type.id ? { ...t, seats: isNaN(v) || v < 1 ? undefined : Math.min(50, v) } : t) }))
+                        }}
+                        style={{ width:56, padding:'4px 7px', borderRadius:6, border:'1px solid rgba(0,0,0,0.14)', fontSize:12, fontFamily:'inherit', textAlign:'center' }}
+                      />
+                    </label>
                   </div>
                 </div>
               ))}
