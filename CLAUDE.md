@@ -58,6 +58,17 @@
 /brautpaar/[eventId]/...   → Couple portal (mirrors subset of veranstalter routes)
 /trauzeuge/[eventId]/...   → Best-man portal (read-heavy)
 /vendor/dashboard/[eventId]/ → Vendor portal (tab-gated by permissions)
+  uebersicht/              → Overview: event details, contacts, permission-gated module shortcuts
+  catering/                → Catering (if permitted)
+  chats/                   → Chats (if permitted)
+  ablaufplan/              → Timeline (if permitted)
+  gaesteliste/             → Guest list (if permitted)
+  musik/                   → Music (if permitted)
+  patisserie/              → Patisserie (if permitted)
+  dekoration/              → Decor (if permitted)
+  medien/                  → Media (if permitted)
+  sitzplan/                → Seating plan (if permitted)
+  ⛔ allgemein/            → REMOVED — vendors have no access; DB CHECK constraint blocks assignment
 /vendor/inbox/             → Vendor proposal inbox
 ```
 
@@ -74,7 +85,8 @@ The project has **two parallel permission systems** that are **not in sync**:
 
 ### NEW system (DB RLS enforced since migration 0042)
 - Table: `dienstleister_permissions` (columns: `event_id`, `dienstleister_user_id`, `tab_key TEXT`, `item_id TEXT|NULL`, `access: none|read|write`)
-- Tab keys: `uebersicht`, `allgemein`, `catering`, `chats`, `ablaufplan`, `gaesteliste`, `musik`, `patisserie`, `dekoration`, `medien`, `sitzplan`, `vorschlaege`
+- Tab keys: `uebersicht`, `catering`, `chats`, `ablaufplan`, `gaesteliste`, `musik`, `patisserie`, `dekoration`, `medien`, `sitzplan`, `vorschlaege`
+- `allgemein` is **explicitly blocked** — migration 0043 added a CHECK constraint (`tab_key <> 'allgemein'`) and purged existing rows
 - Written by: `BerechtigungenClient.tsx` (permission editor UI)
 - Enforced by: `dl_has_tab_access()` SECURITY DEFINER function in all table RLS policies
 
@@ -210,11 +222,19 @@ app/veranstalter/[eventId]/
   berechtigungen/[id]/BerechtigungenClient.tsx  Vendor permission editor (writes NEW system)
 
 app/vendor/dashboard/[eventId]/
-  VendorDashboardClient.tsx   Vendor portal (reads OLD system for tab visibility)
+  VendorDashboardClient.tsx     Vendor portal (reads OLD system for tab visibility)
+  VendorSidebarLayout.tsx       Sidebar nav — allgemein removed; filters by dienstleister_permissions
+  uebersicht/page.tsx           Rebuilt overview: event details, veranstalter/brautpaar contacts,
+                                permission-gated module shortcut cards
+
+app/veranstalter/[eventId]/
+  berechtigungen/[dienstleisterId]/BerechtigungenClient.tsx
+                                Vendor permission editor — allgemein removed from tab list
 
 supabase/migrations/
   setup.sql                     Base schema (all core tables)
   0031_proposals_v2.sql         Proposals V2 full schema
   0040_unified_dienstleister_permissions.sql  NEW permission table
   0042_dienstleister_rls_write.sql           RLS using dl_has_tab_access
+  0043_remove_allgemein_from_dienstleister.sql  Purges allgemein rows + CHECK constraint
 ```
