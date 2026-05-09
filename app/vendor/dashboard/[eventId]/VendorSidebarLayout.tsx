@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Settings, MessageSquare,
+  LayoutDashboard, MessageSquare,
   Calendar, Grid2X2, ChevronLeft, Menu, UtensilsCrossed,
   Music2, Cake, Flower2, Camera, Users,
 } from 'lucide-react'
@@ -19,7 +19,6 @@ interface Props {
 
 const ALL_NAV_ITEMS = [
   { key: 'uebersicht',  label: 'Übersicht',         icon: LayoutDashboard },
-  { key: 'allgemein',   label: 'Allgemein',          icon: Settings },
   { key: 'catering',    label: 'Catering & Menü',    icon: UtensilsCrossed },
   { key: 'chats',       label: 'Chats',              icon: MessageSquare },
   { key: 'ablaufplan',  label: 'Ablaufplan',         icon: Calendar },

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   Check, ArrowLeft, ChevronDown, ChevronRight, HelpCircle,
-  LayoutDashboard, Settings, UtensilsCrossed, MessageSquare,
+  LayoutDashboard, UtensilsCrossed, MessageSquare,
   Calendar, Music2, Cake, Flower2, Camera, Grid2X2, Users,
   LucideIcon,
 } from 'lucide-react'
@@ -40,18 +40,6 @@ const CONFIGURABLE_TABS: TabConfig[] = [
       { key: 'kontakte',    label: 'Wichtige Kontakte',    tooltip: 'Kontaktpersonen wie Brautpaar und Trauzeugen' },
       { key: 'margin',      label: 'Veranstalter-Marge',   tooltip: 'Interne Kalkulation und Marge (vertraulich)' },
       { key: 'todos',       label: 'Meine To-Dos',         tooltip: 'Persönliche Aufgabenliste' },
-    ],
-  },
-  {
-    key: 'allgemein', label: 'Allgemein', icon: Settings,
-    sections: [
-      { key: 'eventdetails', label: 'Event-Details',       tooltip: 'Datum, Titel, Uhrzeit und Beschreibung' },
-      { key: 'location',     label: 'Location',            tooltip: 'Name, Adresse und Website der Veranstaltungslocation' },
-      { key: 'gaeste',       label: 'Gäste',               tooltip: 'Max. Begleiter, Kinder-Regelung' },
-      { key: 'kosten',       label: 'Veranstalterkosten',  tooltip: 'Interne Kostenkalkulation und Honorar (vertraulich)' },
-      { key: 'budget',       label: 'Budget',              tooltip: 'Gesamtbudget und bisherige Ausgaben' },
-      { key: 'brautpaar',    label: 'Kontakt Brautpaar',   tooltip: 'Kontaktdaten des Brautpaars' },
-      { key: 'notizen',      label: 'Interne Notizen',     tooltip: 'Private Notizen des Veranstalters (vertraulich)' },
     ],
   },
   {
