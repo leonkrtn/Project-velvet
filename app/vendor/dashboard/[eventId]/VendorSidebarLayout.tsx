@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, MessageSquare,
   Calendar, Grid2X2, ChevronLeft, Menu, UtensilsCrossed,
-  Music2, Cake, Flower2, Camera, Users,
+  Music2, Cake, Flower2, Camera, Users, Inbox, FileText,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -28,6 +28,8 @@ const ALL_NAV_ITEMS = [
   { key: 'dekoration',  label: 'Dekoration',         icon: Flower2 },
   { key: 'medien',      label: 'Medien & Aufnahmen', icon: Camera },
   { key: 'sitzplan',    label: 'Sitzplan',           icon: Grid2X2 },
+  { key: 'vorschlaege', label: 'Vorschläge',         icon: Inbox },
+  { key: 'files',       label: 'Dokumente',          icon: FileText },
 ]
 
 export default function VendorSidebarLayout({ eventId, eventTitle, eventDate, children, initialTabPerms }: Props) {
