@@ -158,7 +158,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `begleitpersonen` | Guest companions |
 | `hotels` / `hotel_rooms` | Hotel logistics |
 | `timeline_entries` | Schedule items |
-| `seating_tables` / `seating_assignments` | Seating plan |
+| `seating_tables` / `seating_assignments` | Seating plan (v2 — supports guests, begleitpersonen, brautpaar slots) |
 | `catering_plans` | Catering configuration |
 | `music_songs` / `music_requirements` | Music tab |
 | `decor_setup_items` / `deko_wishes` | Decor tab |
@@ -220,6 +220,14 @@ middleware.ts           Auth guard (has approval-check bug)
 app/veranstalter/[eventId]/
   allgemein/AllgemeinForm.tsx          Event settings form
   berechtigungen/[id]/BerechtigungenClient.tsx  Vendor permission editor (writes NEW system)
+  sitzplan/page.tsx                    Seating plan — room config (3-step) + SitzplanEditor
+
+app/brautpaar/seating/page.tsx        Brautpaar seating — SitzplanEditor (no room config)
+
+components/
+  room/RaumKonfigurator.tsx            3-step room editor (1=Grundriss, 2=Raumdetails, 3=Tische)
+                                       Exports: RaumPoint, RaumElement, RaumTablePool
+  sitzplan/SitzplanEditor.tsx          Seating editor: SVG canvas + sidebar + list view
 
 app/vendor/dashboard/[eventId]/
   VendorDashboardClient.tsx     Vendor portal (reads OLD system for tab visibility)
@@ -237,4 +245,5 @@ supabase/migrations/
   0040_unified_dienstleister_permissions.sql  NEW permission table
   0042_dienstleister_rls_write.sql           RLS using dl_has_tab_access
   0043_remove_allgemein_from_dienstleister.sql  Purges allgemein rows + CHECK constraint
+  0044_seating_v2.sql           Replaces seating_tables/seating_assignments; adds table_pool to event_room_configs
 ```
