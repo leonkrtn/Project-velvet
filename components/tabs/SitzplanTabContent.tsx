@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import type { RaumPoint, RaumElement } from '@/components/room/RaumKonfigurator'
+import SitzplanReadOnlyView from '@/components/sitzplan/SitzplanReadOnlyView'
 
 const RaumViewer = dynamic(() => import('@/components/room/RaumViewer'), { ssr: false })
 const RaumKonfigurator = dynamic(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
@@ -184,134 +185,9 @@ function SitzplanEditor({ eventId }: { eventId: string }) {
   )
 }
 
-function SitzplanReadOnly({ eventId }: { eventId: string }) {
-  const supabase = createClient()
-
-  const [loading, setLoading] = useState(true)
-  const [globalPoints, setGlobalPoints] = useState<RaumPoint[]>([])
-  const [globalElements, setGlobalElements] = useState<RaumElement[]>([])
-  const [eventPoints, setEventPoints] = useState<RaumPoint[] | null>(null)
-  const [eventElements, setEventElements] = useState<RaumElement[] | null>(null)
-  const [hasEventConfig, setHasEventConfig] = useState(false)
-  const [showDimensions, setShowDimensions] = useState(true)
-
-  useEffect(() => {
-    async function load() {
-      setLoading(true)
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-
-        // For dienstleister: find the event's organizer to load their room config
-        const { data: eventRow } = await supabase
-          .from('events')
-          .select('user_id')
-          .eq('id', eventId)
-          .single()
-
-        const organizerUserId = eventRow?.user_id ?? user?.id
-
-        const [{ data: globalRow }, { data: evRow }] = await Promise.all([
-          organizerUserId
-            ? supabase.from('organizer_room_configs').select('*').eq('user_id', organizerUserId).single()
-            : Promise.resolve({ data: null }),
-          supabase.from('event_room_configs').select('*').eq('event_id', eventId).single(),
-        ])
-
-        if (globalRow) { setGlobalPoints(globalRow.points ?? []); setGlobalElements(globalRow.elements ?? []) }
-        if (evRow) {
-          setEventPoints(evRow.points ?? [])
-          setEventElements(evRow.elements ?? [])
-          setHasEventConfig(true)
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [eventId]) // eslint-disable-line
-
-  const displayPoints   = (hasEventConfig && eventPoints)   ? eventPoints   : globalPoints
-  const displayElements = (hasEventConfig && eventElements) ? eventElements : globalElements
-
-  if (loading) return (
-    <div style={{ padding: '36px 40px' }}>
-      <div style={{ height: 400, borderRadius: 'var(--radius)', background: 'var(--surface)', border: '1px solid var(--border)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}`}</style>
-    </div>
-  )
-
-  return (
-    <div>
-      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 4 }}>Sitzplan</h1>
-      <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24 }}>
-        {hasEventConfig ? 'Event-spezifische Raumkonfiguration.' : 'Globale Raumkonfiguration.'}
-      </p>
-
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Grundriss</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Maße anzeigen</span>
-            <div
-              onClick={() => setShowDimensions(v => !v)}
-              style={{
-                position: 'relative', width: 40, height: 22,
-                background: showDimensions ? '#1D1D1F' : '#AEAEB2',
-                borderRadius: 11, cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
-              }}>
-              <div style={{
-                position: 'absolute', top: 3, left: 3, width: 16, height: 16,
-                background: '#fff', borderRadius: '50%', transition: 'transform 0.2s',
-                transform: showDimensions ? 'translateX(18px)' : 'translateX(0)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-              }} />
-            </div>
-          </div>
-        </div>
-
-        {displayPoints.length < 3 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 360, gap: 12, color: 'var(--text-secondary)' }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Kein Raum konfiguriert</p>
-              <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Der Veranstalter hat noch keinen Raum konfiguriert.</p>
-            </div>
-          </div>
-        ) : (
-          <RaumViewer
-            points={displayPoints}
-            elements={displayElements}
-            showDimensions={showDimensions}
-          />
-        )}
-      </div>
-    </div>
-  )
-}
-
-type Access = 'none' | 'read' | 'write'
-
-function secVis(sectionPerms: Record<string, Access> | undefined, tabAccess: Access, key: string): boolean {
-  return (sectionPerms?.[key] ?? tabAccess) !== 'none'
-}
-
-export default function SitzplanTabContent({ eventId, mode, tabAccess, itemPermissions }: TabContentProps) {
+export default function SitzplanTabContent({ eventId, mode, tabAccess }: TabContentProps) {
   if (mode === 'veranstalter' || tabAccess === 'write') {
     return <SitzplanEditor eventId={eventId} />
   }
-
-  const showGrundriss = secVis(itemPermissions, (tabAccess ?? 'read') as Access, 'grundriss')
-
-  if (!showGrundriss) {
-    return (
-      <div>
-        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Sitzplan</h1>
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px 24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
-          Kein Zugriff auf den Grundriss.
-        </div>
-      </div>
-    )
-  }
-
-  return <SitzplanReadOnly eventId={eventId} />
+  return <SitzplanReadOnlyView eventId={eventId} />
 }
