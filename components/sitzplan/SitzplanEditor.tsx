@@ -285,6 +285,18 @@ function GuestLightbox({ entry, onClose }: { entry: LightboxEntry; onClose: () =
   )
 }
 
+// ── SVG coordinate helper ────────────────────────────────────────────────────
+
+function clientToSvg(svg: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } {
+  const pt = svg.createSVGPoint()
+  pt.x = clientX
+  pt.y = clientY
+  const ctm = svg.getScreenCTM()
+  if (!ctm) return { x: 0, y: 0 }
+  const p = pt.matrixTransform(ctm.inverse())
+  return { x: p.x, y: p.y }
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function roomBounds(points: RaumPoint[]) {
@@ -297,13 +309,13 @@ function roomBounds(points: RaumPoint[]) {
   return { minX, maxX, minY, maxY }
 }
 
-function computeScale(points: RaumPoint[]): { scale: number; offX: number; offY: number } {
+function computeScale(points: RaumPoint[], canvasW: number, canvasH: number): { scale: number; offX: number; offY: number } {
   const { minX, maxX, minY, maxY } = roomBounds(points)
   const w = maxX - minX + PAD * 2
   const h = maxY - minY + PAD * 2
-  const scale = Math.min(CANVAS_W / w, CANVAS_H / h)
-  const offX = CANVAS_W / 2 - (minX + maxX) / 2 * scale
-  const offY = CANVAS_H / 2 - (minY + maxY) / 2 * scale
+  const scale = Math.min(canvasW / w, canvasH / h)
+  const offX = canvasW / 2 - (minX + maxX) / 2 * scale
+  const offY = canvasH / 2 - (minY + maxY) / 2 * scale
   return { scale, offX, offY }
 }
 
@@ -432,6 +444,19 @@ export default function SitzplanEditor({
   const [nameInput, setNameInput] = useState('')
 
   const svgRef = useRef<SVGSVGElement>(null)
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
+  const [canvasW, setCanvasW] = useState(CANVAS_W)
+
+  useEffect(() => {
+    const div = canvasContainerRef.current; if (!div) return
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width
+      if (w) setCanvasW(w)
+    })
+    ro.observe(div)
+    return () => ro.disconnect()
+  }, [])
+
   const dragState = useRef<{
     tableId: string
     startMx: number; startMy: number
@@ -443,7 +468,7 @@ export default function SitzplanEditor({
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const panState = useRef<{ startX: number; startY: number; startPanX: number; startPanY: number } | null>(null)
 
-  const { scale: baseScale, offX: baseOffX, offY: baseOffY } = computeScale(roomPoints)
+  const { scale: baseScale, offX: baseOffX, offY: baseOffY } = computeScale(roomPoints, canvasW, CANVAS_H)
   const scale = baseScale * zoom
   const offX = baseOffX * zoom + pan.x
   const offY = baseOffY * zoom + pan.y
@@ -594,9 +619,7 @@ export default function SitzplanEditor({
 
   const onTableMouseDown = useCallback((e: React.MouseEvent, tableId: string) => {
     const svg = svgRef.current; if (!svg) return
-    const rect = svg.getBoundingClientRect()
-    const px = (e.clientX - rect.left) * (CANVAS_W / rect.width)
-    const py = (e.clientY - rect.top) * (CANVAS_H / rect.height)
+    const { x: px, y: py } = clientToSvg(svg, e.clientX, e.clientY)
     const { x: mx, y: my } = px2m(px, py, scale, offX, offY)
     const table = tables.find(t => t.id === tableId); if (!table) return
     dragOccurred.current = false
@@ -606,9 +629,7 @@ export default function SitzplanEditor({
   const onSvgMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragState.current) return
     const svg = svgRef.current; if (!svg) return
-    const rect = svg.getBoundingClientRect()
-    const px = (e.clientX - rect.left) * (CANVAS_W / rect.width)
-    const py = (e.clientY - rect.top) * (CANVAS_H / rect.height)
+    const { x: px, y: py } = clientToSvg(svg, e.clientX, e.clientY)
     const { x: mx, y: my } = px2m(px, py, scale, offX, offY)
     const dx = mx - dragState.current.startMx
     const dy = my - dragState.current.startMy
@@ -869,8 +890,8 @@ export default function SitzplanEditor({
               </button>
             </div>
 
-            <div style={{ background: '#F5F5F7' }}>
-              <svg ref={svgRef} viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`} style={{ display: 'block', width: '100%', aspectRatio: `${CANVAS_W}/${CANVAS_H}` }}
+            <div ref={canvasContainerRef} style={{ background: '#F5F5F7' }}>
+              <svg ref={svgRef} width={canvasW} height={CANVAS_H} style={{ display: 'block' }}
                 onMouseDown={onSvgMouseDown}
                 onMouseMove={onSvgMouseMove}
                 onMouseUp={onSvgMouseUp}
