@@ -28,6 +28,44 @@ interface SitzAssignment {
   brautpaar_slot: 1 | 2 | null
 }
 
+interface GuestFull {
+  id: string
+  event_id: string
+  name: string
+  email: string | null
+  status: string
+  phone: string | null
+  address: string | null
+  trink_alkohol: boolean | null
+  meal_choice: string | null
+  allergy_tags: string[] | null
+  allergy_custom: string | null
+  side: string | null
+  arrival_date: string | null
+  arrival_time: string | null
+  departure_date: string | null
+  transport_mode: string | null
+  message: string | null
+  notes: string | null
+  responded_at: string | null
+}
+
+interface BegleitFull {
+  id: string
+  guest_id: string
+  name: string
+  age_category: string | null
+  trink_alkohol: boolean | null
+  meal_choice: string | null
+  allergy_tags: string[] | null
+  allergy_custom: string | null
+  guest_name: string
+}
+
+type LightboxEntry =
+  | { type: 'guest'; data: GuestFull }
+  | { type: 'begleit'; data: BegleitFull }
+
 interface PersonEntry {
   type: 'guest' | 'begleitperson' | 'brautpaar'
   id: string
@@ -49,13 +87,11 @@ export interface SitzplanEditorProps {
 const CANVAS_W = 680
 const CANVAS_H = 480
 const PAD = 2.0
-const CHAIR_PAD = 0.5           // meters of chair-space dashed border
-const GRID_SIZE = 0.5           // must match RaumKonfigurator
+const CHAIR_PAD = 0.5
+const GRID_SIZE = 0.5
 
-// Elements excluded from seating view
 const HIDDEN_ELEM_TYPES = new Set(['strom', 'wasser', 'netzwerk'])
 
-// Element display settings for SVG
 const ELEM_STYLE: Record<string, { fill: string; stroke: string; label: string }> = {
   heizung:    { fill: '#FFF7ED', stroke: '#F97316', label: 'Heizung' },
   saeule:     { fill: '#D1D5DB', stroke: '#374151', label: 'Säule' },
@@ -66,6 +102,187 @@ const ELEM_STYLE: Record<string, { fill: string; stroke: string; label: string }
   buehne:     { fill: '#FAF5FF', stroke: '#9333EA', label: 'Bühne' },
   pflanze:    { fill: '#DCFCE7', stroke: '#22C55E', label: 'Pflanze' },
   baum:       { fill: '#DCFCE7', stroke: '#15803D', label: 'Baum' },
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  attending: 'Zugesagt', declined: 'Abgesagt', pending: 'Ausstehend', maybe: 'Vielleicht',
+}
+const SIDE_LABELS: Record<string, string> = {
+  braut: 'Brautseite', braeutigam: 'Bräutigamseite', both: 'Beide Seiten',
+}
+const TRANSPORT_LABELS: Record<string, string> = {
+  car: 'Auto', train: 'Bahn', plane: 'Flugzeug', bus: 'Bus', taxi: 'Taxi', other: 'Sonstiges',
+}
+const AGE_LABELS: Record<string, string> = {
+  erwachsen: 'Erwachsen', kind: 'Kind', baby: 'Baby',
+}
+
+// ── Field config for lightbox ────────────────────────────────────────────────
+
+type FieldConfig = { key: string; label: string; format?: (v: unknown) => string }
+type SectionConfig = { section: string; fields: FieldConfig[] }
+
+const GUEST_SECTIONS: SectionConfig[] = [
+  {
+    section: 'Allgemein',
+    fields: [
+      { key: 'status', label: 'Status', format: v => STATUS_LABELS[v as string] ?? String(v) },
+      { key: 'side', label: 'Seite', format: v => SIDE_LABELS[v as string] ?? String(v) },
+      { key: 'responded_at', label: 'Geantwortet', format: v => new Date(v as string).toLocaleDateString('de-DE') },
+    ],
+  },
+  {
+    section: 'Kontakt',
+    fields: [
+      { key: 'email', label: 'E-Mail' },
+      { key: 'phone', label: 'Telefon' },
+      { key: 'address', label: 'Adresse' },
+    ],
+  },
+  {
+    section: 'Catering',
+    fields: [
+      { key: 'meal_choice', label: 'Menüwahl' },
+      { key: 'trink_alkohol', label: 'Alkohol', format: v => (v as boolean) ? 'Ja' : 'Nein' },
+      { key: 'allergy_tags', label: 'Allergien', format: v => (v as string[]).join(', ') },
+      { key: 'allergy_custom', label: 'Weitere Allergien' },
+    ],
+  },
+  {
+    section: 'Logistik',
+    fields: [
+      { key: 'arrival_date', label: 'Anreise', format: v => new Date(v as string).toLocaleDateString('de-DE') },
+      { key: 'arrival_time', label: 'Ankunft' },
+      { key: 'departure_date', label: 'Abreise', format: v => new Date(v as string).toLocaleDateString('de-DE') },
+      { key: 'transport_mode', label: 'Transport', format: v => TRANSPORT_LABELS[v as string] ?? String(v) },
+    ],
+  },
+  {
+    section: 'Sonstiges',
+    fields: [
+      { key: 'message', label: 'Nachricht' },
+      { key: 'notes', label: 'Notizen' },
+    ],
+  },
+]
+
+const BEGLEIT_SECTIONS: SectionConfig[] = [
+  {
+    section: 'Person',
+    fields: [
+      { key: 'age_category', label: 'Alterskategorie', format: v => AGE_LABELS[v as string] ?? String(v) },
+    ],
+  },
+  {
+    section: 'Catering',
+    fields: [
+      { key: 'meal_choice', label: 'Menüwahl' },
+      { key: 'trink_alkohol', label: 'Alkohol', format: v => (v as boolean) ? 'Ja' : 'Nein' },
+      { key: 'allergy_tags', label: 'Allergien', format: v => (v as string[]).join(', ') },
+      { key: 'allergy_custom', label: 'Weitere Allergien' },
+    ],
+  },
+]
+
+function hasValue(v: unknown): boolean {
+  if (v === null || v === undefined || v === '') return false
+  if (Array.isArray(v) && v.length === 0) return false
+  return true
+}
+
+function formatField(fc: FieldConfig, obj: Record<string, unknown>): string | null {
+  const v = obj[fc.key]
+  if (!hasValue(v)) return null
+  if (fc.format) return fc.format(v)
+  return String(v)
+}
+
+// ── GuestLightbox ─────────────────────────────────────────────────────────────
+
+function GuestLightbox({ entry, onClose }: { entry: LightboxEntry; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  const isGuest = entry.type === 'guest'
+  const data = entry.data as unknown as Record<string, unknown>
+  const sections = isGuest ? GUEST_SECTIONS : BEGLEIT_SECTIONS
+  const typeLabel = isGuest ? 'Gast' : 'Begleitperson'
+  const typeColor = isGuest ? '#6366F1' : '#9CA3AF'
+  const typeBg = isGuest ? '#EEF2FF' : '#F3F4F6'
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px 16px',
+      }}>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)', borderRadius: 16,
+          boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
+          width: '100%', maxWidth: 480, maxHeight: '80vh',
+          overflowY: 'auto', display: 'flex', flexDirection: 'column',
+        }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: typeColor, background: typeBg, padding: '2px 8px', borderRadius: 20 }}>
+                {typeLabel}
+              </span>
+              {entry.type === 'begleit' && (
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                  Begl. von <strong>{(entry.data as BegleitFull).guest_name}</strong>
+                </span>
+              )}
+            </div>
+            <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>{String(data.name ?? '')}</h2>
+          </div>
+          <button onClick={onClose}
+            style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.07)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1 }}>
+            ✕
+          </button>
+        </div>
+
+        {/* Sections */}
+        <div style={{ padding: '16px 24px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {sections.map(({ section, fields }) => {
+            const rows = fields
+              .map(fc => ({ label: fc.label, value: formatField(fc, data) }))
+              .filter(r => r.value !== null)
+            if (rows.length === 0) return null
+            return (
+              <div key={section}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
+                  {section}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {rows.map(({ label, value }) => (
+                    <div key={label} style={{ display: 'flex', gap: 12, alignItems: 'baseline' }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', minWidth: 120, flexShrink: 0 }}>{label}</span>
+                      <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500, lineHeight: 1.4 }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+          {sections.every(({ fields }) => fields.every(fc => !hasValue(data[fc.key]))) && (
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center', padding: '16px 0' }}>
+              Keine weiteren Informationen vorhanden.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -103,8 +320,6 @@ function coupleNames(coupleName?: string): [string, string] {
   const parts = coupleName.split(/[&+,]/).map(s => s.trim()).filter(Boolean)
   return [parts[0] ?? 'Partner 1', parts[1] ?? 'Partner 2']
 }
-
-// ── Element groups (same logic as RaumKonfigurator, simplified for SVG) ─────
 
 interface ElemGroup {
   type: string
@@ -168,7 +383,6 @@ function TableShape({
 
   return (
     <g transform={`rotate(${rot}, ${cx}, ${cy})`} onClick={e => { e.stopPropagation(); onClick() }} onMouseDown={onMouseDown} style={{ cursor: 'grab' }}>
-      {/* Chair-space dashed border */}
       {table.shape === 'round' ? (
         <ellipse cx={cx} cy={cy} rx={chairLen / 2} ry={chairLen / 2}
           fill="none" stroke={selected ? '#6366F1' : '#AEAEB2'} strokeWidth={1} strokeDasharray="4 3" />
@@ -176,7 +390,6 @@ function TableShape({
         <rect x={cx - chairLen / 2} y={cy - chairWid / 2} width={chairLen} height={chairWid} rx={6}
           fill="none" stroke={selected ? '#6366F1' : '#AEAEB2'} strokeWidth={1} strokeDasharray="4 3" />
       )}
-      {/* Table body */}
       {table.shape === 'round' ? (
         <ellipse cx={cx} cy={cy} rx={len / 2} ry={len / 2}
           fill={selected ? '#EEF2FF' : '#F5F5F7'}
@@ -188,7 +401,6 @@ function TableShape({
           stroke={selected ? '#6366F1' : '#1D1D1F'}
           strokeWidth={selected ? 2.5 : 1.5} />
       )}
-      {/* Label */}
       <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle"
         fontSize={Math.max(9, Math.min(13, len * 0.14))}
         fontFamily="-apple-system,Helvetica,sans-serif" fontWeight="600"
@@ -209,9 +421,10 @@ export default function SitzplanEditor({
 
   const [tables, setTables] = useState<SitzTable[]>([])
   const [assignments, setAssignments] = useState<SitzAssignment[]>([])
-  const [guests, setGuests] = useState<{ id: string; name: string; status: string }[]>([])
-  const [begleit, setBegleit] = useState<{ id: string; name: string; guest_id: string; guest_name: string }[]>([])
+  const [guests, setGuests] = useState<GuestFull[]>([])
+  const [begleit, setBegleit] = useState<BegleitFull[]>([])
   const [loading, setLoading] = useState(true)
+  const [lightboxEntry, setLightboxEntry] = useState<LightboxEntry | null>(null)
 
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -254,16 +467,22 @@ export default function SitzplanEditor({
       ] = await Promise.all([
         supabase.from('seating_tables').select('*').eq('event_id', eventId).order('created_at'),
         supabase.from('seating_assignments').select('*').eq('event_id', eventId),
-        supabase.from('guests').select('id, name, status').eq('event_id', eventId).order('name'),
-        supabase.from('begleitpersonen').select('id, name, guest_id, guests!inner(name)').eq('guests.event_id', eventId).order('name'),
+        supabase.from('guests').select('*').eq('event_id', eventId).order('name'),
+        supabase.from('begleitpersonen')
+          .select('id, guest_id, name, age_category, trink_alkohol, meal_choice, allergy_tags, allergy_custom, guests!inner(name, event_id)')
+          .eq('guests.event_id', eventId)
+          .order('name'),
       ])
       setTables(tablesData ?? [])
       setAssignments(assignmentsData ?? [])
-      setGuests(guestsData ?? [])
-      const mapped = (begleitData ?? []).map((b: { id: string; name: string; guest_id: string; guests: { name: string } | { name: string }[] }) => ({
-        id: b.id, name: b.name, guest_id: b.guest_id,
-        guest_name: Array.isArray(b.guests) ? (b.guests[0]?.name ?? '') : ((b.guests as { name: string })?.name ?? ''),
-      }))
+      setGuests((guestsData ?? []) as GuestFull[])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped = (begleitData ?? []).map((b: any) => ({
+        id: b.id, guest_id: b.guest_id, name: b.name,
+        age_category: b.age_category, trink_alkohol: b.trink_alkohol,
+        meal_choice: b.meal_choice, allergy_tags: b.allergy_tags, allergy_custom: b.allergy_custom,
+        guest_name: Array.isArray(b.guests) ? (b.guests[0]?.name ?? '') : (b.guests?.name ?? ''),
+      })) as BegleitFull[]
       setBegleit(mapped)
     } finally {
       setLoading(false)
@@ -272,7 +491,6 @@ export default function SitzplanEditor({
 
   // ── Derived ─────────────────────────────────────────────────────────────────
 
-  // Count placed tables per pool type
   const placedByType = (typeId: string) => tables.filter(t => t.pool_type_id === typeId).length
 
   const assignedGuestIds   = new Set(assignments.map(a => a.guest_id).filter(Boolean) as string[])
@@ -296,23 +514,22 @@ export default function SitzplanEditor({
   const selectedAssignments = selectedTableId ? assignmentsForTable(selectedTableId) : []
   const selectedCount = selectedAssignments.length
 
+  const poolTypes = tablePool?.types ?? []
+
+  const selectedType: RaumTableType | undefined = selectedTable?.pool_type_id
+    ? poolTypes.find(t => t.id === selectedTable.pool_type_id)
+    : undefined
+
   const allPersons: PersonEntry[] = [
     ...(assignedBrautpaar.has(1) ? [] : [{ type: 'brautpaar' as const, id: 'bp1', name: partner1, subtitle: 'Brautpaar' }]),
     ...(assignedBrautpaar.has(2) ? [] : [{ type: 'brautpaar' as const, id: 'bp2', name: partner2, subtitle: 'Brautpaar' }]),
-    ...guests.filter(g => !assignedGuestIds.has(g.id)).map(g => ({ type: 'guest' as const, id: g.id, name: g.name, subtitle: g.status })),
+    ...guests.filter(g => !assignedGuestIds.has(g.id)).map(g => ({ type: 'guest' as const, id: g.id, name: g.name, subtitle: STATUS_LABELS[g.status] ?? g.status })),
     ...begleit.filter(b => !assignedBegleitIds.has(b.id)).map(b => ({ type: 'begleitperson' as const, id: b.id, name: b.name, subtitle: `Begl. ${b.guest_name}` })),
   ]
   const filteredPersons = allPersons.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.subtitle ?? '').toLowerCase().includes(search.toLowerCase())
   )
-
-  const poolTypes = tablePool?.types ?? []
-
-  // Pool type for selected table
-  const selectedType: RaumTableType | undefined = selectedTable?.pool_type_id
-    ? poolTypes.find(t => t.id === selectedTable.pool_type_id)
-    : undefined
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
@@ -458,7 +675,11 @@ export default function SitzplanEditor({
   const hasPool = poolTypes.length > 0
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <>
+      {lightboxEntry && (
+        <GuestLightbox entry={lightboxEntry} onClose={() => setLightboxEntry(null)} />
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 16, alignItems: 'start' }}>
 
         {/* ── Sidebar ── */}
@@ -515,7 +736,6 @@ export default function SitzplanEditor({
           {/* Selected table panel OR guest overview */}
           {selectedTable ? (
             <div style={{ background: 'var(--surface)', border: '2px solid #6366F1', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-              {/* Header */}
               <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 {editingName === selectedTable.id ? (
                   <input autoFocus value={nameInput}
@@ -541,7 +761,6 @@ export default function SitzplanEditor({
                 </button>
               </div>
 
-              {/* Pool type info + editable fields */}
               <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {selectedType && (
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', background: '#F5F5F7', borderRadius: 6, padding: '5px 8px' }}>
@@ -550,7 +769,6 @@ export default function SitzplanEditor({
                       : `Eckiger Tisch · ${selectedType.length} × ${selectedType.width} m`}
                   </div>
                 )}
-                {/* Capacity is still editable */}
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Plätze</span>
                   <input type="number" min={1} max={50} value={selectedTable.capacity}
@@ -558,7 +776,6 @@ export default function SitzplanEditor({
                     style={{ width: 56, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12, fontFamily: 'inherit', textAlign: 'center' }}
                   />
                 </label>
-                {/* Rotation */}
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button onClick={() => updateTableProp(selectedTable.id, 'rotation', (selectedTable.rotation - 15 + 360) % 360)}
                     style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
@@ -571,7 +788,6 @@ export default function SitzplanEditor({
                 </div>
               </div>
 
-              {/* Assigned persons */}
               {selectedAssignments.length > 0 && (
                 <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 140, overflowY: 'auto' }}>
                   {selectedAssignments.map(a => (
@@ -586,7 +802,6 @@ export default function SitzplanEditor({
                 </div>
               )}
 
-              {/* Search + add */}
               <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <input placeholder="Gast suchen…" value={search} onChange={e => setSearch(e.target.value)}
                   style={{ width: '100%', padding: '6px 10px', borderRadius: 7, border: '1px solid var(--border)', fontSize: 12, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
@@ -607,7 +822,6 @@ export default function SitzplanEditor({
                 </div>
               </div>
 
-              {/* Delete */}
               <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
                 <button onClick={() => { if (confirm(`"${selectedTable.name}" löschen?`)) deleteTable(selectedTable.id) }}
                   style={{ width: '100%', padding: '6px 0', borderRadius: 7, border: '1px solid rgba(255,59,48,0.3)', background: 'rgba(255,59,48,0.06)', color: '#FF3B30', cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }}>
@@ -616,7 +830,6 @@ export default function SitzplanEditor({
               </div>
             </div>
           ) : (
-            /* Guest overview when nothing selected */
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
               <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Personen</div>
@@ -643,124 +856,195 @@ export default function SitzplanEditor({
           )}
         </div>
 
-        {/* ── SVG Canvas ── */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
-            <span>{tables.length} Tische · {guests.length + begleit.length + 2} Personen</span>
-            <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }}
-              style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
-              Ansicht zurücksetzen
-            </button>
-          </div>
+        {/* ── Right column: canvas + table list ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          <div style={{ background: '#F5F5F7' }}>
-            <svg ref={svgRef} width={CANVAS_W} height={CANVAS_H} style={{ display: 'block' }}
-              onMouseDown={onSvgMouseDown}
-              onMouseMove={onSvgMouseMove}
-              onMouseUp={onSvgMouseUp}
-              onMouseLeave={onSvgMouseUp}
-              onWheel={onWheel}
-              onClick={() => setSelectedTableId(null)}>
+          {/* Canvas */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
+              <span>{tables.length} Tische · {guests.length + begleit.length + 2} Personen</span>
+              <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }}
+                style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+                Ansicht zurücksetzen
+              </button>
+            </div>
 
-              {/* Room polygon */}
-              {roomPoints.length >= 3 && (
-                <polygon
-                  points={roomPoints.map(p => { const c = m2px(p.x, p.y, scale, offX, offY); return `${c.x},${c.y}` }).join(' ')}
-                  fill="rgba(29,29,31,0.04)" stroke="#1D1D1F" strokeWidth="2"
-                />
-              )}
+            <div style={{ background: '#F5F5F7' }}>
+              <svg ref={svgRef} width={CANVAS_W} height={CANVAS_H} style={{ display: 'block' }}
+                onMouseDown={onSvgMouseDown}
+                onMouseMove={onSvgMouseMove}
+                onMouseUp={onSvgMouseUp}
+                onMouseLeave={onSvgMouseUp}
+                onWheel={onWheel}
+                onClick={() => setSelectedTableId(null)}>
 
-              {/* Room elements (filtered) */}
-              {elemGroups.map((group, gi) => {
-                const style = ELEM_STYLE[group.type]
-                if (!style) return null
-                const tl = m2px(group.minX, group.minY, scale, offX, offY)
-                const br = m2px(group.maxX + GRID_SIZE, group.maxY + GRID_SIZE, scale, offX, offY)
-                const gw = br.x - tl.x; const gh = br.y - tl.y
-                return (
-                  <rect key={gi} x={tl.x} y={tl.y} width={gw} height={gh} rx={3}
-                    fill={style.fill} stroke={style.stroke} strokeWidth={1.2} />
-                )
-              })}
+                {roomPoints.length >= 3 && (
+                  <polygon
+                    points={roomPoints.map(p => { const c = m2px(p.x, p.y, scale, offX, offY); return `${c.x},${c.y}` }).join(' ')}
+                    fill="rgba(29,29,31,0.04)" stroke="#1D1D1F" strokeWidth="2"
+                  />
+                )}
 
-              {/* Tables */}
-              {tables.map(table => (
-                <TableShape key={table.id} table={table} scale={scale} offX={offX} offY={offY}
-                  selected={selectedTableId === table.id}
-                  onClick={() => { setSelectedTableId(table.id); setSearch('') }}
-                  onMouseDown={e => onTableMouseDown(e, table.id)}
-                />
-              ))}
-            </svg>
-          </div>
+                {elemGroups.map((group, gi) => {
+                  const style = ELEM_STYLE[group.type]
+                  if (!style) return null
+                  const tl = m2px(group.minX, group.minY, scale, offX, offY)
+                  const br = m2px(group.maxX + GRID_SIZE, group.maxY + GRID_SIZE, scale, offX, offY)
+                  const gw = br.x - tl.x; const gh = br.y - tl.y
+                  return (
+                    <rect key={gi} x={tl.x} y={tl.y} width={gw} height={gh} rx={3}
+                      fill={style.fill} stroke={style.stroke} strokeWidth={1.2} />
+                  )
+                })}
 
-          <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-tertiary)' }}>
-            Tisch anklicken = auswählen · Ziehen = verschieben · Scroll = zoom
-          </div>
-
-          {/* Legend */}
-          {elemGroups.length > 0 && (() => {
-            const seen = new Map<string, typeof ELEM_STYLE[string]>()
-            elemGroups.forEach(g => { if (ELEM_STYLE[g.type] && !seen.has(g.type)) seen.set(g.type, ELEM_STYLE[g.type]) })
-            return (
-              <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 14px' }}>
-                <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-tertiary)' }}>Legende</span>
-                {Array.from(seen.entries()).map(([type, s]) => (
-                  <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: 2, background: s.fill, border: `1.5px solid ${s.stroke}`, flexShrink: 0, display: 'inline-block' }}/>
-                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{s.label}</span>
-                  </div>
+                {tables.map(table => (
+                  <TableShape key={table.id} table={table} scale={scale} offX={offX} offY={offY}
+                    selected={selectedTableId === table.id}
+                    onClick={() => { setSelectedTableId(table.id); setSearch('') }}
+                    onMouseDown={e => onTableMouseDown(e, table.id)}
+                  />
                 ))}
-              </div>
-            )
-          })()}
-        </div>
-      </div>
+              </svg>
+            </div>
 
-      {/* ── List view ── */}
-      {tables.length > 0 && (
-        <div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 14, letterSpacing: '-0.3px' }}>Tischbelegung</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-            {tables.map(table => {
-              const tas = assignmentsForTable(table.id)
-              const pt = poolTypes.find(t => t.id === table.pool_type_id)
+            <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-tertiary)' }}>
+              Tisch anklicken = auswählen · Ziehen = verschieben · Scroll = zoom
+            </div>
+
+            {elemGroups.length > 0 && (() => {
+              const seen = new Map<string, typeof ELEM_STYLE[string]>()
+              elemGroups.forEach(g => { if (ELEM_STYLE[g.type] && !seen.has(g.type)) seen.set(g.type, ELEM_STYLE[g.type]) })
               return (
-                <div key={table.id}
-                  onClick={() => { setSelectedTableId(table.id); setSearch(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                  style={{
-                    background: selectedTableId === table.id ? '#EEF2FF' : 'var(--surface)',
-                    border: selectedTableId === table.id ? '1.5px solid #6366F1' : '1px solid var(--border)',
-                    borderRadius: 'var(--radius)', padding: '14px 16px', cursor: 'pointer',
-                  }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>{table.name}</span>
-                    <span style={{ fontSize: 11, fontWeight: 500, color: tas.length >= table.capacity ? '#FF3B30' : 'var(--text-tertiary)' }}>
-                      {tas.length}/{table.capacity}
-                    </span>
-                  </div>
-                  {pt && (
-                    <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 8 }}>
-                      {pt.shape === 'round' ? `Rund ⌀${pt.diameter}m` : `Eckig ${pt.length}×${pt.width}m`}
-                    </p>
-                  )}
-                  {tas.length === 0
-                    ? <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Noch niemand zugeordnet</p>
-                    : <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                        {tas.map(a => (
-                          <li key={a.id} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-tertiary)', flexShrink: 0 }}/>
-                            {personName(a)}
-                          </li>
-                        ))}
-                      </ul>
-                  }
+                <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 14px' }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-tertiary)' }}>Legende</span>
+                  {Array.from(seen.entries()).map(([type, s]) => (
+                    <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: s.fill, border: `1.5px solid ${s.stroke}`, flexShrink: 0, display: 'inline-block' }}/>
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{s.label}</span>
+                    </div>
+                  ))}
                 </div>
               )
-            })}
+            })()}
           </div>
+
+          {/* ── Table list (collapsible) ── */}
+          {tables.length > 0 && (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+              <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>Tischbelegung</span>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                  {assignments.length} von {tables.reduce((s, t) => s + t.capacity, 0)} Plätzen belegt
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {tables.map((table, i) => {
+                  const tas = assignmentsForTable(table.id)
+                  const isOpen = selectedTableId === table.id
+                  const isFull = tas.length >= table.capacity
+
+                  return (
+                    <div key={table.id} style={{ borderBottom: i < tables.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      {/* Card header */}
+                      <button
+                        onClick={() => { setSelectedTableId(isOpen ? null : table.id); setSearch('') }}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '13px 16px', background: isOpen ? '#F5F4FF' : 'transparent',
+                          border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                          transition: 'background 0.1s',
+                        }}>
+                        {/* Table shape icon */}
+                        <div style={{ width: 28, height: 28, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg width="24" height="24" viewBox="0 0 24 24">
+                            {table.shape === 'round'
+                              ? <ellipse cx="12" cy="12" rx="10" ry="10" fill={isOpen ? '#EEF2FF' : '#F5F5F7'} stroke={isOpen ? '#6366F1' : '#9CA3AF'} strokeWidth="1.5"/>
+                              : <rect x="2" y="7" width="20" height="10" rx="3" fill={isOpen ? '#EEF2FF' : '#F5F5F7'} stroke={isOpen ? '#6366F1' : '#9CA3AF'} strokeWidth="1.5"/>
+                            }
+                          </svg>
+                        </div>
+                        <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: isOpen ? '#4338CA' : 'var(--text)' }}>
+                          {table.name}
+                        </span>
+                        <span style={{
+                          fontSize: 12, fontWeight: 500, padding: '2px 8px', borderRadius: 20,
+                          background: isFull ? 'rgba(255,59,48,0.1)' : tas.length === 0 ? '#F5F5F7' : '#F0FDF4',
+                          color: isFull ? '#FF3B30' : tas.length === 0 ? 'var(--text-tertiary)' : '#15803D',
+                        }}>
+                          {tas.length}/{table.capacity}
+                        </span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                          style={{ flexShrink: 0, opacity: 0.35, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                          <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                      </button>
+
+                      {/* Expanded persons */}
+                      {isOpen && (
+                        <div style={{ padding: '4px 16px 14px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          {tas.length === 0 ? (
+                            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', padding: '8px 0', margin: 0 }}>
+                              Noch niemand zugeordnet.
+                            </p>
+                          ) : tas.map(a => {
+                            const isBraut = !!a.brautpaar_slot
+                            const guestFull = a.guest_id ? guests.find(g => g.id === a.guest_id) ?? null : null
+                            const begleitFull = a.begleitperson_id ? begleit.find(b => b.id === a.begleitperson_id) ?? null : null
+                            const clickable = !isBraut
+
+                            const dotColor = isBraut ? '#F59E0B' : begleitFull ? '#9CA3AF' : '#6366F1'
+
+                            return (
+                              <div
+                                key={a.id}
+                                onClick={clickable ? () => {
+                                  if (guestFull) setLightboxEntry({ type: 'guest', data: guestFull })
+                                  else if (begleitFull) setLightboxEntry({ type: 'begleit', data: begleitFull })
+                                } : undefined}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 10,
+                                  padding: '8px 12px', borderRadius: 8,
+                                  background: clickable ? 'var(--surface)' : '#FAFAFA',
+                                  border: '1px solid var(--border)',
+                                  cursor: clickable ? 'pointer' : 'default',
+                                  transition: 'background 0.1s',
+                                }}
+                                onMouseEnter={e => { if (clickable) (e.currentTarget as HTMLElement).style.background = '#F5F4FF' }}
+                                onMouseLeave={e => { if (clickable) (e.currentTarget as HTMLElement).style.background = 'var(--surface)' }}>
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: dotColor }} />
+                                <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{personName(a)}</span>
+                                {clickable && (
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ opacity: 0.25, flexShrink: 0 }}>
+                                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                                  </svg>
+                                )}
+                              </div>
+                            )
+                          })}
+
+                          {/* Legend row */}
+                          <div style={{ display: 'flex', gap: 12, paddingTop: 4 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-tertiary)' }}>
+                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#6366F1', display: 'inline-block' }}/>Gast
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-tertiary)' }}>
+                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#9CA3AF', display: 'inline-block' }}/>Begleitperson
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-tertiary)' }}>
+                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }}/>Brautpaar
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </>
   )
 }
