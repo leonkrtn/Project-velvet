@@ -441,7 +441,7 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
       {loading ? (
         <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
       ) : (
-        <div style={{ maxWidth: 760 }}>
+        <div>
           {/* Technische Anforderungen */}
           {secVis('anforderungen') && (
             <RequirementsForm reqs={reqs} eventId={eventId} canEdit={reqsCanEdit && !secReadOnly('anforderungen')} onSaved={setReqs} />

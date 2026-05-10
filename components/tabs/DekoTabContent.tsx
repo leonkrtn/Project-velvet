@@ -326,7 +326,7 @@ export default function DekoTabContent({ eventId, mode, hasFullModuleAccess = tr
       {loading ? (
         <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
       ) : (
-        <div style={{ maxWidth: 760 }}>
+        <div>
           {/* Aufbau-Aufgaben */}
           {aufbauVisible && (
           <div style={{ marginBottom: 28 }}>
