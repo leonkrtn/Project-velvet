@@ -52,13 +52,13 @@ function roomBounds(points: RaumPoint[]) {
   return { minX, maxX, minY, maxY }
 }
 
-function computeScale(points: RaumPoint[]): { scale: number; offX: number; offY: number } {
+function computeScale(points: RaumPoint[], canvasW: number, canvasH: number): { scale: number; offX: number; offY: number } {
   const { minX, maxX, minY, maxY } = roomBounds(points)
   const w = maxX - minX + PAD * 2
   const h = maxY - minY + PAD * 2
-  const scale = Math.min(CANVAS_W / w, CANVAS_H / h)
-  const offX = CANVAS_W / 2 - (minX + maxX) / 2 * scale
-  const offY = CANVAS_H / 2 - (minY + maxY) / 2 * scale
+  const scale = Math.min(canvasW / w, canvasH / h)
+  const offX = canvasW / 2 - (minX + maxX) / 2 * scale
+  const offY = canvasH / 2 - (minY + maxY) / 2 * scale
   return { scale, offX, offY }
 }
 
@@ -159,14 +159,31 @@ export default function SitzplanReadOnlyView({ eventId }: { eventId: string }) {
   const [hasGaesteliste, setHasGaesteliste] = useState(false)
 
   const svgRef = useRef<SVGSVGElement>(null)
-  const [zoom, setZoom] = useState(1)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const panState = useRef<{ startX: number; startY: number; startPanX: number; startPanY: number } | null>(null)
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
+  const [canvasW, setCanvasW] = useState(CANVAS_W)
 
-  const { scale: baseScale, offX: baseOffX, offY: baseOffY } = computeScale(roomPoints)
-  const scale = baseScale * zoom
-  const offX = baseOffX * zoom + pan.x
-  const offY = baseOffY * zoom + pan.y
+  useEffect(() => {
+    const div = canvasContainerRef.current; if (!div) return
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect.width
+      if (w) setCanvasW(w)
+    })
+    ro.observe(div)
+    return () => ro.disconnect()
+  }, [loading])
+
+  const [tx, setTx] = useState<{ scale: number; offX: number; offY: number } | null>(null)
+  const panState = useRef<{ startX: number; startY: number; startOffX: number; startOffY: number } | null>(null)
+
+  const fit = computeScale(roomPoints, canvasW, CANVAS_H)
+  const fitRef = useRef(fit)
+  fitRef.current = fit
+
+  useEffect(() => { setTx(null) }, [canvasW])
+
+  const scale = tx?.scale ?? fit.scale
+  const offX  = tx?.offX  ?? fit.offX
+  const offY  = tx?.offY  ?? fit.offY
 
   const [partner1, partner2] = coupleNames(coupleName)
   const elemGroups = groupElements(roomElements)
@@ -234,13 +251,19 @@ export default function SitzplanReadOnlyView({ eventId }: { eventId: string }) {
   // ── Pan / zoom ──────────────────────────────────────────────────────────────
 
   const onSvgMouseDown = (e: React.MouseEvent) => {
-    panState.current = { startX: e.clientX, startY: e.clientY, startPanX: pan.x, startPanY: pan.y }
+    panState.current = { startX: e.clientX, startY: e.clientY, startOffX: offX, startOffY: offY }
   }
 
   useEffect(() => {
     function onMove(e: MouseEvent) {
       if (!panState.current) return
-      setPan({ x: panState.current.startPanX + e.clientX - panState.current.startX, y: panState.current.startPanY + e.clientY - panState.current.startY })
+      const dx = e.clientX - panState.current.startX
+      const dy = e.clientY - panState.current.startY
+      setTx(prev => ({
+        scale: prev?.scale ?? fitRef.current.scale,
+        offX: panState.current!.startOffX + dx,
+        offY: panState.current!.startOffY + dy,
+      }))
     }
     function onUp() { panState.current = null }
     window.addEventListener('mousemove', onMove)
@@ -248,10 +271,26 @@ export default function SitzplanReadOnlyView({ eventId }: { eventId: string }) {
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [])
 
-  function onWheel(e: React.WheelEvent) {
-    e.preventDefault()
-    setZoom(z => Math.max(0.4, Math.min(4, z - e.deltaY * 0.001)))
-  }
+  useEffect(() => {
+    const div = canvasContainerRef.current; if (!div) return
+    const handler = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = div.getBoundingClientRect()
+      const cx = e.clientX - rect.left
+      const cy = e.clientY - rect.top
+      setTx(prev => {
+        const fit = fitRef.current
+        const curScale = prev?.scale ?? fit.scale
+        const curOffX  = prev?.offX  ?? fit.offX
+        const curOffY  = prev?.offY  ?? fit.offY
+        const newScale = Math.max(fit.scale * 0.25, Math.min(fit.scale * 8, curScale * (1 - e.deltaY * 0.001)))
+        const f = newScale / curScale
+        return { scale: newScale, offX: cx - (cx - curOffX) * f, offY: cy - (cy - curOffY) * f }
+      })
+    }
+    div.addEventListener('wheel', handler, { passive: false })
+    return () => div.removeEventListener('wheel', handler)
+  }, [loading])
 
   // ── Person resolver ─────────────────────────────────────────────────────────
 
@@ -315,20 +354,19 @@ export default function SitzplanReadOnlyView({ eventId }: { eventId: string }) {
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
               <span style={{ fontWeight: 500 }}>Grafische Ansicht</span>
               <button
-                onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }}
+                onClick={() => setTx(null)}
                 style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
                 Ansicht zurücksetzen
               </button>
             </div>
 
             {/* SVG */}
-            <div style={{ background: '#F5F5F7', overflowX: 'auto' }}>
+            <div ref={canvasContainerRef} style={{ background: '#F5F5F7', width: '100%' }}>
               <svg
                 ref={svgRef}
-                width={CANVAS_W} height={CANVAS_H}
+                width="100%" height={CANVAS_H}
                 style={{ display: 'block', cursor: 'grab' }}
-                onMouseDown={onSvgMouseDown}
-                onWheel={onWheel}>
+                onMouseDown={onSvgMouseDown}>
 
                 {/* Room polygon */}
                 <polygon
