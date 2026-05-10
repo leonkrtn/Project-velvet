@@ -17,7 +17,6 @@
   font-family: 'DM Sans', sans-serif;
   background: var(--cream);
   color: var(--ink);
-  overflow-x: hidden;
 }
 
 #lp-scroll-progress {
