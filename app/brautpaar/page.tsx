@@ -8,12 +8,10 @@ import { getStats, DEFAULT_FEATURE_TOGGLES, type Event, type CateringPlan, type 
 import { useEvent } from '@/lib/event-context'
 import { Toast } from '@/components/ui'
 import { SortableWidget, type WidgetId } from '@/components/dashboard/SortableWidget'
-import { CountdownWidget, RsvpWidget, BudgetWidget, TasksWidget, SeatingWidget, VendorsWidget, RemindersWidget, SubEventsWidget, ArrivalWidget, TimelineWidget, DekoWidget, ProposalsWidget } from '@/components/dashboard/DashboardWidgets'
+import { CountdownWidget, RsvpWidget, BudgetWidget, TasksWidget, SeatingWidget, VendorsWidget, RemindersWidget, SubEventsWidget, ArrivalWidget, TimelineWidget, DekoWidget } from '@/components/dashboard/DashboardWidgets'
 import { GuestTabContent } from '@/components/dashboard/GuestTab'
 import { HotelTabContent } from '@/components/dashboard/HotelTab'
 import { CateringForm, CateringSummary } from '@/components/dashboard/CateringSection'
-import { createClient } from '@/lib/supabase/client'
-import { fetchProposalsForEvent, subscribeToProposals } from '@/lib/proposals'
 
 const DEFAULT_CATERING: CateringPlan = {
   serviceStyle:'', locationHasKitchen:false,
@@ -28,7 +26,7 @@ function daysUntil(d: string) { return Math.ceil((new Date(d).getTime()-new Date
 
 type Tab = 'overview'|'guests'|'hotel'|'catering'
 const PINNED_WIDGETS: WidgetId[] = ['countdown','rsvp','tasks']
-const DEFAULT_WIDGET_ORDER: WidgetId[] = ['proposals','budget','seating','vendors','reminders','sub-events','arrival','deko','timeline']
+const DEFAULT_WIDGET_ORDER: WidgetId[] = ['budget','seating','vendors','reminders','sub-events','arrival','deko','timeline']
 
 export default function BrautpaarPage() {
   const { event, updateEvent } = useEvent()
@@ -59,7 +57,6 @@ export default function BrautpaarPage() {
   const [activeWidget, setActiveWidget] = useState<WidgetId|null>(null)
   const [dragHeight, setDragHeight] = useState<number|undefined>()
   const [dragWidth, setDragWidth]   = useState<number|undefined>()
-  const [pendingProposals, setPendingProposals] = useState(0)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor,   { activationConstraint: { delay: 200, tolerance: 5 } })
@@ -69,34 +66,6 @@ export default function BrautpaarPage() {
   useEffect(()=>{
     if(event && !cateringInit.current) { cateringInit.current=true; setCatering(event.catering??DEFAULT_CATERING) }
   },[event])
-
-  // Load pending proposals count from Supabase
-  useEffect(() => {
-    let unsub: (() => void) | undefined
-    const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return
-      const { data: member } = await supabase
-        .from('event_members')
-        .select('event_id')
-        .eq('user_id', user.id)
-        .eq('role', 'brautpaar')
-        .limit(1)
-        .single()
-      if (!member?.event_id) return
-
-      const load = async () => {
-        const proposals = await fetchProposalsForEvent(member.event_id)
-        const pending = proposals.filter(p =>
-          p.recipients.some(r => r.user_id === user.id && r.status === 'pending')
-        ).length
-        setPendingProposals(pending)
-      }
-      load()
-      unsub = subscribeToProposals(member.event_id, load)
-    })
-    return () => unsub?.()
-  }, [])
 
   // Sync tab with sessionStorage + listen for BottomNav tab switches
   const switchTab = (t: Tab) => {
@@ -210,7 +179,6 @@ export default function BrautpaarPage() {
       case 'arrival':    return <ArrivalWidget arrivalDays={stats.arrivalDays} confirmed={stats.confirmed}/>
       case 'timeline':   return <TimelineWidget event={event} onUpdate={updateEvent}/>
       case 'deko':       return <DekoWidget event={event}/>
-      case 'proposals':  return <ProposalsWidget pendingCount={pendingProposals}/>
       default: return null
     }
   }

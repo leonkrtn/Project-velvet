@@ -112,10 +112,6 @@ export async function fetchEventFromDB(userId: string, specificEventId?: string)
     { data: seatingAssignmentRows },
     { data: cateringRow },
     { data: featureRows },
-    { data: orgVendors },
-    { data: orgHotels },
-    { data: orgCatering },
-    { data: dekoSuggRows },
     { data: dekoWishRows },
     { data: locationImageRows },
     { data: guestPhotoRows },
@@ -136,10 +132,6 @@ export async function fetchEventFromDB(userId: string, specificEventId?: string)
     supabase.from('seating_assignments').select('*'),
     supabase.from('catering_plans').select('*').eq('event_id', eventId).maybeSingle(),
     supabase.from('feature_toggles').select('*').eq('event_id', eventId),
-    supabase.from('organizer_vendor_suggestions').select('*').eq('event_id', eventId),
-    supabase.from('organizer_hotel_suggestions').select('*').eq('event_id', eventId),
-    supabase.from('organizer_catering_suggestions').select('*').eq('event_id', eventId),
-    supabase.from('deko_suggestions').select('*').eq('event_id', eventId),
     supabase.from('deko_wishes').select('*').eq('event_id', eventId),
     supabase.from('location_images').select('*').eq('event_id', eventId),
     supabase.from('guest_photos').select('*').eq('event_id', eventId),
@@ -246,28 +238,6 @@ export async function fetchEventFromDB(userId: string, specificEventId?: string)
   const organizer: OrganizerSettings = {
     featureToggles,
     locationImages: (locationImageRows ?? []).map(r => r.storage_url),
-    vendorSuggestions: (orgVendors ?? []).map(v => ({
-      id: v.id, name: v.name ?? '', category: v.category as any,
-      description: v.description ?? '', priceEstimate: v.price_estimate ?? 0,
-      contactEmail: v.contact_email ?? undefined, contactPhone: v.contact_phone ?? undefined,
-      status: v.status as any,
-    })),
-    hotelSuggestions: (orgHotels ?? []).map(h => ({
-      id: h.id, name: h.name ?? '', address: h.address ?? '',
-      distanceKm: h.distance_km ?? 0, pricePerNight: h.price_per_night ?? 0,
-      totalRooms: h.total_rooms ?? 0, description: h.description ?? '',
-      status: h.status as any,
-    })),
-    cateringSuggestions: (orgCatering ?? []).map(c => ({
-      id: c.id, name: c.name ?? '', style: c.style as any,
-      pricePerPerson: c.price_per_person ?? 0, description: c.description ?? '',
-      contactEmail: c.contact_email ?? undefined, status: c.status as any,
-      lockedFields: c.locked_fields ? Object.fromEntries(c.locked_fields.map((f: string) => [f, true])) : {},
-    })),
-    dekoSuggestions: (dekoSuggRows ?? []).map(d => ({
-      id: d.id, title: d.title ?? '', description: d.description ?? '',
-      imageUrl: d.image_url ?? undefined, status: d.status as any,
-    })),
   }
 
   // 10. Deko-Wünsche
@@ -525,56 +495,6 @@ export async function upsertEventToDB(event: Event, userId: string): Promise<voi
       event_id: eventId, key, enabled,
     }))
     if (ftRows.length > 0) await supabase.from('feature_toggles').insert(ftRows)
-  }
-
-  // 14. Organizer-Vorschläge
-  if (event.organizer) {
-    await supabase.from('organizer_vendor_suggestions').delete().eq('event_id', eventId)
-    if (event.organizer.vendorSuggestions.length > 0) {
-      await supabase.from('organizer_vendor_suggestions').insert(
-        event.organizer.vendorSuggestions.map(v => ({
-          id: toUUID(v.id), event_id: eventId, name: v.name, category: v.category,
-          description: v.description, price_estimate: v.priceEstimate,
-          contact_email: v.contactEmail ?? null, contact_phone: v.contactPhone ?? null,
-          status: v.status,
-        }))
-      )
-    }
-
-    await supabase.from('organizer_hotel_suggestions').delete().eq('event_id', eventId)
-    if (event.organizer.hotelSuggestions.length > 0) {
-      await supabase.from('organizer_hotel_suggestions').insert(
-        event.organizer.hotelSuggestions.map(h => ({
-          id: toUUID(h.id), event_id: eventId, name: h.name, address: h.address,
-          distance_km: h.distanceKm, price_per_night: h.pricePerNight,
-          total_rooms: h.totalRooms, description: h.description, status: h.status,
-        }))
-      )
-    }
-
-    await supabase.from('organizer_catering_suggestions').delete().eq('event_id', eventId)
-    if (event.organizer.cateringSuggestions.length > 0) {
-      await supabase.from('organizer_catering_suggestions').insert(
-        event.organizer.cateringSuggestions.map(c => ({
-          id: toUUID(c.id), event_id: eventId, name: c.name, style: c.style,
-          description: c.description, price_per_person: c.pricePerPerson,
-          contact_email: c.contactEmail ?? null, status: c.status,
-          locked_fields: c.lockedFields
-            ? Object.keys(c.lockedFields).filter(k => (c.lockedFields as any)[k])
-            : [],
-        }))
-      )
-    }
-
-    await supabase.from('deko_suggestions').delete().eq('event_id', eventId)
-    if (event.organizer.dekoSuggestions.length > 0) {
-      await supabase.from('deko_suggestions').insert(
-        event.organizer.dekoSuggestions.map(d => ({
-          id: toUUID(d.id), event_id: eventId, title: d.title,
-          description: d.description, image_url: d.imageUrl ?? null, status: d.status,
-        }))
-      )
-    }
   }
 
   // 15. Deko-Wünsche

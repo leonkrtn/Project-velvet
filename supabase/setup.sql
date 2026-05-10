@@ -684,70 +684,8 @@ CREATE TABLE IF NOT EXISTS feature_toggles (
 
 
 -- ════════════════════════════════════════════════════════════════════════════
--- ORGANIZER SUGGESTIONS
--- ════════════════════════════════════════════════════════════════════════════
-
-CREATE TABLE IF NOT EXISTS organizer_vendor_suggestions (
-  id             UUID                   PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id       UUID                   NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-  name           TEXT,
-  category       TEXT,
-  description    TEXT,
-  price_estimate NUMERIC                NOT NULL DEFAULT 0 CHECK (price_estimate >= 0),
-  contact_email  TEXT,
-  contact_phone  TEXT,
-  status         suggestion_status_enum NOT NULL DEFAULT 'vorschlag',
-  created_at     TIMESTAMPTZ            NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_org_vendor_sugg_event ON organizer_vendor_suggestions(event_id);
-
-CREATE TABLE IF NOT EXISTS organizer_hotel_suggestions (
-  id              UUID                   PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id        UUID                   NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-  name            TEXT,
-  address         TEXT,
-  distance_km     NUMERIC                NOT NULL DEFAULT 0 CHECK (distance_km     >= 0),
-  price_per_night NUMERIC                NOT NULL DEFAULT 0 CHECK (price_per_night >= 0),
-  total_rooms     INT                    NOT NULL DEFAULT 0 CHECK (total_rooms      >= 0),
-  description     TEXT,
-  status          suggestion_status_enum NOT NULL DEFAULT 'vorschlag',
-  created_at      TIMESTAMPTZ            NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_org_hotel_sugg_event ON organizer_hotel_suggestions(event_id);
-
-CREATE TABLE IF NOT EXISTS organizer_catering_suggestions (
-  id               UUID                   PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id         UUID                   NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-  name             TEXT,
-  style            TEXT,
-  description      TEXT,
-  price_per_person NUMERIC                NOT NULL DEFAULT 0 CHECK (price_per_person >= 0),
-  contact_email    TEXT,
-  status           suggestion_status_enum NOT NULL DEFAULT 'vorschlag',
-  locked_fields    TEXT[]                 NOT NULL DEFAULT '{}',
-  created_at       TIMESTAMPTZ            NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_org_catering_sugg_event ON organizer_catering_suggestions(event_id);
-
-
--- ════════════════════════════════════════════════════════════════════════════
 -- DEKO
 -- ════════════════════════════════════════════════════════════════════════════
-
-CREATE TABLE IF NOT EXISTS deko_suggestions (
-  id          UUID                   PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id    UUID                   NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-  title       TEXT,
-  description TEXT,
-  image_url   TEXT,
-  status      suggestion_status_enum NOT NULL DEFAULT 'vorschlag',
-  created_at  TIMESTAMPTZ            NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_deko_suggestions_event ON deko_suggestions(event_id);
 
 CREATE TABLE IF NOT EXISTS deko_wishes (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1228,10 +1166,6 @@ ALTER TABLE seating_tables                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE seating_assignments            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE catering_plans                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feature_toggles                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organizer_vendor_suggestions   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organizer_hotel_suggestions    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organizer_catering_suggestions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE deko_suggestions               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deko_wishes                    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE location_images                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE guest_photos                   ENABLE ROW LEVEL SECURITY;
@@ -1762,80 +1696,7 @@ DROP POLICY IF EXISTS "ft_delete" ON feature_toggles;
 CREATE POLICY "ft_delete" ON feature_toggles
   FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
 
--- ── Organizer Suggestions ─────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "org_vendor_select" ON organizer_vendor_suggestions;
-CREATE POLICY "org_vendor_select" ON organizer_vendor_suggestions
-  FOR SELECT USING (is_event_member(event_id));
-
-DROP POLICY IF EXISTS "org_vendor_insert" ON organizer_vendor_suggestions;
-CREATE POLICY "org_vendor_insert" ON organizer_vendor_suggestions
-  FOR INSERT WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
-DROP POLICY IF EXISTS "org_vendor_update" ON organizer_vendor_suggestions;
-CREATE POLICY "org_vendor_update" ON organizer_vendor_suggestions
-  FOR UPDATE
-  USING     (is_event_member(event_id, ARRAY['veranstalter']::user_role[]))
-  WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
-DROP POLICY IF EXISTS "org_vendor_delete" ON organizer_vendor_suggestions;
-CREATE POLICY "org_vendor_delete" ON organizer_vendor_suggestions
-  FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
-DROP POLICY IF EXISTS "org_hotel_select" ON organizer_hotel_suggestions;
-CREATE POLICY "org_hotel_select" ON organizer_hotel_suggestions
-  FOR SELECT USING (is_event_member(event_id));
-
-DROP POLICY IF EXISTS "org_hotel_insert" ON organizer_hotel_suggestions;
-CREATE POLICY "org_hotel_insert" ON organizer_hotel_suggestions
-  FOR INSERT WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
-DROP POLICY IF EXISTS "org_hotel_update" ON organizer_hotel_suggestions;
-CREATE POLICY "org_hotel_update" ON organizer_hotel_suggestions
-  FOR UPDATE
-  USING     (is_event_member(event_id, ARRAY['veranstalter']::user_role[]))
-  WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
-DROP POLICY IF EXISTS "org_hotel_delete" ON organizer_hotel_suggestions;
-CREATE POLICY "org_hotel_delete" ON organizer_hotel_suggestions
-  FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
-DROP POLICY IF EXISTS "org_cater_select" ON organizer_catering_suggestions;
-CREATE POLICY "org_cater_select" ON organizer_catering_suggestions
-  FOR SELECT USING (is_event_member(event_id));
-
-DROP POLICY IF EXISTS "org_cater_insert" ON organizer_catering_suggestions;
-CREATE POLICY "org_cater_insert" ON organizer_catering_suggestions
-  FOR INSERT WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
-DROP POLICY IF EXISTS "org_cater_update" ON organizer_catering_suggestions;
-CREATE POLICY "org_cater_update" ON organizer_catering_suggestions
-  FOR UPDATE
-  USING     (is_event_member(event_id, ARRAY['veranstalter']::user_role[]))
-  WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
-DROP POLICY IF EXISTS "org_cater_delete" ON organizer_catering_suggestions;
-CREATE POLICY "org_cater_delete" ON organizer_catering_suggestions
-  FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
 -- ── Deko ──────────────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "deko_sug_select" ON deko_suggestions;
-CREATE POLICY "deko_sug_select" ON deko_suggestions
-  FOR SELECT USING (is_event_member(event_id));
-
-DROP POLICY IF EXISTS "deko_sug_insert" ON deko_suggestions;
-CREATE POLICY "deko_sug_insert" ON deko_suggestions
-  FOR INSERT WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
-DROP POLICY IF EXISTS "deko_sug_update" ON deko_suggestions;
-CREATE POLICY "deko_sug_update" ON deko_suggestions
-  FOR UPDATE
-  USING     (is_event_member(event_id, ARRAY['veranstalter']::user_role[]))
-  WITH CHECK (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
-DROP POLICY IF EXISTS "deko_sug_delete" ON deko_suggestions;
-CREATE POLICY "deko_sug_delete" ON deko_suggestions
-  FOR DELETE USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[]));
-
 DROP POLICY IF EXISTS "deko_wish_select" ON deko_wishes;
 CREATE POLICY "deko_wish_select" ON deko_wishes
   FOR SELECT USING (

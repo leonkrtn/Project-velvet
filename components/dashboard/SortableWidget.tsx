@@ -3,7 +3,7 @@ import React from 'react'
 import { CSS } from '@dnd-kit/utilities'
 import { useSortable } from '@dnd-kit/sortable'
 
-export type WidgetId = 'countdown'|'rsvp'|'budget'|'tasks'|'seating'|'vendors'|'reminders'|'sub-events'|'arrival'|'timeline'|'deko'|'proposals'
+export type WidgetId = 'countdown'|'rsvp'|'budget'|'tasks'|'seating'|'vendors'|'reminders'|'sub-events'|'arrival'|'timeline'|'deko'
 
 function GripIcon() {
   return (

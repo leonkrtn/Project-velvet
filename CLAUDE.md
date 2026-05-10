@@ -51,8 +51,6 @@
     chats/                 → Conversations
     dienstleister/         → Vendor list for event
     berechtigungen/[id]/   → Vendor permission editor
-    proposals/             → Proposal management (V2)
-    vorschlaege/           → Proposals from vendor view (Veranstalter side)
     budget/                → Budget tracker
 
 /brautpaar/[eventId]/...   → Couple portal (mirrors subset of veranstalter routes)
@@ -69,7 +67,6 @@
   medien/                  → Media (if permitted)
   sitzplan/                → Seating plan (if permitted)
   ⛔ allgemein/            → REMOVED — vendors have no access; DB CHECK constraint blocks assignment
-/vendor/inbox/             → Vendor proposal inbox
 ```
 
 ---
@@ -85,7 +82,7 @@ The project has **two parallel permission systems** that are **not in sync**:
 
 ### NEW system (DB RLS enforced since migration 0042)
 - Table: `dienstleister_permissions` (columns: `event_id`, `dienstleister_user_id`, `tab_key TEXT`, `item_id TEXT|NULL`, `access: none|read|write`)
-- Tab keys: `uebersicht`, `catering`, `chats`, `ablaufplan`, `gaesteliste`, `musik`, `patisserie`, `dekoration`, `medien`, `sitzplan`, `vorschlaege`
+- Tab keys: `uebersicht`, `catering`, `chats`, `ablaufplan`, `gaesteliste`, `musik`, `patisserie`, `dekoration`, `medien`, `sitzplan`
 - `allgemein` is **explicitly blocked** — migration 0043 added a CHECK constraint (`tab_key <> 'allgemein'`) and purged existing rows
 - Written by: `BerechtigungenClient.tsx` (permission editor UI)
 - Enforced by: `dl_has_tab_access()` SECURITY DEFINER function in all table RLS policies
@@ -107,29 +104,6 @@ redeem_invite_code(code TEXT) → json
 ```
 
 ---
-
-## Proposals System (V2)
-
-Full async negotiation system between organizer and vendors. Migrations: `0031_proposals_v2.sql`.
-
-```
-proposals
-  └─ proposal_recipients (one per invited vendor)
-       └─ proposal_snapshots (current + proposed state per recipient)
-            └─ proposal_fields (field-level values + status)
-  └─ cases (conflict resolution threads)
-       └─ case_messages
-field_locks (optimistic locking, 30s TTL)
-history_log (audit trail)
-```
-
-Segments (proposal types): `catering`, `ablaufplan`, `hotel`, `musik`, `dekoration`, `patisserie`, `vendor`, `sitzplan`
-
-Client library: `lib/proposals.ts` — contains delta engine (`computeDeltas`, `diffEntities`), field locking (`acquireFieldLock`, `startLockHeartbeat`), merge logic (`finalizeMerge`, `executeMerge`), Realtime subscriptions.
-
-**Missing RPCs (will fail at runtime):**
-- `send_proposal_with_creator` — called in `lib/proposals.ts`, defined in no migration
-- `get_module_master_state` — called in `lib/proposals.ts`, defined in no migration
 
 ---
 
@@ -172,11 +146,6 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `permissions` | OLD mod_* permission strings |
 | `dienstleister_permissions` | NEW tab-level permissions |
 | `dienstleister_item_permissions` | OLD item-level can_view/can_edit |
-| `proposals` | V2 negotiation proposals |
-| `proposal_recipients` | Per-vendor proposal state |
-| `proposal_snapshots` | Before/after field snapshots |
-| `cases` / `case_messages` | Conflict resolution |
-| `field_locks` | Optimistic field locking |
 | `invite_codes` | Guest RSVP invite links |
 | `event_invitations` | Vendor invite links |
 | `organizer_room_configs` | Global room polygon (per organizer) |
@@ -199,13 +168,6 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 
 ---
 
-## Realtime Subscriptions
-
-Active Supabase Realtime channels (defined in `lib/proposals.ts`):
-- `proposal:{proposalId}` — proposal_fields changes
-- `case:{caseId}` — case_messages INSERT
-- `event-proposals:{eventId}` — proposals INSERT/UPDATE for inbox
-
 ---
 
 ## File Map (Critical Files)
@@ -213,7 +175,6 @@ Active Supabase Realtime channels (defined in `lib/proposals.ts`):
 ```
 lib/
   store.ts              Legacy localStorage data model + event store
-  proposals.ts          Proposals V2 client library (deltas, locking, merge, realtime)
   vendor-modules.ts     ALL_MODULES (old mod_* keys), ROLE_MODULE_DEFAULTS
 middleware.ts           Auth guard (has approval-check bug)
 
@@ -244,10 +205,10 @@ app/veranstalter/[eventId]/
 
 supabase/migrations/
   setup.sql                     Base schema (all core tables)
-  0031_proposals_v2.sql         Proposals V2 full schema
   0040_unified_dienstleister_permissions.sql  NEW permission table
   0042_dienstleister_rls_write.sql           RLS using dl_has_tab_access
   0043_remove_allgemein_from_dienstleister.sql  Purges allgemein rows + CHECK constraint
   0044_seating_v2.sql           Replaces seating_tables/seating_assignments; adds table_pool to event_room_configs
   0045_seating_pool_type_id.sql Adds pool_type_id TEXT to seating_tables; updates table_pool default to {types:[]}
+  0048_remove_proposals_system.sql  Drops all proposal/suggestion tables and their DB functions
 ```
