@@ -870,7 +870,7 @@ export default function SitzplanEditor({
             </div>
 
             <div style={{ background: '#F5F5F7' }}>
-              <svg ref={svgRef} width={CANVAS_W} height={CANVAS_H} style={{ display: 'block' }}
+              <svg ref={svgRef} viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`} style={{ display: 'block', width: '100%', aspectRatio: `${CANVAS_W}/${CANVAS_H}` }}
                 onMouseDown={onSvgMouseDown}
                 onMouseMove={onSvgMouseMove}
                 onMouseUp={onSvgMouseUp}
