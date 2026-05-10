@@ -170,9 +170,28 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 
 ---
 
+## Landing Page
+
+`app/page.tsx` — Full Velvet landing page (client component, not a redirect).
+- CSS in `app/landing.css` (scoped to `.landing-root`, prefixed `lp-*`)
+- Images in `public/landing/` (hero.jpg, cta.jpg, photo-*.jpg, logo.png)
+- Google Fonts (Cormorant Garamond + DM Sans) loaded in `app/layout.tsx`
+- CTA buttons call `getRedirectUrl()` — auth-aware, role-based routing:
+  - Not logged in → `/login`
+  - Veranstalter → `/veranstalter/events`
+  - Brautpaar → `/brautpaar`
+  - Dienstleister → `/vendor/dashboard/[eventId]/uebersicht`
+  - Trauzeuge → `/trauzeuge/[eventId]`
+
+---
+
 ## File Map (Critical Files)
 
 ```
+app/
+  page.tsx              Landing page (replaces old redirect-only page)
+  landing.css           Landing page styles (scoped to .landing-root)
+
 lib/
   store.ts              Legacy localStorage data model + event store
   vendor-modules.ts     ALL_MODULES (old mod_* keys), ROLE_MODULE_DEFAULTS
