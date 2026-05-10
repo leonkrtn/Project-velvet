@@ -97,17 +97,9 @@
   border: none; padding: 10px 24px;
   border-radius: 6px; cursor: pointer; text-decoration: none;
   transition: background 0.2s, transform 0.2s;
-  position: relative; overflow: hidden;
+  opacity: 1;
 }
-.lp-nav-cta::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
-  transform: translateX(-100%);
-  transition: transform 0.5s ease;
-}
-.lp-nav-cta:hover::before { transform: translateX(100%); }
-.lp-nav-cta:hover { background: #8A6B28; transform: translateY(-1px); }
+.lp-nav-cta:hover { background: #8A6B28; transform: translateY(-1px); opacity: 1; }
 
 /* ─── HERO ─── */
 .lp-hero {
@@ -157,7 +149,14 @@
   display: block; min-height: 1.15em;
   white-space: nowrap; overflow: visible; padding-bottom: 0.1em;
 }
-.lp-hero-headline em { font-style: italic; color: #D4A94E; }
+.lp-hero-headline em {
+  font-style: italic;
+  background: linear-gradient(90deg, #8A6B28 0%, #D4A94E 40%, oklch(0.88 0.14 80) 50%, #D4A94E 60%, #8A6B28 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: lp-shimmer 4s linear infinite;
+}
 .lp-hero-sub {
   margin-top: 24px; font-size: 16px; font-weight: 300;
   line-height: 1.6; color: rgba(255,253,249,0.75);
