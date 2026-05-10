@@ -1,10 +1,9 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { type Event, type Vendor, type VendorCategory, type VendorStatus, saveEvent, DEFAULT_FEATURE_TOGGLES } from "@/lib/store"
-import type { OrganizerVendorSuggestion, OrganizerSuggestionStatus } from "@/lib/store"
 import { useEvent } from "@/lib/event-context"
 import { PageShell, Card, SectionTitle, Toast, Button, Input, Select, Textarea } from '@/components/ui'
-import { Plus, Trash2, Phone, Mail, ChevronDown, ChevronUp, Pencil, X, CheckCircle2 } from 'lucide-react'
+import { Plus, Trash2, Phone, Mail, ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 import { useFeatureEnabled, FeatureDisabledScreen } from '@/components/FeatureGate'
 
 function uid() { return Math.random().toString(36).slice(2,9) }
@@ -20,69 +19,6 @@ const iStyle: React.CSSProperties = {
   borderRadius:8, fontSize:13, color:'var(--text)', outline:'none', fontFamily:'inherit', width:'100%',
 }
 
-function VendorSuggestions() {
-  const { event, updateEvent } = useEvent()
-  if (!event) return null
-  const suggestions = event.organizer?.vendorSuggestions ?? []
-  const pending = suggestions.filter(s => s.status === 'vorschlag')
-  if (pending.length === 0) return null
-
-  const accept = (s: OrganizerVendorSuggestion) => {
-    const newVendor: Vendor = {
-      id: s.id + '-v', name: s.name, category: s.category,
-      status: 'angefragt', email: s.contactEmail, phone: s.contactPhone,
-      price: s.priceEstimate, notes: s.description,
-    }
-    const updatedSuggestions = (event.organizer?.vendorSuggestions ?? []).map(v =>
-      v.id === s.id ? { ...v, status: 'angenommen' as OrganizerSuggestionStatus } : v
-    )
-    const updated = {
-      ...event,
-      vendors: [...event.vendors, newVendor],
-      organizer: { ...event.organizer!, vendorSuggestions: updatedSuggestions },
-    }
-    updateEvent(updated); saveEvent(updated)
-  }
-
-  const dismiss = (s: OrganizerVendorSuggestion) => {
-    const updatedSuggestions = (event.organizer?.vendorSuggestions ?? []).map(v =>
-      v.id === s.id ? { ...v, status: 'abgelehnt' as OrganizerSuggestionStatus } : v
-    )
-    const updated = { ...event, organizer: { ...event.organizer!, vendorSuggestions: updatedSuggestions } }
-    updateEvent(updated); saveEvent(updated)
-  }
-
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--gold)', marginBottom: 10 }}>
-        Vorschläge vom Veranstalter
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {pending.map(s => (
-          <div key={s.id} style={{ background: 'var(--gold-pale)', border: '1px solid rgba(201,168,76,0.3)', borderRadius: 'var(--r-md)', padding: '14px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{s.name}</p>
-                <p style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: s.description ? 6 : 0 }}>
-                  {s.category} · {new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(s.priceEstimate)}
-                </p>
-                {s.description && <p style={{ fontSize: 12, color: 'var(--text-mid)', lineHeight: 1.5 }}>{s.description}</p>}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-              <button onClick={() => accept(s)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 100, border: 'none', background: 'var(--gold)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                <CheckCircle2 size={13}/> Übernehmen
-              </button>
-              <button onClick={() => dismiss(s)} style={{ padding: '7px 14px', borderRadius: 100, border: '1px solid var(--border)', background: 'none', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                Ablehnen
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 export default function VendorsPage() {
   const enabled = useFeatureEnabled('vendors')
@@ -140,7 +76,6 @@ export default function VendorsPage() {
 
   return (
     <PageShell title="Dienstleister" back="/dashboard">
-      <VendorSuggestions />
       {/* Summary */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
         {[

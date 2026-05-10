@@ -37,7 +37,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/brautpaar/protokoll':    'Protokoll',
   '/brautpaar/team':         'Team',
   '/brautpaar/aenderungen':  'Änderungen',
-  '/brautpaar/vorschlaege':  'Vorschläge',
   '/vendors':                'Dienstleister',
   '/invite':                 'Einladen',
   '/veranstalter':           'Veranstalter',

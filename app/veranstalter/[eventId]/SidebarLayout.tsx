@@ -1,14 +1,12 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Settings, Users, MessageSquare, Lightbulb,
-  Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed, Inbox,
+  LayoutDashboard, Settings, Users, MessageSquare,
+  Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
   Music2, Cake, Flower2, Camera,
 } from 'lucide-react'
-import { fetchProposalsForEvent, subscribeToProposals } from '@/lib/proposals'
-import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   eventId: string
@@ -19,48 +17,25 @@ interface Props {
 }
 
 const NAV_ITEMS = [
-  { key: 'uebersicht',      label: 'Übersicht',       icon: LayoutDashboard },
-  { key: 'allgemein',       label: 'Allgemein',        icon: Settings },
-  { key: 'catering',        label: 'Catering & Menü',  icon: UtensilsCrossed },
-  { key: 'mitglieder',      label: 'Mitglieder',       icon: Users },
-  { key: 'chats',           label: 'Chats',            icon: MessageSquare },
-  { key: 'vorschlaege',     label: 'Vorschläge',       icon: Lightbulb },
+  { key: 'uebersicht',      label: 'Übersicht',        icon: LayoutDashboard },
+  { key: 'allgemein',       label: 'Allgemein',         icon: Settings },
+  { key: 'catering',        label: 'Catering & Menü',   icon: UtensilsCrossed },
+  { key: 'mitglieder',      label: 'Mitglieder',        icon: Users },
+  { key: 'chats',           label: 'Chats',             icon: MessageSquare },
   { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
   { key: 'gaesteliste',     label: 'Gästeliste',        icon: Users },
   { key: 'musik',           label: 'Musik',             icon: Music2 },
   { key: 'patisserie',      label: 'Patisserie',        icon: Cake },
   { key: 'dekoration',      label: 'Dekoration',        icon: Flower2 },
   { key: 'medien',          label: 'Medien & Aufnahmen', icon: Camera },
-  { key: 'berechtigungen',  label: 'Berechtigungen',   icon: Shield },
+  { key: 'berechtigungen',  label: 'Berechtigungen',    icon: Shield },
   { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
-  { key: 'personalplanung', label: 'Personalplanung',  icon: UserCog },
+  { key: 'personalplanung', label: 'Personalplanung',   icon: UserCog },
 ]
 
 export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCode, children }: Props) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [pendingProposals, setPendingProposals] = useState(0)
-
-  useEffect(() => {
-    let unsub: (() => void) | undefined
-    createClient().auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      const countPending = (proposals: import('@/lib/proposals').ProposalWithDetails[]) =>
-        proposals.filter(p =>
-          p.created_by_role === 'dienstleister' &&
-          (p.recipients.some(r => r.user_id === user.id && r.status === 'pending') || p.status === 'in_case')
-        ).length
-      fetchProposalsForEvent(eventId).then(proposals => {
-        setPendingProposals(countPending(proposals))
-      })
-      unsub = subscribeToProposals(eventId, () => {
-        fetchProposalsForEvent(eventId).then(proposals => {
-          setPendingProposals(countPending(proposals))
-        })
-      })
-    })
-    return () => unsub?.()
-  }, [eventId])
 
   const base = `/veranstalter/${eventId}`
 
@@ -156,9 +131,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
         })}
         </div>
 
-        {/* Event-Code + Dienstl.-Vorschläge am unteren Rand */}
-        <div style={{ borderTop: '1px solid var(--border)', marginTop: 8 }}>
-          {eventCode && (
+        {eventCode && (
+          <div style={{ borderTop: '1px solid var(--border)', marginTop: 8 }}>
             <div style={{ padding: '10px 10px 6px' }}>
               <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', margin: '0 0 2px' }}>
                 Event-Code
@@ -167,42 +141,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
                 #{eventCode}
               </p>
             </div>
-          )}
-          {/* Dienstl.-Vorschläge Inbox */}
-          {(() => {
-            const active = isActive('dienstleister-vorschlaege')
-            return (
-              <Link
-                href={`${base}/dienstleister-vorschlaege`}
-                onClick={() => setMobileOpen(false)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 9,
-                  padding: '8px 10px', borderRadius: 8, margin: '4px 0',
-                  fontSize: 13, fontWeight: active ? 500 : 400,
-                  color: 'var(--text-primary)',
-                  textDecoration: 'none',
-                  background: active ? 'var(--surface)' : 'transparent',
-                  boxShadow: active ? 'var(--shadow-sm)' : 'none',
-                  transition: 'background 0.12s',
-                }}
-              >
-                <Inbox size={14} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
-                <span>Dienstl.-Vorschläge</span>
-                {pendingProposals > 0 && (
-                  <span style={{
-                    marginLeft: 'auto', minWidth: 18, height: 18,
-                    borderRadius: 9, background: 'var(--gold)',
-                    color: '#fff', fontSize: 10, fontWeight: 700,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '0 5px',
-                  }}>
-                    {pendingProposals}
-                  </span>
-                )}
-              </Link>
-            )
-          })()}
-        </div>
+          </div>
+        )}
       </div>
     </nav>
   )

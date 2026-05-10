@@ -261,53 +261,7 @@ CREATE TABLE IF NOT EXISTS feature_toggles (
   PRIMARY KEY (event_id, key)
 );
 
--- ── Veranstalter-Vorschläge ───────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS organizer_vendor_suggestions (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id       UUID REFERENCES events(id) ON DELETE CASCADE,
-  name           TEXT,
-  category       TEXT,
-  description    TEXT,
-  price_estimate NUMERIC DEFAULT 0,
-  contact_email  TEXT,
-  contact_phone  TEXT,
-  status         TEXT DEFAULT 'vorschlag'
-);
-
-CREATE TABLE IF NOT EXISTS organizer_hotel_suggestions (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id        UUID REFERENCES events(id) ON DELETE CASCADE,
-  name            TEXT,
-  address         TEXT,
-  distance_km     NUMERIC DEFAULT 0,
-  price_per_night NUMERIC DEFAULT 0,
-  total_rooms     INT DEFAULT 0,
-  description     TEXT,
-  status          TEXT DEFAULT 'vorschlag'
-);
-
-CREATE TABLE IF NOT EXISTS organizer_catering_suggestions (
-  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id         UUID REFERENCES events(id) ON DELETE CASCADE,
-  name             TEXT,
-  style            TEXT,
-  description      TEXT,
-  price_per_person NUMERIC DEFAULT 0,
-  contact_email    TEXT,
-  status           TEXT DEFAULT 'vorschlag',
-  locked_fields    TEXT[] DEFAULT '{}'
-);
-
 -- ── Deko ──────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS deko_suggestions (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id    UUID REFERENCES events(id) ON DELETE CASCADE,
-  title       TEXT,
-  description TEXT,
-  image_url   TEXT,
-  status      TEXT DEFAULT 'vorschlag'
-);
-
 CREATE TABLE IF NOT EXISTS deko_wishes (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id   UUID REFERENCES events(id) ON DELETE CASCADE,
@@ -554,10 +508,6 @@ ALTER TABLE seating_tables                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE seating_assignments            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE catering_plans                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feature_toggles                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organizer_vendor_suggestions   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organizer_hotel_suggestions    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE organizer_catering_suggestions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE deko_suggestions               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deko_wishes                    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE location_images                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE guest_photos                   ENABLE ROW LEVEL SECURITY;
@@ -627,15 +577,6 @@ DO $$ BEGIN CREATE POLICY "catering_write"  ON catering_plans FOR ALL   USING (i
 DO $$ BEGIN CREATE POLICY "ft_select" ON feature_toggles FOR SELECT USING (is_event_member(event_id)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY "ft_write"  ON feature_toggles FOR ALL   USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[])); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-DO $$ BEGIN CREATE POLICY "org_vendor_s" ON organizer_vendor_suggestions FOR SELECT USING (is_event_member(event_id)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE POLICY "org_vendor_w" ON organizer_vendor_suggestions FOR ALL   USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[])); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE POLICY "org_hotel_s"  ON organizer_hotel_suggestions  FOR SELECT USING (is_event_member(event_id)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE POLICY "org_hotel_w"  ON organizer_hotel_suggestions  FOR ALL   USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[])); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE POLICY "org_cater_s"  ON organizer_catering_suggestions FOR SELECT USING (is_event_member(event_id)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE POLICY "org_cater_w"  ON organizer_catering_suggestions FOR ALL   USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[])); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN CREATE POLICY "deko_sug_select" ON deko_suggestions FOR SELECT USING (is_event_member(event_id)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN CREATE POLICY "deko_sug_write"  ON deko_suggestions FOR ALL   USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[])); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY "deko_wish_all"   ON deko_wishes FOR ALL        USING (is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN CREATE POLICY "loc_img_select" ON location_images FOR SELECT USING (is_event_member(event_id)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
