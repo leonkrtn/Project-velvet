@@ -455,7 +455,7 @@ export default function SitzplanEditor({
     })
     ro.observe(div)
     return () => ro.disconnect()
-  }, [])
+  }, [loading]) // re-attach after loading completes
 
   const dragState = useRef<{
     tableId: string
@@ -464,14 +464,20 @@ export default function SitzplanEditor({
   } | null>(null)
   const dragOccurred = useRef(false)
 
-  const [zoom, setZoom] = useState(1)
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const panState = useRef<{ startX: number; startY: number; startPanX: number; startPanY: number } | null>(null)
+  // Flat transform: (scale, offX, offY) — null means "fit to canvas"
+  const [tx, setTx] = useState<{ scale: number; offX: number; offY: number } | null>(null)
+  const panState = useRef<{ startX: number; startY: number; startOffX: number; startOffY: number } | null>(null)
 
-  const { scale: baseScale, offX: baseOffX, offY: baseOffY } = computeScale(roomPoints, canvasW, CANVAS_H)
-  const scale = baseScale * zoom
-  const offX = baseOffX * zoom + pan.x
-  const offY = baseOffY * zoom + pan.y
+  const fit = computeScale(roomPoints, canvasW, CANVAS_H)
+  const fitRef = useRef(fit)
+  fitRef.current = fit
+
+  // Reset transform when canvas is resized
+  useEffect(() => { setTx(null) }, [canvasW])
+
+  const scale = tx?.scale ?? fit.scale
+  const offX  = tx?.offX  ?? fit.offX
+  const offY  = tx?.offY  ?? fit.offY
 
   const [partner1, partner2] = coupleNames(coupleName)
 
@@ -652,13 +658,19 @@ export default function SitzplanEditor({
 
   const onSvgMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as SVGElement).closest('g')) return
-    panState.current = { startX: e.clientX, startY: e.clientY, startPanX: pan.x, startPanY: pan.y }
-  }, [pan])
+    panState.current = { startX: e.clientX, startY: e.clientY, startOffX: offX, startOffY: offY }
+  }, [offX, offY])
 
   useEffect(() => {
     function onMove(e: MouseEvent) {
       if (!panState.current) return
-      setPan({ x: panState.current.startPanX + e.clientX - panState.current.startX, y: panState.current.startPanY + e.clientY - panState.current.startY })
+      const dx = e.clientX - panState.current.startX
+      const dy = e.clientY - panState.current.startY
+      setTx(prev => ({
+        scale: prev?.scale ?? fitRef.current.scale,
+        offX: panState.current!.startOffX + dx,
+        offY: panState.current!.startOffY + dy,
+      }))
     }
     function onUp() { panState.current = null }
     window.addEventListener('mousemove', onMove)
@@ -667,14 +679,25 @@ export default function SitzplanEditor({
   }, [])
 
   useEffect(() => {
-    const svg = svgRef.current; if (!svg) return
+    const div = canvasContainerRef.current; if (!div) return
     const handler = (e: WheelEvent) => {
       e.preventDefault()
-      setZoom(z => Math.max(0.4, Math.min(4, z - e.deltaY * 0.001)))
+      const rect = div.getBoundingClientRect()
+      const cx = e.clientX - rect.left
+      const cy = e.clientY - rect.top
+      setTx(prev => {
+        const fit = fitRef.current
+        const curScale = prev?.scale ?? fit.scale
+        const curOffX  = prev?.offX  ?? fit.offX
+        const curOffY  = prev?.offY  ?? fit.offY
+        const newScale = Math.max(fit.scale * 0.25, Math.min(fit.scale * 8, curScale * (1 - e.deltaY * 0.001)))
+        const f = newScale / curScale
+        return { scale: newScale, offX: cx - (cx - curOffX) * f, offY: cy - (cy - curOffY) * f }
+      })
     }
-    svg.addEventListener('wheel', handler, { passive: false })
-    return () => svg.removeEventListener('wheel', handler)
-  }, [])
+    div.addEventListener('wheel', handler, { passive: false })
+    return () => div.removeEventListener('wheel', handler)
+  }, [loading])
 
   // ── Name editing ────────────────────────────────────────────────────────────
 
@@ -889,7 +912,7 @@ export default function SitzplanEditor({
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
               <span>{tables.length} Tische · {guests.length + begleit.length + 2} Personen</span>
-              <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }}
+              <button onClick={() => setTx(null)}
                 style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
                 Ansicht zurücksetzen
               </button>
