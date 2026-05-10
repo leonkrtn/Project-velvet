@@ -458,10 +458,10 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
             </div>
           )}
 
-          {/* Mitglieder */}
+          {/* Beteiligte */}
           {members.length > 0 && (
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Mitglieder</div>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Beteiligte</div>
               {(selected.assigned_members ?? []).map(a => (
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
                   <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#FFF3E0', color: '#E65100', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

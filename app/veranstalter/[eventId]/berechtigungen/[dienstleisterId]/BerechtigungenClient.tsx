@@ -33,7 +33,7 @@ const CONFIGURABLE_TABS: TabConfig[] = [
   {
     key: 'uebersicht', label: 'Übersicht', icon: LayoutDashboard,
     sections: [
-      { key: 'mitglieder',  label: 'Mitglieder',          tooltip: 'Anzahl der Team-Mitglieder' },
+      { key: 'mitglieder',  label: 'Beteiligte',          tooltip: 'Anzahl der Beteiligten' },
       { key: 'einladungen', label: 'Offene Einladungen',   tooltip: 'Ausstehende Einladungen' },
       { key: 'countdown',   label: 'Tage bis Event',       tooltip: 'Countdown bis zum Veranstaltungsdatum' },
       { key: 'event',       label: 'Event',                tooltip: 'Eventname und grundlegende Infos' },
@@ -409,7 +409,7 @@ export default function BerechtigungenDLClient({
         }}
       >
         <ArrowLeft size={15} />
-        Zurück zu Mitglieder
+        Zurück zu Beteiligte
       </Link>
 
       <div className="dl-perm-grid">

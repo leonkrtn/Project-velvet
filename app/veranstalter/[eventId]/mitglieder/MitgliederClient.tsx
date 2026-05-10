@@ -539,7 +539,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>Mitglieder</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>Beteiligte</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
             {bpTz.length} Brautpaar/Trauzeugen · {dlMembers.length} Dienstleister
           </p>
@@ -559,7 +559,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
             ))}
           </div>
           {bpTz.length === 0
-            ? <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14, fontStyle: 'italic' }}>Noch keine Mitglieder in dieser Gruppe</div>
+            ? <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14, fontStyle: 'italic' }}>Noch keine Beteiligten in dieser Gruppe</div>
             : bpTz.map(renderBpTzRow)
           }
         </div>
