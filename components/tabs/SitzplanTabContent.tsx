@@ -185,8 +185,8 @@ function SitzplanEditor({ eventId }: { eventId: string }) {
   )
 }
 
-export default function SitzplanTabContent({ eventId, mode, tabAccess }: TabContentProps) {
-  if (mode === 'veranstalter' || tabAccess === 'write') {
+export default function SitzplanTabContent({ eventId, mode }: TabContentProps) {
+  if (mode === 'veranstalter') {
     return <SitzplanEditor eventId={eventId} />
   }
   return <SitzplanReadOnlyView eventId={eventId} />
