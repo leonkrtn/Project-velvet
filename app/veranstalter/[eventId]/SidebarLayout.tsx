@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { key: 'uebersicht',      label: 'Übersicht',        icon: LayoutDashboard },
   { key: 'allgemein',       label: 'Allgemein',         icon: Settings },
   { key: 'catering',        label: 'Catering & Menü',   icon: UtensilsCrossed },
-  { key: 'mitglieder',      label: 'Mitglieder',        icon: Users },
+  { key: 'mitglieder',      label: 'Beteiligte',        icon: Users },
   { key: 'chats',           label: 'Chats',             icon: MessageSquare },
   { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
   { key: 'gaesteliste',     label: 'Gästeliste',        icon: Users },
