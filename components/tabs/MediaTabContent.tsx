@@ -339,7 +339,7 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
       {loading ? (
         <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
       ) : (
-        <div style={{ maxWidth: 760 }}>
+        <div>
           {briefingVisible && (
             <BriefingSection briefing={briefing} eventId={eventId} canEdit={briefingCanEdit} onSaved={setBriefing} />
           )}

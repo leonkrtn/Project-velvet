@@ -99,7 +99,7 @@ function PatisserieEditForm({ config, eventId, onSaved, onCancel }: {
   }
 
   return (
-    <div style={{ maxWidth: 680 }}>
+    <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <p style={{ fontSize: 15, fontWeight: 600 }}>Patisserie bearbeiten</p>
         <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={18} /></button>
@@ -231,7 +231,7 @@ function PatisserieReadView({ config, canEdit, onEdit, mode, onPropose, tabAcces
   }
 
   return (
-    <div style={{ maxWidth: 640 }}>
+    <div>
       {/* Lieferung */}
       {secVis(sectionPerms, tabAccess, 'lieferung') && (
       <div style={{ marginBottom: 16 }}>
