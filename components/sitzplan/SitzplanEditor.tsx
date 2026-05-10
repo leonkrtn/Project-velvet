@@ -666,10 +666,15 @@ export default function SitzplanEditor({
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [])
 
-  function onWheel(e: React.WheelEvent) {
-    e.preventDefault()
-    setZoom(z => Math.max(0.4, Math.min(4, z - e.deltaY * 0.001)))
-  }
+  useEffect(() => {
+    const svg = svgRef.current; if (!svg) return
+    const handler = (e: WheelEvent) => {
+      e.preventDefault()
+      setZoom(z => Math.max(0.4, Math.min(4, z - e.deltaY * 0.001)))
+    }
+    svg.addEventListener('wheel', handler, { passive: false })
+    return () => svg.removeEventListener('wheel', handler)
+  }, [])
 
   // ── Name editing ────────────────────────────────────────────────────────────
 
@@ -890,13 +895,12 @@ export default function SitzplanEditor({
               </button>
             </div>
 
-            <div ref={canvasContainerRef} style={{ background: '#F5F5F7' }}>
-              <svg ref={svgRef} width={canvasW} height={CANVAS_H} style={{ display: 'block' }}
+            <div ref={canvasContainerRef} style={{ background: '#F5F5F7', width: '100%' }}>
+              <svg ref={svgRef} width="100%" height={CANVAS_H} style={{ display: 'block' }}
                 onMouseDown={onSvgMouseDown}
                 onMouseMove={onSvgMouseMove}
                 onMouseUp={onSvgMouseUp}
                 onMouseLeave={onSvgMouseUp}
-                onWheel={onWheel}
                 onClick={() => setSelectedTableId(null)}>
 
                 {roomPoints.length >= 3 && (
