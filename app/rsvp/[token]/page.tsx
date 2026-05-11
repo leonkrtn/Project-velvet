@@ -68,6 +68,86 @@ function blankCompanion(): CompanionDraft {
   return { id: uuid(), name: '', ageCategory: 'erwachsen', trinkAlkohol: undefined, meal: undefined, allergies: [], allergyCustom: '' }
 }
 
+const MEAL_LABELS: Record<string, string> = {
+  fleisch: 'Fleisch',
+  fisch: 'Fisch',
+  vegetarisch: 'Vegetarisch',
+  vegan: 'Vegan',
+}
+
+function mealLabel(opt: string) {
+  return MEAL_LABELS[opt.toLowerCase()] ?? (opt.charAt(0).toUpperCase() + opt.slice(1))
+}
+
+interface MealOptionCardProps {
+  option: string
+  menuCourses: any[] | null
+  selected: boolean
+  onSelect: (v: string) => void
+  disabled?: boolean
+}
+
+function MealOptionCard({ option, menuCourses, selected, onSelect, disabled }: MealOptionCardProps) {
+  const label = mealLabel(option)
+
+  const courses = (menuCourses ?? []).filter((c: any) => {
+    const descs = c.descriptions ?? {}
+    return Object.keys(descs).some(k => k.toLowerCase() === option.toLowerCase())
+  })
+
+  function courseDesc(course: any): string | null {
+    const descs = course.descriptions ?? {}
+    const key = Object.keys(descs).find(k => k.toLowerCase() === option.toLowerCase())
+    return key ? descs[key] : null
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => !disabled && onSelect(option)}
+      disabled={disabled}
+      style={{
+        padding: '15px 16px',
+        borderRadius: 'var(--r-md)',
+        fontFamily: 'inherit',
+        border: `1.5px solid ${selected ? 'var(--gold)' : 'var(--border)'}`,
+        background: selected ? 'var(--gold-pale)' : 'var(--surface)',
+        width: '100%',
+        cursor: disabled ? 'default' : 'pointer',
+        textAlign: 'left',
+        transition: 'all 0.15s',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: courses.length > 0 ? 10 : 0 }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: selected ? 'var(--gold)' : 'var(--text)' }}>{label}</span>
+        {selected && (
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gold)', background: 'rgba(201,168,76,0.15)', borderRadius: 20, padding: '2px 8px' }}>
+            ✓ Gewählt
+          </span>
+        )}
+      </div>
+      {courses.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {courses.map((c: any) => {
+            const desc = courseDesc(c)
+            if (!desc) return null
+            return (
+              <div key={c.id ?? c.name}>
+                <span style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: selected ? 'rgba(180,140,50,0.8)' : 'var(--text-dim)', marginBottom: 1 }}>
+                  {c.name}
+                </span>
+                <span style={{ fontSize: 12, color: selected ? 'var(--text-mid)' : 'var(--text-light)', lineHeight: 1.45 }}>
+                  {desc}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </button>
+  )
+}
+
 export default function RSVPPage() {
   const params = useParams()
   const token  = params?.token as string
@@ -87,6 +167,7 @@ export default function RSVPPage() {
   const [rsvpDeadline,   setRsvpDeadline]   = useState<string | null>(null)
   const [invitationText, setInvitationText] = useState('')
   const [phoneContact,   setPhoneContact]   = useState<string | null>(null)
+  const [menuCourses,    setMenuCourses]    = useState<any[] | null>(null)
 
   // RSVP step state
   const [attending,    setAttending]    = useState<boolean | null>(null)
@@ -152,6 +233,7 @@ export default function RSVPPage() {
         setRsvpDeadline(ev.rsvpDeadline ?? null)
         setInvitationText(ev.invitationText ?? '')
         setPhoneContact(ev.phoneContact ?? null)
+        setMenuCourses(ev.menuCourses ?? null)
         setGuest({
           id: g.id, name: g.name, email: g.email ?? '', token: g.token,
           status: g.status,
@@ -352,7 +434,7 @@ export default function RSVPPage() {
     : `Liebe/r ${firstName}, wir freuen uns auf deine Antwort.`
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100dvh', paddingBottom: 40 }}>
+    <div style={{ background: 'var(--bg)', minHeight: '100dvh', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))' }}>
       {/* Top bar */}
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: 560, margin: '0 auto', padding: '14px 20px', paddingTop: 'calc(14px + env(safe-area-inset-top))' }}>
@@ -377,7 +459,7 @@ export default function RSVPPage() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px' }}>
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 16px' }}>
 
         {/* ──────────── INTRO ──────────── */}
         {step === 'intro' && (
@@ -541,7 +623,7 @@ export default function RSVPPage() {
                           <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Name</label>
                           <input value={c.name} onChange={e => updateCompanion(idx, { name: e.target.value })}
                             placeholder="Vorname Nachname"
-                            style={{ width: '100%', padding: '10px 13px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                            style={{ width: '100%', padding: '11px 13px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
                         </div>
                         <div style={{ marginBottom: 10 }}>
                           <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Altersgruppe</label>
@@ -594,18 +676,39 @@ export default function RSVPPage() {
 
             {showMealChoice && (
               <Card style={{ marginBottom: 10 }}>
-                <MealPicker label="Deine Menüwahl" value={meal} onChange={setMeal} options={event.mealOptions as MealChoice[]} />
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 12 }}>Deine Menüwahl</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(event.mealOptions as string[]).map(opt => (
+                    <MealOptionCard
+                      key={opt}
+                      option={opt}
+                      menuCourses={menuCourses}
+                      selected={meal === opt}
+                      onSelect={v => setMeal(v as MealChoice)}
+                      disabled={isBlocked}
+                    />
+                  ))}
+                </div>
               </Card>
             )}
 
             {showMealChoice && companions.map((c, idx) => (
               <Card key={c.id} style={{ marginBottom: 10 }}>
-                <MealPicker
-                  label={`Menüwahl: ${c.name || `Begleitperson ${idx + 1}`}`}
-                  value={c.meal}
-                  onChange={v => updateCompanion(idx, { meal: v })}
-                  options={event.mealOptions as MealChoice[]}
-                />
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 12 }}>
+                  Menüwahl: {c.name || `Begleitperson ${idx + 1}`}
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {(event.mealOptions as string[]).map(opt => (
+                    <MealOptionCard
+                      key={opt}
+                      option={opt}
+                      menuCourses={menuCourses}
+                      selected={c.meal === opt}
+                      onSelect={v => updateCompanion(idx, { meal: v as MealChoice })}
+                      disabled={isBlocked}
+                    />
+                  ))}
+                </div>
               </Card>
             ))}
 
@@ -634,11 +737,11 @@ export default function RSVPPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
                   {[{ v: 'auto', l: 'Auto' }, { v: 'bahn', l: 'Bahn' }, { v: 'flugzeug', l: 'Flug' }, { v: 'andere', l: 'Andere' }].map(opt => (
                     <button key={opt.v} type="button" onClick={() => setTransport(opt.v as TransportMode)} data-sel={transport === opt.v ? '' : undefined} style={{
-                      padding: '9px 6px', borderRadius: 'var(--r-sm)', fontFamily: 'inherit',
+                      padding: '12px 6px', borderRadius: 'var(--r-sm)', fontFamily: 'inherit',
                       border: `1.5px solid ${transport === opt.v ? 'var(--gold)' : 'var(--border)'}`,
                       background: transport === opt.v ? 'var(--gold-pale)' : 'var(--surface)',
                       color: transport === opt.v ? 'var(--gold)' : 'var(--grey4)',
-                      fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
                     }}>
                       {opt.l}
                     </button>
@@ -726,7 +829,7 @@ export default function RSVPPage() {
                   value={songTitle}
                   onChange={e => setSongTitle(e.target.value)}
                   placeholder="z.B. Perfect"
-                  style={{ width: '100%', padding: '10px 13px', background: 'var(--bg)', border: `1px solid ${songTitle && !songArtist ? 'var(--gold)' : 'var(--border)'}`, borderRadius: 10, fontSize: 13, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '11px 13px', background: 'var(--bg)', border: `1px solid ${songTitle && !songArtist ? 'var(--gold)' : 'var(--border)'}`, borderRadius: 10, fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
               <div>
@@ -735,7 +838,7 @@ export default function RSVPPage() {
                   value={songArtist}
                   onChange={e => setSongArtist(e.target.value)}
                   placeholder="z.B. Ed Sheeran"
-                  style={{ width: '100%', padding: '10px 13px', background: 'var(--bg)', border: `1px solid ${songArtist && !songTitle ? 'var(--gold)' : 'var(--border)'}`, borderRadius: 10, fontSize: 13, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '11px 13px', background: 'var(--bg)', border: `1px solid ${songArtist && !songTitle ? 'var(--gold)' : 'var(--border)'}`, borderRadius: 10, fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
               {!songOk && (
@@ -882,7 +985,7 @@ export default function RSVPPage() {
                               value={contributeAmounts[wish.id] ?? ''}
                               onChange={e => setContributeAmounts(prev => ({ ...prev, [wish.id]: e.target.value }))}
                               placeholder={wish.my_contribution > 0 ? wish.my_contribution.toFixed(2) : 'Betrag'}
-                              style={{ width: '100%', padding: '9px 10px 9px 26px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                              style={{ width: '100%', padding: '10px 10px 10px 26px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 16, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                             />
                           </div>
                           <button onClick={contributeToGift} disabled={!contributeAmounts[wish.id] || parseFloat(contributeAmounts[wish.id] ?? '') <= 0} style={{
