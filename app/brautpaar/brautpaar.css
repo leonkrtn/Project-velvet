@@ -245,7 +245,7 @@
   overflow: hidden;
   transition: background var(--bp-transition), color var(--bp-transition), border-color var(--bp-transition);
   font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   box-sizing: border-box;
 }
 
@@ -263,8 +263,8 @@
 }
 
 .bp-nav-item-icon {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 

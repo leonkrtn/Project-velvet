@@ -29,39 +29,39 @@ function buildNav(eventId: string): NavGroup[] {
 
   return [
     {
-      items: [b('uebersicht', 'Übersicht', <LayoutDashboard size={20} />)],
+      items: [b('uebersicht', 'Übersicht', <LayoutDashboard size={16} />)],
     },
     {
       label: 'PLANUNG',
       items: [
-        b('gaeste', 'Gäste', <Users size={20} />),
-        b('sitzplan', 'Sitzplan', <LayoutGrid size={20} />),
-        b('ablaufplan', 'Ablaufplan', <Calendar size={20} />),
+        b('gaeste', 'Gäste', <Users size={16} />),
+        b('sitzplan', 'Sitzplan', <LayoutGrid size={16} />),
+        b('ablaufplan', 'Ablaufplan', <Calendar size={16} />),
       ],
     },
     {
       label: 'DETAILS',
       items: [
-        b('catering', 'Catering & Menü', <UtensilsCrossed size={20} />),
-        b('dekoration', 'Dekoration', <Palette size={20} />),
-        b('musik', 'Musik', <Music size={20} />),
-        b('patisserie', 'Patisserie', <Cake size={20} />),
-        b('medien', 'Medien', <Camera size={20} />),
+        b('catering', 'Catering & Menü', <UtensilsCrossed size={16} />),
+        b('dekoration', 'Dekoration', <Palette size={16} />),
+        b('musik', 'Musik', <Music size={16} />),
+        b('patisserie', 'Patisserie', <Cake size={16} />),
+        b('medien', 'Medien', <Camera size={16} />),
       ],
     },
     {
       label: 'VERWALTUNG',
       items: [
-        b('budget', 'Budget', <Wallet size={20} />),
-        b('aufgaben', 'Aufgaben', <CheckSquare size={20} />),
-        b('allgemein', 'Allgemein', <Settings size={20} />),
+        b('budget', 'Budget', <Wallet size={16} />),
+        b('aufgaben', 'Aufgaben', <CheckSquare size={16} />),
+        b('allgemein', 'Allgemein', <Settings size={16} />),
       ],
     },
     {
       label: 'KOMMUNIKATION',
       items: [
-        b('nachrichten', 'Nachrichten', <MessageSquare size={20} />),
-        b('dateien', 'Dateien', <File size={20} />, true),
+        b('nachrichten', 'Nachrichten', <MessageSquare size={16} />),
+        b('dateien', 'Dateien', <File size={16} />, true),
       ],
     },
   ]
