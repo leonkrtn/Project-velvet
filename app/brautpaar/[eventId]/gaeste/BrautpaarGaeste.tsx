@@ -676,16 +676,25 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
         {[
-          { label: 'Gesamt',     value: guests.length, color: 'var(--bp-ink)' },
-          { label: 'Zugesagt',   value: ja,            color: '#15803D' },
-          { label: 'Abgesagt',   value: nein,          color: '#B91C1C' },
-          { label: 'Ausstehend', value: ausstehend,    color: 'var(--bp-ink-3)' },
+          { label: 'Gesamt',     value: guests.length, border: 'var(--bp-gold)',  numColor: 'var(--bp-gold-deep)' },
+          { label: 'Zugesagt',   value: ja,            border: '#15803D',         numColor: '#15803D' },
+          { label: 'Abgesagt',   value: nein,          border: '#B91C1C',         numColor: '#B91C1C' },
+          { label: 'Ausstehend', value: ausstehend,    border: 'var(--bp-ink-3)', numColor: 'var(--bp-ink-3)' },
         ].map(s => (
-          <div key={s.label} style={{ textAlign: 'center' }}>
-            <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1.5rem', fontWeight: 600, color: s.color, lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)', marginTop: 2 }}>{s.label}</div>
+          <div key={s.label} style={{
+            flex: 1,
+            minWidth: 90,
+            background: 'var(--bp-paper)',
+            border: '1px solid var(--bp-rule)',
+            borderLeft: `4px solid ${s.border}`,
+            borderRadius: 'var(--bp-r-sm)',
+            boxShadow: 'var(--bp-shadow-card)',
+            padding: '0.75rem 1rem',
+          }}>
+            <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1.75rem', fontWeight: 700, color: s.numColor, lineHeight: 1 }}>{s.value}</div>
+            <div style={{ fontSize: '0.6875rem', color: 'var(--bp-ink-3)', marginTop: '0.25rem', fontWeight: 500, letterSpacing: '0.04em' }}>{s.label}</div>
           </div>
         ))}
       </div>
