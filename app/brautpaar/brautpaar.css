@@ -314,10 +314,21 @@
 /* Collapsed state: logo area acts as click target */
 .bp-sidebar:not([data-expanded="true"]) .bp-sidebar-logo {
   cursor: pointer;
+  justify-content: center;
+  gap: 0;
 }
 
 .bp-sidebar:not([data-expanded="true"]) .bp-sidebar-logo:hover {
   background: var(--bp-ivory-2);
+}
+
+.bp-sidebar:not([data-expanded="true"]) .bp-sidebar-couple-name {
+  flex: 0;
+  width: 0;
+}
+
+.bp-sidebar:not([data-expanded="true"]) .bp-sidebar-toggle {
+  margin-left: 0;
 }
 
 /* Sidebar footer */
