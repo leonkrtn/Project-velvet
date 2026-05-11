@@ -168,30 +168,22 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
 
   const sidebarContent = (
     <>
-      {/* Logo — when collapsed, whole area is click target to expand */}
+      {/* Header: couple name + toggle */}
       <div
         className="bp-sidebar-logo"
         onClick={!expanded ? toggleExpanded : undefined}
         role={!expanded ? 'button' : undefined}
         aria-label={!expanded ? 'Sidebar aufklappen' : undefined}
       >
-        <div className="bp-sidebar-logo-mark">
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden>
-            <circle cx="14" cy="14" r="14" fill="var(--bp-gold-pale)" />
-            <path d="M14 7c-1.6 0-3 1.1-3.5 2.5C8.5 10 7 11.7 7 13.5 7 15.9 9.1 18 12 18h4c2.9 0 5-2.1 5-4.5 0-1.8-1.5-3.5-3.5-4C17 7.9 15.6 7 14 7z" fill="var(--bp-gold)" />
-          </svg>
-        </div>
-        <span className="bp-sidebar-logo-text bp-font-wordmark">Velvet</span>
-        {expanded && (
-          <button
-            className="bp-sidebar-toggle"
-            onClick={e => { e.stopPropagation(); toggleExpanded() }}
-            aria-label="Sidebar zuklappen"
-            title="Zuklappen"
-          >
-            <ChevronRight />
-          </button>
-        )}
+        <span className="bp-sidebar-couple-name">{eventTitle}</span>
+        <button
+          className="bp-sidebar-toggle"
+          onClick={e => { e.stopPropagation(); toggleExpanded() }}
+          aria-label={expanded ? 'Sidebar zuklappen' : 'Sidebar aufklappen'}
+          title={expanded ? 'Zuklappen' : 'Aufklappen'}
+        >
+          <ChevronRight />
+        </button>
       </div>
 
       {/* Nav */}
@@ -230,6 +222,13 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
           </React.Fragment>
         ))}
       </nav>
+
+      {/* Footer links */}
+      <div className="bp-sidebar-footer">
+        <a href="#" className="bp-sidebar-footer-link"><span>Support</span></a>
+        <a href="#" className="bp-sidebar-footer-link"><span>AGB</span></a>
+        <a href="#" className="bp-sidebar-footer-link"><span>Datenschutz</span></a>
+      </div>
     </>
   )
 
