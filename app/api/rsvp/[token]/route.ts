@@ -35,8 +35,6 @@ interface RSVPPayload {
   transport?: TransportMode | '' | null
   hotelRoomId?: string | null   // 'none' | room uuid | ''
   message?: string | null
-  songTitle?: string | null
-  songArtist?: string | null
 }
 
 function toNullIfEmpty(v: string | null | undefined): string | null {
@@ -316,21 +314,7 @@ export async function POST(
     }
   }
 
-  // 8. Musikwunsch speichern (wenn beide Felder ausgefüllt)
-  const songTitle  = toNullIfEmpty(body.songTitle)
-  const songArtist = toNullIfEmpty(body.songArtist)
-  if (attending && songTitle && songArtist) {
-    await admin.from('rsvp_music_suggestions').insert({
-      event_id:   guest.event_id,
-      guest_token: token,
-      guest_name:  guest.name,
-      song_title:  songTitle,
-      artist:      songArtist,
-    })
-    // non-fatal: don't block RSVP save if this fails
-  }
-
-  // 9. Rückgabe
+  // 8. Rückgabe
   const { data: begleit } = await admin
     .from('begleitpersonen').select('*').eq('guest_id', guest.id)
 
