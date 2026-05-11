@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, Pencil } from 'lucide-react'
+import { Plus, Trash2, Pencil, Settings } from 'lucide-react'
 
 type PaymentStatus = 'offen' | 'angezahlt' | 'bezahlt'
 
@@ -228,9 +229,19 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
 
   return (
     <div className="bp-page">
-      <div className="bp-page-header">
-        <h1 className="bp-page-title">Budget</h1>
-        <p className="bp-page-subtitle">Ausgaben planen und verfolgen</p>
+      <div className="bp-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 className="bp-page-title">Budget</h1>
+          <p className="bp-page-subtitle">Ausgaben planen und verfolgen</p>
+        </div>
+        <Link
+          href={`/brautpaar/${eventId}/allgemein#budget`}
+          className="bp-btn bp-btn-secondary"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
+        >
+          <Settings size={15} />
+          Gesamtbudget anpassen
+        </Link>
       </div>
 
       {/* Summary */}
