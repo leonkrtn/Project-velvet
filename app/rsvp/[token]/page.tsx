@@ -273,6 +273,8 @@ export default function RSVPPage() {
             allergies: bp.allergies ?? [],
             allergyCustom: bp.allergyCustom ?? '',
           })))
+          // Returning guests skip intro and land directly on summary
+          setStep('confirmation')
         }
       } catch (err: any) {
         if (!cancelled) setLoadError(err?.message ?? 'Netzwerkfehler')
@@ -845,19 +847,17 @@ export default function RSVPPage() {
         {/* ──────────── MUSIKWUNSCH ──────────── */}
         {step === 'musikwunsch' && (
           <div style={{ animation: 'fadeUp 0.4s ease' }}>
-            <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--gold-pale)', border: '1px solid rgba(201,168,76,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-              <Music size={20} color="var(--gold)" />
-            </div>
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Musikwünsche</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 20, lineHeight: 1.6 }}>
-              Welche Songs dürfen auf keinen Fall fehlen? Füge so viele Wünsche hinzu wie du möchtest — alles freiwillig.
+            <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.16em', color: 'var(--gold)', marginBottom: 10 }}>Musikwünsche</p>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Welche Songs dürfen nicht fehlen?</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 24, lineHeight: 1.6 }}>
+              Füge so viele Wünsche hinzu wie du möchtest — alles freiwillig.
             </p>
 
             {/* Bereits hinzugefügte Songs */}
             {suggestedSongs.length > 0 && (
-              <Card style={{ marginBottom: 16, padding: 0, overflow: 'hidden' }}>
+              <div style={{ marginBottom: 20 }}>
                 {suggestedSongs.map((s, i) => (
-                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < suggestedSongs.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: i < suggestedSongs.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <Music size={13} color="var(--gold)" style={{ flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{s.title}</p>
@@ -865,41 +865,45 @@ export default function RSVPPage() {
                     </div>
                   </div>
                 ))}
-              </Card>
+              </div>
             )}
 
             {/* Neuen Song hinzufügen */}
-            <Card style={{ marginBottom: 20 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Song hinzufügen
-              </p>
-              <div style={{ marginBottom: 10 }}>
-                <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Titel</label>
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 <input
                   value={newSongTitle}
                   onChange={e => setNewSongTitle(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && addSong()}
-                  placeholder="z.B. Perfect"
-                  style={{ width: '100%', padding: '11px 13px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                  placeholder="Titel"
+                  style={{ flex: 1, padding: '11px 13px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Interpret</label>
                 <input
                   value={newSongArtist}
                   onChange={e => setNewSongArtist(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && addSong()}
-                  placeholder="z.B. Ed Sheeran"
-                  style={{ width: '100%', padding: '11px 13px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                  placeholder="Interpret"
+                  style={{ flex: 1, padding: '11px 13px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
-              <Button fullWidth variant="secondary" disabled={!newSongOk || addingSong} onClick={addSong}>
+              <button
+                onClick={addSong}
+                disabled={!newSongOk || addingSong}
+                style={{
+                  width: '100%', padding: '11px', borderRadius: 10, fontFamily: 'inherit',
+                  border: `1.5px solid ${newSongOk ? 'var(--gold)' : 'var(--border)'}`,
+                  background: 'transparent',
+                  color: newSongOk ? 'var(--gold)' : 'var(--text-dim)',
+                  fontSize: 13, fontWeight: 600, cursor: newSongOk ? 'pointer' : 'default',
+                  transition: 'all 0.15s',
+                }}
+              >
                 {addingSong ? 'Wird gespeichert…' : '+ Song hinzufügen'}
-              </Button>
-            </Card>
+              </button>
+            </div>
 
             <Button fullWidth size="lg" variant="gold" onClick={() => setStep('confirmation')}>
-              {suggestedSongs.length > 0 ? 'Fertig' : 'Überspringen'}
+              Fertig
             </Button>
           </div>
         )}
@@ -1070,69 +1074,96 @@ export default function RSVPPage() {
 
         {/* ──────────── CONFIRMATION ──────────── */}
         {step === 'confirmation' && (
-          <div style={{ animation: 'fadeUp 0.5s ease', textAlign: 'center', paddingTop: 32 }}>
-            <div style={{ width: 68, height: 68, borderRadius: '50%', background: attending ? 'var(--gold-pale)' : 'var(--black3)', border: `1px solid ${attending ? 'rgba(201,168,76,0.3)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: attending ? 'var(--gold)' : 'var(--grey3)' }}>
-              {attending ? <CheckCircle size={28} /> : <XCircle size={28} />}
-            </div>
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 8 }}>
-              {attending ? 'Danke für deine Zusage!' : 'Schade, dass du nicht kommen kannst.'}
-            </h2>
-            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 28, lineHeight: 1.6 }}>
-              {attending
-                ? `Wir freuen uns auf dich am ${new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })} in ${event.venue}.`
-                : `${event.coupleName} wurden informiert.`}
-            </p>
+          <div style={{ animation: 'fadeUp 0.5s ease' }}>
 
+            {/* Status header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0, background: attending ? 'rgba(201,168,76,0.12)' : 'var(--black3)', border: `1px solid ${attending ? 'rgba(201,168,76,0.25)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: attending ? 'var(--gold)' : 'var(--grey3)' }}>
+                {attending ? <CheckCircle size={20} /> : <XCircle size={20} />}
+              </div>
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: attending ? 'var(--gold)' : 'var(--text-dim)', marginBottom: 3 }}>
+                  {attending ? 'Zusage bestätigt' : 'Absage übermittelt'}
+                </p>
+                <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 400, color: 'var(--text)', lineHeight: 1.2 }}>
+                  {attending ? 'Danke für deine Zusage!' : 'Schade, dass du nicht kommen kannst.'}
+                </h2>
+              </div>
+            </div>
+
+            {/* Event info at a glance */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '16px 18px', marginBottom: 16 }}>
+              <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--gold)', marginBottom: 12 }}>Das Event</p>
+              {[
+                { icon: <Heart size={12} color="var(--gold)" />, value: event.coupleName },
+                { icon: <Clock size={12} color="var(--text-dim)" />, value: fmtDate(event.date) },
+                { icon: <MapPin size={12} color="var(--text-dim)" />, value: `${event.venue}${event.venueAddress ? `, ${event.venueAddress}` : ''}`, href: event.venueAddress ? getMapsUrl(`${event.venue} ${event.venueAddress}`) : undefined },
+                event.dresscode ? { icon: <Shirt size={12} color="var(--text-dim)" />, value: event.dresscode } : null,
+              ].filter(Boolean).map((item: any, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: i < 3 ? 8 : 0 }}>
+                  <div style={{ marginTop: 1, flexShrink: 0 }}>{item.icon}</div>
+                  {item.href ? (
+                    <a href={item.href} style={{ fontSize: 13, color: 'var(--gold)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, lineHeight: 1.4 }}>
+                      {item.value} <MapPin size={10} />
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: 13, color: i === 0 ? 'var(--text)' : 'var(--text-light)', fontWeight: i === 0 ? 500 : 400, lineHeight: 1.4 }}>{item.value}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Deine Angaben — compact */}
             {attending && (
-              <Card style={{ textAlign: 'left', marginBottom: 24 }}>
-                <SectionTitle>Deine Angaben</SectionTitle>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '16px 18px', marginBottom: 16 }}>
+                <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: 'var(--text-dim)', marginBottom: 12 }}>Deine Angaben</p>
                 {meal && <Row label="Menü" value={{ fleisch: 'Fleisch', fisch: 'Fisch', vegetarisch: 'Vegetarisch', vegan: 'Vegan' }[meal] ?? meal} />}
                 {trinkAlkohol !== undefined && <Row label="Alkohol" value={trinkAlkohol ? 'Ja' : 'Nein'} />}
-                {companions.length > 0 && (
-                  <Row label="Begleitpersonen" value={companions.map(c => c.name || '—').join(', ')} />
-                )}
+                {companions.length > 0 && <Row label="Begleitpersonen" value={companions.map(c => c.name || '—').join(', ')} />}
                 {hotelRoomId && hotelRoomId !== 'none' && <Row label="Hotel" value={allRooms.find((r: any) => r.id === hotelRoomId)?.type ?? '—'} />}
                 {hotelRoomId === 'none' && <Row label="Hotel" value="Kein Zimmer" />}
                 {arrivalDate && <Row label="Ankunft" value={`${new Date(arrivalDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}${arrivalTime ? ` · ${arrivalTime}` : ''}`} />}
-                {suggestedSongs.length > 0 && <Row label="Musikwünsche" value={suggestedSongs.map(s => `${s.title} — ${s.artist}`).join(', ')} />}
-              </Card>
+                {suggestedSongs.length > 0 && <Row label="Musikwünsche" value={`${suggestedSongs.length} Song${suggestedSongs.length > 1 ? 's' : ''}`} />}
+              </div>
             )}
 
             {/* Extra-Aktionen nur für Zusagen */}
             {attending && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
                 <button
                   onClick={() => setStep('musikwunsch')}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    padding: '15px 20px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
-                    border: '1.5px solid var(--gold)', background: 'var(--gold-pale)',
-                    color: 'var(--gold)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                    width: '100%', transition: 'all 0.15s',
+                    padding: '14px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
+                    border: '1.5px solid var(--gold)', background: 'var(--gold)',
+                    color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    width: '100%', transition: 'opacity 0.15s',
                   }}
                 >
-                  <Music size={16} />
+                  <Music size={15} />
                   {suggestedSongs.length > 0 ? `Musikwünsche (${suggestedSongs.length}) · Weitere hinzufügen` : 'Musikwünsche hinzufügen'}
                 </button>
                 <button
                   onClick={() => setStep('geschenke')}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    padding: '15px 20px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
+                    padding: '14px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
                     border: '1.5px solid var(--border)', background: 'var(--surface)',
-                    color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                    width: '100%', transition: 'all 0.15s',
+                    color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    width: '100%', transition: 'opacity 0.15s',
                   }}
                 >
-                  <Gift size={16} /> Geschenkliste ansehen
+                  <Gift size={15} /> Geschenkliste ansehen
                 </button>
               </div>
             )}
 
             {!isBlocked && (
-              <button onClick={() => setStep('rsvp')} style={{ fontSize: 12, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: '8px 0' }}>
-                Antwort ändern
-              </button>
+              <div style={{ textAlign: 'center' }}>
+                <button onClick={() => setStep('rsvp')} style={{ fontSize: 12, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: '8px 0' }}>
+                  Antwort ändern
+                </button>
+              </div>
             )}
           </div>
         )}
