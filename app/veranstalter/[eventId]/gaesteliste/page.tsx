@@ -19,23 +19,34 @@ export default async function GaestelistePage({ params }: Props) {
 
   if (!member || member.role !== 'veranstalter') redirect('/veranstalter')
 
-  const { data: guests } = await supabase
-    .from('guests')
-    .select('id, name, status, side, allergy_tags, allergy_custom, meal_choice')
-    .eq('event_id', eventId)
-    .order('name')
-
-  const { data: event } = await supabase
-    .from('events')
-    .select('meal_options')
-    .eq('id', eventId)
-    .single()
+  const [
+    { data: guests },
+    { data: event },
+    { data: hotels },
+  ] = await Promise.all([
+    supabase
+      .from('guests')
+      .select('id, name, status, side, allergy_tags, allergy_custom, meal_choice')
+      .eq('event_id', eventId)
+      .order('name'),
+    supabase
+      .from('events')
+      .select('meal_options')
+      .eq('id', eventId)
+      .single(),
+    supabase
+      .from('hotels')
+      .select('id, name, address, stars, website, notes, hotel_rooms(id, room_type, room_number, max_occupancy, total_rooms, booked_rooms, price_per_night, description)')
+      .eq('event_id', eventId)
+      .order('name'),
+  ])
 
   return (
     <GaestelisteClient
       eventId={eventId}
       initialGuests={guests ?? []}
       mealOptions={event?.meal_options ?? []}
+      initialHotels={(hotels ?? []) as any}
     />
   )
 }

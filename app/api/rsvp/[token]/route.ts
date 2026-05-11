@@ -66,12 +66,20 @@ export async function GET(
     { data: event, error: evErr },
     { data: begleit },
     { data: hotels },
+    { data: wishes },
+    { data: beitraege },
   ] = await Promise.all([
     admin.from('events')
       .select('id, title, couple_name, date, venue, venue_address, dresscode, children_allowed, children_note, meal_options, max_begleitpersonen, data_freeze_at')
       .eq('id', guest.event_id).maybeSingle(),
     admin.from('begleitpersonen').select('*').eq('guest_id', guest.id),
     admin.from('hotels').select('id, name, address, hotel_rooms(id, room_type, total_rooms, booked_rooms, price_per_night)').eq('event_id', guest.event_id),
+    admin.from('geschenk_wuensche')
+      .select('id, title, description, price, priority, link, is_money_wish, money_target, status, claimed_by_token, sort_order')
+      .eq('event_id', guest.event_id)
+      .order('sort_order'),
+    admin.from('geschenk_beitraege')
+      .select('wish_id, guest_token, amount'),
   ])
 
   if (evErr || !event) {
@@ -81,6 +89,27 @@ export async function GET(
   const coupleName = (event.couple_name && event.couple_name.trim())
     || (event.title && event.title.trim())
     || ''
+
+  const allBeitraege = beitraege ?? []
+  const wishlist = (wishes ?? []).map((w: any) => {
+    const wishBeitraege = allBeitraege.filter((b: any) => b.wish_id === w.id)
+    const totalContributed = wishBeitraege.reduce((sum: number, b: any) => sum + (b.amount ?? 0), 0)
+    const myContrib = allBeitraege.find((b: any) => b.wish_id === w.id && b.guest_token === guest.token)
+    return {
+      id: w.id,
+      title: w.title,
+      description: w.description ?? null,
+      price: w.price ?? null,
+      priority: w.priority ?? 'mittel',
+      link: w.link ?? null,
+      is_money_wish: w.is_money_wish ?? false,
+      money_target: w.money_target ?? null,
+      status: w.status ?? 'verfuegbar',
+      is_claimed_by_me: w.claimed_by_token === guest.token,
+      total_contributed: totalContributed,
+      my_contribution: myContrib?.amount ?? 0,
+    }
+  })
 
   return NextResponse.json({
     event: {
@@ -108,6 +137,7 @@ export async function GET(
         })),
       })),
     },
+    wishlist,
     guest: {
       id: guest.id,
       name: guest.name,

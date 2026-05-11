@@ -380,6 +380,170 @@ function AddSongForm({ eventId, onAdded }: { eventId: string; onAdded: (s: Song)
   )
 }
 
+// ── Brautpaar Section ─────────────────────────────────────────────────────────
+
+const BP_SECTION_CFG: Record<string, { icon: React.ReactNode; label: string; accentColor: string; borderColor: string; badgeBg: string }> = {
+  wish:     { icon: <Heart size={15} />,     label: 'Wünsche',  accentColor: '#C4717A', borderColor: 'rgba(196,113,122,0.25)', badgeBg: 'rgba(196,113,122,0.08)' },
+  no_go:    { icon: <Ban size={15} />,       label: 'No-Gos',   accentColor: '#e05252', borderColor: 'rgba(224,82,82,0.25)',   badgeBg: 'rgba(224,82,82,0.08)'   },
+  playlist: { icon: <ListMusic size={15} />, label: 'Playlist', accentColor: 'var(--bp-gold, #B8943E)', borderColor: 'rgba(184,148,62,0.25)', badgeBg: 'rgba(184,148,62,0.08)' },
+}
+
+function BrautpaarSongSection({
+  type, songs, eventId, onAdded, onUpdate, onDelete,
+}: {
+  type: Song['type']
+  songs: Song[]
+  eventId: string
+  onAdded: (s: Song) => void
+  onUpdate: (s: Song) => void
+  onDelete: (id: string) => void
+}) {
+  const cfg = BP_SECTION_CFG[type]
+  const [title, setTitle]   = useState('')
+  const [artist, setArtist] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editTitle, setEditTitle]   = useState('')
+  const [editArtist, setEditArtist] = useState('')
+
+  async function add() {
+    if (!title.trim()) return
+    setSaving(true)
+    const supabase = createClient()
+    const { data, error } = await supabase.from('music_songs')
+      .insert({ event_id: eventId, title: title.trim(), artist: artist.trim(), type, moment: 'Allgemein', sort_order: 0 })
+      .select().single()
+    setSaving(false)
+    if (!error && data) { onAdded(data as Song); setTitle(''); setArtist('') }
+  }
+
+  async function saveEdit(id: string) {
+    if (!editTitle.trim()) return
+    const supabase = createClient()
+    const { error } = await supabase.from('music_songs').update({ title: editTitle.trim(), artist: editArtist.trim() }).eq('id', id)
+    if (!error) {
+      const song = songs.find(s => s.id === id)
+      if (song) onUpdate({ ...song, title: editTitle.trim(), artist: editArtist.trim() })
+      setEditId(null)
+    }
+  }
+
+  function startEdit(song: Song) {
+    setEditId(song.id)
+    setEditTitle(song.title)
+    setEditArtist(song.artist)
+  }
+
+  return (
+    <div className="bp-card" style={{ borderTop: `3px solid ${cfg.accentColor}`, padding: 0, overflow: 'hidden', marginBottom: 0 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px', background: cfg.badgeBg, borderBottom: `1px solid ${cfg.borderColor}` }}>
+        <span style={{ color: cfg.accentColor }}>{cfg.icon}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', color: cfg.accentColor }}>{cfg.label}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, color: cfg.accentColor, opacity: 0.7, background: 'rgba(255,255,255,0.5)', borderRadius: 20, padding: '2px 8px' }}>{songs.length}</span>
+      </div>
+
+      {/* Songs */}
+      {songs.length === 0 && (
+        <div style={{ padding: '16px 18px', fontSize: 13, color: 'var(--bp-ink, #3a3028)', opacity: 0.45, fontStyle: 'italic' }}>
+          Noch keine Einträge
+        </div>
+      )}
+      {songs.map(song => (
+        <div key={song.id} style={{ borderBottom: `1px solid ${cfg.borderColor}` }}>
+          {editId === song.id ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'rgba(255,255,255,0.6)' }}>
+              <input
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                placeholder="Titel"
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') saveEdit(song.id); if (e.key === 'Escape') setEditId(null) }}
+                style={{ flex: 2, padding: '7px 10px', border: `1px solid ${cfg.accentColor}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+              />
+              <input
+                value={editArtist}
+                onChange={e => setEditArtist(e.target.value)}
+                placeholder="Interpret"
+                onKeyDown={e => { if (e.key === 'Enter') saveEdit(song.id); if (e.key === 'Escape') setEditId(null) }}
+                style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+              />
+              <button onClick={() => saveEdit(song.id)} style={{ padding: '7px 10px', background: cfg.accentColor, color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <Check size={13} />
+              </button>
+              <button onClick={() => setEditId(null)} style={{ padding: '7px 9px', background: 'none', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <X size={13} />
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 18px' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--bp-ink, #3a3028)' }}>{song.title || '—'}</span>
+                {song.artist && <span style={{ fontSize: 12, color: 'var(--bp-ink, #3a3028)', opacity: 0.5, marginLeft: 8 }}>— {song.artist}</span>}
+              </div>
+              <button onClick={() => startEdit(song)} style={{ padding: '5px 8px', background: 'none', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.6 }}>
+                <Edit2 size={12} />
+              </button>
+              <button onClick={() => onDelete(song.id)} style={{ padding: '5px 8px', background: 'none', border: '1px solid rgba(224,82,82,0.3)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <Trash2 size={12} style={{ color: '#e05252' }} />
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Inline add */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'rgba(255,255,255,0.4)' }}>
+        <input
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Titel hinzufügen…"
+          onKeyDown={e => { if (e.key === 'Enter') add() }}
+          style={{ flex: 2, padding: '7px 10px', border: '1px dashed var(--bp-rule, #e6ddd4)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
+        />
+        <input
+          value={artist}
+          onChange={e => setArtist(e.target.value)}
+          placeholder="Interpret (optional)"
+          onKeyDown={e => { if (e.key === 'Enter') add() }}
+          style={{ flex: 1, padding: '7px 10px', border: '1px dashed var(--bp-rule, #e6ddd4)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
+        />
+        <button
+          onClick={add}
+          disabled={saving || !title.trim()}
+          style={{ padding: '7px 12px', background: title.trim() ? cfg.accentColor : 'var(--bp-rule, #e6ddd4)', color: title.trim() ? '#fff' : 'var(--bp-ink, #3a3028)', border: 'none', borderRadius: 6, cursor: title.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', transition: 'background 0.15s', opacity: saving ? 0.7 : 1 }}
+        >
+          {saving ? '…' : <Plus size={14} />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function BrautpaarMusikView({ eventId, songs, setSongs }: { eventId: string; songs: Song[]; setSongs: React.Dispatch<React.SetStateAction<Song[]>> }) {
+  async function deleteSong(id: string) {
+    const supabase = createClient()
+    const { error } = await supabase.from('music_songs').delete().eq('id', id)
+    if (!error) setSongs(prev => prev.filter(s => s.id !== id))
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {(['wish', 'no_go', 'playlist'] as Song['type'][]).map(type => (
+        <BrautpaarSongSection
+          key={type}
+          type={type}
+          songs={songs.filter(s => s.type === type)}
+          eventId={eventId}
+          onAdded={s => setSongs(prev => [...prev, s])}
+          onUpdate={updated => setSongs(prev => prev.map(x => x.id === updated.id ? updated : x))}
+          onDelete={deleteSong}
+        />
+      ))}
+    </div>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = true, tabAccess = 'write', sectionPerms, onPropose }: Props) {
@@ -390,15 +554,20 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
 
   useEffect(() => {
     const supabase = createClient()
-    Promise.all([
-      supabase.from('music_songs').select('*').eq('event_id', eventId).order('sort_order'),
-      supabase.from('music_requirements').select('*').eq('event_id', eventId).single(),
-    ]).then(([{ data: s }, { data: r }]) => {
-      setSongs(s ?? [])
-      setReqs(r ?? null)
-      setLoading(false)
-    })
-  }, [eventId])
+    if (mode === 'brautpaar') {
+      supabase.from('music_songs').select('*').eq('event_id', eventId).order('sort_order')
+        .then(({ data: s }) => { setSongs(s ?? []); setLoading(false) })
+    } else {
+      Promise.all([
+        supabase.from('music_songs').select('*').eq('event_id', eventId).order('sort_order'),
+        supabase.from('music_requirements').select('*').eq('event_id', eventId).single(),
+      ]).then(([{ data: s }, { data: r }]) => {
+        setSongs(s ?? [])
+        setReqs((r ?? null) as Requirements | null)
+        setLoading(false)
+      })
+    }
+  }, [eventId, mode])
 
   function canEditItem() {
     if (mode !== 'dienstleister') return true
@@ -425,6 +594,19 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
     if (mode !== 'dienstleister') return false
     const access = sectionPerms?.[key] ?? tabAccess
     return access === 'read'
+  }
+
+  if (mode === 'brautpaar') {
+    return (
+      <div>
+        <h1 className="bp-section-title" style={{ marginBottom: 24 }}>Musik</h1>
+        {loading ? (
+          <div style={{ color: 'var(--bp-ink, #3a3028)', opacity: 0.5, fontSize: 14 }}>Wird geladen…</div>
+        ) : (
+          <BrautpaarMusikView eventId={eventId} songs={songs} setSongs={setSongs} />
+        )}
+      </div>
+    )
   }
 
   return (

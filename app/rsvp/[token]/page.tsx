@@ -2,13 +2,34 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { v4 as uuid } from 'uuid'
-import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel } from 'lucide-react'
+import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink } from 'lucide-react'
 import type {
   Event, Guest, MealChoice, AllergyTag, TransportMode, AltersKategorie,
 } from '@/lib/store'
 import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle, Input } from '@/components/ui'
 
-type Step = 'intro'|'rsvp'|'details'|'hotel'|'confirmation'
+type Step = 'intro'|'rsvp'|'details'|'hotel'|'geschenke'|'confirmation'
+
+interface WishlistItem {
+  id: string
+  title: string
+  description: string | null
+  price: number | null
+  priority: 'hoch' | 'mittel' | 'niedrig'
+  link: string | null
+  is_money_wish: boolean
+  money_target: number | null
+  status: 'verfuegbar' | 'vergeben'
+  is_claimed_by_me: boolean
+  total_contributed: number
+  my_contribution: number
+}
+
+const PRIORITY_COLOR: Record<string, string> = {
+  hoch: 'var(--red, #c4717a)',
+  mittel: 'var(--gold, #b8943e)',
+  niedrig: 'var(--green, #3d7a56)',
+}
 
 interface CompanionDraft {
   id: string
@@ -66,6 +87,10 @@ export default function RSVPPage() {
   // Hotel
   const [hotelRoomId,  setHotelRoomId]  = useState('')
 
+  // Geschenke
+  const [wishlist, setWishlist] = useState<WishlistItem[]>([])
+  const [contributeAmounts, setContributeAmounts] = useState<Record<string, string>>({})
+
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -112,6 +137,7 @@ export default function RSVPPage() {
           respondedAt: g.respondedAt ?? undefined,
           begleitpersonen: g.begleitpersonen ?? [],
         } as Guest)
+        setWishlist(data.wishlist ?? [])
         if (g.status !== 'eingeladen' && g.status !== 'angelegt') {
           setAttending(g.status === 'zugesagt')
           setTrinkAlkohol(g.trinkAlkohol ?? undefined)
@@ -242,7 +268,7 @@ export default function RSVPPage() {
 
       setEvent({ ...event, hotels: updatedHotels })
       setGuest(updatedGuest)
-      setStep('confirmation')
+      setStep(attending ? 'geschenke' : 'confirmation')
     } catch (err: any) {
       setToast(err?.message ?? 'Netzwerkfehler')
     } finally {
@@ -252,7 +278,7 @@ export default function RSVPPage() {
 
   const progressSteps: Step[] = attending === false
     ? ['intro', 'rsvp', 'confirmation']
-    : ['intro', 'rsvp', 'details', 'hotel', 'confirmation']
+    : ['intro', 'rsvp', 'details', 'hotel', 'geschenke', 'confirmation']
   const progress = progressSteps.indexOf(step) / (progressSteps.length - 1) * 100
 
   const optBtn = (active: boolean): React.CSSProperties => ({
@@ -285,7 +311,7 @@ export default function RSVPPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {step !== 'intro' && step !== 'confirmation' && (
                 <button onClick={() => {
-                  const prev: Record<Step, Step> = { intro: 'intro', rsvp: 'intro', details: 'rsvp', hotel: 'details', confirmation: 'hotel' }
+                  const prev: Record<Step, Step> = { intro: 'intro', rsvp: 'intro', details: 'rsvp', hotel: 'details', geschenke: 'hotel', confirmation: attending ? 'geschenke' : 'rsvp' }
                   setStep(prev[step])
                 }} style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: 'var(--text-light)', display: 'flex' }}>
                   <ChevronLeft size={20} />
@@ -591,6 +617,178 @@ export default function RSVPPage() {
             </div>
             <Button fullWidth size="lg" variant="gold" disabled={!hotelRoomId || saving || isFrozen} onClick={save}>
               {saving ? 'Wird gespeichert…' : 'Antwort absenden'}
+            </Button>
+          </div>
+        )}
+
+        {/* ──────────── GESCHENKE ──────────── */}
+        {step === 'geschenke' && (
+          <div style={{ animation: 'fadeUp 0.4s ease' }}>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Geschenkliste</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 24, lineHeight: 1.5 }}>
+              Schau dir die Wünsche an — alles freiwillig, du kannst auch ohne Auswahl weitergehen.
+            </p>
+
+            {wishlist.length === 0 && (
+              <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-md)', border: '1px solid var(--border)', padding: '32px 24px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, marginBottom: 20 }}>
+                Noch keine Wünsche hinterlegt.
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+              {wishlist.map(wish => {
+                const isClaimed  = wish.status === 'vergeben'
+                const isMine     = wish.is_claimed_by_me
+                const pct        = wish.money_target ? Math.min(100, (wish.total_contributed / wish.money_target) * 100) : 0
+                const fullyFunded = wish.money_target ? wish.total_contributed >= wish.money_target : false
+
+                async function claimGift() {
+                  const res = await fetch(`/api/rsvp/${encodeURIComponent(token)}/geschenk`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'claim', wish_id: wish.id }),
+                  })
+                  if (res.ok) {
+                    setWishlist(prev => prev.map(w => w.id === wish.id ? { ...w, status: 'vergeben', is_claimed_by_me: true } : w))
+                  } else {
+                    const d = await res.json().catch(() => ({}))
+                    setToast(d.error ?? 'Leider schon vergeben')
+                  }
+                }
+
+                async function unclaimGift() {
+                  const res = await fetch(`/api/rsvp/${encodeURIComponent(token)}/geschenk`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'unclaim', wish_id: wish.id }),
+                  })
+                  if (res.ok) {
+                    setWishlist(prev => prev.map(w => w.id === wish.id ? { ...w, status: 'verfuegbar', is_claimed_by_me: false } : w))
+                  }
+                }
+
+                async function contributeToGift() {
+                  const amt = parseFloat(contributeAmounts[wish.id] ?? '')
+                  if (isNaN(amt) || amt <= 0) return
+                  const res = await fetch(`/api/rsvp/${encodeURIComponent(token)}/geschenk`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'contribute', wish_id: wish.id, amount: amt }),
+                  })
+                  if (res.ok) {
+                    setWishlist(prev => prev.map(w => {
+                      if (w.id !== wish.id) return w
+                      const prev_contrib = w.my_contribution
+                      const new_total = w.total_contributed - prev_contrib + amt
+                      return { ...w, total_contributed: new_total, my_contribution: amt }
+                    }))
+                    setContributeAmounts(prev => ({ ...prev, [wish.id]: '' }))
+                    setToast('Beitrag gespeichert!')
+                  } else {
+                    const d = await res.json().catch(() => ({}))
+                    setToast(d.error ?? 'Fehler beim Speichern')
+                  }
+                }
+
+                return (
+                  <div key={wish.id} style={{
+                    background: 'var(--surface)', borderRadius: 'var(--r-md)', border: `1px solid ${isClaimed && !wish.is_money_wish ? 'rgba(61,122,86,0.3)' : 'var(--border)'}`,
+                    padding: '16px 18px', opacity: isClaimed && !isMine && !wish.is_money_wish ? 0.5 : 1,
+                  }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {wish.is_money_wish
+                          ? <Heart size={14} style={{ color: 'var(--gold)', flexShrink: 0 }} />
+                          : <Gift size={14} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />}
+                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{wish.title}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 8 }}>
+                        {wish.is_money_wish && (
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'rgba(201,168,76,0.12)', color: 'var(--gold)' }}>Geldwunsch</span>
+                        )}
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'rgba(0,0,0,0.04)', color: PRIORITY_COLOR[wish.priority] }}>
+                          {{ hoch: 'Hoch', mittel: 'Mittel', niedrig: 'Niedrig' }[wish.priority]}
+                        </span>
+                      </div>
+                    </div>
+
+                    {wish.description && (
+                      <p style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 8, lineHeight: 1.5 }}>{wish.description}</p>
+                    )}
+
+                    {wish.price && !wish.is_money_wish && (
+                      <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>ca. € {wish.price.toFixed(2)}</p>
+                    )}
+
+                    {wish.link && (
+                      <a href={wish.link} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--gold)', textDecoration: 'none', marginBottom: 10 }}>
+                        <ExternalLink size={11} /> Link ansehen
+                      </a>
+                    )}
+
+                    {/* Money wish progress */}
+                    {wish.is_money_wish && wish.money_target && (
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-dim)', marginBottom: 4 }}>
+                          <span>€ {wish.total_contributed.toFixed(2)} gesammelt</span>
+                          <span>Ziel: € {wish.money_target.toFixed(2)}</span>
+                        </div>
+                        <div style={{ height: 6, background: 'var(--black3)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: fullyFunded ? 'var(--green, #3d7a56)' : 'var(--gold)', borderRadius: 4, transition: 'width 0.4s' }} />
+                        </div>
+                        {wish.my_contribution > 0 && (
+                          <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>Dein Beitrag: € {wish.my_contribution.toFixed(2)}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Actions */}
+                    {wish.is_money_wish ? (
+                      !fullyFunded && (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <div style={{ position: 'relative', flex: 1 }}>
+                            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--text-dim)' }}>€</span>
+                            <input
+                              type="number"
+                              min="1"
+                              step="any"
+                              value={contributeAmounts[wish.id] ?? ''}
+                              onChange={e => setContributeAmounts(prev => ({ ...prev, [wish.id]: e.target.value }))}
+                              placeholder={wish.my_contribution > 0 ? wish.my_contribution.toFixed(2) : 'Betrag'}
+                              style={{ width: '100%', padding: '9px 10px 9px 26px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                            />
+                          </div>
+                          <button onClick={contributeToGift} disabled={!contributeAmounts[wish.id] || parseFloat(contributeAmounts[wish.id] ?? '') <= 0} style={{
+                            padding: '9px 16px', background: 'var(--gold)', color: '#fff', border: 'none', borderRadius: 8,
+                            fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                            opacity: !contributeAmounts[wish.id] || parseFloat(contributeAmounts[wish.id] ?? '') <= 0 ? 0.5 : 1,
+                          }}>
+                            {wish.my_contribution > 0 ? 'Aktualisieren' : 'Beitragen'}
+                          </button>
+                        </div>
+                      )
+                    ) : isClaimed && isMine ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--green, #3d7a56)' }}>✓ Du bringst dieses Geschenk</span>
+                        <button onClick={unclaimGift} style={{ fontSize: 11, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+                          Rückgängig
+                        </button>
+                      </div>
+                    ) : isClaimed && !isMine ? (
+                      <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Bereits vergeben</span>
+                    ) : (
+                      <button onClick={claimGift} style={{
+                        width: '100%', padding: '10px', background: 'transparent', border: '1.5px solid var(--gold)',
+                        borderRadius: 8, fontSize: 13, fontWeight: 600, color: 'var(--gold)', cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s',
+                      }}>
+                        Ich bringe dieses Geschenk
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <Button fullWidth size="lg" variant="gold" onClick={() => setStep('confirmation')}>
+              Weiter
             </Button>
           </div>
         )}
