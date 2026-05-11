@@ -111,7 +111,7 @@ function MealOptionCard({ option, menuCourses, selected, onSelect, disabled }: M
         borderRadius: 'var(--r-md)',
         fontFamily: 'inherit',
         border: `1.5px solid ${selected ? 'var(--gold)' : 'var(--border)'}`,
-        background: selected ? 'var(--gold-pale)' : 'var(--surface)',
+        background: selected ? 'var(--gold)' : 'var(--surface)',
         width: '100%',
         cursor: disabled ? 'default' : 'pointer',
         textAlign: 'left',
@@ -119,9 +119,9 @@ function MealOptionCard({ option, menuCourses, selected, onSelect, disabled }: M
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: courses.length > 0 ? 10 : 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: selected ? 'var(--gold)' : 'var(--text)' }}>{label}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: selected ? '#fff' : 'var(--text)' }}>{label}</span>
         {selected && (
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gold)', background: 'rgba(201,168,76,0.15)', borderRadius: 20, padding: '2px 8px' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '2px 8px' }}>
             ✓ Gewählt
           </span>
         )}
@@ -133,10 +133,10 @@ function MealOptionCard({ option, menuCourses, selected, onSelect, disabled }: M
             if (!desc) return null
             return (
               <div key={c.id ?? c.name}>
-                <span style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: selected ? 'rgba(180,140,50,0.8)' : 'var(--text-dim)', marginBottom: 1 }}>
+                <span style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: selected ? 'rgba(255,255,255,0.65)' : 'var(--text-dim)', marginBottom: 1 }}>
                   {c.name}
                 </span>
-                <span style={{ fontSize: 12, color: selected ? 'var(--text-mid)' : 'var(--text-light)', lineHeight: 1.45 }}>
+                <span style={{ fontSize: 12, color: selected ? 'rgba(255,255,255,0.9)' : 'var(--text-light)', lineHeight: 1.45 }}>
                   {desc}
                 </span>
               </div>
@@ -188,9 +188,11 @@ export default function RSVPPage() {
   // Hotel
   const [hotelRoomId, setHotelRoomId] = useState('')
 
-  // Musikwunsch
-  const [songTitle,  setSongTitle]  = useState('')
-  const [songArtist, setSongArtist] = useState('')
+  // Musikwunsch (post-save, mehrere Songs)
+  const [suggestedSongs, setSuggestedSongs] = useState<{id: string; title: string; artist: string}[]>([])
+  const [newSongTitle,   setNewSongTitle]   = useState('')
+  const [newSongArtist,  setNewSongArtist]  = useState('')
+  const [addingSong,     setAddingSong]     = useState(false)
 
   // Geschenke
   const [wishlist, setWishlist] = useState<WishlistItem[]>([])
@@ -339,8 +341,6 @@ export default function RSVPPage() {
       transport: attending ? (transport || null) : null,
       hotelRoomId: attending ? (hotelRoomId && hotelRoomId !== 'none' ? hotelRoomId : null) : null,
       message,
-      songTitle:  attending ? (songTitle.trim() || null)  : null,
-      songArtist: attending ? (songArtist.trim() || null) : null,
     }
 
     try {
@@ -388,7 +388,7 @@ export default function RSVPPage() {
 
       setEvent({ ...event, hotels: updatedHotels })
       setGuest(updatedGuest)
-      setStep(attending ? 'geschenke' : 'confirmation')
+      setStep(attending ? 'musikwunsch' : 'confirmation')
     } catch (err: any) {
       setToast(err?.message ?? 'Netzwerkfehler')
     } finally {
@@ -424,8 +424,31 @@ export default function RSVPPage() {
   const detailsOk = (!showMealChoice || !!meal)
     && companions.every(c => !showMealChoice || !!c.meal)
 
-  // Musikwunsch: valid if both filled OR both empty
-  const songOk = (!!songTitle.trim()) === (!!songArtist.trim())
+  const newSongOk = !!newSongTitle.trim() && !!newSongArtist.trim()
+
+  async function addSong() {
+    if (!newSongOk || addingSong) return
+    setAddingSong(true)
+    try {
+      const res = await fetch(`/api/rsvp/${encodeURIComponent(token)}/musik`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ songTitle: newSongTitle.trim(), songArtist: newSongArtist.trim() }),
+      })
+      const data = await res.json()
+      if (res.ok && data.suggestion) {
+        setSuggestedSongs(prev => [...prev, { id: data.suggestion.id, title: data.suggestion.song_title, artist: data.suggestion.artist }])
+        setNewSongTitle('')
+        setNewSongArtist('')
+      } else {
+        setToast(data.error ?? 'Fehler beim Speichern')
+      }
+    } catch {
+      setToast('Netzwerkfehler')
+    } finally {
+      setAddingSong(false)
+    }
+  }
 
   // Guest first name for invitation text
   const firstName = guest.name.split(' ')[0]
@@ -750,7 +773,9 @@ export default function RSVPPage() {
               </div>
             </Card>
 
-            <Button fullWidth size="lg" variant="gold" disabled={!detailsOk} onClick={() => setStep(hasHotels ? 'hotel' : 'musikwunsch')}>Weiter</Button>
+            <Button fullWidth size="lg" variant="gold" disabled={!detailsOk || saving} onClick={() => { if (hasHotels) setStep('hotel'); else save() }}>
+              {saving ? 'Wird gespeichert…' : 'Weiter'}
+            </Button>
           </div>
         )}
 
@@ -807,7 +832,9 @@ export default function RSVPPage() {
                 </div>
               ))}
             </div>
-            <Button fullWidth size="lg" variant="gold" disabled={!hotelRoomId} onClick={() => setStep('musikwunsch')}>Weiter</Button>
+            <Button fullWidth size="lg" variant="gold" disabled={!hotelRoomId || saving} onClick={save}>
+              {saving ? 'Wird gespeichert…' : 'Weiter'}
+            </Button>
           </div>
         )}
 
@@ -817,47 +844,59 @@ export default function RSVPPage() {
             <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--gold-pale)', border: '1px solid rgba(201,168,76,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
               <Music size={20} color="var(--gold)" />
             </div>
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Musikwunsch</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 24, lineHeight: 1.6 }}>
-              Hast du einen Song-Wunsch für die Feier? Gib Titel und Interpret ein — alles freiwillig.
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Musikwünsche</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 20, lineHeight: 1.6 }}>
+              Welche Songs dürfen auf keinen Fall fehlen? Füge so viele Wünsche hinzu wie du möchtest — alles freiwillig.
             </p>
 
+            {/* Bereits hinzugefügte Songs */}
+            {suggestedSongs.length > 0 && (
+              <Card style={{ marginBottom: 16, padding: 0, overflow: 'hidden' }}>
+                {suggestedSongs.map((s, i) => (
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < suggestedSongs.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <Music size={13} color="var(--gold)" style={{ flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', margin: 0 }}>{s.title}</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>{s.artist}</p>
+                    </div>
+                  </div>
+                ))}
+              </Card>
+            )}
+
+            {/* Neuen Song hinzufügen */}
             <Card style={{ marginBottom: 20 }}>
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Titel *</label>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Song hinzufügen
+              </p>
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Titel</label>
                 <input
-                  value={songTitle}
-                  onChange={e => setSongTitle(e.target.value)}
+                  value={newSongTitle}
+                  onChange={e => setNewSongTitle(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addSong()}
                   placeholder="z.B. Perfect"
-                  style={{ width: '100%', padding: '11px 13px', background: 'var(--bg)', border: `1px solid ${songTitle && !songArtist ? 'var(--gold)' : 'var(--border)'}`, borderRadius: 10, fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '11px 13px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Interpret *</label>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Interpret</label>
                 <input
-                  value={songArtist}
-                  onChange={e => setSongArtist(e.target.value)}
+                  value={newSongArtist}
+                  onChange={e => setNewSongArtist(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addSong()}
                   placeholder="z.B. Ed Sheeran"
-                  style={{ width: '100%', padding: '11px 13px', background: 'var(--bg)', border: `1px solid ${songArtist && !songTitle ? 'var(--gold)' : 'var(--border)'}`, borderRadius: 10, fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '11px 13px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
-              {!songOk && (
-                <p style={{ fontSize: 11, color: 'var(--gold)', marginTop: 8 }}>Bitte beide Felder ausfüllen oder beide leer lassen.</p>
-              )}
+              <Button fullWidth variant="secondary" disabled={!newSongOk || addingSong} onClick={addSong}>
+                {addingSong ? 'Wird gespeichert…' : '+ Song hinzufügen'}
+              </Button>
             </Card>
 
-            <Button fullWidth size="lg" variant="gold" disabled={saving || isBlocked || !songOk} onClick={save}>
-              {saving ? 'Wird gespeichert…' : 'Antwort absenden'}
+            <Button fullWidth size="lg" variant="gold" onClick={() => setStep('geschenke')}>
+              {suggestedSongs.length > 0 ? 'Weiter' : 'Überspringen'}
             </Button>
-            {(!songTitle && !songArtist) && (
-              <button
-                onClick={save}
-                disabled={saving || isBlocked}
-                style={{ width: '100%', marginTop: 10, padding: '12px', background: 'none', border: 'none', fontSize: 13, color: 'var(--text-dim)', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Überspringen
-              </button>
-            )}
           </div>
         )}
 
@@ -1051,7 +1090,7 @@ export default function RSVPPage() {
                 {hotelRoomId && hotelRoomId !== 'none' && <Row label="Hotel" value={allRooms.find((r: any) => r.id === hotelRoomId)?.type ?? '—'} />}
                 {hotelRoomId === 'none' && <Row label="Hotel" value="Kein Zimmer" />}
                 {arrivalDate && <Row label="Ankunft" value={`${new Date(arrivalDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}${arrivalTime ? ` · ${arrivalTime}` : ''}`} />}
-                {songTitle && songArtist && <Row label="Musikwunsch" value={`${songTitle} — ${songArtist}`} />}
+                {suggestedSongs.length > 0 && <Row label="Musikwünsche" value={suggestedSongs.map(s => `${s.title} — ${s.artist}`).join(', ')} />}
               </Card>
             )}
 
