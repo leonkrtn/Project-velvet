@@ -755,7 +755,7 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
     return (
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <h1 className="bp-section-title" style={{ margin: 0 }}>Musik</h1>
+          <h1 className="bp-page-title" style={{ margin: 0 }}>Musik</h1>
           <button
             onClick={openVorschlaege}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', background: 'none', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 'var(--bp-r-sm, 6px)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--bp-ink-2, #6b5e54)' }}
