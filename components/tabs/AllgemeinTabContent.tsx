@@ -5,7 +5,7 @@ import AllgemeinForm from '@/app/veranstalter/[eventId]/allgemein/AllgemeinForm'
 
 interface TabContentProps {
   eventId: string
-  mode: 'veranstalter' | 'dienstleister'
+  mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   tabAccess?: 'read' | 'write'
   itemPermissions?: Record<string, 'none' | 'read' | 'write'>
 }
