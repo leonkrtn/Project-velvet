@@ -5,29 +5,29 @@
 
 /* ── Design Tokens ──────────────────────────────────────────────────────── */
 :root {
-  /* Backgrounds */
-  --bp-ivory:       #F7F3EE;
-  --bp-ivory-2:     #F0EBE3;
+  /* Backgrounds — off-white palette */
+  --bp-ivory:       #F8F8F6;
+  --bp-ivory-2:     #F0F0EE;
   --bp-paper:       #FFFFFF;
 
-  /* Gold scale */
+  /* Gold scale — accent only, less fill */
   --bp-gold:        #B89968;
   --bp-gold-deep:   #9C7F4F;
-  --bp-gold-pale:   #F5EFE6;
-  --bp-gold-mist:   #EDE4D6;
+  --bp-gold-pale:   #F5F0E8;
+  --bp-gold-mist:   #EDE8DC;
 
   /* Ink / text */
   --bp-ink:         #2C2825;
   --bp-ink-2:       #5C534A;
   --bp-ink-3:       #8C8076;
 
-  /* Borders */
-  --bp-rule:        #E5DDD4;
+  /* Borders — more neutral, less warm */
+  --bp-rule:        #E8E8E6;
   --bp-rule-gold:   #D4BC9A;
 
   /* Shadows */
-  --bp-shadow-card: 0 1px 3px rgba(44,40,37,0.08), 0 4px 12px rgba(44,40,37,0.06);
-  --bp-shadow-elevated: 0 4px 16px rgba(44,40,37,0.12);
+  --bp-shadow-card: 0 1px 2px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.04);
+  --bp-shadow-elevated: 0 4px 16px rgba(0,0,0,0.08);
 
   /* Radii */
   --bp-r-xs:    4px;
@@ -40,8 +40,8 @@
   --bp-sidebar-collapsed: 60px;
   --bp-sidebar-expanded:  220px;
   --bp-sidebar-bg:        #FFFFFF;
-  --bp-sidebar-active-bg: var(--bp-gold-pale);
-  --bp-sidebar-active-fg: var(--bp-gold-deep);
+  --bp-sidebar-active-bg: var(--bp-ivory-2);
+  --bp-sidebar-active-fg: var(--bp-ink);
 
   /* Transitions */
   --bp-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
@@ -63,25 +63,25 @@
 }
 
 .bp-h1 {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 2rem;
-  font-weight: 600;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 1.875rem;
+  font-weight: 700;
   line-height: 1.2;
   color: var(--bp-ink);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .bp-h2 {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 1.375rem;
+  font-weight: 700;
   line-height: 1.25;
   color: var(--bp-ink);
 }
 
 .bp-h3 {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 1.25rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 1.125rem;
   font-weight: 600;
   line-height: 1.3;
   color: var(--bp-ink);
@@ -149,7 +149,7 @@
   flex-direction: column;
   z-index: 40;
   transition: width var(--bp-transition);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .bp-sidebar[data-expanded="true"] {
@@ -160,10 +160,12 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1.25rem 1rem;
+  padding: 1rem;
   border-bottom: 1px solid var(--bp-rule);
-  min-height: 64px;
+  min-height: 56px;
   flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
 }
 
 .bp-sidebar-logo-mark {
@@ -236,12 +238,15 @@
   text-decoration: none;
   cursor: pointer;
   border: none;
+  border-left: 2px solid transparent;
   background: none;
   width: 100%;
   white-space: nowrap;
-  transition: background var(--bp-transition), color var(--bp-transition);
+  overflow: hidden;
+  transition: background var(--bp-transition), color var(--bp-transition), border-color var(--bp-transition);
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.9375rem;
+  box-sizing: border-box;
 }
 
 .bp-nav-item:hover {
@@ -254,6 +259,7 @@
   background: var(--bp-sidebar-active-bg);
   color: var(--bp-sidebar-active-fg);
   font-weight: 500;
+  border-left-color: var(--bp-gold);
 }
 
 .bp-nav-item-icon {
@@ -278,26 +284,21 @@
   cursor: default;
 }
 
-/* Sidebar toggle button — sits at the right edge of the sidebar */
+/* Sidebar toggle button — inside logo header, right-aligned */
 .bp-sidebar-toggle {
-  position: absolute;
-  top: 50%;
-  right: -12px;
-  transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--bp-paper);
-  border: 1px solid var(--bp-rule);
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--bp-r-sm);
+  background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 10;
   color: var(--bp-ink-3);
-  box-shadow: var(--bp-shadow-card);
   transition: background var(--bp-transition), color var(--bp-transition);
-  flex-shrink: 0;
 }
 
 .bp-sidebar-toggle:hover {
@@ -306,8 +307,33 @@
 }
 
 .bp-sidebar-toggle svg {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
+  transition: transform var(--bp-transition);
+}
+
+.bp-sidebar[data-expanded="true"] .bp-sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+/* Collapsed state: logo area acts as click target, centered */
+.bp-sidebar:not([data-expanded="true"]) .bp-sidebar-logo {
+  justify-content: center;
+  cursor: pointer;
+}
+
+.bp-sidebar:not([data-expanded="true"]) .bp-sidebar-logo:hover {
+  background: var(--bp-ivory-2);
+}
+
+.bp-sidebar-toggle:hover {
+  background: var(--bp-ivory-2);
+  color: var(--bp-ink);
+}
+
+.bp-sidebar-toggle svg {
+  width: 16px;
+  height: 16px;
   transition: transform var(--bp-transition);
 }
 
@@ -502,14 +528,14 @@
 }
 
 .bp-btn-secondary {
-  background: var(--bp-ivory-2);
+  background: var(--bp-paper);
   color: var(--bp-ink);
   border: 1px solid var(--bp-rule);
 }
 
 .bp-btn-secondary:hover {
-  background: var(--bp-gold-mist);
-  border-color: var(--bp-rule-gold);
+  background: var(--bp-ivory-2);
+  border-color: #D0D0CE;
 }
 
 .bp-btn-ghost {
@@ -695,6 +721,68 @@
 }
 
 
+/* ── Numbered Step Tabs (Gäste, Grundriss-style) ────────────────────────── */
+.bp-step-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bp-paper);
+  border: 1px solid var(--bp-rule);
+  border-radius: var(--bp-r-pill);
+  padding: 4px;
+  width: fit-content;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.bp-step-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: var(--bp-r-pill);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--bp-ink-3);
+  transition: background var(--bp-transition), color var(--bp-transition);
+  white-space: nowrap;
+}
+
+.bp-step-tab:hover {
+  color: var(--bp-ink);
+}
+
+.bp-step-tab[aria-selected="true"] {
+  background: var(--bp-ink);
+  color: #fff;
+  font-weight: 500;
+}
+
+.bp-step-tab-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--bp-ivory-2);
+  color: var(--bp-ink-3);
+  flex-shrink: 0;
+  transition: background var(--bp-transition), color var(--bp-transition);
+}
+
+.bp-step-tab[aria-selected="true"] .bp-step-tab-num {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+
 /* ── Table ──────────────────────────────────────────────────────────────── */
 .bp-table {
   width: 100%;
@@ -723,7 +811,7 @@
 
 .bp-table tr:last-child td { border-bottom: none; }
 
-.bp-table tr:hover td { background: var(--bp-ivory); }
+.bp-table tr:hover td { background: var(--bp-ivory-2); }
 
 
 /* ── Badges / Pills ─────────────────────────────────────────────────────── */
@@ -779,8 +867,8 @@
 
 /* ── Section Headers ────────────────────────────────────────────────────── */
 .bp-section-title {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 1.125rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--bp-ink);
   margin: 0 0 1rem;
@@ -791,11 +879,12 @@
 }
 
 .bp-page-title {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 1.75rem;
-  font-weight: 600;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: var(--bp-ink);
   margin: 0 0 0.25rem;
+  letter-spacing: -0.02em;
 }
 
 .bp-page-subtitle {
@@ -847,8 +936,8 @@
 }
 
 .bp-empty-title {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 1.25rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--bp-ink);
   margin: 0 0 0.5rem;

@@ -263,6 +263,7 @@ export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
       </Section>
 
       {/* Budget */}
+      <div id="budget" />
       <Section title="Budget">
         <Field label="Gesamtbudget (€)">
           <input

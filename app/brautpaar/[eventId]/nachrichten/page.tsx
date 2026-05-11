@@ -45,7 +45,7 @@ export default async function NachrichtenPage({ params }: Props) {
   }))
 
   return (
-    <div className="bp-page" style={{ padding: 0, maxWidth: '100%' }}>
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <ChatsClient
         eventId={eventId}
         currentUserId={user.id}

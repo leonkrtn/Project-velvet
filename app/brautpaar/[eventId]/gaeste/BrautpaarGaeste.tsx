@@ -527,42 +527,43 @@ export default function BrautpaarGaeste({
         <h1 className="bp-page-title">Gäste</h1>
       </div>
 
-      <div className="bp-tabs bp-mb-6">
-        {TABS.map(tab => (
+      <div className="bp-step-tabs">
+        {TABS.map((tab, idx) => (
           <button
             key={tab.key}
-            className="bp-tab"
+            className="bp-step-tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
           >
-            {tab.icon}
+            <span className="bp-step-tab-num">{idx + 1}</span>
             {tab.label}
           </button>
         ))}
       </div>
 
-      {activeTab === 'gaesteliste' && (
-        <GaestelisteTab
-          guests={guests}
-          eventId={eventId}
-          mealOptions={mealOptions}
-          onUpdate={handleGuestUpdate}
-        />
-      )}
-      {activeTab === 'hotel' && (
-        <HotelTab hotels={hotels} guests={guests} />
-      )}
-      {activeTab === 'rsvp' && (
-        <RsvpTab eventId={eventId} inviteCodes={inviteCodes} />
-      )}
-      {activeTab === 'einstellungen' && (
-        <EinstellungenTab
-          eventId={eventId}
-          rsvpSettings={rsvpSettings}
-          childrenAllowed={childrenAllowed}
-        />
-      )}
+      <div style={{ minHeight: 480 }}>
+        {activeTab === 'gaesteliste' && (
+          <GaestelisteTab
+            guests={guests}
+            eventId={eventId}
+            mealOptions={mealOptions}
+            onUpdate={handleGuestUpdate}
+          />
+        )}
+        {activeTab === 'hotel' && (
+          <HotelTab hotels={hotels} guests={guests} />
+        )}
+        {activeTab === 'rsvp' && (
+          <RsvpTab eventId={eventId} inviteCodes={inviteCodes} />
+        )}
+        {activeTab === 'einstellungen' && (
+          <EinstellungenTab
+            eventId={eventId}
+            rsvpSettings={rsvpSettings}
+            childrenAllowed={childrenAllowed}
+          />
+        )}
+      </div>
     </div>
   )
 }
