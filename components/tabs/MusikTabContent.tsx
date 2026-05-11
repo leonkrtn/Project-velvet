@@ -392,10 +392,10 @@ function AddSongForm({ eventId, onAdded }: { eventId: string; onAdded: (s: Song)
 
 // ── Brautpaar Section ─────────────────────────────────────────────────────────
 
-const BP_SECTION_CFG: Record<string, { icon: React.ReactNode; label: string; accentColor: string; borderColor: string; badgeBg: string }> = {
-  wish:     { icon: <Heart size={15} />,     label: 'Wünsche',  accentColor: '#C4717A', borderColor: 'rgba(196,113,122,0.25)', badgeBg: 'rgba(196,113,122,0.08)' },
-  no_go:    { icon: <Ban size={15} />,       label: 'No-Gos',   accentColor: '#e05252', borderColor: 'rgba(224,82,82,0.25)',   badgeBg: 'rgba(224,82,82,0.08)'   },
-  playlist: { icon: <ListMusic size={15} />, label: 'Playlist', accentColor: 'var(--bp-gold, #B8943E)', borderColor: 'rgba(184,148,62,0.25)', badgeBg: 'rgba(184,148,62,0.08)' },
+const BP_SECTION_CFG: Record<string, { icon: React.ReactNode; label: string; accentColor: string; dividerColor: string }> = {
+  wish:     { icon: <Heart size={12} />,     label: 'Wünsche',  accentColor: '#C4717A', dividerColor: 'rgba(196,113,122,0.12)' },
+  no_go:    { icon: <Ban size={12} />,       label: 'No-Gos',   accentColor: '#e05252', dividerColor: 'rgba(224,82,82,0.12)'   },
+  playlist: { icon: <ListMusic size={12} />, label: 'Playlist', accentColor: 'var(--bp-gold, #B8943E)', dividerColor: 'rgba(184,148,62,0.15)' },
 }
 
 function BrautpaarSongSection({
@@ -445,85 +445,87 @@ function BrautpaarSongSection({
   }
 
   return (
-    <div className="bp-card" style={{ borderTop: `3px solid ${cfg.accentColor}`, padding: 0, overflow: 'hidden', marginBottom: 0 }}>
+    <div style={{ borderRadius: 10, border: '1px solid var(--bp-rule, #ede5dc)', overflow: 'hidden', background: '#fff' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px', background: cfg.badgeBg, borderBottom: `1px solid ${cfg.borderColor}` }}>
-        <span style={{ color: cfg.accentColor }}>{cfg.icon}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', color: cfg.accentColor }}>{cfg.label}</span>
-        <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, color: cfg.accentColor, opacity: 0.7, background: 'rgba(255,255,255,0.5)', borderRadius: 20, padding: '2px 8px' }}>{songs.length}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 16px 10px', borderBottom: `1px solid ${cfg.dividerColor}` }}>
+        <span style={{ color: cfg.accentColor, display: 'flex', alignItems: 'center' }}>{cfg.icon}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: cfg.accentColor }}>{cfg.label}</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 500, color: cfg.accentColor, opacity: 0.55 }}>{songs.length}</span>
       </div>
 
       {/* Songs */}
       {songs.length === 0 && (
-        <div style={{ padding: '16px 18px', fontSize: 13, color: 'var(--bp-ink, #3a3028)', opacity: 0.45, fontStyle: 'italic' }}>
+        <div style={{ padding: '13px 16px', fontSize: 12.5, color: 'var(--bp-ink, #3a3028)', opacity: 0.35, fontStyle: 'italic' }}>
           Noch keine Einträge
         </div>
       )}
-      {songs.map(song => (
-        <div key={song.id} style={{ borderBottom: `1px solid ${cfg.borderColor}` }}>
+      {songs.map((song, i) => (
+        <div key={song.id} style={{ borderBottom: i < songs.length - 1 ? `1px solid ${cfg.dividerColor}` : undefined }}>
           {editId === song.id ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'rgba(255,255,255,0.6)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: 'rgba(250,248,245,0.8)' }}>
               <input
                 value={editTitle}
                 onChange={e => setEditTitle(e.target.value)}
                 placeholder="Titel"
                 autoFocus
                 onKeyDown={e => { if (e.key === 'Enter') saveEdit(song.id); if (e.key === 'Escape') setEditId(null) }}
-                style={{ flex: 2, padding: '7px 10px', border: `1px solid ${cfg.accentColor}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                style={{ flex: 2, padding: '6px 9px', border: `1px solid ${cfg.accentColor}`, borderRadius: 5, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: '#fff' }}
               />
               <input
                 value={editArtist}
                 onChange={e => setEditArtist(e.target.value)}
                 placeholder="Interpret"
                 onKeyDown={e => { if (e.key === 'Enter') saveEdit(song.id); if (e.key === 'Escape') setEditId(null) }}
-                style={{ flex: 1, padding: '7px 10px', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                style={{ flex: 1, padding: '6px 9px', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 5, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: '#fff' }}
               />
-              <button onClick={() => saveEdit(song.id)} style={{ padding: '7px 10px', background: cfg.accentColor, color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                <Check size={13} />
+              <button onClick={() => saveEdit(song.id)} style={{ padding: '6px 9px', background: cfg.accentColor, color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <Check size={12} />
               </button>
-              <button onClick={() => setEditId(null)} style={{ padding: '7px 9px', background: 'none', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                <X size={13} />
+              <button onClick={() => setEditId(null)} style={{ padding: '6px 8px', background: 'none', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 5, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <X size={12} />
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--bp-ink, #3a3028)' }}>{song.title || '—'}</span>
-                {song.artist && <span style={{ fontSize: 12, color: 'var(--bp-ink, #3a3028)', opacity: 0.5, marginLeft: 8 }}>— {song.artist}</span>}
+                <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--bp-ink, #3a3028)' }}>{song.title || '—'}</span>
+                {song.artist && <span style={{ fontSize: 12, color: 'var(--bp-ink, #3a3028)', opacity: 0.42, marginLeft: 7 }}>— {song.artist}</span>}
               </div>
-              <button onClick={() => startEdit(song)} style={{ padding: '5px 8px', background: 'none', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.6 }}>
-                <Edit2 size={12} />
-              </button>
-              <button onClick={() => onDelete(song.id)} style={{ padding: '5px 8px', background: 'none', border: '1px solid rgba(224,82,82,0.3)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                <Trash2 size={12} style={{ color: '#e05252' }} />
-              </button>
+              <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+                <button onClick={() => startEdit(song)} style={{ padding: '4px 7px', background: 'none', border: 'none', borderRadius: 5, cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.35 }}>
+                  <Edit2 size={12} />
+                </button>
+                <button onClick={() => onDelete(song.id)} style={{ padding: '4px 7px', background: 'none', border: 'none', borderRadius: 5, cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.45 }}>
+                  <Trash2 size={12} style={{ color: '#e05252' }} />
+                </button>
+              </div>
             </div>
           )}
         </div>
       ))}
 
       {/* Inline add */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: 'rgba(255,255,255,0.4)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderTop: songs.length > 0 ? `1px solid ${cfg.dividerColor}` : undefined, background: 'rgba(250,248,245,0.5)' }}>
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="Titel hinzufügen…"
           onKeyDown={e => { if (e.key === 'Enter') add() }}
-          style={{ flex: 2, padding: '7px 10px', border: '1px dashed var(--bp-rule, #e6ddd4)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
+          style={{ flex: 2, padding: '6px 9px', border: '1px solid transparent', borderRadius: 5, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: 'transparent', color: 'var(--bp-ink, #3a3028)' }}
         />
         <input
           value={artist}
           onChange={e => setArtist(e.target.value)}
           placeholder="Interpret (optional)"
           onKeyDown={e => { if (e.key === 'Enter') add() }}
-          style={{ flex: 1, padding: '7px 10px', border: '1px dashed var(--bp-rule, #e6ddd4)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
+          style={{ flex: 1, padding: '6px 9px', border: '1px solid transparent', borderRadius: 5, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: 'transparent', color: 'var(--bp-ink, #3a3028)' }}
         />
         <button
           onClick={add}
           disabled={saving || !title.trim()}
-          style={{ padding: '7px 12px', background: title.trim() ? cfg.accentColor : 'var(--bp-rule, #e6ddd4)', color: title.trim() ? '#fff' : 'var(--bp-ink, #3a3028)', border: 'none', borderRadius: 6, cursor: title.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', transition: 'background 0.15s', opacity: saving ? 0.7 : 1 }}
+          style={{ padding: '6px 10px', background: title.trim() ? cfg.accentColor : 'transparent', color: title.trim() ? '#fff' : 'var(--bp-ink, #3a3028)', border: title.trim() ? 'none' : '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 5, cursor: title.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', transition: 'all 0.15s', opacity: saving ? 0.6 : title.trim() ? 1 : 0.4 }}
         >
-          {saving ? '…' : <Plus size={14} />}
+          {saving ? '…' : <Plus size={13} />}
         </button>
       </div>
     </div>
