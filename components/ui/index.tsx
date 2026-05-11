@@ -169,12 +169,15 @@ const MEALS: {value:MealChoice; label:string}[] = [
   {value:'vegetarisch',label:'Vegetarisch'}, {value:'vegan',label:'Vegan'},
 ]
 
-export function MealPicker({ value, onChange, label }: { value:MealChoice|undefined; onChange:(v:MealChoice)=>void; label?:string }) {
+export function MealPicker({ value, onChange, label, options }: {
+  value:MealChoice|undefined; onChange:(v:MealChoice)=>void; label?:string; options?:MealChoice[]
+}) {
+  const visible = options ? MEALS.filter(m => options.includes(m.value)) : MEALS
   return (
     <div style={{ marginBottom:14 }}>
       {label && <FieldLabel required>{label}</FieldLabel>}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-        {MEALS.map(m => (
+        {visible.map(m => (
           <button key={m.value} type="button" onClick={()=>onChange(m.value)} data-sel={value===m.value?'':undefined} style={{
             padding:'11px 10px', borderRadius:'var(--r-sm)', fontFamily:'inherit',
             border:`1.5px solid ${value===m.value?'var(--gold)':'var(--border)'}`,

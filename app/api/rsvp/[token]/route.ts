@@ -171,11 +171,24 @@ export async function POST(
   if (gErr)  return NextResponse.json({ error: gErr.message }, { status: 500 })
   if (!guest) return NextResponse.json({ error: 'Einladung nicht gefunden' }, { status: 404 })
 
-  // 2. Freeze prüfen
+  // 2. Event laden (Freeze + meal_options)
   const { data: ev } = await admin
-    .from('events').select('data_freeze_at').eq('id', guest.event_id).maybeSingle()
+    .from('events').select('data_freeze_at, meal_options').eq('id', guest.event_id).maybeSingle()
   if (ev?.data_freeze_at && new Date(ev.data_freeze_at) < new Date()) {
     return NextResponse.json({ error: 'Event ist gesperrt' }, { status: 409 })
+  }
+
+  // 3a. Menü-Validierung gegen konfigurierte Optionen
+  const validMeals: MealChoice[] = (ev?.meal_options as MealChoice[] | null) ?? ['fleisch', 'fisch', 'vegetarisch', 'vegan']
+  if (body.attending && body.meal && !validMeals.includes(body.meal)) {
+    return NextResponse.json({ error: 'Ungültige Menüwahl' }, { status: 400 })
+  }
+  if (body.attending && body.begleitpersonen) {
+    for (const b of body.begleitpersonen) {
+      if (b.meal && !validMeals.includes(b.meal)) {
+        return NextResponse.json({ error: 'Ungültige Menüwahl für Begleitperson' }, { status: 400 })
+      }
+    }
   }
 
   const attending = body.attending

@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { v4 as uuid } from 'uuid'
 import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel } from 'lucide-react'
 import type {
@@ -37,7 +37,6 @@ function blankCompanion(): CompanionDraft {
 
 export default function RSVPPage() {
   const params = useParams()
-  const router = useRouter()
   const token  = params?.token as string
 
   const [event, setEvent] = useState<Event | null>(null)
@@ -362,7 +361,6 @@ export default function RSVPPage() {
             )}
 
             <Button fullWidth size="lg" variant="gold" onClick={() => setStep('rsvp')}>Jetzt antworten</Button>
-            <button onClick={() => router.push('/dashboard')} style={{ width: '100%', marginTop: 12, padding: '12px', background: 'none', border: 'none', fontSize: 13, color: 'var(--text-dim)', cursor: 'pointer', fontFamily: 'inherit' }}>Zurück zum Dashboard</button>
           </div>
         )}
 
@@ -482,7 +480,7 @@ export default function RSVPPage() {
             <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>Damit wir alles perfekt vorbereiten können.</p>
 
             <Card style={{ marginBottom: 10 }}>
-              <MealPicker label="Deine Menüwahl" value={meal} onChange={setMeal} />
+              <MealPicker label="Deine Menüwahl" value={meal} onChange={setMeal} options={event.mealOptions as MealChoice[]} />
             </Card>
 
             {companions.map((c, idx) => (
@@ -491,6 +489,7 @@ export default function RSVPPage() {
                   label={`Menüwahl: ${c.name || `Begleitperson ${idx + 1}`}`}
                   value={c.meal}
                   onChange={v => updateCompanion(idx, { meal: v })}
+                  options={event.mealOptions as MealChoice[]}
                 />
               </Card>
             ))}
@@ -626,7 +625,6 @@ export default function RSVPPage() {
             )}
 
             <Button fullWidth variant="secondary" onClick={() => setStep('rsvp')}>Antwort ändern</Button>
-            <button onClick={() => router.push('/dashboard')} style={{ width: '100%', marginTop: 12, padding: '12px', background: 'none', border: 'none', fontSize: 13, color: 'var(--text-dim)', cursor: 'pointer', fontFamily: 'inherit' }}>Zurück zum Dashboard</button>
           </div>
         )}
       </div>

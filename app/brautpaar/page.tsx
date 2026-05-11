@@ -6,6 +6,7 @@ import { SortableContext, rectSortingStrategy, arrayMove } from '@dnd-kit/sortab
 import { Users, Hotel, Utensils, LayoutDashboard, RefreshCw, FileText, Download, X } from 'lucide-react'
 import { getStats, DEFAULT_FEATURE_TOGGLES, type Event, type CateringPlan, type FeatureKey } from '@/lib/store'
 import { useEvent } from '@/lib/event-context'
+import { DEFAULT_BRAUTPAAR_PERMISSIONS } from '@/lib/types/roles'
 import { Toast } from '@/components/ui'
 import { SortableWidget, type WidgetId } from '@/components/dashboard/SortableWidget'
 import { CountdownWidget, RsvpWidget, BudgetWidget, TasksWidget, SeatingWidget, VendorsWidget, RemindersWidget, SubEventsWidget, ArrivalWidget, TimelineWidget, DekoWidget } from '@/components/dashboard/DashboardWidgets'
@@ -29,7 +30,8 @@ const PINNED_WIDGETS: WidgetId[] = ['countdown','rsvp','tasks']
 const DEFAULT_WIDGET_ORDER: WidgetId[] = ['budget','seating','vendors','reminders','sub-events','arrival','deko','timeline']
 
 export default function BrautpaarPage() {
-  const { event, updateEvent } = useEvent()
+  const { event, updateEvent, brautpaarPerm } = useEvent()
+  const bp = { ...DEFAULT_BRAUTPAAR_PERMISSIONS, ...brautpaarPerm }
   const [toast, setToast]   = useState<string|null>(null)
   const [del, setDel]       = useState<string|null>(null)
   const [tab, setTab]       = useState<Tab>(() => {
@@ -124,11 +126,13 @@ export default function BrautpaarPage() {
     updateEvent({...event,catering,budget:newBudget})
   },[catering])
 
-  // Redirect away from disabled feature tabs
-  const cateringEnabled = event?.organizer?.featureToggles?.catering ?? DEFAULT_FEATURE_TOGGLES.catering
+  // Redirect away from disabled feature tabs or restricted permission tabs
+  const cateringEnabled = (event?.organizer?.featureToggles?.catering ?? DEFAULT_FEATURE_TOGGLES.catering) && bp.catering
+  const hotelEnabled = bp.hotel
   useEffect(() => {
     if (tab === 'catering' && !cateringEnabled) switchTab('overview')
-  }, [cateringEnabled, tab])
+    if (tab === 'hotel' && !hotelEnabled) switchTab('overview')
+  }, [cateringEnabled, hotelEnabled, tab])
 
   if(!event) return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100dvh',background:'var(--bg)'}}>
@@ -162,6 +166,11 @@ export default function BrautpaarPage() {
   const visibleWidgets = widgetOrder.filter(id => {
     const fk = WIDGET_FEATURE[id]
     if (fk && !featureToggles[fk]) return false
+    if (id === 'seating' && !bp.sitzplan) return false
+    if (id === 'deko' && !bp.dekorationen) return false
+    if (id === 'sub-events' && !bp.subEvents) return false
+    if (id === 'reminders' && !bp.erinnerungen) return false
+    if (id === 'timeline' && !bp.ablaufplan) return false
     return id === 'timeline' || id !== 'arrival' || Object.keys(stats.arrivalDays).length > 0
   })
   const pinnedWidgets = PINNED_WIDGETS

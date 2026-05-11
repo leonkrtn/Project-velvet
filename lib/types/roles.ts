@@ -54,6 +54,31 @@ export interface TrauzeugePermissions {
   canManageDeko: boolean
 }
 
+export interface BrautpaarPermissions {
+  eventId: string
+  ablaufplan: boolean
+  subEvents: boolean
+  erinnerungen: boolean
+  sitzplan: boolean
+  dekorationen: boolean
+  dienstleister: boolean
+  hotel: boolean
+  catering: boolean
+  anzeigeeinstellungen: boolean
+}
+
+export const DEFAULT_BRAUTPAAR_PERMISSIONS: Omit<BrautpaarPermissions, 'eventId'> = {
+  ablaufplan: true,
+  subEvents: false,
+  erinnerungen: true,
+  sitzplan: true,
+  dekorationen: true,
+  dienstleister: true,
+  hotel: true,
+  catering: false,
+  anzeigeeinstellungen: false,
+}
+
 export const DEFAULT_TRAUZEUGE_PERMISSIONS: Omit<TrauzeugePermissions, 'eventId' | 'userId'> = {
   canViewGuests: true,
   canEditGuests: false,
