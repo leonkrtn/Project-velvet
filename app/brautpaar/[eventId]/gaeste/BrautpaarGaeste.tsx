@@ -75,17 +75,19 @@ function AttendingBadge({ status }: { status: string }) {
 
 // ── Gästeliste tab ───────────────────────────────────────────────────────────
 
-function GaestelisteTab({ guests, eventId, onUpdate }: {
+function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
   guests: Guest[]
   eventId: string
+  userId: string
   onUpdate: (g: Guest) => void
 }) {
-  const [search,  setSearch]  = useState('')
-  const [filter,  setFilter]  = useState<'all' | 'ja' | 'nein' | 'ausstehend'>('all')
-  const [adding,  setAdding]  = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newSide, setNewSide] = useState('')
-  const [saving,  setSaving]  = useState(false)
+  const [search,    setSearch]    = useState('')
+  const [filter,    setFilter]    = useState<'all' | 'ja' | 'nein' | 'ausstehend'>('all')
+  const [adding,    setAdding]    = useState(false)
+  const [newName,   setNewName]   = useState('')
+  const [newSide,   setNewSide]   = useState('')
+  const [newEmail,  setNewEmail]  = useState('')
+  const [saving,    setSaving]    = useState(false)
 
   const filtered = guests.filter(g => {
     const matchSearch = g.name.toLowerCase().includes(search.toLowerCase())
@@ -99,13 +101,22 @@ function GaestelisteTab({ guests, eventId, onUpdate }: {
     const supabase = createClient()
     const { data, error } = await supabase
       .from('guests')
-      .insert({ event_id: eventId, name: newName.trim(), side: newSide || null, attending: 'ausstehend' })
+      .insert({
+        event_id:   eventId,
+        name:       newName.trim(),
+        side:       newSide || null,
+        email:      newEmail.trim() || null,
+        attending:  'ausstehend',
+        created_by: userId,
+        // crypto.randomUUID() bypasses the broken base64url DEFAULT (unsupported in PG < 17)
+        token:      crypto.randomUUID(),
+      })
       .select()
       .single()
     setSaving(false)
     if (!error && data) {
       onUpdate(data as Guest)
-      setNewName(''); setNewSide(''); setAdding(false)
+      setNewName(''); setNewSide(''); setNewEmail(''); setAdding(false)
     }
   }
 
@@ -167,9 +178,13 @@ function GaestelisteTab({ guests, eventId, onUpdate }: {
                 <option value="Gemeinsam">Gemeinsam</option>
               </select>
             </div>
+            <div className="bp-field">
+              <label className="bp-label-text">E-Mail</label>
+              <input className="bp-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@beispiel.de" />
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={() => { setAdding(false); setNewName(''); setNewSide('') }}>Abbrechen</button>
+            <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={() => { setAdding(false); setNewName(''); setNewSide(''); setNewEmail('') }}>Abbrechen</button>
             <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={addGuest} disabled={saving || !newName.trim()}>{saving ? '…' : 'Hinzufügen'}</button>
           </div>
         </div>
@@ -640,7 +655,7 @@ export default function BrautpaarGaeste({
 
       <div style={{ minHeight: 480 }}>
         {activeTab === 'gaesteliste' && (
-          <GaestelisteTab guests={guests} eventId={eventId} onUpdate={handleGuestUpdate} />
+          <GaestelisteTab guests={guests} eventId={eventId} userId={userId} onUpdate={handleGuestUpdate} />
         )}
         {activeTab === 'hotel' && (
           <HotelTab hotels={hotels} guests={guests} />
