@@ -71,6 +71,7 @@ export async function GET(
     { data: wishes },
     { data: beitraege },
     { data: rsvpSettings },
+    { data: cateringPlan },
   ] = await Promise.all([
     admin.from('events')
       .select('id, title, couple_name, date, venue, venue_address, dresscode, children_allowed, children_note, meal_options, max_begleitpersonen, data_freeze_at')
@@ -85,6 +86,10 @@ export async function GET(
       .select('wish_id, guest_token, amount'),
     admin.from('rsvp_settings')
       .select('invitation_text, rsvp_deadline, show_meal_choice, show_plus_one, phone_contact')
+      .eq('event_id', guest.event_id)
+      .maybeSingle(),
+    admin.from('catering_plans')
+      .select('menu_courses')
       .eq('event_id', guest.event_id)
       .maybeSingle(),
   ])
@@ -156,6 +161,7 @@ export async function GET(
       rsvpDeadline: rsvpSettings?.rsvp_deadline ?? null,
       invitationText: rsvpSettings?.invitation_text ?? '',
       phoneContact: rsvpSettings?.phone_contact ?? null,
+      menuCourses: (cateringPlan as any)?.menu_courses ?? null,
     },
     wishlist,
     guest: {
