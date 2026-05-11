@@ -168,25 +168,20 @@
   position: relative;
 }
 
-.bp-sidebar-logo-mark {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.bp-sidebar-logo-text {
-  font-family: 'DM Serif Display', Georgia, serif;
-  font-size: 1.125rem;
-  color: var(--bp-ink);
+.bp-sidebar-couple-name {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--bp-gold-deep);
   white-space: nowrap;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
   opacity: 0;
   transition: opacity var(--bp-transition);
 }
 
-.bp-sidebar[data-expanded="true"] .bp-sidebar-logo-text {
+.bp-sidebar[data-expanded="true"] .bp-sidebar-couple-name {
   opacity: 1;
 }
 
@@ -316,9 +311,8 @@
   transform: rotate(180deg);
 }
 
-/* Collapsed state: logo area acts as click target, centered */
+/* Collapsed state: logo area acts as click target */
 .bp-sidebar:not([data-expanded="true"]) .bp-sidebar-logo {
-  justify-content: center;
   cursor: pointer;
 }
 
@@ -326,19 +320,40 @@
   background: var(--bp-ivory-2);
 }
 
-.bp-sidebar-toggle:hover {
-  background: var(--bp-ivory-2);
+/* Sidebar footer */
+.bp-sidebar-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--bp-rule);
+  padding: 0.5rem 0;
+  overflow: hidden;
+}
+
+.bp-sidebar-footer-link {
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  height: 32px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.6875rem;
+  color: var(--bp-ink-3);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: color var(--bp-transition), background var(--bp-transition);
+}
+
+.bp-sidebar-footer-link:hover {
   color: var(--bp-ink);
+  background: var(--bp-ivory-2);
 }
 
-.bp-sidebar-toggle svg {
-  width: 16px;
-  height: 16px;
-  transition: transform var(--bp-transition);
+.bp-sidebar-footer-link span {
+  opacity: 0;
+  transition: opacity var(--bp-transition);
 }
 
-.bp-sidebar[data-expanded="true"] .bp-sidebar-toggle svg {
-  transform: rotate(180deg);
+.bp-sidebar[data-expanded="true"] .bp-sidebar-footer-link span {
+  opacity: 1;
 }
 
 /* Main content offset */
