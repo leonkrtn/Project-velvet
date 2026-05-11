@@ -28,7 +28,7 @@ type Access = 'none' | 'read' | 'write'
 
 interface Props {
   eventId: string
-  mode: 'veranstalter' | 'dienstleister'
+  mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   hasFullModuleAccess?: boolean
   itemPermissions?: Record<string, ItemPerm>
   tabAccess?: Access
@@ -170,7 +170,7 @@ function BriefingSection({ briefing, eventId, canEdit, onSaved }: {
 // ── Shot Item Row ─────────────────────────────────────────────────────────────
 
 function ShotItemRow({ item, canEdit, mode, onUpdate, onDelete, onPropose }: {
-  item: ShotItem; canEdit: boolean; mode: 'veranstalter' | 'dienstleister'
+  item: ShotItem; canEdit: boolean; mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   onUpdate: (i: ShotItem) => void; onDelete: () => void; onPropose?: () => void
 }) {
   const [editing, setEditing] = useState(false)
@@ -225,7 +225,7 @@ function ShotItemRow({ item, canEdit, mode, onUpdate, onDelete, onPropose }: {
         {canEdit && (
           <>
             <button onClick={() => setEditing(true)} style={{ padding: '4px 8px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}><Edit2 size={12} style={{ color: 'var(--text-secondary)' }} /></button>
-            {mode === 'veranstalter' && <button onClick={onDelete} style={{ padding: '4px 8px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}><Trash2 size={12} style={{ color: '#FF3B30' }} /></button>}
+            {mode !== 'dienstleister' && <button onClick={onDelete} style={{ padding: '4px 8px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}><Trash2 size={12} style={{ color: '#FF3B30' }} /></button>}
           </>
         )}
         {!canEdit && mode === 'dienstleister' && onPropose && (
@@ -311,7 +311,7 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
   const shotlisteReadOnly = secReadOnly(sectionPerms, tabAccess, 'shotliste')
 
   function canEditShot() {
-    if (mode === 'veranstalter') return true
+    if (mode !== 'dienstleister') return true
     return !shotlisteReadOnly && hasFullModuleAccess
   }
 
@@ -321,7 +321,7 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
     if (!error) setShots(prev => prev.filter(s => s.id !== id))
   }
 
-  const briefingCanEdit = (mode === 'veranstalter' || hasFullModuleAccess) && !briefingReadOnly
+  const briefingCanEdit = (mode !== 'dienstleister' || hasFullModuleAccess) && !briefingReadOnly
   const filtered        = typeFilter === 'all' ? shots : shots.filter(s => s.type === typeFilter)
   const categories      = Array.from(new Set(filtered.map(s => s.category))).filter(Boolean)
 
@@ -383,7 +383,7 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
               ))
             )}
 
-            {(mode === 'veranstalter' || canEditShot()) && (
+            {(mode !== 'dienstleister' || canEditShot()) && (
               <AddShotForm eventId={eventId} count={shots.length} onAdded={s => setShots(prev => [...prev, s])} />
             )}
           </div>

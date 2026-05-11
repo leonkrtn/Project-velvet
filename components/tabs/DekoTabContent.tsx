@@ -28,7 +28,7 @@ type Access = 'none' | 'read' | 'write'
 
 interface Props {
   eventId: string
-  mode: 'veranstalter' | 'dienstleister'
+  mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   hasFullModuleAccess?: boolean
   itemPermissions?: Record<string, ItemPerm>
   tabAccess?: Access
@@ -61,7 +61,7 @@ function inputStyle() {
 // ── Setup Item Row ────────────────────────────────────────────────────────────
 
 function SetupItemRow({ item, index, canEdit, mode, onUpdate, onDelete, onPropose }: {
-  item: SetupItem; index: number; canEdit: boolean; mode: 'veranstalter' | 'dienstleister'
+  item: SetupItem; index: number; canEdit: boolean; mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   onUpdate: (i: SetupItem) => void; onDelete: () => void; onPropose?: () => void
 }) {
   const [editing, setEditing] = useState(false)
@@ -119,7 +119,7 @@ function SetupItemRow({ item, index, canEdit, mode, onUpdate, onDelete, onPropos
         {canEdit && (
           <>
             <button onClick={() => setEditing(true)} style={{ padding: '4px 8px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}><Edit2 size={12} style={{ color: 'var(--text-secondary)' }} /></button>
-            {mode === 'veranstalter' && <button onClick={onDelete} style={{ padding: '4px 8px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}><Trash2 size={12} style={{ color: '#FF3B30' }} /></button>}
+            {mode !== 'dienstleister' && <button onClick={onDelete} style={{ padding: '4px 8px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}><Trash2 size={12} style={{ color: '#FF3B30' }} /></button>}
           </>
         )}
         {!canEdit && mode === 'dienstleister' && onPropose && (
@@ -133,7 +133,7 @@ function SetupItemRow({ item, index, canEdit, mode, onUpdate, onDelete, onPropos
 // ── Wish Card ─────────────────────────────────────────────────────────────────
 
 function WishCard({ wish, canEdit, mode, onUpdate, onDelete, onPropose }: {
-  wish: DekorWish; canEdit: boolean; mode: 'veranstalter' | 'dienstleister'
+  wish: DekorWish; canEdit: boolean; mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   onUpdate: (w: DekorWish) => void; onDelete: () => void; onPropose?: () => void
 }) {
   const [editing, setEditing] = useState(false)
@@ -295,7 +295,7 @@ export default function DekoTabContent({ eventId, mode, hasFullModuleAccess = tr
   const wuenscheReadOnly = secReadOnly(sectionPerms, tabAccess, 'wuensche')
 
   function canEditItem(section: 'aufbau' | 'wuensche') {
-    if (mode === 'veranstalter') return true
+    if (mode !== 'dienstleister') return true
     if (section === 'aufbau') return !aufbauReadOnly && hasFullModuleAccess
     return !wuenscheReadOnly && hasFullModuleAccess
   }
@@ -331,7 +331,7 @@ export default function DekoTabContent({ eventId, mode, hasFullModuleAccess = tr
           {aufbauVisible && (
           <div style={{ marginBottom: 28 }}>
             <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Aufbau-Aufgaben ({items.length})</p>
-            {items.length === 0 && mode !== 'veranstalter' && (
+            {items.length === 0 && mode === 'dienstleister' && (
               <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
                 Noch keine Aufgaben hinterlegt.
               </div>
@@ -345,7 +345,7 @@ export default function DekoTabContent({ eventId, mode, hasFullModuleAccess = tr
                 onPropose={onPropose}
               />
             ))}
-            {(mode === 'veranstalter' || canEditItem('aufbau')) && (
+            {(mode !== 'dienstleister' || canEditItem('aufbau')) && (
               <AddSetupItemForm eventId={eventId} count={items.length} onAdded={i => setItems(prev => [...prev, i])} />
             )}
           </div>
@@ -355,7 +355,7 @@ export default function DekoTabContent({ eventId, mode, hasFullModuleAccess = tr
           {wuenscheVisible && (
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Dekor-Wünsche ({wishes.length})</p>
-            {wishes.length === 0 && mode !== 'veranstalter' && (
+            {wishes.length === 0 && mode === 'dienstleister' && (
               <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
                 Noch keine Wünsche hinterlegt.
               </div>
@@ -371,13 +371,13 @@ export default function DekoTabContent({ eventId, mode, hasFullModuleAccess = tr
                 />
               ))}
             </div>
-            {(mode === 'veranstalter' || canEditItem('wuensche')) && (
+            {(mode !== 'dienstleister' || canEditItem('wuensche')) && (
               <AddWishForm eventId={eventId} onAdded={w => setWishes(prev => [...prev, w])} />
             )}
           </div>
           )}
 
-          {!aufbauVisible && !wuenscheVisible && mode !== 'veranstalter' && (
+          {!aufbauVisible && !wuenscheVisible && mode === 'dienstleister' && (
             <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px 24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
               Noch keine Dekoration-Informationen hinterlegt.
             </div>

@@ -1,1 +1,2 @@
-export { default } from '@/app/catering/page'
+import { redirect } from 'next/navigation'
+export default function Page() { redirect('/brautpaar') }

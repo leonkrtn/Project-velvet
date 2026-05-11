@@ -1,1 +1,2 @@
-export { default } from '@/app/aenderungen/page'
+import { redirect } from 'next/navigation'
+export default function Page() { redirect('/brautpaar') }

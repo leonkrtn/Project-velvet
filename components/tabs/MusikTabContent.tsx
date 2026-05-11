@@ -30,7 +30,7 @@ type Access = 'none' | 'read' | 'write'
 
 interface Props {
   eventId: string
-  mode: 'veranstalter' | 'dienstleister'
+  mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   hasFullModuleAccess?: boolean
   tabAccess?: Access
   sectionPerms?: Record<string, Access>
@@ -219,7 +219,7 @@ function SongRow({
 }: {
   song: Song
   canEdit: boolean
-  mode: 'veranstalter' | 'dienstleister'
+  mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   onUpdate: (s: Song) => void
   onDelete: () => void
   onPropose?: () => void
@@ -292,7 +292,7 @@ function SongRow({
             <button onClick={() => setEditing(true)} style={{ padding: '4px 8px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
               <Edit2 size={12} style={{ color: 'var(--text-secondary)' }} />
             </button>
-            {mode === 'veranstalter' && (
+            {mode !== 'dienstleister' && (
               <button onClick={onDelete} style={{ padding: '4px 8px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                 <Trash2 size={12} style={{ color: '#FF3B30' }} />
               </button>
@@ -401,7 +401,7 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
   }, [eventId])
 
   function canEditItem() {
-    if (mode === 'veranstalter') return true
+    if (mode !== 'dienstleister') return true
     return hasFullModuleAccess && !secReadOnly('songliste')
   }
 
@@ -415,14 +415,14 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
   const filtered     = filter === 'all' ? visibleSongs : visibleSongs.filter(s => s.type === filter)
   const moments      = Array.from(new Set(filtered.map(s => s.moment))).filter(Boolean)
 
-  const reqsCanEdit = mode === 'veranstalter' || hasFullModuleAccess
+  const reqsCanEdit = mode !== 'dienstleister' || hasFullModuleAccess
 
   function secVis(key: string): boolean {
-    if (mode === 'veranstalter') return true
+    if (mode !== 'dienstleister') return true
     return (sectionPerms?.[key] ?? tabAccess) !== 'none'
   }
   function secReadOnly(key: string): boolean {
-    if (mode === 'veranstalter') return false
+    if (mode !== 'dienstleister') return false
     const access = sectionPerms?.[key] ?? tabAccess
     return access === 'read'
   }
@@ -488,7 +488,7 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
               ))
             )}
 
-            {mode === 'veranstalter' && (
+            {mode !== 'dienstleister' && (
               <AddSongForm eventId={eventId} onAdded={s => setSongs(prev => [...prev, s])} />
             )}
           </div>

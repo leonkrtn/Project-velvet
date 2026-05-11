@@ -26,7 +26,7 @@ type Access = 'none' | 'read' | 'write'
 
 interface Props {
   eventId: string
-  mode: 'veranstalter' | 'dienstleister'
+  mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   hasFullModuleAccess?: boolean
   tabAccess?: Access
   sectionPerms?: Record<string, Access>
@@ -211,7 +211,7 @@ function PatisserieReadView({ config, canEdit, onEdit, mode, onPropose, tabAcces
   config: PatisserieConfig | null
   canEdit: boolean
   onEdit: () => void
-  mode: 'veranstalter' | 'dienstleister'
+  mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   onPropose?: () => void
   tabAccess?: Access
   sectionPerms?: Record<string, Access>
@@ -324,7 +324,7 @@ export default function PatisserieTabContent({ eventId, mode, hasFullModuleAcces
       .then(({ data }) => { setConfig(data ?? null); setLoading(false) })
   }, [eventId])
 
-  const canEdit = mode === 'veranstalter' || hasFullModuleAccess
+  const canEdit = mode !== 'dienstleister' || hasFullModuleAccess
 
   return (
     <div>

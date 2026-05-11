@@ -5,7 +5,7 @@ import CateringTab from '@/app/vendor/dashboard/[eventId]/tabs/CateringTab'
 
 interface TabContentProps {
   eventId: string
-  mode: 'veranstalter' | 'dienstleister'
+  mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   tabAccess?: 'read' | 'write'
   itemPermissions?: Record<string, 'none' | 'read' | 'write'>
 }
@@ -99,7 +99,7 @@ function CateringFormWrapper({ eventId }: { eventId: string }) {
 }
 
 export default function CateringTabContent({ eventId, mode, tabAccess, itemPermissions }: TabContentProps) {
-  if (mode === 'veranstalter' || tabAccess === 'write') {
+  if (mode !== 'dienstleister' || tabAccess === 'write') {
     return <CateringFormWrapper eventId={eventId} />
   }
   return <CateringTab eventId={eventId} tabAccess={tabAccess} sectionPerms={itemPermissions} />

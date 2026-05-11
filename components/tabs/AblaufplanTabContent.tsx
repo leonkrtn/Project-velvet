@@ -5,7 +5,7 @@ import TimelineTab from '@/app/vendor/dashboard/[eventId]/tabs/TimelineTab'
 
 interface TabContentProps {
   eventId: string
-  mode: 'veranstalter' | 'dienstleister'
+  mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   tabAccess?: 'read' | 'write'
   itemPermissions?: Record<string, 'none' | 'read' | 'write'>
 }
@@ -96,7 +96,7 @@ function AblaufplanClientWrapper({ eventId }: { eventId: string }) {
 }
 
 export default function AblaufplanTabContent({ eventId, mode, tabAccess, itemPermissions }: TabContentProps) {
-  if (mode === 'veranstalter') {
+  if (mode !== 'dienstleister') {
     return <AblaufplanClientWrapper eventId={eventId} />
   }
   return <TimelineTab eventId={eventId} tabAccess={tabAccess} sectionPerms={itemPermissions} />
