@@ -499,12 +499,12 @@ export default function CateringForm({
               {plan.kinder_meal_options.map(opt => (
                 <span key={opt} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 5,
-                  background: '#FFF7ED', border: '1px solid rgba(194,65,12,0.2)',
-                  borderRadius: 20, padding: '4px 10px', fontSize: 13, color: '#C2410C',
+                  background: 'var(--bg-secondary, #F5F5F5)', border: '1px solid var(--border, #E5E5E5)',
+                  borderRadius: 20, padding: '4px 10px', fontSize: 13, color: 'var(--text-primary, #2C2825)',
                 }}>
                   {opt}
                   <button type="button" onClick={() => updatePlan({ kinder_meal_options: plan.kinder_meal_options.filter(o => o !== opt) })}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: '#C2410C' }}>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-tertiary, #8C8076)' }}>
                     <X size={13} />
                   </button>
                 </span>
