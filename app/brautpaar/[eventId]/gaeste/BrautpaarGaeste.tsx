@@ -624,33 +624,34 @@ export default function BrautpaarGaeste({
         <h1 className="bp-page-title">Gäste</h1>
       </div>
 
-      <div className="bp-tabs bp-mb-6">
-        {TABS.map(tab => (
+      <div className="bp-step-tabs">
+        {TABS.map((tab, idx) => (
           <button
             key={tab.key}
-            className="bp-tab"
+            className="bp-step-tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
           >
-            {tab.icon}
+            <span className="bp-step-tab-num">{idx + 1}</span>
             {tab.label}
           </button>
         ))}
       </div>
 
-      {activeTab === 'gaesteliste' && (
-        <GaestelisteTab guests={guests} eventId={eventId} onUpdate={handleGuestUpdate} />
-      )}
-      {activeTab === 'hotel' && (
-        <HotelTab hotels={hotels} guests={guests} />
-      )}
-      {activeTab === 'rsvp' && (
-        <RsvpTab guests={guests} onUpdateGuest={handleGuestUpdate} />
-      )}
-      {activeTab === 'einstellungen' && (
-        <EinstellungenTab eventId={eventId} rsvpSettings={rsvpSettings} />
-      )}
+      <div style={{ minHeight: 480 }}>
+        {activeTab === 'gaesteliste' && (
+          <GaestelisteTab guests={guests} eventId={eventId} onUpdate={handleGuestUpdate} />
+        )}
+        {activeTab === 'hotel' && (
+          <HotelTab hotels={hotels} guests={guests} />
+        )}
+        {activeTab === 'rsvp' && (
+          <RsvpTab guests={guests} onUpdateGuest={handleGuestUpdate} />
+        )}
+        {activeTab === 'einstellungen' && (
+          <EinstellungenTab eventId={eventId} rsvpSettings={rsvpSettings} />
+        )}
+      </div>
     </div>
   )
 }

@@ -168,8 +168,13 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
 
   const sidebarContent = (
     <>
-      {/* Logo */}
-      <div className="bp-sidebar-logo">
+      {/* Logo — when collapsed, whole area is click target to expand */}
+      <div
+        className="bp-sidebar-logo"
+        onClick={!expanded ? toggleExpanded : undefined}
+        role={!expanded ? 'button' : undefined}
+        aria-label={!expanded ? 'Sidebar aufklappen' : undefined}
+      >
         <div className="bp-sidebar-logo-mark">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden>
             <circle cx="14" cy="14" r="14" fill="var(--bp-gold-pale)" />
@@ -177,6 +182,16 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
           </svg>
         </div>
         <span className="bp-sidebar-logo-text bp-font-wordmark">Velvet</span>
+        {expanded && (
+          <button
+            className="bp-sidebar-toggle"
+            onClick={e => { e.stopPropagation(); toggleExpanded() }}
+            aria-label="Sidebar zuklappen"
+            title="Zuklappen"
+          >
+            <ChevronRight />
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -215,15 +230,6 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
           </React.Fragment>
         ))}
       </nav>
-
-      {/* Toggle button */}
-      <button
-        className="bp-sidebar-toggle"
-        onClick={toggleExpanded}
-        aria-label={expanded ? 'Sidebar zuklappen' : 'Sidebar aufklappen'}
-      >
-        <ChevronRight />
-      </button>
     </>
   )
 

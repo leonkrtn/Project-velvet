@@ -156,7 +156,7 @@ function PhaseSection({ phaseKey, label, tasks, eventId, userId, onUpdate, onDel
         }}
       >
         {open ? <ChevronDown size={16} style={{ color: 'var(--bp-ink-3)', flexShrink: 0 }} /> : <ChevronRight size={16} style={{ color: 'var(--bp-ink-3)', flexShrink: 0 }} />}
-        <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--bp-ink)', flex: 1 }}>
+        <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: '0.9375rem', color: 'var(--bp-ink)', flex: 1 }}>
           {label}
         </span>
         {isActive && (
