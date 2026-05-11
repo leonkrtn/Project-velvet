@@ -28,7 +28,7 @@ export default async function BrautpaarLayout({ children, params }: Props) {
 
   const { data: event } = await supabase
     .from('events')
-    .select('id, title, date')
+    .select('id, title, couple_name, date')
     .eq('id', eventId)
     .single()
 
@@ -40,7 +40,7 @@ export default async function BrautpaarLayout({ children, params }: Props) {
   return (
     <BrautpaarShell
       eventId={eventId}
-      eventTitle={event.title ?? ''}
+      eventTitle={event.couple_name ?? event.title ?? ''}
       eventDate={event.date ?? null}
       userId={user.id}
       showWelcome={showWelcome}
