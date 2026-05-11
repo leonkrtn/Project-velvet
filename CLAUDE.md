@@ -53,8 +53,10 @@
     berechtigungen/[id]/   → Vendor permission editor
     budget/                → Budget tracker
 
-/brautpaar/[eventId]/...   → Couple portal (mirrors subset of veranstalter routes)
-/trauzeuge/[eventId]/...   → Best-man portal (read-heavy)
+/brautpaar/               → Couple portal (no eventId in path — event resolved via session)
+  seating/                → Seating view — SitzplanEditor (read room config from DB)
+  gaeste/, catering/, deko/, budget/, nachrichten/, tasks/, team/, protokoll/  → further tabs
+⛔ /trauzeuge/            → Role exists in DB but no frontend portal implemented
 /vendor/dashboard/[eventId]/ → Vendor portal (tab-gated by permissions)
   uebersicht/              → Overview: event details, contacts, permission-gated module shortcuts
   catering/                → Catering (if permitted)
@@ -65,7 +67,9 @@
   patisserie/              → Patisserie (if permitted)
   dekoration/              → Decor (if permitted)
   medien/                  → Media (if permitted)
-  sitzplan/                → Seating plan (if permitted)
+  sitzplan/                → Seating plan read-only (if permitted)
+  files/                   → Files tab
+  tabs/                    → Tab component directory (CateringTab, SeatingTab, etc.) — not a route
   ⛔ allgemein/            → REMOVED — vendors have no access; DB CHECK constraint blocks assignment
 ```
 
@@ -165,6 +169,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 - `messages.read_at` column — defined, never populated.
 - `timeline_entries.responsibilities TEXT` — redundant with `assigned_staff`/`assigned_vendors`/`assigned_members` JSONB columns (added in 0025).
 - `dienstleister_item_permissions` table — old granular system, not cleanly migrated out.
+- Proposals/Vorschläge system — fully removed (migration 0048 drops all tables + functions). No UI remains.
 
 ---
 
@@ -181,7 +186,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
   - Veranstalter → `/veranstalter/events`
   - Brautpaar → `/brautpaar`
   - Dienstleister → `/vendor/dashboard/[eventId]/uebersicht`
-  - Trauzeuge → `/trauzeuge/[eventId]`
+  - Trauzeuge → `/trauzeuge/[eventId]` (portal not yet implemented)
 
 ---
 
@@ -201,8 +206,9 @@ app/veranstalter/[eventId]/
   allgemein/AllgemeinForm.tsx          Event settings form
   berechtigungen/[id]/BerechtigungenClient.tsx  Vendor permission editor (writes NEW system)
   sitzplan/page.tsx                    Seating plan — room config (3-step) + SitzplanEditor
+  mitglieder/                          Route folder — UI label is "Beteiligte" (renamed from Mitglieder)
 
-app/brautpaar/seating/page.tsx        Brautpaar seating — SitzplanEditor (no room config)
+app/brautpaar/seating/page.tsx        Brautpaar seating — SitzplanEditor (reads room config from DB, no edit)
 
 components/
   room/RaumKonfigurator.tsx            3-step room editor (1=Grundriss, 2=Raumdetails, 3=Tische)
@@ -217,6 +223,9 @@ app/vendor/dashboard/[eventId]/
   VendorSidebarLayout.tsx       Sidebar nav — allgemein removed; filters by dienstleister_permissions
   uebersicht/page.tsx           Rebuilt overview: event details, veranstalter/brautpaar contacts,
                                 permission-gated module shortcut cards
+  sitzplan/page.tsx             Read-only seating view with table cards + guest names
+  files/page.tsx                Files tab
+  tabs/                         Tab components (CateringTab, SeatingTab, ChatTab, …) — shared, not routes
 
 app/veranstalter/[eventId]/
   berechtigungen/[dienstleisterId]/BerechtigungenClient.tsx
@@ -229,5 +238,9 @@ supabase/migrations/
   0043_remove_allgemein_from_dienstleister.sql  Purges allgemein rows + CHECK constraint
   0044_seating_v2.sql           Replaces seating_tables/seating_assignments; adds table_pool to event_room_configs
   0045_seating_pool_type_id.sql Adds pool_type_id TEXT to seating_tables; updates table_pool default to {types:[]}
-  0048_remove_proposals_system.sql  Drops all proposal/suggestion tables and their DB functions
+  0046_seating_dienstleister_rls.sql  Vendor SELECT on seating_tables, seating_assignments, room_configs via dl_has_tab_access sitzplan
+  0047_seating_guest_names_rls.sql    Vendor with sitzplan access can read guests + begleitpersonen for name resolution
+  0048_remove_proposals_system.sql    Drops all proposal/suggestion tables and their DB functions
+  0049_secure_adjust_hotel_booking.sql  REVOKE anon/public on adjust_hotel_booking + auth guard
+  0050_room_config_rls_brautpaar.sql    Brautpaar + trauzeuge SELECT on event_room_configs + organizer_room_configs
 ```
