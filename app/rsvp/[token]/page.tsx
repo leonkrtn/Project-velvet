@@ -388,7 +388,7 @@ export default function RSVPPage() {
 
       setEvent({ ...event, hotels: updatedHotels })
       setGuest(updatedGuest)
-      setStep(attending ? 'musikwunsch' : 'confirmation')
+      setStep('confirmation')
     } catch (err: any) {
       setToast(err?.message ?? 'Netzwerkfehler')
     } finally {
@@ -399,8 +399,8 @@ export default function RSVPPage() {
   const progressSteps: Step[] = attending === false
     ? ['intro', 'rsvp', 'confirmation']
     : hasHotels
-      ? ['intro', 'rsvp', 'details', 'hotel', 'musikwunsch', 'geschenke', 'confirmation']
-      : ['intro', 'rsvp', 'details', 'musikwunsch', 'geschenke', 'confirmation']
+      ? ['intro', 'rsvp', 'details', 'hotel', 'confirmation']
+      : ['intro', 'rsvp', 'details', 'confirmation']
   const progress = progressSteps.indexOf(step) / (progressSteps.length - 1) * 100
 
   const optBtn = (active: boolean): React.CSSProperties => ({
@@ -464,8 +464,12 @@ export default function RSVPPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {step !== 'intro' && (
               <button onClick={() => {
-                const cur = progressSteps.indexOf(step)
-                if (cur > 0) setStep(progressSteps[cur - 1])
+                if (step === 'musikwunsch' || step === 'geschenke') {
+                  setStep('confirmation')
+                } else {
+                  const cur = progressSteps.indexOf(step)
+                  if (cur > 0) setStep(progressSteps[cur - 1])
+                }
               }} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-dim)', padding: 4 }}>
                 <ChevronLeft size={20} />
               </button>
@@ -894,8 +898,8 @@ export default function RSVPPage() {
               </Button>
             </Card>
 
-            <Button fullWidth size="lg" variant="gold" onClick={() => setStep('geschenke')}>
-              {suggestedSongs.length > 0 ? 'Weiter' : 'Überspringen'}
+            <Button fullWidth size="lg" variant="gold" onClick={() => setStep('confirmation')}>
+              {suggestedSongs.length > 0 ? 'Fertig' : 'Überspringen'}
             </Button>
           </div>
         )}
@@ -1059,14 +1063,14 @@ export default function RSVPPage() {
             </div>
 
             <Button fullWidth size="lg" variant="gold" onClick={() => setStep('confirmation')}>
-              Weiter
+              Zurück zur Übersicht
             </Button>
           </div>
         )}
 
         {/* ──────────── CONFIRMATION ──────────── */}
         {step === 'confirmation' && (
-          <div style={{ animation: 'fadeUp 0.5s ease', textAlign: 'center', paddingTop: 40 }}>
+          <div style={{ animation: 'fadeUp 0.5s ease', textAlign: 'center', paddingTop: 32 }}>
             <div style={{ width: 68, height: 68, borderRadius: '50%', background: attending ? 'var(--gold-pale)' : 'var(--black3)', border: `1px solid ${attending ? 'rgba(201,168,76,0.3)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: attending ? 'var(--gold)' : 'var(--grey3)' }}>
               {attending ? <CheckCircle size={28} /> : <XCircle size={28} />}
             </div>
@@ -1080,7 +1084,7 @@ export default function RSVPPage() {
             </p>
 
             {attending && (
-              <Card style={{ textAlign: 'left', marginBottom: 20 }}>
+              <Card style={{ textAlign: 'left', marginBottom: 24 }}>
                 <SectionTitle>Deine Angaben</SectionTitle>
                 {meal && <Row label="Menü" value={{ fleisch: 'Fleisch', fisch: 'Fisch', vegetarisch: 'Vegetarisch', vegan: 'Vegan' }[meal] ?? meal} />}
                 {trinkAlkohol !== undefined && <Row label="Alkohol" value={trinkAlkohol ? 'Ja' : 'Nein'} />}
@@ -1094,8 +1098,41 @@ export default function RSVPPage() {
               </Card>
             )}
 
+            {/* Extra-Aktionen nur für Zusagen */}
+            {attending && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                <button
+                  onClick={() => setStep('musikwunsch')}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    padding: '15px 20px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
+                    border: '1.5px solid var(--gold)', background: 'var(--gold-pale)',
+                    color: 'var(--gold)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                    width: '100%', transition: 'all 0.15s',
+                  }}
+                >
+                  <Music size={16} />
+                  {suggestedSongs.length > 0 ? `Musikwünsche (${suggestedSongs.length}) · Weitere hinzufügen` : 'Musikwünsche hinzufügen'}
+                </button>
+                <button
+                  onClick={() => setStep('geschenke')}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    padding: '15px 20px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
+                    border: '1.5px solid var(--border)', background: 'var(--surface)',
+                    color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                    width: '100%', transition: 'all 0.15s',
+                  }}
+                >
+                  <Gift size={16} /> Geschenkliste ansehen
+                </button>
+              </div>
+            )}
+
             {!isBlocked && (
-              <Button fullWidth variant="secondary" onClick={() => setStep('rsvp')}>Antwort ändern</Button>
+              <button onClick={() => setStep('rsvp')} style={{ fontSize: 12, color: 'var(--text-dim)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', padding: '8px 0' }}>
+                Antwort ändern
+              </button>
             )}
           </div>
         )}
