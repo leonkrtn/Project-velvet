@@ -26,7 +26,7 @@ export default async function GaestePage({ params }: Props) {
       .single(),
     supabase
       .from('hotels')
-      .select('id, name, hotel_rooms(id, room_type, room_number, max_occupancy)')
+      .select('id, name, address, stars, website, notes, hotel_rooms(id, hotel_id, room_type, room_number, max_occupancy, total_rooms, booked_rooms, price_per_night, description)')
       .eq('event_id', eventId)
       .order('name'),
     supabase
