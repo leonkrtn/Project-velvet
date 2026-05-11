@@ -1,10 +1,11 @@
 // app/api/rsvp/[token]/route.ts
 // Token-basierte, unauthentifizierte RSVP-API für Gäste.
-// GET:  liefert Event-Basisdaten + Gast-Row zur Anzeige und Vorbefüllung.
-// POST: speichert die Gast-Antwort, ersetzt die Begleitpersonen nur für diesen Gast
-//       und passt hotel_rooms.booked_rooms atomar an (Delta).
+// GET:  liefert Event-Basisdaten + rsvp_settings + Gast-Row zur Anzeige und Vorbefüllung.
+// POST: speichert Gast-Antwort, ersetzt Begleitpersonen atomar via RPC,
+//       speichert optionalen Musikwunsch in rsvp_music_suggestions,
+//       adjustiert hotel_rooms.booked_rooms atomar.
 // Nutzt den Service-Role-Client, weil RLS auf `guests` kein anon-Insert/Update erlaubt.
-// Freeze (events.data_freeze_at) wird serverseitig geprüft und führt zu 409.
+// Freeze (events.data_freeze_at) und rsvp_deadline werden serverseitig geprüft.
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -34,6 +35,8 @@ interface RSVPPayload {
   transport?: TransportMode | '' | null
   hotelRoomId?: string | null   // 'none' | room uuid | ''
   message?: string | null
+  songTitle?: string | null
+  songArtist?: string | null
 }
 
 function toNullIfEmpty(v: string | null | undefined): string | null {
@@ -43,7 +46,6 @@ function toNullIfEmpty(v: string | null | undefined): string | null {
 }
 
 // ── GET ──────────────────────────────────────────────────────────────────────
-// Liefert minimale Public-Event-Daten + die Gast-Row anhand des Tokens.
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -68,6 +70,7 @@ export async function GET(
     { data: hotels },
     { data: wishes },
     { data: beitraege },
+    { data: rsvpSettings },
   ] = await Promise.all([
     admin.from('events')
       .select('id, title, couple_name, date, venue, venue_address, dresscode, children_allowed, children_note, meal_options, max_begleitpersonen, data_freeze_at')
@@ -80,11 +83,21 @@ export async function GET(
       .order('sort_order'),
     admin.from('geschenk_beitraege')
       .select('wish_id, guest_token, amount'),
+    admin.from('rsvp_settings')
+      .select('invitation_text, rsvp_deadline, show_meal_choice, show_plus_one, phone_contact')
+      .eq('event_id', guest.event_id)
+      .maybeSingle(),
   ])
 
   if (evErr || !event) {
     return NextResponse.json({ error: 'Event nicht gefunden' }, { status: 404 })
   }
+
+  const now = new Date()
+  const isFrozen = event.data_freeze_at ? new Date(event.data_freeze_at) < now : false
+  const isDeadlinePassed = rsvpSettings?.rsvp_deadline
+    ? new Date(rsvpSettings.rsvp_deadline) < now
+    : false
 
   const coupleName = (event.couple_name && event.couple_name.trim())
     || (event.title && event.title.trim())
@@ -123,7 +136,8 @@ export async function GET(
       childrenNote: event.children_note ?? null,
       mealOptions: event.meal_options ?? ['fleisch','fisch','vegetarisch','vegan'],
       maxBegleitpersonen: event.max_begleitpersonen ?? 2,
-      isFrozen: event.data_freeze_at ? new Date(event.data_freeze_at) < new Date() : false,
+      isFrozen,
+      isDeadlinePassed,
       hotels: (hotels ?? []).map((h: any) => ({
         id: h.id,
         name: h.name,
@@ -136,6 +150,12 @@ export async function GET(
           pricePerNight: r.price_per_night ?? 0,
         })),
       })),
+      // rsvp_settings fields (defaults if no row yet)
+      showMealChoice: rsvpSettings?.show_meal_choice ?? true,
+      showPlusOne: rsvpSettings?.show_plus_one ?? true,
+      rsvpDeadline: rsvpSettings?.rsvp_deadline ?? null,
+      invitationText: rsvpSettings?.invitation_text ?? '',
+      phoneContact: rsvpSettings?.phone_contact ?? null,
     },
     wishlist,
     guest: {
@@ -169,8 +189,6 @@ export async function GET(
 
 
 // ── POST ─────────────────────────────────────────────────────────────────────
-// Speichert Gast-Antwort. Begleitpersonen werden nur für diesen Gast ersetzt.
-// Hotel-Room-Delta wird atomar adjustiert.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -194,21 +212,27 @@ export async function POST(
   // 1. Gast via Token laden
   const { data: guest, error: gErr } = await admin
     .from('guests')
-    .select('id, event_id, hotel_room_id')
+    .select('id, event_id, hotel_room_id, name')
     .eq('token', token)
     .maybeSingle()
 
-  if (gErr)  return NextResponse.json({ error: gErr.message }, { status: 500 })
+  if (gErr)   return NextResponse.json({ error: gErr.message }, { status: 500 })
   if (!guest) return NextResponse.json({ error: 'Einladung nicht gefunden' }, { status: 404 })
 
-  // 2. Event laden (Freeze + meal_options)
-  const { data: ev } = await admin
-    .from('events').select('data_freeze_at, meal_options').eq('id', guest.event_id).maybeSingle()
+  // 2. Event + rsvp_settings laden (Freeze + Deadline + meal_options)
+  const [{ data: ev }, { data: settings }] = await Promise.all([
+    admin.from('events').select('data_freeze_at, meal_options').eq('id', guest.event_id).maybeSingle(),
+    admin.from('rsvp_settings').select('rsvp_deadline').eq('event_id', guest.event_id).maybeSingle(),
+  ])
+
   if (ev?.data_freeze_at && new Date(ev.data_freeze_at) < new Date()) {
-    return NextResponse.json({ error: 'Event ist gesperrt' }, { status: 409 })
+    return NextResponse.json({ error: 'Event ist gesperrt — keine Änderungen mehr möglich.' }, { status: 409 })
+  }
+  if (settings?.rsvp_deadline && new Date(settings.rsvp_deadline) < new Date()) {
+    return NextResponse.json({ error: 'Die Anmeldefrist ist abgelaufen — Änderungen sind nicht mehr möglich.' }, { status: 409 })
   }
 
-  // 3a. Menü-Validierung gegen konfigurierte Optionen
+  // 3. Menü-Validierung gegen konfigurierte Optionen
   const validMeals: MealChoice[] = (ev?.meal_options as MealChoice[] | null) ?? ['fleisch', 'fisch', 'vegetarisch', 'vegan']
   if (body.attending && body.meal && !validMeals.includes(body.meal)) {
     return NextResponse.json({ error: 'Ungültige Menüwahl' }, { status: 400 })
@@ -223,26 +247,26 @@ export async function POST(
 
   const attending = body.attending
 
-  // 3. Neue Hotel-Room-Zuordnung bestimmen
+  // 4. Neue Hotel-Room-Zuordnung bestimmen
   const prevRoom = guest.hotel_room_id as string | null
   let nextRoom: string | null = null
   if (attending && body.hotelRoomId && body.hotelRoomId !== 'none' && body.hotelRoomId !== '') {
     nextRoom = body.hotelRoomId
   }
 
-  // 4. Guest-Update-Payload
-  const updatePayload: Record<string, any> = {
-    status: attending ? 'zugesagt' : 'abgesagt',
-    trink_alkohol: attending ? (body.trinkAlkohol ?? null) : null,
-    meal_choice:   attending ? (body.meal ?? null) : null,
-    allergy_tags:  attending ? (body.allergies ?? []) : [],
+  // 5. Guest-Update
+  const updatePayload: Record<string, unknown> = {
+    status:         attending ? 'zugesagt' : 'abgesagt',
+    trink_alkohol:  attending ? (body.trinkAlkohol ?? null) : null,
+    meal_choice:    attending ? (body.meal ?? null) : null,
+    allergy_tags:   attending ? (body.allergies ?? []) : [],
     allergy_custom: attending ? toNullIfEmpty(body.allergyCustom) : null,
-    arrival_date:  attending ? toNullIfEmpty(body.arrivalDate) : null,
-    arrival_time:  attending ? toNullIfEmpty(body.arrivalTime) : null,
-    transport_mode: attending ? (toNullIfEmpty(body.transport as string | null)) : null,
-    hotel_room_id: nextRoom,
-    message: toNullIfEmpty(body.message),
-    responded_at: new Date().toISOString(),
+    arrival_date:   attending ? toNullIfEmpty(body.arrivalDate) : null,
+    arrival_time:   attending ? toNullIfEmpty(body.arrivalTime) : null,
+    transport_mode: attending ? toNullIfEmpty(body.transport as string | null) : null,
+    hotel_room_id:  nextRoom,
+    message:        toNullIfEmpty(body.message),
+    responded_at:   new Date().toISOString(),
   }
 
   const { data: updatedGuest, error: updErr } = await admin
@@ -254,24 +278,26 @@ export async function POST(
 
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 })
 
-  // 5. Begleitpersonen ersetzen (nur für diesen Gast)
-  await admin.from('begleitpersonen').delete().eq('guest_id', guest.id)
+  // 6. Begleitpersonen atomar ersetzen via RPC
+  const bpRows = (attending && body.begleitpersonen && body.begleitpersonen.length > 0)
+    ? body.begleitpersonen.map(b => ({
+        id:            b.id ?? null,
+        name:          b.name ?? '',
+        age_category:  b.ageCategory ?? 'erwachsen',
+        trink_alkohol: b.ageCategory === 'erwachsen' ? (b.trinkAlkohol ?? null) : null,
+        meal_choice:   b.meal ?? null,
+        allergy_tags:  b.allergies ?? [],
+        allergy_custom: toNullIfEmpty(b.allergyCustom),
+      }))
+    : []
 
-  if (attending && body.begleitpersonen && body.begleitpersonen.length > 0) {
-    const rows = body.begleitpersonen.map(b => ({
-      guest_id: guest.id,
-      name: b.name ?? '',
-      age_category: b.ageCategory ?? 'erwachsen',
-      trink_alkohol: b.ageCategory === 'erwachsen' ? (b.trinkAlkohol ?? null) : null,
-      meal_choice:   b.meal ?? null,
-      allergy_tags:  b.allergies ?? [],
-      allergy_custom: toNullIfEmpty(b.allergyCustom),
-    }))
-    const { error: bErr } = await admin.from('begleitpersonen').insert(rows)
-    if (bErr) return NextResponse.json({ error: bErr.message }, { status: 500 })
-  }
+  const { error: bpErr } = await admin.rpc('replace_begleitpersonen', {
+    p_guest_id: guest.id,
+    p_rows:     bpRows,
+  })
+  if (bpErr) return NextResponse.json({ error: bpErr.message }, { status: 500 })
 
-  // 6. Hotel-Room-Delta atomar anpassen (RPC serialisiert via FOR UPDATE-Lock)
+  // 7. Hotel-Room-Delta atomar anpassen
   if (prevRoom !== nextRoom) {
     const { data: bookingResult, error: bookingErr } = await admin.rpc('adjust_hotel_booking', {
       p_prev_room: prevRoom ?? null,
@@ -284,34 +310,48 @@ export async function POST(
     }
   }
 
-  // 7. Rückgabe (rehydriert den Client)
+  // 8. Musikwunsch speichern (wenn beide Felder ausgefüllt)
+  const songTitle  = toNullIfEmpty(body.songTitle)
+  const songArtist = toNullIfEmpty(body.songArtist)
+  if (attending && songTitle && songArtist) {
+    await admin.from('rsvp_music_suggestions').insert({
+      event_id:   guest.event_id,
+      guest_token: token,
+      guest_name:  guest.name,
+      song_title:  songTitle,
+      artist:      songArtist,
+    })
+    // non-fatal: don't block RSVP save if this fails
+  }
+
+  // 9. Rückgabe
   const { data: begleit } = await admin
     .from('begleitpersonen').select('*').eq('guest_id', guest.id)
 
   return NextResponse.json({
     guest: {
-      id: updatedGuest.id,
-      name: updatedGuest.name,
-      email: updatedGuest.email ?? null,
-      token: updatedGuest.token,
-      status: updatedGuest.status,
-      trinkAlkohol: updatedGuest.trink_alkohol,
-      meal: updatedGuest.meal_choice,
-      allergies: updatedGuest.allergy_tags ?? [],
+      id:            updatedGuest.id,
+      name:          updatedGuest.name,
+      email:         updatedGuest.email ?? null,
+      token:         updatedGuest.token,
+      status:        updatedGuest.status,
+      trinkAlkohol:  updatedGuest.trink_alkohol,
+      meal:          updatedGuest.meal_choice,
+      allergies:     updatedGuest.allergy_tags ?? [],
       allergyCustom: updatedGuest.allergy_custom ?? null,
-      arrivalDate: updatedGuest.arrival_date ?? null,
-      arrivalTime: updatedGuest.arrival_time ?? null,
-      transport: updatedGuest.transport_mode ?? null,
-      hotelRoomId: updatedGuest.hotel_room_id ?? null,
-      message: updatedGuest.message ?? null,
-      respondedAt: updatedGuest.responded_at ?? null,
+      arrivalDate:   updatedGuest.arrival_date ?? null,
+      arrivalTime:   updatedGuest.arrival_time ?? null,
+      transport:     updatedGuest.transport_mode ?? null,
+      hotelRoomId:   updatedGuest.hotel_room_id ?? null,
+      message:       updatedGuest.message ?? null,
+      respondedAt:   updatedGuest.responded_at ?? null,
       begleitpersonen: (begleit ?? []).map((b: any) => ({
-        id: b.id,
-        name: b.name ?? '',
-        ageCategory: b.age_category ?? 'erwachsen',
-        trinkAlkohol: b.trink_alkohol,
-        meal: b.meal_choice,
-        allergies: b.allergy_tags ?? [],
+        id:            b.id,
+        name:          b.name ?? '',
+        ageCategory:   b.age_category ?? 'erwachsen',
+        trinkAlkohol:  b.trink_alkohol,
+        meal:          b.meal_choice,
+        allergies:     b.allergy_tags ?? [],
         allergyCustom: b.allergy_custom ?? null,
       })),
     },

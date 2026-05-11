@@ -13,7 +13,7 @@ import GeschenkTab from './GeschenkTab'
 interface Guest {
   id: string
   name: string
-  attending: string
+  status: string
   side: string | null
   meal_choice: string | null
   allergy_tags: string[] | null
@@ -21,7 +21,6 @@ interface Guest {
   email: string | null
   phone: string | null
   hotel_room_id: string | null
-  plus_one_allowed: boolean
   notes: string | null
   token: string | null
 }
@@ -55,6 +54,7 @@ interface RsvpSettings {
   rsvp_deadline: string | null
   show_meal_choice: boolean
   show_plus_one: boolean
+  phone_contact: string | null
 }
 
 interface Props {
@@ -82,8 +82,8 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
 // ── Attending badge ───────────────────────────────────────────────────────────
 
 function AttendingBadge({ status }: { status: string }) {
-  if (status === 'ja')    return <span className="bp-badge bp-badge-green">Zugesagt</span>
-  if (status === 'nein')  return <span className="bp-badge bp-badge-red">Abgesagt</span>
+  if (status === 'zugesagt') return <span className="bp-badge bp-badge-green">Zugesagt</span>
+  if (status === 'abgesagt') return <span className="bp-badge bp-badge-red">Abgesagt</span>
   return <span className="bp-badge bp-badge-neutral">Ausstehend</span>
 }
 
@@ -637,7 +637,7 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
   guests: Guest[]; eventId: string; userId: string; onUpdate: (g: Guest) => void
 }) {
   const [search, setSearch]   = useState('')
-  const [filter, setFilter]   = useState<'all' | 'ja' | 'nein' | 'ausstehend'>('all')
+  const [filter, setFilter]   = useState<'all' | 'zugesagt' | 'abgesagt' | 'ausstehend'>('all')
   const [adding, setAdding]   = useState(false)
   const [newName, setNewName] = useState('')
   const [newSide, setNewSide] = useState('')
@@ -646,7 +646,7 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
 
   const filtered = guests.filter(g => {
     const matchSearch = g.name.toLowerCase().includes(search.toLowerCase())
-    const matchFilter = filter === 'all' || g.attending === filter
+    const matchFilter = filter === 'all' || g.status === filter
     return matchSearch && matchFilter
   })
 
@@ -659,7 +659,7 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
       .insert({
         event_id: eventId, name: newName.trim(),
         side: newSide || null, email: newEmail.trim() || null,
-        attending: 'ausstehend', created_by: userId,
+        status: 'ausstehend', created_by: userId,
         token: crypto.randomUUID(),
       })
       .select().single()
@@ -670,9 +670,9 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
     }
   }
 
-  const ja = guests.filter(g => g.attending === 'ja').length
-  const nein = guests.filter(g => g.attending === 'nein').length
-  const ausstehend = guests.filter(g => g.attending === 'ausstehend').length
+  const ja = guests.filter(g => g.status === 'zugesagt').length
+  const nein = guests.filter(g => g.status === 'abgesagt').length
+  const ausstehend = guests.filter(g => g.status !== 'zugesagt' && g.status !== 'abgesagt').length
 
   return (
     <div>
@@ -709,8 +709,8 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
         <input className="bp-input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Name suchen…" style={{ flex: 1, minWidth: 200 }} />
         <select className="bp-select" value={filter} onChange={e => setFilter(e.target.value as typeof filter)} style={{ width: 'auto' }}>
           <option value="all">Alle</option>
-          <option value="ja">Zugesagt</option>
-          <option value="nein">Abgesagt</option>
+          <option value="zugesagt">Zugesagt</option>
+          <option value="abgesagt">Abgesagt</option>
           <option value="ausstehend">Ausstehend</option>
         </select>
         <button className="bp-btn bp-btn-primary" onClick={() => setAdding(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -763,7 +763,7 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
               {filtered.map(g => (
                 <tr key={g.id}>
                   <td style={{ fontWeight: 500, color: 'var(--bp-ink)' }}>{g.name}</td>
-                  <td><AttendingBadge status={g.attending} /></td>
+                  <td><AttendingBadge status={g.status} /></td>
                   <td style={{ color: 'var(--bp-ink-3)' }}>{g.side ?? '—'}</td>
                   <td style={{ color: 'var(--bp-ink-3)' }}>{g.meal_choice ?? '—'}</td>
                   <td>
@@ -958,6 +958,7 @@ function EinstellungenTab({ eventId, rsvpSettings: initialSettings }: { eventId:
       rsvp_deadline: settings?.rsvp_deadline ?? null,
       show_meal_choice: settings?.show_meal_choice ?? true,
       show_plus_one: settings?.show_plus_one ?? true,
+      phone_contact: settings?.phone_contact?.trim() || null,
     }
     if (settings?.id) {
       await supabase.from('rsvp_settings').update(payload).eq('id', settings.id)
@@ -979,6 +980,17 @@ function EinstellungenTab({ eventId, rsvpSettings: initialSettings }: { eventId:
       <div className="bp-field">
         <label className="bp-label-text">RSVP-Frist</label>
         <input className="bp-input" type="date" value={s?.rsvp_deadline ?? ''} onChange={e => setSettings(prev => ({ ...(prev ?? {} as RsvpSettings), rsvp_deadline: e.target.value || null }))} />
+      </div>
+      <div className="bp-field">
+        <label className="bp-label-text">Kontaktnummer (bei Fragen)</label>
+        <p className="bp-caption" style={{ marginBottom: '0.5rem' }}>Wird auf der RSVP-Seite angezeigt, wenn die Frist abgelaufen ist.</p>
+        <input
+          className="bp-input"
+          type="tel"
+          value={s?.phone_contact ?? ''}
+          onChange={e => setSettings(prev => ({ ...(prev ?? {} as RsvpSettings), phone_contact: e.target.value }))}
+          placeholder="+49 123 456789"
+        />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9375rem', color: 'var(--bp-ink-2)' }}>

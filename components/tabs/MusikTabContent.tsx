@@ -12,6 +12,16 @@ interface Song {
   type: 'wish' | 'no_go' | 'playlist'
   moment: string
   sort_order: number
+  source?: string
+  suggested_by_guest_name?: string | null
+}
+
+interface MusicSuggestion {
+  id: string
+  guest_name: string
+  song_title: string
+  artist: string
+  created_at: string
 }
 
 interface Requirements {
@@ -544,13 +554,115 @@ function BrautpaarMusikView({ eventId, songs, setSongs }: { eventId: string; son
   )
 }
 
+// ── Vorschläge Lightbox ───────────────────────────────────────────────────────
+
+function VorschlaegeLightbox({
+  eventId,
+  mode,
+  suggestions,
+  loading,
+  onAccept,
+  onReject,
+  onClose,
+}: {
+  eventId: string
+  mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
+  suggestions: MusicSuggestion[]
+  loading: boolean
+  onAccept: (sug: MusicSuggestion) => Promise<void>
+  onReject: (id: string) => Promise<void>
+  onClose: () => void
+}) {
+  const [acting, setActing] = useState<string | null>(null)
+  const canAct = mode === 'brautpaar'
+
+  async function accept(sug: MusicSuggestion) {
+    setActing(sug.id)
+    await onAccept(sug)
+    setActing(null)
+  }
+
+  async function reject(id: string) {
+    setActing(id)
+    await onReject(id)
+    setActing(null)
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{ background: 'var(--surface, #fff)', borderRadius: 'var(--radius, 8px)', border: '1px solid var(--border)', width: '100%', maxWidth: 560, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <p style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Gäste-Vorschläge</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '2px 0 0' }}>Musikwünsche aus den RSVP-Antworten</p>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 4 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ overflowY: 'auto', flex: 1, padding: '12px 0' }}>
+          {loading ? (
+            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Wird geladen…</div>
+          ) : suggestions.length === 0 ? (
+            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>Noch keine Vorschläge von Gästen.</div>
+          ) : (
+            suggestions.map(sug => (
+              <div key={sug.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 20px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{sug.song_title}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{sug.artist} &middot; von <em>{sug.guest_name}</em></div>
+                </div>
+                {canAct && (
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button
+                      onClick={() => accept(sug)}
+                      disabled={acting === sug.id}
+                      title="Zur Playlist hinzufügen"
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', background: 'var(--accent, #15803D)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', opacity: acting === sug.id ? 0.6 : 1 }}
+                    >
+                      <Check size={12} /> Annehmen
+                    </button>
+                    <button
+                      onClick={() => reject(sug.id)}
+                      disabled={acting === sug.id}
+                      title="Vorschlag ablehnen"
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12, cursor: 'pointer', color: '#e05252', opacity: acting === sug.id ? 0.6 : 1 }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {!canAct && suggestions.length > 0 && (
+          <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-secondary)' }}>
+            Nur das Brautpaar kann Vorschläge annehmen oder ablehnen.
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = true, tabAccess = 'write', sectionPerms, onPropose }: Props) {
-  const [songs, setSongs]       = useState<Song[]>([])
-  const [reqs, setReqs]         = useState<Requirements | null>(null)
-  const [loading, setLoading]   = useState(true)
-  const [filter, setFilter]     = useState<string>('all')
+  const [songs, setSongs]             = useState<Song[]>([])
+  const [reqs, setReqs]               = useState<Requirements | null>(null)
+  const [loading, setLoading]         = useState(true)
+  const [filter, setFilter]           = useState<string>('all')
+  const [showVorschlaege, setShowVorschlaege] = useState(false)
+  const [vorschlaege, setVorschlaege] = useState<MusicSuggestion[]>([])
+  const [vorschlaegeLoading, setVorschlaegeLoading] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -580,6 +692,47 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
     if (!error) setSongs(prev => prev.filter(s => s.id !== id))
   }
 
+  async function openVorschlaege() {
+    setShowVorschlaege(true)
+    setVorschlaegeLoading(true)
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('rsvp_music_suggestions')
+      .select('id, guest_name, song_title, artist, created_at')
+      .eq('event_id', eventId)
+      .order('created_at')
+    setVorschlaege(data ?? [])
+    setVorschlaegeLoading(false)
+  }
+
+  async function acceptVorschlag(sug: MusicSuggestion) {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('music_songs')
+      .insert({
+        event_id: eventId,
+        title: sug.song_title,
+        artist: sug.artist,
+        type: 'playlist',
+        moment: 'Allgemein',
+        sort_order: 0,
+        source: 'gast',
+        suggested_by_guest_name: sug.guest_name,
+      })
+      .select().single()
+    if (!error) {
+      await supabase.from('rsvp_music_suggestions').delete().eq('id', sug.id)
+      if (data) setSongs(prev => [...prev, data as Song])
+      setVorschlaege(prev => prev.filter(v => v.id !== sug.id))
+    }
+  }
+
+  async function rejectVorschlag(id: string) {
+    const supabase = createClient()
+    const { error } = await supabase.from('rsvp_music_suggestions').delete().eq('id', id)
+    if (!error) setVorschlaege(prev => prev.filter(v => v.id !== id))
+  }
+
   const visibleSongs = songs
   const filtered     = filter === 'all' ? visibleSongs : visibleSongs.filter(s => s.type === filter)
   const moments      = Array.from(new Set(filtered.map(s => s.moment))).filter(Boolean)
@@ -599,11 +752,30 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
   if (mode === 'brautpaar') {
     return (
       <div>
-        <h1 className="bp-section-title" style={{ marginBottom: 24 }}>Musik</h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <h1 className="bp-section-title" style={{ margin: 0 }}>Musik</h1>
+          <button
+            onClick={openVorschlaege}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', background: 'none', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 'var(--bp-r-sm, 6px)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--bp-ink-2, #6b5e54)' }}
+          >
+            <Lightbulb size={14} /> Vorschläge
+          </button>
+        </div>
         {loading ? (
           <div style={{ color: 'var(--bp-ink, #3a3028)', opacity: 0.5, fontSize: 14 }}>Wird geladen…</div>
         ) : (
           <BrautpaarMusikView eventId={eventId} songs={songs} setSongs={setSongs} />
+        )}
+        {showVorschlaege && (
+          <VorschlaegeLightbox
+            eventId={eventId}
+            mode={mode}
+            suggestions={vorschlaege}
+            loading={vorschlaegeLoading}
+            onAccept={acceptVorschlag}
+            onReject={rejectVorschlag}
+            onClose={() => setShowVorschlaege(false)}
+          />
         )}
       </div>
     )
@@ -613,11 +785,16 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px' }}>Musik</h1>
-        {mode === 'dienstleister' && onPropose && (
-          <button onClick={onPropose} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
-            <Lightbulb size={14} /> Vorschlag erstellen
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={openVorschlaege} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+            <Lightbulb size={14} /> Vorschläge
           </button>
-        )}
+          {mode === 'dienstleister' && onPropose && (
+            <button onClick={onPropose} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+              Vorschlag erstellen
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -676,6 +853,17 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
           </div>
           )}
         </div>
+      )}
+      {showVorschlaege && (
+        <VorschlaegeLightbox
+          eventId={eventId}
+          mode={mode}
+          suggestions={vorschlaege}
+          loading={vorschlaegeLoading}
+          onAccept={acceptVorschlag}
+          onReject={rejectVorschlag}
+          onClose={() => setShowVorschlaege(false)}
+        />
       )}
     </div>
   )

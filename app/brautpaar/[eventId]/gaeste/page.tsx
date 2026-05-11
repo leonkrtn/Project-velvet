@@ -16,7 +16,7 @@ export default async function GaestePage({ params }: Props) {
   const [guestsRes, eventRes, hotelsRes, rsvpSettingsRes] = await Promise.all([
     supabase
       .from('guests')
-      .select('id, name, attending, side, meal_choice, allergy_tags, allergy_custom, email, phone, hotel_room_id, plus_one_allowed, notes, token')
+      .select('id, name, status, side, meal_choice, allergy_tags, allergy_custom, email, phone, hotel_room_id, notes, token')
       .eq('event_id', eventId)
       .order('name'),
     supabase
