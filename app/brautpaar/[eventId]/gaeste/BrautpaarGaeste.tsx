@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Users, Hotel, Mail, Settings, Plus, Copy, Check, Trash2, Link as LinkIcon, RefreshCw } from 'lucide-react'
+import { Users, Hotel, Mail, Settings, Plus, Copy, Check, Trash2, QrCode, Download, X } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,7 +19,7 @@ interface Guest {
   hotel_room_id: string | null
   plus_one_allowed: boolean
   notes: string | null
-  invite_code_id: string | null
+  token: string | null
 }
 
 interface HotelRoom {
@@ -33,16 +33,6 @@ interface Hotel {
   id: string
   name: string
   hotel_rooms: HotelRoom[]
-}
-
-interface InviteCode {
-  id: string
-  code: string
-  role: string
-  expires_at: string | null
-  max_uses: number | null
-  use_count: number
-  created_at: string
 }
 
 interface RsvpSettings {
@@ -61,7 +51,6 @@ interface Props {
   mealOptions: string[]
   childrenAllowed: boolean
   hotels: Hotel[]
-  inviteCodes: InviteCode[]
   rsvpSettings: RsvpSettings | null
 }
 
@@ -70,38 +59,37 @@ interface Props {
 type Tab = 'gaesteliste' | 'hotel' | 'rsvp' | 'einstellungen'
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-  { key: 'gaesteliste', label: 'Gästeliste', icon: <Users size={15} /> },
-  { key: 'hotel',       label: 'Hotel',      icon: <Hotel size={15} /> },
-  { key: 'rsvp',        label: 'RSVP-Einladungen', icon: <Mail size={15} /> },
-  { key: 'einstellungen', label: 'Gäste-Einstellungen', icon: <Settings size={15} /> },
+  { key: 'gaesteliste',   label: 'Gästeliste',          icon: <Users size={15} /> },
+  { key: 'hotel',         label: 'Hotel',                icon: <Hotel size={15} /> },
+  { key: 'rsvp',          label: 'Einladungen',          icon: <Mail size={15} /> },
+  { key: 'einstellungen', label: 'Gäste-Einstellungen',  icon: <Settings size={15} /> },
 ]
 
 // ── Guest badge ──────────────────────────────────────────────────────────────
 
 function AttendingBadge({ status }: { status: string }) {
-  if (status === 'ja') return <span className="bp-badge bp-badge-green">Zugesagt</span>
-  if (status === 'nein') return <span className="bp-badge bp-badge-red">Abgesagt</span>
+  if (status === 'ja')    return <span className="bp-badge bp-badge-green">Zugesagt</span>
+  if (status === 'nein')  return <span className="bp-badge bp-badge-red">Abgesagt</span>
   return <span className="bp-badge bp-badge-neutral">Ausstehend</span>
 }
 
 // ── Gästeliste tab ───────────────────────────────────────────────────────────
 
-function GaestelisteTab({ guests, eventId, mealOptions, onUpdate }: {
+function GaestelisteTab({ guests, eventId, onUpdate }: {
   guests: Guest[]
   eventId: string
-  mealOptions: string[]
   onUpdate: (g: Guest) => void
 }) {
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<'all' | 'ja' | 'nein' | 'ausstehend'>('all')
-  const [adding, setAdding] = useState(false)
+  const [search,  setSearch]  = useState('')
+  const [filter,  setFilter]  = useState<'all' | 'ja' | 'nein' | 'ausstehend'>('all')
+  const [adding,  setAdding]  = useState(false)
   const [newName, setNewName] = useState('')
   const [newSide, setNewSide] = useState('')
-  const [saving, setSaving]   = useState(false)
+  const [saving,  setSaving]  = useState(false)
 
   const filtered = guests.filter(g => {
     const matchSearch = g.name.toLowerCase().includes(search.toLowerCase())
-    const matchFilter = filter === 'all' ? true : g.attending === filter
+    const matchFilter = filter === 'all' || g.attending === filter
     return matchSearch && matchFilter
   })
 
@@ -121,8 +109,8 @@ function GaestelisteTab({ guests, eventId, mealOptions, onUpdate }: {
     }
   }
 
-  const ja = guests.filter(g => g.attending === 'ja').length
-  const nein = guests.filter(g => g.attending === 'nein').length
+  const ja         = guests.filter(g => g.attending === 'ja').length
+  const nein       = guests.filter(g => g.attending === 'nein').length
   const ausstehend = guests.filter(g => g.attending === 'ausstehend').length
 
   return (
@@ -130,10 +118,10 @@ function GaestelisteTab({ guests, eventId, mealOptions, onUpdate }: {
       {/* Stats strip */}
       <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
         {[
-          { label: 'Gesamt', value: guests.length, color: 'var(--bp-ink)' },
-          { label: 'Zugesagt', value: ja, color: '#15803D' },
-          { label: 'Abgesagt', value: nein, color: '#B91C1C' },
-          { label: 'Ausstehend', value: ausstehend, color: 'var(--bp-ink-3)' },
+          { label: 'Gesamt',     value: guests.length, color: 'var(--bp-ink)' },
+          { label: 'Zugesagt',   value: ja,            color: '#15803D' },
+          { label: 'Abgesagt',   value: nein,          color: '#B91C1C' },
+          { label: 'Ausstehend', value: ausstehend,    color: 'var(--bp-ink-3)' },
         ].map(s => (
           <div key={s.label} style={{ textAlign: 'center' }}>
             <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1.5rem', fontWeight: 600, color: s.color, lineHeight: 1 }}>{s.value}</div>
@@ -236,7 +224,7 @@ function HotelTab({ hotels, guests }: { hotels: Hotel[]; guests: Guest[] }) {
       <div className="bp-empty">
         <div className="bp-empty-icon"><Hotel size={48} /></div>
         <div className="bp-empty-title">Keine Hotels hinterlegt</div>
-        <div className="bp-empty-body">Hotels werden vom Veranstalter im Ablauf eingetragen.</div>
+        <div className="bp-empty-body">Hotels werden vom Veranstalter eingetragen.</div>
       </div>
     )
   }
@@ -245,7 +233,6 @@ function HotelTab({ hotels, guests }: { hotels: Hotel[]; guests: Guest[] }) {
     <div>
       {hotels.map(hotel => {
         const rooms = hotel.hotel_rooms ?? []
-        const assignedGuests = guests.filter(g => rooms.some(r => r.id === g.hotel_room_id))
         return (
           <div key={hotel.id} className="bp-card" style={{ marginBottom: '1rem', overflow: 'hidden' }}>
             <div className="bp-card-header">
@@ -269,17 +256,17 @@ function HotelTab({ hotels, guests }: { hotels: Hotel[]; guests: Guest[] }) {
                       <td>{room.room_number ?? '—'}</td>
                       <td>{room.room_type ?? '—'}</td>
                       <td>{room.max_occupancy}</td>
-                      <td>{roomGuests.length > 0 ? roomGuests.map(g => g.name).join(', ') : <span style={{ color: 'var(--bp-ink-3)' }}>Nicht belegt</span>}</td>
+                      <td>
+                        {roomGuests.length > 0
+                          ? roomGuests.map(g => g.name).join(', ')
+                          : <span style={{ color: 'var(--bp-ink-3)' }}>Nicht belegt</span>
+                        }
+                      </td>
                     </tr>
                   )
                 })}
               </tbody>
             </table>
-            {assignedGuests.length === 0 && (
-              <div style={{ padding: '1rem', color: 'var(--bp-ink-3)', fontSize: '0.875rem', textAlign: 'center' }}>
-                Noch keine Gäste diesem Hotel zugewiesen.
-              </div>
-            )}
           </div>
         )
       })}
@@ -287,151 +274,269 @@ function HotelTab({ hotels, guests }: { hotels: Hotel[]; guests: Guest[] }) {
   )
 }
 
-// ── RSVP tab ─────────────────────────────────────────────────────────────────
+// ── Einladungen (RSVP) tab ───────────────────────────────────────────────────
 
-function RsvpTab({ eventId, inviteCodes }: { eventId: string; inviteCodes: InviteCode[] }) {
-  const [codes, setCodes]   = useState(inviteCodes)
-  const [creating, setCreating] = useState(false)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+function RsvpTab({ guests, onUpdateGuest }: {
+  guests: Guest[]
+  onUpdateGuest: (g: Guest) => void
+}) {
+  const [editingEmailId, setEditingEmailId] = useState<string | null>(null)
+  const [emailInput,     setEmailInput]     = useState('')
+  const [savingEmail,    setSavingEmail]    = useState(false)
+  const [copiedId,       setCopiedId]       = useState<string | null>(null)
+  const [qrGuestId,      setQrGuestId]      = useState<string | null>(null)
+  const [qrDataUrls,     setQrDataUrls]     = useState<Record<string, string>>({})
+  const [qrLoading,      setQrLoading]      = useState(false)
 
-  async function createCode() {
-    setCreating(true)
-    const res = await fetch('/api/invite/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId, role: 'guest', maxUses: 1 }),
-    })
-    setCreating(false)
-    if (res.ok) {
-      const { code, id, expiresAt } = await res.json()
-      const newCode: InviteCode = {
-        id: id ?? crypto.randomUUID(),
-        code,
-        role: 'guest',
-        expires_at: expiresAt ?? null,
-        max_uses: 1,
-        use_count: 0,
-        created_at: new Date().toISOString(),
-      }
-      setCodes(prev => [newCode, ...prev])
-    }
+  function getRsvpUrl(token: string) {
+    if (typeof window === 'undefined') return ''
+    return `${window.location.origin}/rsvp/${token}`
   }
 
-  async function deleteCode(id: string) {
-    const supabase = createClient()
-    const { error } = await supabase.from('invite_codes').delete().eq('id', id)
-    if (!error) setCodes(prev => prev.filter(c => c.id !== id))
-  }
-
-  function copyLink(code: string, id: string) {
-    const url = `${window.location.origin}/rsvp/${code}`
-    navigator.clipboard.writeText(url).then(() => {
-      setCopiedId(id)
+  function copyLink(guest: Guest) {
+    if (!guest.token) return
+    navigator.clipboard.writeText(getRsvpUrl(guest.token)).then(() => {
+      setCopiedId(guest.id)
       setTimeout(() => setCopiedId(null), 2000)
     })
   }
 
-  function getRsvpUrl(code: string) {
-    return `${typeof window !== 'undefined' ? window.location.origin : ''}/rsvp/${code}`
+  async function toggleQr(guest: Guest) {
+    if (qrGuestId === guest.id) { setQrGuestId(null); return }
+    if (!guest.token) return
+    setQrGuestId(guest.id)
+    if (qrDataUrls[guest.id]) return
+    setQrLoading(true)
+    try {
+      const url = getRsvpUrl(guest.token)
+      const QRCode = (await import('qrcode')).default
+      const dataUrl = await QRCode.toDataURL(url, {
+        width: 256,
+        margin: 2,
+        color: { dark: '#3D3833', light: '#FDFAF7' },
+      })
+      setQrDataUrls(prev => ({ ...prev, [guest.id]: dataUrl }))
+    } catch (e) {
+      console.error('QR generation failed', e)
+    }
+    setQrLoading(false)
   }
+
+  function downloadQr(guestName: string, dataUrl: string) {
+    const a = document.createElement('a')
+    a.href = dataUrl
+    a.download = `RSVP-QR-${guestName.replace(/\s+/g, '-')}.png`
+    a.click()
+  }
+
+  function startEditEmail(guest: Guest) {
+    setEditingEmailId(guest.id)
+    setEmailInput(guest.email ?? '')
+  }
+
+  async function saveEmail(guest: Guest) {
+    setSavingEmail(true)
+    const supabase = createClient()
+    const newEmail = emailInput.trim() || null
+    const { error } = await supabase
+      .from('guests')
+      .update({ email: newEmail })
+      .eq('id', guest.id)
+    setSavingEmail(false)
+    if (!error) onUpdateGuest({ ...guest, email: newEmail })
+    setEditingEmailId(null)
+  }
+
+  const activeQrGuest  = qrGuestId ? guests.find(g => g.id === qrGuestId) ?? null : null
+  const activeQrUrl    = activeQrGuest ? qrDataUrls[activeQrGuest.id] ?? null : null
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-        <div>
-          <h3 className="bp-section-title" style={{ margin: 0 }}>RSVP-Links</h3>
-          <p className="bp-caption" style={{ marginTop: '0.25rem' }}>Generiert personalisierte Links, die ihr per Nachricht versendet.</p>
-        </div>
-        <button
-          className="bp-btn bp-btn-primary"
-          onClick={createCode}
-          disabled={creating}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          {creating ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
-          {creating ? 'Erstellt…' : 'Link erstellen'}
-        </button>
+      <div style={{ marginBottom: '1.25rem' }}>
+        <h3 className="bp-section-title" style={{ margin: '0 0 0.25rem' }}>Einladungslinks</h3>
+        <p className="bp-caption">
+          Jeder Gast hat einen personalisierten RSVP-Link. Per E-Mail versenden oder als QR-Code für einen Einladungsbrief ausdrucken.
+        </p>
       </div>
 
-      {codes.length === 0 ? (
-        <div className="bp-empty">
-          <div className="bp-empty-icon"><LinkIcon size={48} /></div>
-          <div className="bp-empty-title">Noch keine RSVP-Links</div>
-          <div className="bp-empty-body">Erstellt den ersten Link und versendet ihn an eure Gäste.</div>
-        </div>
-      ) : (
-        <div className="bp-card" style={{ overflow: 'hidden' }}>
+      <div className="bp-card" style={{ overflow: 'hidden' }}>
+        {guests.length === 0 ? (
+          <div className="bp-empty">
+            <div className="bp-empty-title">Noch keine Gäste</div>
+            <div className="bp-empty-body">Fügt Gäste in der Gästeliste hinzu.</div>
+          </div>
+        ) : (
           <table className="bp-table">
             <thead>
               <tr>
-                <th>Code</th>
-                <th>Verwendet</th>
-                <th>Erstellt am</th>
-                <th>Läuft ab</th>
-                <th style={{ textAlign: 'right' }}></th>
+                <th>Gast</th>
+                <th>E-Mail</th>
+                <th style={{ textAlign: 'right' }}>Aktionen</th>
               </tr>
             </thead>
             <tbody>
-              {codes.map(code => (
-                <tr key={code.id}>
+              {guests.map(guest => (
+                <tr key={guest.id}>
+                  <td style={{ fontWeight: 500, color: 'var(--bp-ink)' }}>{guest.name}</td>
+
+                  {/* E-Mail (inline edit) */}
                   <td>
-                    <code style={{ fontSize: '0.8125rem', background: 'var(--bp-ivory-2)', padding: '0.25rem 0.5rem', borderRadius: 'var(--bp-r-xs)', color: 'var(--bp-ink)' }}>
-                      {code.code}
-                    </code>
+                    {editingEmailId === guest.id ? (
+                      <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center' }}>
+                        <input
+                          className="bp-input"
+                          type="email"
+                          value={emailInput}
+                          onChange={e => setEmailInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter')  saveEmail(guest)
+                            if (e.key === 'Escape') setEditingEmailId(null)
+                          }}
+                          autoFocus
+                          style={{ maxWidth: 200, padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                          placeholder="email@beispiel.de"
+                        />
+                        <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={() => saveEmail(guest)} disabled={savingEmail}>
+                          {savingEmail ? '…' : <Check size={13} />}
+                        </button>
+                        <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={() => setEditingEmailId(null)}>
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="bp-btn bp-btn-ghost bp-btn-sm"
+                        onClick={() => startEditEmail(guest)}
+                        style={{
+                          color: guest.email ? 'var(--bp-ink-2)' : 'var(--bp-ink-4)',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        {guest.email ?? '+ E-Mail eintragen'}
+                      </button>
+                    )}
                   </td>
-                  <td style={{ color: 'var(--bp-ink-3)' }}>{code.use_count}/{code.max_uses ?? '∞'}</td>
-                  <td style={{ color: 'var(--bp-ink-3)' }}>
-                    {new Date(code.created_at).toLocaleDateString('de-DE')}
-                  </td>
-                  <td style={{ color: 'var(--bp-ink-3)' }}>
-                    {code.expires_at ? new Date(code.expires_at).toLocaleDateString('de-DE') : '—'}
-                  </td>
+
+                  {/* Actions */}
                   <td>
                     <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'flex-end' }}>
                       <button
                         className="bp-btn bp-btn-secondary bp-btn-sm"
-                        onClick={() => copyLink(code.code, code.id)}
+                        onClick={() => copyLink(guest)}
+                        disabled={!guest.token}
                         style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                        title="RSVP-Link kopieren"
                       >
-                        {copiedId === code.id ? <Check size={13} /> : <Copy size={13} />}
-                        {copiedId === code.id ? 'Kopiert' : 'Link kopieren'}
+                        {copiedId === guest.id ? <Check size={13} /> : <Copy size={13} />}
+                        {copiedId === guest.id ? 'Kopiert' : 'Link'}
                       </button>
-                      <button className="bp-btn bp-btn-danger bp-btn-sm bp-btn-icon" onClick={() => deleteCode(code.id)}>
-                        <Trash2 size={13} />
+
+                      {/* QR-Code: always available, especially useful without email */}
+                      <button
+                        className="bp-btn bp-btn-secondary bp-btn-sm"
+                        onClick={() => toggleQr(guest)}
+                        disabled={!guest.token}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                        title="QR-Code anzeigen (für Brief ohne E-Mail)"
+                      >
+                        <QrCode size={13} />
+                        QR
                       </button>
+
+                      {/* mailto shortcut if email is set */}
+                      {guest.email && guest.token && (
+                        <a
+                          href={`mailto:${guest.email}?subject=Eure Hochzeitseinladung&body=${encodeURIComponent(
+                            `Liebe/r ${guest.name},\n\nbitte bestätigt eure Teilnahme über folgenden persönlichen Link:\n${getRsvpUrl(guest.token)}`
+                          )}`}
+                          className="bp-btn bp-btn-secondary bp-btn-sm"
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', textDecoration: 'none' }}
+                          title="E-Mail-Programm öffnen"
+                        >
+                          <Mail size={13} />
+                          Mail
+                        </a>
+                      )}
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        )}
+      </div>
+
+      {/* QR-Code panel */}
+      {qrGuestId && activeQrGuest && (
+        <div className="bp-card" style={{ marginTop: '1rem', padding: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div>
+              <div style={{ fontWeight: 500, color: 'var(--bp-ink)', marginBottom: 2 }}>
+                QR-Code für {activeQrGuest.name}
+              </div>
+              {activeQrGuest.token && (
+                <div style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)', fontFamily: 'monospace' }}>
+                  /rsvp/{activeQrGuest.token.slice(0, 20)}…
+                </div>
+              )}
+            </div>
+            <button className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon" onClick={() => setQrGuestId(null)}>
+              <X size={16} />
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            {qrLoading && (
+              <div style={{ color: 'var(--bp-ink-3)', fontSize: '0.875rem', padding: '2rem 0' }}>
+                Generiere QR-Code…
+              </div>
+            )}
+            {activeQrUrl && (
+              <>
+                <img
+                  src={activeQrUrl}
+                  alt={`RSVP QR-Code für ${activeQrGuest.name}`}
+                  style={{ width: 200, height: 200, display: 'block' }}
+                />
+                <button
+                  className="bp-btn bp-btn-secondary"
+                  onClick={() => downloadQr(activeQrGuest.name, activeQrUrl)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  <Download size={14} />
+                  Als PNG speichern
+                </button>
+                <p className="bp-caption" style={{ textAlign: 'center', maxWidth: 320 }}>
+                  Bild speichern und in Word einfügen, um es als postalischen Einladungsbrief zu versenden.
+                </p>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-// ── RSVP-Einstellungen tab ───────────────────────────────────────────────────
+// ── Einstellungen tab ────────────────────────────────────────────────────────
 
-function EinstellungenTab({ eventId, rsvpSettings: initialSettings, childrenAllowed }: {
+function EinstellungenTab({ eventId, rsvpSettings: initialSettings }: {
   eventId: string
   rsvpSettings: RsvpSettings | null
-  childrenAllowed: boolean
 }) {
   const [settings, setSettings] = useState(initialSettings)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved]   = useState(false)
+  const [saving,   setSaving]   = useState(false)
+  const [saved,    setSaved]    = useState(false)
 
   async function save() {
     setSaving(true)
     const supabase = createClient()
     const payload = {
-      event_id: eventId,
-      invitation_text: settings?.invitation_text ?? '',
-      rsvp_deadline: settings?.rsvp_deadline ?? null,
+      event_id:         eventId,
+      invitation_text:  settings?.invitation_text ?? '',
+      rsvp_deadline:    settings?.rsvp_deadline ?? null,
       show_meal_choice: settings?.show_meal_choice ?? true,
-      show_plus_one: settings?.show_plus_one ?? true,
-      updated_by: undefined,
+      show_plus_one:    settings?.show_plus_one ?? true,
     }
     if (settings?.id) {
       await supabase.from('rsvp_settings').update(payload).eq('id', settings.id)
@@ -490,15 +595,7 @@ function EinstellungenTab({ eventId, rsvpSettings: initialSettings, childrenAllo
         </label>
       </div>
 
-      <p className="bp-caption" style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bp-ivory-2)', borderRadius: 'var(--bp-r-sm)' }}>
-        Massenversand per E-Mail wird in einem zukünftigen Update verfügbar sein.
-      </p>
-
-      <button
-        className="bp-btn bp-btn-primary"
-        onClick={save}
-        disabled={saving}
-      >
+      <button className="bp-btn bp-btn-primary" onClick={save} disabled={saving}>
         {saving ? 'Speichert…' : saved ? 'Gespeichert ✓' : 'Einstellungen speichern'}
       </button>
     </div>
@@ -509,10 +606,10 @@ function EinstellungenTab({ eventId, rsvpSettings: initialSettings, childrenAllo
 
 export default function BrautpaarGaeste({
   eventId, userId, initialGuests, mealOptions, childrenAllowed,
-  hotels, inviteCodes, rsvpSettings,
+  hotels, rsvpSettings,
 }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('gaesteliste')
-  const [guests, setGuests] = useState<Guest[]>(initialGuests)
+  const [guests,    setGuests]    = useState<Guest[]>(initialGuests)
 
   const handleGuestUpdate = useCallback((g: Guest) => {
     setGuests(prev => {
@@ -543,25 +640,16 @@ export default function BrautpaarGaeste({
       </div>
 
       {activeTab === 'gaesteliste' && (
-        <GaestelisteTab
-          guests={guests}
-          eventId={eventId}
-          mealOptions={mealOptions}
-          onUpdate={handleGuestUpdate}
-        />
+        <GaestelisteTab guests={guests} eventId={eventId} onUpdate={handleGuestUpdate} />
       )}
       {activeTab === 'hotel' && (
         <HotelTab hotels={hotels} guests={guests} />
       )}
       {activeTab === 'rsvp' && (
-        <RsvpTab eventId={eventId} inviteCodes={inviteCodes} />
+        <RsvpTab guests={guests} onUpdateGuest={handleGuestUpdate} />
       )}
       {activeTab === 'einstellungen' && (
-        <EinstellungenTab
-          eventId={eventId}
-          rsvpSettings={rsvpSettings}
-          childrenAllowed={childrenAllowed}
-        />
+        <EinstellungenTab eventId={eventId} rsvpSettings={rsvpSettings} />
       )}
     </div>
   )

@@ -17,12 +17,14 @@
     "lucide-react": "^0.383.0",
     "next": "^15",
     "postgres": "^3.4.9",
+    "qrcode": "^1.5.4",
     "react": "^18",
     "react-dom": "^18",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/uuid": "^9",

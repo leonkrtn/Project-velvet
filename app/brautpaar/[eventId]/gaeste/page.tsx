@@ -13,15 +13,15 @@ export default async function GaestePage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [guestsRes, eventRes, hotelsRes, inviteCodesRes, rsvpSettingsRes] = await Promise.all([
+  const [guestsRes, eventRes, hotelsRes, rsvpSettingsRes] = await Promise.all([
     supabase
       .from('guests')
-      .select('id, name, attending, side, meal_choice, allergy_tags, allergy_custom, email, phone, hotel_room_id, plus_one_allowed, notes, invite_code_id')
+      .select('id, name, attending, side, meal_choice, allergy_tags, allergy_custom, email, phone, hotel_room_id, plus_one_allowed, notes, token')
       .eq('event_id', eventId)
       .order('name'),
     supabase
       .from('events')
-      .select('id, meal_options, max_begleitpersonen, children_allowed, dresscode')
+      .select('id, meal_options, children_allowed')
       .eq('id', eventId)
       .single(),
     supabase
@@ -30,16 +30,10 @@ export default async function GaestePage({ params }: Props) {
       .eq('event_id', eventId)
       .order('name'),
     supabase
-      .from('invite_codes')
-      .select('id, code, role, expires_at, max_uses, use_count, created_at')
-      .eq('event_id', eventId)
-      .eq('role', 'guest')
-      .order('created_at', { ascending: false }),
-    supabase
       .from('rsvp_settings')
       .select('*')
       .eq('event_id', eventId)
-      .single(),
+      .maybeSingle(),
   ])
 
   return (
@@ -50,7 +44,6 @@ export default async function GaestePage({ params }: Props) {
       mealOptions={eventRes.data?.meal_options ?? []}
       childrenAllowed={eventRes.data?.children_allowed ?? false}
       hotels={hotelsRes.data ?? []}
-      inviteCodes={inviteCodesRes.data ?? []}
       rsvpSettings={rsvpSettingsRes.data ?? null}
     />
   )
