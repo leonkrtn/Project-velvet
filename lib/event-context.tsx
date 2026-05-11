@@ -10,7 +10,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { loadEvent, saveEvent, SEED_EVENT, type Event } from '@/lib/store'
-import type { UserRole, TrauzeugePermissions } from '@/lib/types/roles'
+import type { UserRole, TrauzeugePermissions, BrautpaarPermissions } from '@/lib/types/roles'
 
 type Ctx = {
   event: Event | null
@@ -24,6 +24,7 @@ type Ctx = {
   currentRole: UserRole | null
   currentUserId: string | null
   trauzeugePerm: TrauzeugePermissions | null
+  brautpaarPerm: BrautpaarPermissions | null
   isVeranstalter: boolean
   isBrautpaar: boolean
   isEventFrozen: boolean
@@ -40,6 +41,7 @@ const EventContext = createContext<Ctx>({
   currentRole: null,
   currentUserId: null,
   trauzeugePerm: null,
+  brautpaarPerm: null,
   isVeranstalter: false,
   isBrautpaar: false,
   isEventFrozen: false,
@@ -67,6 +69,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   const [currentRole, setCurrentRole] = useState<UserRole | null>(null)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [trauzeugePerm, setTrauzeugePerm] = useState<TrauzeugePermissions | null>(null)
+  const [brautpaarPerm, setBrautpaarPerm] = useState<BrautpaarPermissions | null>(null)
 
   const syncInProgress = useRef(false)
   const pendingEvent = useRef<Event | null>(null)
@@ -92,14 +95,20 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
 
   async function loadRoleAndPermissions(userId: string, eventId: string) {
     try {
-      const { fetchUserRole, fetchTrauzeugePermissions } = await getDB()
+      const { fetchUserRole, fetchTrauzeugePermissions, fetchBrautpaarPermissions } = await getDB()
       const role = await fetchUserRole(eventId, userId)
       setCurrentRole(role)
       if (role === 'trauzeuge') {
         const perms = await fetchTrauzeugePermissions(eventId, userId)
         setTrauzeugePerm(perms)
+        setBrautpaarPerm(null)
+      } else if (role === 'brautpaar') {
+        const perms = await fetchBrautpaarPermissions(eventId)
+        setBrautpaarPerm(perms)
+        setTrauzeugePerm(null)
       } else {
         setTrauzeugePerm(null)
+        setBrautpaarPerm(null)
       }
     } catch (err) {
       console.error('[EventContext] Role load failed:', err)
@@ -183,6 +192,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
           setCurrentUserId(null)
           setCurrentRole(null)
           setTrauzeugePerm(null)
+          setBrautpaarPerm(null)
           setEvent(SEED_EVENT)
         }
       })
@@ -269,7 +279,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   return (
     <EventContext.Provider value={{
       event, updateEvent, switchEvent, isDemo, isSyncing, syncError, hasLoaded,
-      currentRole, currentUserId, trauzeugePerm,
+      currentRole, currentUserId, trauzeugePerm, brautpaarPerm,
       isVeranstalter, isBrautpaar, isEventFrozen,
     }}>
       {children}

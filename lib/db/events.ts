@@ -11,7 +11,7 @@ import type {
   DEFAULT_FEATURE_TOGGLES, FeatureKey,
 } from '@/lib/store'
 import { SEED_EVENT, DEFAULT_FEATURE_TOGGLES as DEFAULTS } from '@/lib/store'
-import type { UserRole, EventDienstleister, TrauzeugePermissions } from '@/lib/types/roles'
+import type { UserRole, EventDienstleister, TrauzeugePermissions, BrautpaarPermissions } from '@/lib/types/roles'
 import type { Conversation, Message } from '@/lib/types/messaging'
 import type { PendingChange, ChangeArea, ChangeData } from '@/lib/types/approvals'
 import type { AuditEntry } from '@/lib/types/audit'
@@ -129,7 +129,7 @@ export async function fetchEventFromDB(userId: string, specificEventId?: string)
     supabase.from('sub_events').select('*').eq('event_id', eventId),
     supabase.from('sub_event_guests').select('*'),
     supabase.from('seating_tables').select('*').eq('event_id', eventId),
-    supabase.from('seating_assignments').select('*'),
+    supabase.from('seating_assignments').select('*').eq('event_id', eventId),
     supabase.from('catering_plans').select('*').eq('event_id', eventId).maybeSingle(),
     supabase.from('feature_toggles').select('*').eq('event_id', eventId),
     supabase.from('deko_wishes').select('*').eq('event_id', eventId),
@@ -380,28 +380,6 @@ export async function upsertEventToDB(event: Event, userId: string): Promise<voi
       }))
     ).filter(r => event.guests.some(g => toUUID(g.id) === r.guest_id))
     if (segRows.length > 0) await supabase.from('sub_event_guests').insert(segRows)
-  }
-
-  // 5. Sitzplan
-  await supabase.from('seating_tables').delete().eq('event_id', eventId)
-  if (event.seatingTables.length > 0) {
-    const stRows = event.seatingTables.map(t => ({
-      id: toUUID(t.id), event_id: eventId,
-      name: t.name, capacity: t.capacity,
-      shape: t.shape ?? 'rectangular',
-      pos_x: t.x ?? 0, pos_y: t.y ?? 0,
-      rotation: t.rotation ?? 0,
-      table_length: t.tableLength ?? 2.0,
-      table_width: t.tableWidth ?? 0.8,
-    }))
-    await supabase.from('seating_tables').insert(stRows)
-
-    const saRows = event.seatingTables.flatMap(t =>
-      t.guestIds.map(gid => ({
-        table_id: toUUID(t.id), guest_id: toUUID(gid),
-      }))
-    ).filter(r => event.guests.some(g => toUUID(g.id) === r.guest_id))
-    if (saRows.length > 0) await supabase.from('seating_assignments').insert(saRows)
   }
 
   // 6. Budget
@@ -662,6 +640,29 @@ export async function upsertEventDienstleister(data: EventDienstleister): Promis
 export async function removeEventDienstleister(id: string): Promise<void> {
   const supabase = createBrowserClient()
   await supabase.from('event_dienstleister').delete().eq('id', id)
+}
+
+// ── Brautpaar-Permissions ─────────────────────────────────────────────────────
+export async function fetchBrautpaarPermissions(eventId: string): Promise<BrautpaarPermissions | null> {
+  const supabase = createBrowserClient()
+  const { data } = await supabase
+    .from('brautpaar_permissions')
+    .select('*')
+    .eq('event_id', eventId)
+    .maybeSingle()
+  if (!data) return null
+  return {
+    eventId: data.event_id,
+    ablaufplan: data.ablaufplan ?? true,
+    subEvents: data.sub_events ?? false,
+    erinnerungen: data.erinnerungen ?? true,
+    sitzplan: data.sitzplan ?? true,
+    dekorationen: data.dekorationen ?? true,
+    dienstleister: data.dienstleister ?? true,
+    hotel: data.hotel ?? true,
+    catering: data.catering ?? false,
+    anzeigeeinstellungen: data.anzeigeeinstellungen ?? false,
+  }
 }
 
 // ── Trauzeuge-Permissions ─────────────────────────────────────────────────────
