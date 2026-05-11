@@ -129,7 +129,7 @@ export async function fetchEventFromDB(userId: string, specificEventId?: string)
     supabase.from('sub_events').select('*').eq('event_id', eventId),
     supabase.from('sub_event_guests').select('*'),
     supabase.from('seating_tables').select('*').eq('event_id', eventId),
-    supabase.from('seating_assignments').select('*'),
+    supabase.from('seating_assignments').select('*').eq('event_id', eventId),
     supabase.from('catering_plans').select('*').eq('event_id', eventId).maybeSingle(),
     supabase.from('feature_toggles').select('*').eq('event_id', eventId),
     supabase.from('deko_wishes').select('*').eq('event_id', eventId),
