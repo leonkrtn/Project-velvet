@@ -676,25 +676,31 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+      <div style={{
+        display: 'inline-flex',
+        gap: 0,
+        marginBottom: '1.25rem',
+        background: 'var(--bp-paper)',
+        border: '1px solid var(--bp-rule)',
+        borderRadius: 'var(--bp-r-sm)',
+        boxShadow: 'var(--bp-shadow-card)',
+        overflow: 'hidden',
+      }}>
         {[
-          { label: 'Gesamt',     value: guests.length, border: 'var(--bp-gold)',  numColor: 'var(--bp-gold-deep)' },
-          { label: 'Zugesagt',   value: ja,            border: '#15803D',         numColor: '#15803D' },
-          { label: 'Abgesagt',   value: nein,          border: '#B91C1C',         numColor: '#B91C1C' },
-          { label: 'Ausstehend', value: ausstehend,    border: 'var(--bp-ink-3)', numColor: 'var(--bp-ink-3)' },
-        ].map(s => (
+          { label: 'Gesamt',     value: guests.length, color: 'var(--bp-ink)' },
+          { label: 'Zugesagt',   value: ja,            color: '#15803D' },
+          { label: 'Abgesagt',   value: nein,          color: '#B91C1C' },
+          { label: 'Ausstehend', value: ausstehend,    color: 'var(--bp-ink-3)' },
+        ].map((s, i) => (
           <div key={s.label} style={{
-            flex: 1,
-            minWidth: 90,
-            background: 'var(--bp-paper)',
-            border: '1px solid var(--bp-rule)',
-            borderLeft: `4px solid ${s.border}`,
-            borderRadius: 'var(--bp-r-sm)',
-            boxShadow: 'var(--bp-shadow-card)',
-            padding: '0.75rem 1rem',
+            padding: '0.375rem 0.875rem',
+            borderLeft: i > 0 ? '1px solid var(--bp-rule)' : 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem',
           }}>
-            <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1.75rem', fontWeight: 700, color: s.numColor, lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: '0.6875rem', color: 'var(--bp-ink-3)', marginTop: '0.25rem', fontWeight: 500, letterSpacing: '0.04em' }}>{s.label}</div>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: s.color }}>{s.value}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>{s.label}</span>
           </div>
         ))}
       </div>
