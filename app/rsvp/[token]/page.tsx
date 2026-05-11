@@ -2,13 +2,13 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { v4 as uuid } from 'uuid'
-import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink } from 'lucide-react'
+import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink, Music } from 'lucide-react'
 import type {
   Event, Guest, MealChoice, AllergyTag, TransportMode, AltersKategorie,
 } from '@/lib/store'
 import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle, Input } from '@/components/ui'
 
-type Step = 'intro'|'rsvp'|'details'|'hotel'|'geschenke'|'confirmation'
+type Step = 'intro'|'rsvp'|'details'|'hotel'|'musikwunsch'|'geschenke'|'confirmation'
 
 interface WishlistItem {
   id: string
@@ -52,6 +52,18 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+function fmtDeadline(d: string) {
+  return new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+function getMapsUrl(address: string): string {
+  const encoded = encodeURIComponent(address)
+  if (typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent)) {
+    return `maps://maps.apple.com/?q=${encoded}`
+  }
+  return `https://maps.google.com/?q=${encoded}`
+}
+
 function blankCompanion(): CompanionDraft {
   return { id: uuid(), name: '', ageCategory: 'erwachsen', trinkAlkohol: undefined, meal: undefined, allergies: [], allergyCustom: '' }
 }
@@ -60,13 +72,21 @@ export default function RSVPPage() {
   const params = useParams()
   const token  = params?.token as string
 
-  const [event, setEvent] = useState<Event | null>(null)
-  const [guest, setGuest] = useState<Guest | null>(null)
-  const [isFrozen, setIsFrozen] = useState(false)
+  const [event, setEvent]   = useState<Event | null>(null)
+  const [guest, setGuest]   = useState<Guest | null>(null)
+  const [isFrozen, setIsFrozen]               = useState(false)
+  const [isDeadlinePassed, setIsDeadlinePassed] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [step,  setStep]  = useState<Step>('intro')
-  const [toast, setToast] = useState<string | null>(null)
+  const [step,  setStep]    = useState<Step>('intro')
+  const [toast, setToast]   = useState<string | null>(null)
+
+  // rsvp_settings flags
+  const [showMealChoice, setShowMealChoice] = useState(true)
+  const [showPlusOne,    setShowPlusOne]    = useState(true)
+  const [rsvpDeadline,   setRsvpDeadline]   = useState<string | null>(null)
+  const [invitationText, setInvitationText] = useState('')
+  const [phoneContact,   setPhoneContact]   = useState<string | null>(null)
 
   // RSVP step state
   const [attending,    setAttending]    = useState<boolean | null>(null)
@@ -75,17 +95,21 @@ export default function RSVPPage() {
   const [message,      setMessage]      = useState('')
 
   // Details step
-  const [meal,         setMeal]         = useState<MealChoice | undefined>()
-  const [allergies,    setAllergies]    = useState<AllergyTag[]>([])
-  const [allergyCustom,setAllergyCustom]= useState('')
+  const [meal,          setMeal]          = useState<MealChoice | undefined>()
+  const [allergies,     setAllergies]     = useState<AllergyTag[]>([])
+  const [allergyCustom, setAllergyCustom] = useState('')
 
   // Arrival
-  const [arrivalDate,  setArrivalDate]  = useState('')
-  const [arrivalTime,  setArrivalTime]  = useState('')
-  const [transport,    setTransport]    = useState<TransportMode | ''>('')
+  const [arrivalDate, setArrivalDate] = useState('')
+  const [arrivalTime, setArrivalTime] = useState('')
+  const [transport,   setTransport]   = useState<TransportMode | ''>('')
 
   // Hotel
-  const [hotelRoomId,  setHotelRoomId]  = useState('')
+  const [hotelRoomId, setHotelRoomId] = useState('')
+
+  // Musikwunsch
+  const [songTitle,  setSongTitle]  = useState('')
+  const [songArtist, setSongArtist] = useState('')
 
   // Geschenke
   const [wishlist, setWishlist] = useState<WishlistItem[]>([])
@@ -122,6 +146,12 @@ export default function RSVPPage() {
           dekoWishes: [], guestPhotos: [],
         } as unknown as Event)
         setIsFrozen(!!ev.isFrozen)
+        setIsDeadlinePassed(!!ev.isDeadlinePassed)
+        setShowMealChoice(ev.showMealChoice ?? true)
+        setShowPlusOne(ev.showPlusOne ?? true)
+        setRsvpDeadline(ev.rsvpDeadline ?? null)
+        setInvitationText(ev.invitationText ?? '')
+        setPhoneContact(ev.phoneContact ?? null)
         setGuest({
           id: g.id, name: g.name, email: g.email ?? '', token: g.token,
           status: g.status,
@@ -147,7 +177,8 @@ export default function RSVPPage() {
           setArrivalDate(g.arrivalDate ?? '')
           setArrivalTime(g.arrivalTime ?? '')
           setTransport((g.transport ?? '') as TransportMode)
-          setHotelRoomId(g.hotelRoomId ?? '')
+          // Returning guest with no room → pre-select "Kein Zimmer"
+          setHotelRoomId(g.respondedAt && !g.hotelRoomId ? 'none' : (g.hotelRoomId ?? ''))
           setMessage(g.message ?? '')
           setCompanions((g.begleitpersonen ?? []).map((bp: any) => ({
             id: bp.id,
@@ -176,7 +207,9 @@ export default function RSVPPage() {
     </div>
   )
 
-  const allRooms = (event?.hotels ?? []).flatMap(h => h.rooms)
+  const allRooms  = (event?.hotels ?? []).flatMap(h => h.rooms)
+  const hasHotels = (event?.hotels ?? []).length > 0
+  const isBlocked = isFrozen || isDeadlinePassed
 
   const setCompanionCount = (count: number) => {
     setCompanions(prev => {
@@ -193,8 +226,11 @@ export default function RSVPPage() {
 
   const save = async () => {
     if (!event || !guest || saving) return
-    if (isFrozen) {
-      setToast('Das Event ist gesperrt — Änderungen nicht mehr möglich.')
+    if (isBlocked) {
+      const msg = isFrozen
+        ? 'Das Event ist gesperrt — Änderungen nicht mehr möglich.'
+        : 'Die Anmeldefrist ist abgelaufen — Änderungen nicht mehr möglich.'
+      setToast(msg)
       return
     }
     setSaving(true)
@@ -221,6 +257,8 @@ export default function RSVPPage() {
       transport: attending ? (transport || null) : null,
       hotelRoomId: attending ? (hotelRoomId && hotelRoomId !== 'none' ? hotelRoomId : null) : null,
       message,
+      songTitle:  attending ? (songTitle.trim() || null)  : null,
+      songArtist: attending ? (songArtist.trim() || null) : null,
     }
 
     try {
@@ -253,12 +291,12 @@ export default function RSVPPage() {
         begleitpersonen: g.begleitpersonen ?? [],
       }
 
-      // Hotel-Room-Delta lokal reflektieren für sofortige UI-Konsistenz
+      // Hotel-Room-Delta lokal reflektieren
       const prev = guest.hotelRoomId && guest.hotelRoomId !== 'none' ? guest.hotelRoomId : null
       const next = g.hotelRoomId && g.hotelRoomId !== 'none' ? g.hotelRoomId : null
-      const updatedHotels = (event.hotels ?? []).map(h => ({
+      const updatedHotels = (event.hotels ?? []).map((h: any) => ({
         ...h,
-        rooms: h.rooms.map(r => {
+        rooms: h.rooms.map((r: any) => {
           if (prev === next) return r
           if (r.id === prev) return { ...r, bookedRooms: Math.max(0, r.bookedRooms - 1) }
           if (r.id === next) return { ...r, bookedRooms: r.bookedRooms + 1 }
@@ -278,7 +316,9 @@ export default function RSVPPage() {
 
   const progressSteps: Step[] = attending === false
     ? ['intro', 'rsvp', 'confirmation']
-    : ['intro', 'rsvp', 'details', 'hotel', 'geschenke', 'confirmation']
+    : hasHotels
+      ? ['intro', 'rsvp', 'details', 'hotel', 'musikwunsch', 'geschenke', 'confirmation']
+      : ['intro', 'rsvp', 'details', 'musikwunsch', 'geschenke', 'confirmation']
   const progress = progressSteps.indexOf(step) / (progressSteps.length - 1) * 100
 
   const optBtn = (active: boolean): React.CSSProperties => ({
@@ -299,57 +339,99 @@ export default function RSVPPage() {
 
   const maxComp = event.maxBegleitpersonen ?? 2
 
-  // details disabled if no meal for guest or any companion without meal
-  const detailsOk = !!meal && companions.every(c => !!c.meal)
+  const detailsOk = (!showMealChoice || !!meal)
+    && companions.every(c => !showMealChoice || !!c.meal)
+
+  // Musikwunsch: valid if both filled OR both empty
+  const songOk = (!!songTitle.trim()) === (!!songArtist.trim())
+
+  // Guest first name for invitation text
+  const firstName = guest.name.split(' ')[0]
+  const introBody = invitationText
+    ? invitationText.replace(/\{\{Name\}\}/g, firstName)
+    : `Liebe/r ${firstName}, wir freuen uns auf deine Antwort.`
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100dvh', paddingBottom: 40 }}>
       {/* Top bar */}
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: 560, margin: '0 auto', padding: '14px 20px', paddingTop: 'calc(14px + env(safe-area-inset-top))' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: step !== 'intro' && step !== 'confirmation' ? 10 : 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {step !== 'intro' && step !== 'confirmation' && (
-                <button onClick={() => {
-                  const prev: Record<Step, Step> = { intro: 'intro', rsvp: 'intro', details: 'rsvp', hotel: 'details', geschenke: 'hotel', confirmation: attending ? 'geschenke' : 'rsvp' }
-                  setStep(prev[step])
-                }} style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: 'var(--text-light)', display: 'flex' }}>
-                  <ChevronLeft size={20} />
-                </button>
-              )}
-              <span style={{ fontFamily: "'DM Serif Display',serif", fontSize: 18, color: 'var(--gold)' }}>Velvet.</span>
-            </div>
-            <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{event.coupleName}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {step !== 'intro' && (
+              <button onClick={() => {
+                const cur = progressSteps.indexOf(step)
+                if (cur > 0) setStep(progressSteps[cur - 1])
+              }} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-dim)', padding: 4 }}>
+                <ChevronLeft size={20} />
+              </button>
+            )}
+            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 400, color: 'var(--text)', flex: 1 }}>
+              {event.coupleName}
+            </span>
           </div>
           {step !== 'intro' && step !== 'confirmation' && (
-            <div style={{ height: 2, background: 'var(--black3)', borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${progress}%`, background: 'var(--gold)', borderRadius: 2, transition: 'width 0.4s ease' }} />
+            <div style={{ marginTop: 10, height: 2, background: 'var(--border)', borderRadius: 1 }}>
+              <div style={{ height: '100%', width: `${progress}%`, background: 'var(--gold)', borderRadius: 1, transition: 'width 0.3s' }} />
             </div>
           )}
         </div>
       </div>
 
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 20px' }}>
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px' }}>
 
         {/* ──────────── INTRO ──────────── */}
         {step === 'intro' && (
-          <div style={{ animation: 'fadeUp 0.5s ease' }}>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '32px 24px', marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(201,168,76,0.04)' }} />
-              <div style={{ height: 1, background: 'linear-gradient(to right,var(--gold),transparent)', marginBottom: 20, opacity: 0.4 }} />
+          <div style={{ animation: 'fadeUp 0.4s ease' }}>
+            <div style={{ marginBottom: 20 }}>
               <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.16em', color: 'var(--gold)', marginBottom: 10 }}>Herzliche Einladung</p>
               <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 400, color: 'var(--text)', lineHeight: 1.2, marginBottom: 8 }}>{event.coupleName}</h1>
               <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 15, fontStyle: 'italic', color: 'var(--text-light)', marginBottom: 0 }}>
-                Liebe/r <strong style={{ fontStyle: 'normal', color: 'var(--text)' }}>{guest.name.split(' ')[0]}</strong>, wir freuen uns auf deine Antwort.
+                {introBody}
               </p>
             </div>
+
+            {/* Deadline badge */}
+            {rsvpDeadline && !isDeadlinePassed && !isFrozen && (
+              <div style={{ background: 'rgba(201,168,76,0.08)', border: '1px solid rgba(201,168,76,0.25)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Clock size={13} color="var(--gold)" />
+                <p style={{ fontSize: 12, color: 'var(--gold)', margin: 0 }}>
+                  Bitte bis <strong>{fmtDeadline(rsvpDeadline)}</strong> antworten
+                </p>
+              </div>
+            )}
+
+            {/* Frozen banner */}
+            {isFrozen && (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 14 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>Anmeldefrist abgelaufen</p>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+                  Die Anmeldung ist geschlossen. Du kannst deine bisherige Antwort unten noch einsehen.
+                </p>
+              </div>
+            )}
+
+            {/* Deadline-passed banner (not frozen, but deadline gone) */}
+            {isDeadlinePassed && !isFrozen && (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 14 }}>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>Anmeldefrist abgelaufen</p>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.6 }}>
+                  Die Frist ({fmtDeadline(rsvpDeadline!)}) ist verstrichen. Neue Anmeldungen sind nicht mehr möglich.
+                  {phoneContact && <> Bitte melde dich direkt unter <strong>{phoneContact}</strong>.</>}
+                </p>
+              </div>
+            )}
 
             <Card style={{ marginBottom: 14 }}>
               {[
                 { icon: <Clock size={13} color="var(--gold)" />,  label: 'Datum',     value: fmtDate(event.date) },
-                { icon: <MapPin size={13} color="var(--gold)" />, label: 'Ort',       value: `${event.venue}, ${event.venueAddress}` },
+                {
+                  icon: <MapPin size={13} color="var(--gold)" />,
+                  label: 'Ort',
+                  value: `${event.venue}${event.venueAddress ? `, ${event.venueAddress}` : ''}`,
+                  href: event.venueAddress ? getMapsUrl(`${event.venue} ${event.venueAddress}`) : undefined,
+                },
                 { icon: <Shirt size={13} color="var(--gold)" />,  label: 'Dresscode', value: event.dresscode },
-                { icon: <Hotel size={13} color="var(--gold)" />,  label: 'Hotel',     value: (event.hotels ?? []).map(h => h.name).filter(Boolean).join(', ') || undefined },
+                { icon: <Hotel size={13} color="var(--gold)" />,  label: 'Hotel',     value: (event.hotels ?? []).map((h: any) => h.name).filter(Boolean).join(', ') || undefined },
                 { icon: <span style={{ fontSize: 13 }}>👶</span>, label: 'Kinder',
                   value: (event as any).childrenAllowed === false
                     ? ((event as any).childrenNote || 'Wir feiern ohne Kinder')
@@ -359,34 +441,45 @@ export default function RSVPPage() {
                   <div style={{ marginTop: 1, flexShrink: 0 }}>{item.icon}</div>
                   <div>
                     <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 2 }}>{item.label}</p>
-                    <p style={{ fontSize: 12, color: 'var(--text-mid)' }}>{item.value}</p>
+                    {(item as any).href ? (
+                      <a href={(item as any).href} style={{ fontSize: 12, color: 'var(--gold)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {item.value} <MapPin size={10} />
+                      </a>
+                    ) : (
+                      <p style={{ fontSize: 12, color: 'var(--text-mid)' }}>{item.value}</p>
+                    )}
                   </div>
                 </div>
               ))}
             </Card>
 
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 14 }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-light)', marginBottom: 5 }}>Lieber telefonisch antworten?</p>
-              <p style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 8 }}>Ruf uns gerne an — wir nehmen deine Antwort auch persönlich entgegen:</p>
-              <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 500, color: 'var(--gold)' }}>1234 567 78910</p>
-            </div>
+            {/* Phone contact — only if configured */}
+            {phoneContact && (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '14px 16px', marginBottom: 14 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-light)', marginBottom: 5 }}>Lieber telefonisch antworten?</p>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 8 }}>Ruf uns gerne an — wir nehmen deine Antwort auch persönlich entgegen:</p>
+                <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 500, color: 'var(--gold)' }}>{phoneContact}</p>
+              </div>
+            )}
 
-            {event.childrenAllowed !== undefined && (
-              <div style={{ background: event.childrenAllowed ? 'var(--green-pale)' : 'var(--red-pale)', border: `1px solid ${event.childrenAllowed ? 'rgba(61,122,86,0.2)' : 'rgba(160,64,64,0.15)'}`, borderRadius: 'var(--r-md)', padding: '12px 16px', marginBottom: 14 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: event.childrenAllowed ? 'var(--green)' : 'var(--red)', marginBottom: event.childrenNote ? 4 : 0 }}>
-                  {event.childrenAllowed ? 'Kinder herzlich willkommen' : 'Erwachsenenfeier — ohne Kinder'}
+            {(event as any).childrenAllowed !== undefined && (
+              <div style={{ background: (event as any).childrenAllowed ? 'var(--green-pale)' : 'var(--red-pale)', border: `1px solid ${(event as any).childrenAllowed ? 'rgba(61,122,86,0.2)' : 'rgba(160,64,64,0.15)'}`, borderRadius: 'var(--r-md)', padding: '12px 16px', marginBottom: 14 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: (event as any).childrenAllowed ? 'var(--green)' : 'var(--red)', marginBottom: (event as any).childrenNote ? 4 : 0 }}>
+                  {(event as any).childrenAllowed ? 'Kinder herzlich willkommen' : 'Erwachsenenfeier — ohne Kinder'}
                 </p>
-                {event.childrenNote && <p style={{ fontSize: 12, color: 'var(--text-light)' }}>{event.childrenNote}</p>}
+                {(event as any).childrenNote && <p style={{ fontSize: 12, color: 'var(--text-light)' }}>{(event as any).childrenNote}</p>}
               </div>
             )}
 
-            {guest.status !== 'eingeladen' && (
+            {guest.status !== 'eingeladen' && guest.status !== 'angelegt' && (
               <div style={{ background: 'var(--gold-pale)', borderRadius: 'var(--r-md)', padding: '12px 16px', marginBottom: 14, border: '1px solid rgba(201,168,76,0.2)', fontSize: 13, color: 'var(--gold)' }}>
-                Du hast bereits geantwortet. Du kannst deine Antwort hier ändern.
+                Du hast bereits geantwortet. Du kannst deine Antwort hier {isBlocked ? 'einsehen' : 'ändern'}.
               </div>
             )}
 
-            <Button fullWidth size="lg" variant="gold" onClick={() => setStep('rsvp')}>Jetzt antworten</Button>
+            <Button fullWidth size="lg" variant="gold" onClick={() => setStep('rsvp')}>
+              {isBlocked ? 'Antwort ansehen' : 'Jetzt antworten'}
+            </Button>
           </div>
         )}
 
@@ -396,13 +489,12 @@ export default function RSVPPage() {
             <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Kannst du kommen?</h2>
             <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>{event.coupleName} · {new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
 
-            {/* Yes / No */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
               {[
                 { v: true,  icon: <CheckCircle size={20} />, title: 'Ja, ich bin dabei!',  sub: 'Ich freue mich auf diesen besonderen Tag.' },
                 { v: false, icon: <XCircle size={20} />,     title: 'Leider nicht',         sub: 'Ich kann leider nicht teilnehmen.' },
               ].map(opt => (
-                <button key={String(opt.v)} onClick={() => setAttending(opt.v)} data-sel={attending === opt.v ? '' : undefined} style={optBtn(attending === opt.v)}>
+                <button key={String(opt.v)} onClick={() => !isBlocked && setAttending(opt.v)} disabled={isBlocked} data-sel={attending === opt.v ? '' : undefined} style={optBtn(attending === opt.v)}>
                   {opt.icon}
                   <div>
                     <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{opt.title}</p>
@@ -414,7 +506,6 @@ export default function RSVPPage() {
 
             {attending && (
               <>
-                {/* Alcohol — main guest */}
                 <Card style={{ marginBottom: 14 }}>
                   <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>Trinkst du Alkohol?</p>
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -423,76 +514,72 @@ export default function RSVPPage() {
                   </div>
                 </Card>
 
-                {/* Companion count */}
-                <Card style={{ marginBottom: 14 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>
-                    Wie viele Personen bringst du mit?
-                  </p>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {Array.from({ length: maxComp + 1 }, (_, i) => (
-                      <button key={i} onClick={() => setCompanionCount(i)} data-sel={companions.length === i ? '' : undefined} style={{
-                        width: 48, height: 48, borderRadius: 'var(--r-sm)', fontFamily: 'inherit',
-                        border: `1.5px solid ${companions.length === i ? 'var(--gold)' : 'var(--border)'}`,
-                        background: companions.length === i ? 'var(--gold-pale)' : 'var(--surface)',
-                        color: companions.length === i ? 'var(--gold)' : 'var(--grey4)',
-                        fontSize: 16, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
-                      }}>
-                        {i}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Companion details */}
-                  {companions.map((c, idx) => (
-                    <div key={c.id} style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 12 }}>
-                        Begleitperson {idx + 1}
-                      </p>
-                      {/* Name */}
-                      <div style={{ marginBottom: 10 }}>
-                        <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Name</label>
-                        <input value={c.name} onChange={e => updateCompanion(idx, { name: e.target.value })}
-                          placeholder="Vorname Nachname"
-                          style={{ width: '100%', padding: '10px 13px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
-                      </div>
-                      {/* Age */}
-                      <div style={{ marginBottom: 10 }}>
-                        <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Altersgruppe</label>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {AGE_CATS.map(a => (
-                            <button key={a.value} onClick={() => updateCompanion(idx, { ageCategory: a.value })} data-sel={c.ageCategory === a.value ? '' : undefined} style={{
-                              padding: '7px 12px', borderRadius: 8, fontFamily: 'inherit',
-                              border: `1.5px solid ${c.ageCategory === a.value ? 'var(--gold)' : 'var(--border)'}`,
-                              background: c.ageCategory === a.value ? 'var(--gold-pale)' : 'var(--surface)',
-                              color: c.ageCategory === a.value ? 'var(--gold)' : 'var(--grey4)',
-                              fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-                            }}>
-                              {a.label}
-                            </button>
-                          ))}
+                {showPlusOne && (
+                  <Card style={{ marginBottom: 14 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>
+                      Wie viele Personen bringst du mit?
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {Array.from({ length: maxComp + 1 }, (_, i) => (
+                        <button key={i} onClick={() => setCompanionCount(i)} data-sel={companions.length === i ? '' : undefined} style={{
+                          width: 48, height: 48, borderRadius: 'var(--r-sm)', fontFamily: 'inherit',
+                          border: `1.5px solid ${companions.length === i ? 'var(--gold)' : 'var(--border)'}`,
+                          background: companions.length === i ? 'var(--gold-pale)' : 'var(--surface)',
+                          color: companions.length === i ? 'var(--gold)' : 'var(--grey4)',
+                          fontSize: 16, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
+                        }}>
+                          {i}
+                        </button>
+                      ))}
+                    </div>
+                    {companions.map((c, idx) => (
+                      <div key={c.id} style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginBottom: 12 }}>
+                          Begleitperson {idx + 1}
+                        </p>
+                        <div style={{ marginBottom: 10 }}>
+                          <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Name</label>
+                          <input value={c.name} onChange={e => updateCompanion(idx, { name: e.target.value })}
+                            placeholder="Vorname Nachname"
+                            style={{ width: '100%', padding: '10px 13px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
                         </div>
-                      </div>
-                      {/* Alcohol — only for adults */}
-                      {c.ageCategory === 'erwachsen' && (
-                        <div>
-                          <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>
-                            Trinkt {c.name || 'diese Person'} Alkohol?
-                          </label>
-                          <div style={{ display: 'flex', gap: 8 }}>
-                            <button onClick={() => updateCompanion(idx, { trinkAlkohol: true })}  data-sel={c.trinkAlkohol === true  ? '' : undefined} style={yesNoBtn(true,  c.trinkAlkohol)}>Ja, gerne</button>
-                            <button onClick={() => updateCompanion(idx, { trinkAlkohol: false })} data-sel={c.trinkAlkohol === false ? '' : undefined} style={yesNoBtn(false, c.trinkAlkohol)}>Nein, danke</button>
+                        <div style={{ marginBottom: 10 }}>
+                          <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Altersgruppe</label>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {AGE_CATS.map(a => (
+                              <button key={a.value} onClick={() => updateCompanion(idx, { ageCategory: a.value })} data-sel={c.ageCategory === a.value ? '' : undefined} style={{
+                                padding: '7px 12px', borderRadius: 8, fontFamily: 'inherit',
+                                border: `1.5px solid ${c.ageCategory === a.value ? 'var(--gold)' : 'var(--border)'}`,
+                                background: c.ageCategory === a.value ? 'var(--gold-pale)' : 'var(--surface)',
+                                color: c.ageCategory === a.value ? 'var(--gold)' : 'var(--grey4)',
+                                fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                              }}>
+                                {a.label}
+                              </button>
+                            ))}
                           </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </Card>
+                        {c.ageCategory === 'erwachsen' && (
+                          <div>
+                            <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>
+                              Trinkt {c.name || 'diese Person'} Alkohol?
+                            </label>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button onClick={() => updateCompanion(idx, { trinkAlkohol: true })}  data-sel={c.trinkAlkohol === true  ? '' : undefined} style={yesNoBtn(true,  c.trinkAlkohol)}>Ja, gerne</button>
+                              <button onClick={() => updateCompanion(idx, { trinkAlkohol: false })} data-sel={c.trinkAlkohol === false ? '' : undefined} style={yesNoBtn(false, c.trinkAlkohol)}>Nein, danke</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </Card>
+                )}
               </>
             )}
 
             <Textarea label="Nachricht (optional)" value={message} onChange={setMessage} placeholder="Herzliche Glückwünsche …" />
 
-            <Button fullWidth size="lg" variant="gold" disabled={attending === null || saving || isFrozen}
+            <Button fullWidth size="lg" variant="gold" disabled={attending === null || saving || isBlocked}
               onClick={() => { if (attending === false) { save() } else { setStep('details') } }}>
               {saving ? 'Wird gespeichert…' : attending === false ? 'Absage senden' : 'Weiter'}
             </Button>
@@ -505,11 +592,13 @@ export default function RSVPPage() {
             <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Deine Details</h2>
             <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>Damit wir alles perfekt vorbereiten können.</p>
 
-            <Card style={{ marginBottom: 10 }}>
-              <MealPicker label="Deine Menüwahl" value={meal} onChange={setMeal} options={event.mealOptions as MealChoice[]} />
-            </Card>
+            {showMealChoice && (
+              <Card style={{ marginBottom: 10 }}>
+                <MealPicker label="Deine Menüwahl" value={meal} onChange={setMeal} options={event.mealOptions as MealChoice[]} />
+              </Card>
+            )}
 
-            {companions.map((c, idx) => (
+            {showMealChoice && companions.map((c, idx) => (
               <Card key={c.id} style={{ marginBottom: 10 }}>
                 <MealPicker
                   label={`Menüwahl: ${c.name || `Begleitperson ${idx + 1}`}`}
@@ -558,7 +647,7 @@ export default function RSVPPage() {
               </div>
             </Card>
 
-            <Button fullWidth size="lg" variant="gold" disabled={!detailsOk} onClick={() => setStep('hotel')}>Weiter</Button>
+            <Button fullWidth size="lg" variant="gold" disabled={!detailsOk} onClick={() => setStep(hasHotels ? 'hotel' : 'musikwunsch')}>Weiter</Button>
           </div>
         )}
 
@@ -566,7 +655,7 @@ export default function RSVPPage() {
         {step === 'hotel' && (
           <div style={{ animation: 'fadeUp 0.4s ease' }}>
             <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Hotelzimmer</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 20, lineHeight: 1.5 }}>Möchtet ihr ein Zimmer reservieren?</p>
+            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 20, lineHeight: 1.5 }}>Möchtest du ein Zimmer reservieren?</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
               <button onClick={() => setHotelRoomId('none')} data-sel={hotelRoomId === 'none' ? '' : undefined} style={{
                 padding: '16px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
@@ -584,12 +673,12 @@ export default function RSVPPage() {
                 </div>
               </button>
 
-              {(event.hotels ?? []).map(hotel => (
+              {(event.hotels ?? []).map((hotel: any) => (
                 <div key={hotel.id}>
                   {(event.hotels ?? []).length > 1 && (
                     <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', margin: '10px 0 8px' }}>{hotel.name}</p>
                   )}
-                  {hotel.rooms.map(room => {
+                  {hotel.rooms.map((room: any) => {
                     const avail  = room.totalRooms - room.bookedRooms
                     const full   = avail === 0
                     const active = hotelRoomId === room.id
@@ -607,7 +696,7 @@ export default function RSVPPage() {
                         </div>
                         <div style={{ flex: 1 }}>
                           <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>{room.type}</p>
-                          <p style={{ fontSize: 11, opacity: 0.65, fontWeight: 400 }}>€ {room.pricePerNight} / Nacht · {full ? 'Ausgebucht' : `${avail} verfügbar`}</p>
+                          <p style={{ fontSize: 11, opacity: 0.65 }}>{full ? 'Ausgebucht' : `${avail} verfügbar`}{room.pricePerNight > 0 ? ` · € ${room.pricePerNight}/Nacht` : ''}</p>
                         </div>
                       </button>
                     )
@@ -615,9 +704,57 @@ export default function RSVPPage() {
                 </div>
               ))}
             </div>
-            <Button fullWidth size="lg" variant="gold" disabled={!hotelRoomId || saving || isFrozen} onClick={save}>
+            <Button fullWidth size="lg" variant="gold" disabled={!hotelRoomId} onClick={() => setStep('musikwunsch')}>Weiter</Button>
+          </div>
+        )}
+
+        {/* ──────────── MUSIKWUNSCH ──────────── */}
+        {step === 'musikwunsch' && (
+          <div style={{ animation: 'fadeUp 0.4s ease' }}>
+            <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--gold-pale)', border: '1px solid rgba(201,168,76,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Music size={20} color="var(--gold)" />
+            </div>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Musikwunsch</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 24, lineHeight: 1.6 }}>
+              Hast du einen Song-Wunsch für die Feier? Gib Titel und Interpret ein — alles freiwillig.
+            </p>
+
+            <Card style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Titel *</label>
+                <input
+                  value={songTitle}
+                  onChange={e => setSongTitle(e.target.value)}
+                  placeholder="z.B. Perfect"
+                  style={{ width: '100%', padding: '10px 13px', background: 'var(--bg)', border: `1px solid ${songTitle && !songArtist ? 'var(--gold)' : 'var(--border)'}`, borderRadius: 10, fontSize: 13, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-dim)', marginBottom: 6 }}>Interpret *</label>
+                <input
+                  value={songArtist}
+                  onChange={e => setSongArtist(e.target.value)}
+                  placeholder="z.B. Ed Sheeran"
+                  style={{ width: '100%', padding: '10px 13px', background: 'var(--bg)', border: `1px solid ${songArtist && !songTitle ? 'var(--gold)' : 'var(--border)'}`, borderRadius: 10, fontSize: 13, color: 'var(--text)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              {!songOk && (
+                <p style={{ fontSize: 11, color: 'var(--gold)', marginTop: 8 }}>Bitte beide Felder ausfüllen oder beide leer lassen.</p>
+              )}
+            </Card>
+
+            <Button fullWidth size="lg" variant="gold" disabled={saving || isBlocked || !songOk} onClick={save}>
               {saving ? 'Wird gespeichert…' : 'Antwort absenden'}
             </Button>
+            {(!songTitle && !songArtist) && (
+              <button
+                onClick={save}
+                disabled={saving || isBlocked}
+                style={{ width: '100%', marginTop: 10, padding: '12px', background: 'none', border: 'none', fontSize: 13, color: 'var(--text-dim)', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Überspringen
+              </button>
+            )}
           </div>
         )}
 
@@ -637,9 +774,9 @@ export default function RSVPPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
               {wishlist.map(wish => {
-                const isClaimed  = wish.status === 'vergeben'
-                const isMine     = wish.is_claimed_by_me
-                const pct        = wish.money_target ? Math.min(100, (wish.total_contributed / wish.money_target) * 100) : 0
+                const isClaimed   = wish.status === 'vergeben'
+                const isMine      = wish.is_claimed_by_me
+                const pct         = wish.money_target ? Math.min(100, (wish.total_contributed / wish.money_target) * 100) : 0
                 const fullyFunded = wish.money_target ? wish.total_contributed >= wish.money_target : false
 
                 async function claimGift() {
@@ -675,8 +812,7 @@ export default function RSVPPage() {
                   if (res.ok) {
                     setWishlist(prev => prev.map(w => {
                       if (w.id !== wish.id) return w
-                      const prev_contrib = w.my_contribution
-                      const new_total = w.total_contributed - prev_contrib + amt
+                      const new_total = w.total_contributed - w.my_contribution + amt
                       return { ...w, total_contributed: new_total, my_contribution: amt }
                     }))
                     setContributeAmounts(prev => ({ ...prev, [wish.id]: '' }))
@@ -692,7 +828,6 @@ export default function RSVPPage() {
                     background: 'var(--surface)', borderRadius: 'var(--r-md)', border: `1px solid ${isClaimed && !wish.is_money_wish ? 'rgba(61,122,86,0.3)' : 'var(--border)'}`,
                     padding: '16px 18px', opacity: isClaimed && !isMine && !wish.is_money_wish ? 0.5 : 1,
                   }}>
-                    {/* Header */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         {wish.is_money_wish
@@ -713,18 +848,15 @@ export default function RSVPPage() {
                     {wish.description && (
                       <p style={{ fontSize: 12, color: 'var(--text-light)', marginBottom: 8, lineHeight: 1.5 }}>{wish.description}</p>
                     )}
-
                     {wish.price && !wish.is_money_wish && (
                       <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8 }}>ca. € {wish.price.toFixed(2)}</p>
                     )}
-
                     {wish.link && (
                       <a href={wish.link} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--gold)', textDecoration: 'none', marginBottom: 10 }}>
                         <ExternalLink size={11} /> Link ansehen
                       </a>
                     )}
 
-                    {/* Money wish progress */}
                     {wish.is_money_wish && wish.money_target && (
                       <div style={{ marginBottom: 12 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-dim)', marginBottom: 4 }}>
@@ -740,16 +872,13 @@ export default function RSVPPage() {
                       </div>
                     )}
 
-                    {/* Actions */}
                     {wish.is_money_wish ? (
                       !fullyFunded && (
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                           <div style={{ position: 'relative', flex: 1 }}>
                             <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'var(--text-dim)' }}>€</span>
                             <input
-                              type="number"
-                              min="1"
-                              step="any"
+                              type="number" min="1" step="any"
                               value={contributeAmounts[wish.id] ?? ''}
                               onChange={e => setContributeAmounts(prev => ({ ...prev, [wish.id]: e.target.value }))}
                               placeholder={wish.my_contribution > 0 ? wish.my_contribution.toFixed(2) : 'Betrag'}
@@ -777,7 +906,7 @@ export default function RSVPPage() {
                     ) : (
                       <button onClick={claimGift} style={{
                         width: '100%', padding: '10px', background: 'transparent', border: '1.5px solid var(--gold)',
-                        borderRadius: 8, fontSize: 13, fontWeight: 600, color: 'var(--gold)', cursor: 'pointer', fontFamily: 'inherit', transition: 'background 0.15s',
+                        borderRadius: 8, fontSize: 13, fontWeight: 600, color: 'var(--gold)', cursor: 'pointer', fontFamily: 'inherit',
                       }}>
                         Ich bringe dieses Geschenk
                       </button>
@@ -811,18 +940,21 @@ export default function RSVPPage() {
             {attending && (
               <Card style={{ textAlign: 'left', marginBottom: 20 }}>
                 <SectionTitle>Deine Angaben</SectionTitle>
-                {meal && <Row label="Menü" value={{ fleisch: 'Fleisch', fisch: 'Fisch', vegetarisch: 'Vegetarisch', vegan: 'Vegan' }[meal]} />}
+                {meal && <Row label="Menü" value={{ fleisch: 'Fleisch', fisch: 'Fisch', vegetarisch: 'Vegetarisch', vegan: 'Vegan' }[meal] ?? meal} />}
                 {trinkAlkohol !== undefined && <Row label="Alkohol" value={trinkAlkohol ? 'Ja' : 'Nein'} />}
                 {companions.length > 0 && (
                   <Row label="Begleitpersonen" value={companions.map(c => c.name || '—').join(', ')} />
                 )}
-                {hotelRoomId && hotelRoomId !== 'none' && <Row label="Hotel" value={allRooms.find(r => r.id === hotelRoomId)?.type ?? '—'} />}
+                {hotelRoomId && hotelRoomId !== 'none' && <Row label="Hotel" value={allRooms.find((r: any) => r.id === hotelRoomId)?.type ?? '—'} />}
                 {hotelRoomId === 'none' && <Row label="Hotel" value="Kein Zimmer" />}
                 {arrivalDate && <Row label="Ankunft" value={`${new Date(arrivalDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })}${arrivalTime ? ` · ${arrivalTime}` : ''}`} />}
+                {songTitle && songArtist && <Row label="Musikwunsch" value={`${songTitle} — ${songArtist}`} />}
               </Card>
             )}
 
-            <Button fullWidth variant="secondary" onClick={() => setStep('rsvp')}>Antwort ändern</Button>
+            {!isBlocked && (
+              <Button fullWidth variant="secondary" onClick={() => setStep('rsvp')}>Antwort ändern</Button>
+            )}
           </div>
         )}
       </div>
