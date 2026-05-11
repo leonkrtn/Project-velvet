@@ -140,7 +140,8 @@ export default function ChatTab({ eventId }: { eventId: string }) {
 
   async function removeParticipant(uid: string) {
     if (!activeConv) return
-    await supabase.from('conversation_participants').delete().eq('conversation_id', activeConv.id).eq('user_id', uid)
+    const { error } = await supabase.from('conversation_participants').delete().eq('conversation_id', activeConv.id).eq('user_id', uid)
+    if (error) return
     const updatedConv = { ...activeConv, conversation_participants: activeConv.conversation_participants.filter(p => p.user_id !== uid) }
     setActiveConv(updatedConv)
     setConversations(prev => prev.map(c => c.id === activeConv.id ? updatedConv : c))

@@ -112,7 +112,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
     setNewMsg('')
     const { data: inserted } = await supabase
       .from('messages')
-      .insert({ conversation_id: activeConv.id, sender_id: currentUserId, content })
+      .insert({ conversation_id: activeConv.id, sender_id: currentUserId, content, event_id: eventId })
       .select('id, conversation_id, sender_id, content, created_at')
       .single()
     if (inserted) {
@@ -176,7 +176,8 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
 
   async function removeParticipant(userId: string) {
     if (!activeConv) return
-    await supabase.from('conversation_participants').delete().eq('conversation_id', activeConv.id).eq('user_id', userId)
+    const { error } = await supabase.from('conversation_participants').delete().eq('conversation_id', activeConv.id).eq('user_id', userId)
+    if (error) return
     const updatedConv = { ...activeConv, conversation_participants: activeConv.conversation_participants.filter(p => p.user_id !== userId) }
     setActiveConv(updatedConv)
     setConversations(prev => prev.map(c => c.id === activeConv.id ? updatedConv : c))
