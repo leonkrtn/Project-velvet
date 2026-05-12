@@ -33,17 +33,32 @@ interface RendererProps {
 
 // ── 1. ImageUpload ────────────────────────────────────────────────────────────
 
-function ImageUploadRenderer({ item }: RendererProps) {
+function ImageUploadRenderer({ item, eventId }: RendererProps) {
   const d = item.data as ImageUploadData
-  if (!d.preview_url) return (
+  const [url, setUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!d.storage_key) return
+    fetch(`/api/deko/image-url?r2Key=${encodeURIComponent(d.storage_key)}&eventId=${eventId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j?.url) setUrl(j.url) })
+      .catch(() => {})
+  }, [d.storage_key, eventId])
+
+  if (!d.storage_key) return (
     <div style={placeholderStyle('var(--surface)')}>
       <span style={{ fontSize: 28 }}>🖼</span>
       <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Doppelklick zum Bearbeiten</span>
     </div>
   )
+  if (!url) return (
+    <div style={placeholderStyle('var(--surface)')}>
+      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Lädt…</span>
+    </div>
+  )
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', borderRadius: 4 }}>
-      <img src={d.preview_url} alt={d.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      <img src={url} alt={d.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       {d.caption && <div style={captionStyle}>{d.caption}</div>}
     </div>
   )
