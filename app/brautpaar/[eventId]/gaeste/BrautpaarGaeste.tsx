@@ -633,16 +633,18 @@ function HotelTab({ eventId, hotels: initialHotels }: { eventId: string; hotels:
 
 // ── Gästeliste tab ────────────────────────────────────────────────────────────
 
-function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
-  guests: Guest[]; eventId: string; userId: string; onUpdate: (g: Guest) => void
+function GaestelisteTab({ guests, eventId, userId, onUpdate, onDelete }: {
+  guests: Guest[]; eventId: string; userId: string; onUpdate: (g: Guest) => void; onDelete: (id: string) => void
 }) {
-  const [search, setSearch]   = useState('')
-  const [filter, setFilter]   = useState<'all' | 'zugesagt' | 'abgesagt' | 'ausstehend'>('all')
-  const [adding, setAdding]   = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newSide, setNewSide] = useState('')
-  const [newEmail, setNewEmail] = useState('')
-  const [saving, setSaving]   = useState(false)
+  const [search, setSearch]       = useState('')
+  const [filter, setFilter]       = useState<'all' | 'zugesagt' | 'abgesagt' | 'ausstehend'>('all')
+  const [adding, setAdding]       = useState(false)
+  const [newName, setNewName]     = useState('')
+  const [newSide, setNewSide]     = useState('')
+  const [newEmail, setNewEmail]   = useState('')
+  const [saving, setSaving]       = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting]   = useState(false)
 
   const filtered = guests.filter(g => {
     const matchSearch = g.name.toLowerCase().includes(search.toLowerCase())
@@ -667,6 +669,17 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
     if (!error && data) {
       onUpdate(data as Guest)
       setNewName(''); setNewSide(''); setNewEmail(''); setAdding(false)
+    }
+  }
+
+  async function deleteGuest(id: string) {
+    setDeleting(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('guests').delete().eq('id', id)
+    setDeleting(false)
+    if (!error) {
+      setConfirmDeleteId(null)
+      onDelete(id)
     }
   }
 
@@ -756,7 +769,7 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
           <table className="bp-table">
             <thead>
               <tr>
-                <th>Name</th><th>Status</th><th>Seite</th><th>Menü</th><th>Allergien</th>
+                <th>Name</th><th>Status</th><th>Seite</th><th>Menü</th><th>Allergien</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -770,6 +783,31 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
                     {g.allergy_tags && g.allergy_tags.length > 0
                       ? g.allergy_tags.map(t => <span key={t} className="bp-badge bp-badge-neutral" style={{ marginRight: 4 }}>{t}</span>)
                       : '—'}
+                  </td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    {confirmDeleteId === g.id ? (
+                      <div style={{ display: 'inline-flex', gap: '0.375rem', alignItems: 'center' }}>
+                        <button
+                          className="bp-btn bp-btn-sm"
+                          style={{ background: '#B91C1C', color: '#fff', border: 'none' }}
+                          onClick={() => deleteGuest(g.id)}
+                          disabled={deleting}
+                        >
+                          {deleting ? '…' : 'Löschen'}
+                        </button>
+                        <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={() => setConfirmDeleteId(null)}>
+                          Abbrechen
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon"
+                        onClick={() => setConfirmDeleteId(g.id)}
+                        title="Gast löschen"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -1022,6 +1060,10 @@ export default function BrautpaarGaeste({ eventId, userId, initialGuests, mealOp
     })
   }, [])
 
+  const handleGuestDelete = useCallback((id: string) => {
+    setGuests(prev => prev.filter(g => g.id !== id))
+  }, [])
+
   return (
     <div className="bp-page">
       <div className="bp-page-header">
@@ -1043,7 +1085,7 @@ export default function BrautpaarGaeste({ eventId, userId, initialGuests, mealOp
       </div>
 
       <div style={{ minHeight: 480 }}>
-        {activeTab === 'gaesteliste'   && <GaestelisteTab guests={guests} eventId={eventId} userId={userId} onUpdate={handleGuestUpdate} />}
+        {activeTab === 'gaesteliste'   && <GaestelisteTab guests={guests} eventId={eventId} userId={userId} onUpdate={handleGuestUpdate} onDelete={handleGuestDelete} />}
         {activeTab === 'geschenke'     && <GeschenkTab eventId={eventId} />}
         {activeTab === 'hotel'         && <HotelTab eventId={eventId} hotels={hotels} />}
         {activeTab === 'rsvp'          && <RsvpTab guests={guests} onUpdateGuest={handleGuestUpdate} />}
