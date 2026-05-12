@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Settings, Users, MessageSquare,
   Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
-  Music2, Cake, Flower2, Camera,
+  Music2, Cake, Flower2, Camera, FolderOpen,
 } from 'lucide-react'
 
 interface Props {
@@ -31,6 +31,7 @@ const NAV_ITEMS = [
   { key: 'berechtigungen',  label: 'Berechtigungen',    icon: Shield },
   { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
   { key: 'personalplanung', label: 'Personalplanung',   icon: UserCog },
+  { key: 'dateien',        label: 'Dateien',            icon: FolderOpen },
 ]
 
 export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCode, children }: Props) {

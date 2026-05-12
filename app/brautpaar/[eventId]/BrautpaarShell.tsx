@@ -61,7 +61,7 @@ function buildNav(eventId: string): NavGroup[] {
       label: 'KOMMUNIKATION',
       items: [
         b('nachrichten', 'Nachrichten', <MessageSquare size={16} />),
-        b('dateien', 'Dateien', <File size={16} />, true),
+        b('dateien', 'Dateien', <File size={16} />),
       ],
     },
   ]

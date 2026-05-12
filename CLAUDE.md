@@ -11,6 +11,7 @@
 |---|---|
 | Framework | Next.js 15 (App Router, Server + Client Components) |
 | Auth / DB / Storage | Supabase (PostgreSQL, Auth, Realtime, Edge Functions, Storage) |
+| File Storage | Cloudflare R2 (never public) + Cloudflare Worker (`workers/file-service/`) |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
 | Icons | Lucide React |
@@ -48,14 +49,14 @@
     dekoration/            → Decor
     patisserie/            → Patisserie / cake
     medien/                → Media / shots
+    dateien/               → File management (R2-backed, all modules)
     chats/                 → Conversations
     dienstleister/         → Vendor list for event
     berechtigungen/[id]/   → Vendor permission editor
     budget/                → Budget tracker
 
-/brautpaar/               → Couple portal (no eventId in path — event resolved via session)
-  seating/                → Seating view — SitzplanEditor (read room config from DB)
-  gaeste/, catering/, deko/, budget/, nachrichten/, tasks/, team/, protokoll/  → further tabs
+/brautpaar/[eventId]/     → Couple portal
+  dateien/                → File management (R2-backed)
 ⛔ /trauzeuge/            → Role exists in DB but no frontend portal implemented
 /vendor/dashboard/[eventId]/ → Vendor portal (tab-gated by permissions)
   uebersicht/              → Overview: event details, contacts, permission-gated module shortcuts
@@ -224,7 +225,8 @@ app/vendor/dashboard/[eventId]/
   uebersicht/page.tsx           Rebuilt overview: event details, veranstalter/brautpaar contacts,
                                 permission-gated module shortcut cards
   sitzplan/page.tsx             Read-only seating view with table cards + guest names
-  files/page.tsx                Files tab
+  files/page.tsx                Files tab (R2-backed, permission-gated)
+  tabs/FilesTab.tsx             Thin wrapper around FilesSection
   tabs/                         Tab components (CateringTab, SeatingTab, ChatTab, …) — shared, not routes
 
 app/veranstalter/[eventId]/
@@ -243,4 +245,34 @@ supabase/migrations/
   0048_remove_proposals_system.sql    Drops all proposal/suggestion tables and their DB functions
   0049_secure_adjust_hotel_booking.sql  REVOKE anon/public on adjust_hotel_booking + auth guard
   0050_room_config_rls_brautpaar.sql    Brautpaar + trauzeuge SELECT on event_room_configs + organizer_room_configs
+  0063_file_metadata.sql               R2 file_metadata table + file_access_log + RLS (SELECT only, writes via service role)
+
+workers/
+  file-service/                 Cloudflare Worker — thin R2 presigned URL generator
+    wrangler.toml               Worker config (nodejs_compat, R2 binding for DELETE)
+    src/index.ts                POST /presign/upload, POST /presign/download, DELETE /object
+
+lib/files/
+  types.ts                      FileMetadata, FileModule, ALLOWED_MIME_TYPES, helpers
+  worker-client.ts              Server-only: calls Worker for presigned URLs (uses FILE_WORKER_URL + FILE_WORKER_INTERNAL_SECRET)
+  permissions.ts                canReadFiles(), canUploadFiles(), canDeleteFile(), getDlAccessibleModules()
+
+hooks/
+  useFileUpload.ts              Client hook: request URL → XHR upload to R2 → confirm (with progress)
+
+components/files/
+  FilesSection.tsx              Main file management UI (list + upload overlay, shows both R2 + legacy files)
+
+app/api/files/
+  request-upload/route.ts       POST — validate auth+permission, create pending DB row, return presigned PUT URL
+  [fileId]/confirm/route.ts     PATCH — mark pending upload as active
+  [fileId]/download-url/route.ts  GET — validate auth+permission, return fresh presigned GET URL (1h TTL)
+  [fileId]/route.ts             DELETE — soft-delete DB + hard-delete R2
+
+Env vars (Vercel):
+  FILE_WORKER_URL               Cloudflare Worker URL (e.g. https://velvet-file-service.ACCOUNT.workers.dev)
+  FILE_WORKER_INTERNAL_SECRET   Shared secret (also set as Worker secret INTERNAL_SECRET)
+
+Worker secrets (wrangler secret put):
+  INTERNAL_SECRET   R2_ACCOUNT_ID   R2_ACCESS_KEY_ID   R2_SECRET_ACCESS_KEY   R2_BUCKET_NAME
 ```
