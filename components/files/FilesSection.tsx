@@ -265,7 +265,7 @@ function UploadPanel({
         >
           <input
             ref={inputRef} type="file" style={{ display: 'none' }}
-            accept={[...ALLOWED_MIME_TYPES].join(',')}
+            accept={Array.from(ALLOWED_MIME_TYPES).join(',')}
             onChange={e => handleFiles(e.target.files)}
           />
           {selectedFile ? (
