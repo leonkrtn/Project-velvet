@@ -659,7 +659,7 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate }: {
       .insert({
         event_id: eventId, name: newName.trim(),
         side: newSide || null, email: newEmail.trim() || null,
-        status: 'ausstehend', created_by: userId,
+        status: 'angelegt', created_by: userId,
         token: crypto.randomUUID(),
       })
       .select().single()
