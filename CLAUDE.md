@@ -249,7 +249,7 @@ supabase/migrations/
 
 workers/
   file-service/                 Cloudflare Worker — thin R2 presigned URL generator
-    wrangler.toml               Worker config (nodejs_compat, R2 binding for DELETE)
+    wrangler.toml               Worker config (nodejs_compat, R2 binding, jurisdiction = "eu")
     src/index.ts                POST /presign/upload, POST /presign/download, DELETE /object
 
 lib/files/
@@ -270,9 +270,23 @@ app/api/files/
   [fileId]/route.ts             DELETE — soft-delete DB + hard-delete R2
 
 Env vars (Vercel):
-  FILE_WORKER_URL               Cloudflare Worker URL (e.g. https://velvet-file-service.ACCOUNT.workers.dev)
+  FILE_WORKER_URL               https://velvet-file-service.leon-s-account.workers.dev
   FILE_WORKER_INTERNAL_SECRET   Shared secret (also set as Worker secret INTERNAL_SECRET)
 
 Worker secrets (wrangler secret put):
   INTERNAL_SECRET   R2_ACCOUNT_ID   R2_ACCESS_KEY_ID   R2_SECRET_ACCESS_KEY   R2_BUCKET_NAME
 ```
+
+---
+
+## ⚠️ Cloudflare R2 — EU-Jurisdiction (Kritisch)
+
+Der Bucket `velvet-files` wurde mit **EU-Jurisdiction** (WEUR) erstellt. Das hat folgende Konsequenzen:
+
+- **S3-Endpoint:** `https://<account_id>.eu.r2.cloudflarestorage.com` (nicht `.r2.cloudflarestorage.com`)
+  → Presigned URLs müssen auf den EU-Endpoint zeigen, sonst CORS-Fehler 403
+- **wrangler.toml:** R2-Binding braucht `jurisdiction = "eu"`, sonst schlägt `wrangler deploy` mit Error 10085 fehl
+- **Wrangler deploy:** OAuth-Login (`wrangler login`) hat kein R2-Scope → Deploy nur mit `CLOUDFLARE_API_TOKEN` möglich
+  Token mit Permissions: Workers Scripts Edit + Workers R2 Storage Edit
+- **CORS:** Policy ist auf dem Bucket gesetzt (AllowedOrigins: *, Methods: GET/PUT/HEAD, Headers: *, MaxAge: 3600)
+  → Prüfen/setzen via: `wrangler r2 bucket cors list velvet-files --jurisdiction eu`
