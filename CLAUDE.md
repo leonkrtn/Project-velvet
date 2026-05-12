@@ -140,7 +140,16 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `seating_tables` / `seating_assignments` | Seating plan (v2 — supports guests, begleitpersonen, brautpaar slots) |
 | `catering_plans` | Catering configuration |
 | `music_songs` / `music_requirements` | Music tab |
-| `decor_setup_items` / `deko_wishes` | Decor tab |
+| `deko_areas` | Decor areas (per event, ordered) |
+| `deko_canvases` | Canvases per area (main + variants + standalone moodboards) |
+| `deko_items` | Free-canvas items (19 types, JSONB data, x/y/w/h) |
+| `deko_catalog_items` | Event-wide article/fabric catalog |
+| `deko_flat_rates` | Per-event flat-rate entries (linked to catalog) |
+| `deko_comments` / `deko_comment_replies` | 2-level comment system (item/canvas/area targets) |
+| `deko_votes` | Thumbs up/down on vote_card items |
+| `deko_budget_links` | Links deko_items → budget_items (created on freeze, removed on unfreeze) |
+| `deko_organizer_templates` | Global organizer templates (copy-on-apply) |
+| `deko_organizer_flat_rates` | Flat rates attached to organizer templates |
 | `media_shot_items` / `media_uploads` | Media tab |
 | `patisserie_config` | Cake/patisserie tab |
 | `conversations` / `messages` | Chat system |
@@ -171,6 +180,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 - `timeline_entries.responsibilities TEXT` — redundant with `assigned_staff`/`assigned_vendors`/`assigned_members` JSONB columns (added in 0025).
 - `dienstleister_item_permissions` table — old granular system, not cleanly migrated out.
 - Proposals/Vorschläge system — fully removed (migration 0048 drops all tables + functions). No UI remains.
+- `decor_setup_items` / `deko_wishes` tables — **dropped in migration 0064**. Replaced by the new free-canvas deko system.
 
 ---
 
@@ -232,6 +242,34 @@ app/vendor/dashboard/[eventId]/
 app/veranstalter/[eventId]/
   berechtigungen/[dienstleisterId]/BerechtigungenClient.tsx
                                 Vendor permission editor — allgemein removed from tab list
+  dekoration/page.tsx           Deko page (server component) — loads areas/canvases/catalog/items → DekoPageClient
+
+app/brautpaar/[eventId]/
+  dekoration/page.tsx           Deko page for Brautpaar — same data loading, role="brautpaar"
+
+app/veranstalter/konfiguration/
+  dekoration/page.tsx           Organizer global deko templates (create/rename/delete templates + flat rates per template)
+
+components/deko/
+  DekoPageClient.tsx            Orchestrator: areas, activeCanvas, pendingType, freeze state
+  DekoCanvas.tsx                Free canvas — pan/zoom (Ctrl+scroll), item drag, presence cursors, dot grid
+  DekoFloatingToolbar.tsx       Photoshop-style draggable toolbar, 19 item types in 6 groups
+  DekoNavigationBar.tsx         Left sidebar: areas → main canvas, variants, moodboards; inline create
+  DekoItemLightbox.tsx          Per-type modal editor; CatalogPicker for articles/fabrics; OG preview for links
+  DekoCommentOverlay.tsx        Hover badge → panel with 2-level comments (realtime)
+  DekoBudgetBar.tsx             Collapsible budget footer under canvas (line items + flat rates)
+  DekoFreezeDialog.tsx          Brautpaar submit: 2-step confirm, must type ABSENDEN
+  items/DekoItemRenderer.tsx    Switch on item.type → 19 self-contained renderers
+
+lib/deko/
+  types.ts                      All TS interfaces; DekoItemType (19); ITEM_DEFAULTS; calcItemPrice/calcCanvasBudget
+                                CANVAS_W=3200, CANVAS_H=2264, CANVAS_DEFAULT_ZOOM=0.45
+  hooks/useDekoCanvas.ts        Canvas state + mutations (addItem, drag, commit, delete, bringToFront)
+  hooks/useDekoRealtime.ts      Supabase channel: postgres_changes for deko_items + Presence (cursors, 20fps throttle)
+
+app/api/deko/
+  freeze/route.ts               POST {eventId, action}: freeze all main canvases + create budget_items; unfreeze = reverse
+  og-preview/route.ts           GET ?url= — server-side OG meta scraper (title/description/image/domain)
 
 supabase/migrations/
   setup.sql                     Base schema (all core tables)
@@ -246,6 +284,8 @@ supabase/migrations/
   0049_secure_adjust_hotel_booking.sql  REVOKE anon/public on adjust_hotel_booking + auth guard
   0050_room_config_rls_brautpaar.sql    Brautpaar + trauzeuge SELECT on event_room_configs + organizer_room_configs
   0063_file_metadata.sql               R2 file_metadata table + file_access_log + RLS (SELECT only, writes via service role)
+  0064_deko_system.sql                 Drops decor_setup_items + deko_wishes; creates full new deko system (13 tables,
+                                       RLS for all roles, Realtime enabled on deko_items/canvases/comments/votes)
 
 workers/
   file-service/                 Cloudflare Worker — thin R2 presigned URL generator
@@ -276,6 +316,26 @@ Env vars (Vercel):
 Worker secrets (wrangler secret put):
   INTERNAL_SECRET   R2_ACCOUNT_ID   R2_ACCESS_KEY_ID   R2_SECRET_ACCESS_KEY   R2_BUCKET_NAME
 ```
+
+---
+
+## Deko System — Free Canvas Architecture
+
+Migration `0064_deko_system.sql` replaces the old `decor_setup_items`/`deko_wishes` tables with a full free-canvas decoration system.
+
+**Hierarchy:** Event → `deko_areas` (named sections) → `deko_canvases` (one `main` + N `variant` per area, plus standalone `moodboard` canvases) → `deko_items` (free-positioned on A3 canvas 3200×2264px)
+
+**19 item types:** `image_upload`, `image_url`, `color_palette`, `color_swatch`, `text_block`, `sticky_note`, `heading`, `article`, `flat_rate_article`, `fabric`, `frame`, `divider`, `area_label`, `vote_card`, `checklist`, `link_card`, `table_ref`, `room_info`, `guest_count`
+
+**Permission model (on canvas):**
+- `veranstalter`: full admin (create/edit/delete anything, unfreeze)
+- `brautpaar`: full write (create areas/canvases/items, edit/delete all), can submit freeze
+- `dienstleister` write: add items + edit/delete own items only, see all prices
+- `dienstleister` read / `trauzeuge`: read-only + comment
+
+**Freeze workflow:** Brautpaar submits → all `main` canvases set `is_frozen=true` → canvas becomes read-only for all roles → `budget_items` auto-created in category "Dekoration" with `deko_budget_links` → only Veranstalter can unfreeze (reverses budget items).
+
+**Organizer templates:** Global templates under `/veranstalter/konfiguration/dekoration`. Copy-on-apply (no live sync). Stored in `deko_organizer_templates` + `deko_organizer_flat_rates`.
 
 ---
 
