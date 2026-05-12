@@ -20,8 +20,14 @@ export default async function VendorFilesPage({ params }: Props) {
     .is('item_id', null)
     .maybeSingle()
 
-  const tabAccess = (tabPerm?.access ?? 'none') as 'none' | 'read' | 'write'
-  if (tabAccess === 'none') redirect(`/vendor/dashboard/${eventId}/uebersicht`)
+  const access = (tabPerm?.access ?? 'none') as 'none' | 'read' | 'write'
+  if (access === 'none') redirect(`/vendor/dashboard/${eventId}/uebersicht`)
 
-  return <FilesTab eventId={eventId} />
+  return (
+    <FilesTab
+      eventId={eventId}
+      userId={user.id}
+      canUpload={access === 'write'}
+    />
+  )
 }

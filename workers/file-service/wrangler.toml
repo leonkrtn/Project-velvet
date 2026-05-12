@@ -1,0 +1,25 @@
+name = "velvet-file-service"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+# nodejs_compat is required for @aws-sdk/client-s3 to work in Workers
+compatibility_flags = ["nodejs_compat"]
+
+# R2 binding — used for direct DELETE operations (no credentials needed)
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "velvet-files"
+
+# For local dev with `wrangler dev`, set these in .dev.vars:
+# INTERNAL_SECRET=dev-secret-change-me
+# R2_ACCOUNT_ID=your-account-id
+# R2_ACCESS_KEY_ID=your-r2-access-key-id
+# R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
+# R2_BUCKET_NAME=velvet-files
+
+# Secrets are set via: wrangler secret put <NAME>
+# Required secrets in production:
+#   INTERNAL_SECRET        — shared with Vercel (FILE_WORKER_INTERNAL_SECRET)
+#   R2_ACCOUNT_ID          — Cloudflare Account ID (Dashboard → top-right)
+#   R2_ACCESS_KEY_ID       — R2 API token key ID (R2 → Manage R2 API tokens)
+#   R2_SECRET_ACCESS_KEY   — R2 API token secret
+#   R2_BUCKET_NAME         — bucket name (must match bucket_name above)
