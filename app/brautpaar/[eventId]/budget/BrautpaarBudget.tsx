@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, Pencil, Settings, ChevronDown, ChevronRight, UtensilsCrossed } from 'lucide-react'
+import { Plus, Trash2, Pencil, Settings, ChevronDown, ChevronRight } from 'lucide-react'
 
 type PaymentStatus = 'offen' | 'angezahlt' | 'bezahlt'
 
@@ -171,7 +171,6 @@ function CateringRow({ costs, effectiveGuestCount }: { costs: CateringCostItem[]
         <td>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             {costs.length > 0 && (expanded ? <ChevronDown size={14} color="var(--bp-ink-3)" /> : <ChevronRight size={14} color="var(--bp-ink-3)" />)}
-            <UtensilsCrossed size={14} color="var(--bp-ink-3)" />
             <div>
               <div style={{ fontWeight: 500, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>Catering</div>
               <div style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
@@ -290,9 +289,10 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
     if (!error) setItems(prev => prev.filter(i => i.id !== id))
   }
 
+  const visibleItems  = items.filter(i => i.category?.toLowerCase() !== 'catering')
   const cateringTotal = cateringCosts.reduce((s, c) => s + (Number(c.price_per_person) || 0), 0) * effectiveGuestCount
-  const plannedTotal  = items.reduce((s, i) => s + (Number(i.planned) || 0), 0)
-  const actualTotal   = items.reduce((s, i) => s + (Number(i.actual)  || 0), 0)
+  const plannedTotal  = visibleItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)
+  const actualTotal   = visibleItems.reduce((s, i) => s + (Number(i.actual)  || 0), 0)
   const totalWithFee  = plannedTotal + organizerFee + cateringTotal
   const budgetUsed    = budgetLimit > 0 ? (totalWithFee / budgetLimit) * 100 : 0
 
@@ -339,7 +339,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
       {/* Table */}
       <div className="bp-card" style={{ overflow: 'hidden', marginBottom: '1rem' }}>
         <div className="bp-card-header">
-          <h2 className="bp-section-title" style={{ margin: 0 }}>Positionen ({items.length})</h2>
+          <h2 className="bp-section-title" style={{ margin: 0 }}>Positionen ({visibleItems.length + 1})</h2>
         </div>
         <table className="bp-table">
           <thead>
@@ -369,7 +369,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
               </tr>
             )}
             <CateringRow costs={cateringCosts} effectiveGuestCount={effectiveGuestCount} />
-            {items.map(item => (
+            {visibleItems.map(item => (
               <ItemRow
                 key={item.id}
                 item={item}
@@ -377,7 +377,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
                 onDelete={() => deleteItem(item.id)}
               />
             ))}
-            {items.length === 0 && !organizerFee && (
+            {visibleItems.length === 0 && !organizerFee && (
               <tr>
                 <td colSpan={6}>
                   <div className="bp-empty">
