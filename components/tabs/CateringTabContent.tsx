@@ -51,23 +51,24 @@ function CateringFormWrapper({ eventId, initialCosts: preloadedCosts }: { eventI
       preloadedCosts
         ? Promise.resolve({ data: preloadedCosts })
         : supabase.from('event_organizer_costs').select('id, category, price_per_person, notes').eq('event_id', eventId).eq('source', 'catering').order('created_at', { ascending: true }),
-      supabase.from('guest_rsvps').select('id, meal_choice, allergies, attending, bring_children').eq('event_id', eventId),
-    ]).then(([eventRes, planRes, costsRes, rsvpsRes]) => {
-      const rsvps = rsvpsRes.data ?? []
-      const confirmedRsvps = rsvps.filter((r: Record<string, unknown>) => r.attending === true)
-      const confirmedGuestCount = confirmedRsvps.length
+      supabase.from('guests').select('id, meal_choice, allergy_tags, allergy_custom, status').eq('event_id', eventId).eq('status', 'zugesagt'),
+    ]).then(([eventRes, planRes, costsRes, guestsRes]) => {
+      const confirmedGuests = guestsRes.data ?? []
+      const confirmedGuestCount = confirmedGuests.length
 
       const mealCounts: Record<string, number> = {}
       const allergyCounts: Record<string, number> = {}
-      confirmedRsvps.forEach((r: Record<string, unknown>) => {
-        const meal = r.meal_choice as string | null
+      confirmedGuests.forEach((g: Record<string, unknown>) => {
+        const meal = g.meal_choice as string | null
         if (meal) mealCounts[meal] = (mealCounts[meal] ?? 0) + 1
-        const allergies = r.allergies as string[] | null
-        if (allergies) {
-          allergies.forEach((a: string) => {
+        const tags = g.allergy_tags as string[] | null
+        if (tags) {
+          tags.forEach((a: string) => {
             allergyCounts[a] = (allergyCounts[a] ?? 0) + 1
           })
         }
+        const custom = g.allergy_custom as string | null
+        if (custom) allergyCounts[custom] = (allergyCounts[custom] ?? 0) + 1
       })
 
       setProps({
