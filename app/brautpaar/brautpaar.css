@@ -545,12 +545,14 @@
 }
 
 .bp-btn-primary {
-  background: var(--bp-gold);
-  color: #fff;
+  background: #fff;
+  color: var(--bp-ink);
+  border-color: var(--bp-rule-gold);
 }
 
 .bp-btn-primary:hover {
-  background: var(--bp-gold-deep);
+  background: var(--bp-ivory-2);
+  border-color: var(--bp-gold);
 }
 
 .bp-btn-secondary {
@@ -704,7 +706,7 @@
   border: 1.5px solid var(--bp-rule);
   border-radius: var(--bp-r-xs);
   cursor: pointer;
-  accent-color: var(--bp-gold);
+  accent-color: var(--bp-gold-deep);
   flex-shrink: 0;
 }
 
