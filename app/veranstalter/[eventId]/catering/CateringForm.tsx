@@ -98,7 +98,6 @@ const EQUIPMENT_OPTIONS = [
   { value: 'deko',         label: 'Dekoration' },
 ]
 const CATERING_COST_CATEGORIES = [
-  'Catering Gesamt',
   'Menü / Speisen',
   'Getränkepauschale',
   'Servicepersonal',
@@ -424,10 +423,7 @@ export default function CateringForm({
     await addCost(lbl)
   }
 
-  const activeCostCategories = new Set(costs.map(c => c.category))
-  const availableCostChips = CATERING_COST_CATEGORIES.filter(c => !activeCostCategories.has(c))
   const totalCateringCosts = costs.reduce((s, c) => s + (c.amount ?? 0), 0)
-  const totalBudget = plan.budget_per_person > 0 ? plan.budget_per_person * effectiveGuestCount : 0
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -710,25 +706,8 @@ export default function CateringForm({
           onChange={v => updatePlan({ equipment_needed: v })} />
       </SectionWrap>
 
-      {/* ── 6. Budget & Kalkulation ───────────────────────────────────────── */}
-      <SectionWrap title="Budget & Kalkulation">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-          <div>
-            <label style={labelStyle}>Budget pro Person (€)</label>
-            <div style={{ position: 'relative' }}>
-              <input type="number" min={0} style={{ ...input, paddingRight: 50 }}
-                value={plan.budget_per_person || ''}
-                onChange={e => updatePlan({ budget_per_person: Number(e.target.value) })}
-                placeholder="0" />
-              <span style={{ position: 'absolute', right: 13, top: '50%', transform: 'translateY(-50%)', fontSize: 13, color: 'var(--text-tertiary)', pointerEvents: 'none' }}>€/P</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
-            <Toggle checked={plan.budget_includes_drinks} onChange={v => updatePlan({ budget_includes_drinks: v })} label="Getränke inklusive" />
-          </div>
-        </div>
-
-        {/* Planzahl */}
+      {/* ── 6. Gästeplanung ───────────────────────────────────────────────── */}
+      <SectionWrap title="Gästeplanung">
         <div style={{ background: '#F5F5F7', borderRadius: 'var(--radius-sm)', padding: '14px 16px', marginBottom: 14 }}>
           <div style={{ marginBottom: plan.plan_guest_count_enabled ? 12 : 0 }}>
             <Toggle
@@ -753,24 +732,7 @@ export default function CateringForm({
           )}
         </div>
 
-        {/* Kalkulation */}
-        {plan.budget_per_person > 0 && (
-          <div style={{ background: 'var(--accent-light)', border: '1px solid rgba(29,29,31,0.12)', borderRadius: 'var(--radius-sm)', padding: '14px 16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                {plan.budget_per_person.toLocaleString('de-DE')} € × {effectiveGuestCount} {plan.plan_guest_count_enabled ? 'Planzahl' : 'Zusagen'}
-              </span>
-              <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--accent)' }}>
-                {totalBudget.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-              </span>
-            </div>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>
-              Catering-Gesamtbudget{plan.budget_includes_drinks ? ' inkl. Getränke' : ' ohne Getränke'}
-            </p>
-          </div>
-        )}
-
-        <div style={{ marginTop: 16 }}>
+        <div>
           <label style={labelStyle}>Notizen für den Caterer</label>
           <textarea style={{ ...input, minHeight: 90, resize: 'vertical' }}
             value={plan.catering_notes}
@@ -877,30 +839,28 @@ export default function CateringForm({
           </div>
         )}
 
-        {availableCostChips.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
-              Kategorie hinzufügen
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {availableCostChips.map(cat => (
-                <button key={cat} type="button" onClick={() => addCost(cat)}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                    background: 'var(--surface)', border: '1px solid var(--border)',
-                    borderRadius: 20, padding: '5px 12px', fontSize: 13,
-                    color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'inherit',
-                    transition: 'border-color 0.15s, color 0.15s',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget).style.borderColor = 'var(--accent)'; (e.currentTarget).style.color = 'var(--accent)' }}
-                  onMouseLeave={e => { (e.currentTarget).style.borderColor = 'var(--border)'; (e.currentTarget).style.color = 'var(--text-secondary)' }}
-                >
-                  <Plus size={12} /> {cat}
-                </button>
-              ))}
-            </div>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
+            Kategorie hinzufügen
           </div>
-        )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {CATERING_COST_CATEGORIES.map(cat => (
+              <button key={cat} type="button" onClick={() => addCost(cat)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 20, padding: '5px 12px', fontSize: 13,
+                  color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'border-color 0.15s, color 0.15s',
+                }}
+                onMouseEnter={e => { (e.currentTarget).style.borderColor = 'var(--accent)'; (e.currentTarget).style.color = 'var(--accent)' }}
+                onMouseLeave={e => { (e.currentTarget).style.borderColor = 'var(--border)'; (e.currentTarget).style.color = 'var(--text-secondary)' }}
+              >
+                <Plus size={12} /> {cat}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
@@ -927,17 +887,6 @@ export default function CateringForm({
           </div>
         )}
 
-        {totalBudget > 0 && costs.length > 0 && (
-          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Budget-Rest</span>
-            <span style={{
-              fontSize: 14, fontWeight: 600,
-              color: totalBudget - totalCateringCosts >= 0 ? 'var(--green, #15803D)' : 'var(--red, #DC2626)',
-            }}>
-              {(totalBudget - totalCateringCosts).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-            </span>
-          </div>
-        )}
       </SectionWrap>
 
       {/* ── Save bar ──────────────────────────────────────────────────────── */}

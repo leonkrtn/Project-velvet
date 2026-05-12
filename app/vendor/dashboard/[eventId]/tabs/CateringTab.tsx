@@ -1,9 +1,16 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Plus, X, TrendingUp } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────
+
+interface OrganizerCost {
+  id: string
+  category: string
+  amount: number
+  notes: string | null
+}
 
 interface CateringPlan {
   service_style: string
@@ -44,6 +51,22 @@ interface Guest {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+const CATERING_COST_CATEGORIES = [
+  'Menü / Speisen',
+  'Getränkepauschale',
+  'Servicepersonal',
+  'Equipment-Miete',
+  'Mitternachtssnack',
+  'Sektempfang',
+]
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '8px 11px',
+  background: '#fff', border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-sm)', fontSize: 13, outline: 'none',
+  fontFamily: 'inherit', boxSizing: 'border-box',
+}
 
 const SERVICE_LABELS: Record<string, string> = {
   klassisch: 'Klassisches Menü', buffet: 'Buffet',
@@ -110,10 +133,13 @@ function vis(sectionPerms: Record<string, Access> | undefined, tabAccess: Access
 }
 
 export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms }: { eventId: string; tabAccess?: Access; sectionPerms?: Record<string, Access> }) {
-  const [plan, setPlan]       = useState<CateringPlan | null>(null)
-  const [event, setEvent]     = useState<EventInfo | null>(null)
-  const [guests, setGuests]   = useState<Guest[]>([])
-  const [loading, setLoading] = useState(true)
+  const [plan, setPlan]             = useState<CateringPlan | null>(null)
+  const [event, setEvent]           = useState<EventInfo | null>(null)
+  const [guests, setGuests]         = useState<Guest[]>([])
+  const [costs, setCosts]           = useState<OrganizerCost[]>([])
+  const [costAmounts, setCostAmounts] = useState<Record<string, string>>({})
+  const [customCostLabel, setCustomCostLabel] = useState('')
+  const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
     const supabase = createClient()
@@ -122,13 +148,51 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms 
       supabase.from('events').select('menu_type, meal_options, children_allowed').eq('id', eventId).single(),
       supabase.from('guests').select('id, name, meal_choice, allergy_tags, allergy_custom')
         .eq('event_id', eventId).eq('status', 'zugesagt').order('name'),
-    ]).then(([{ data: p }, { data: e }, { data: g }]) => {
+      supabase.from('event_organizer_costs').select('id, category, amount, notes')
+        .eq('event_id', eventId).eq('source', 'catering').order('created_at', { ascending: true }),
+    ]).then(([{ data: p }, { data: e }, { data: g }, { data: c }]) => {
       setPlan(p ?? null)
       setEvent(e ?? null)
       setGuests(g ?? [])
+      const loadedCosts = c ?? []
+      setCosts(loadedCosts)
+      setCostAmounts(Object.fromEntries(loadedCosts.map(x => [x.id, String(x.amount)])))
       setLoading(false)
     })
   }, [eventId])
+
+  async function addCost(category: string) {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('event_organizer_costs')
+      .insert({ event_id: eventId, category, amount: 0, source: 'catering' })
+      .select('id, category, amount, notes')
+      .single()
+    if (error || !data) return
+    setCosts(prev => [...prev, data])
+    setCostAmounts(prev => ({ ...prev, [data.id]: '0' }))
+  }
+
+  async function removeCost(id: string) {
+    const supabase = createClient()
+    await supabase.from('event_organizer_costs').delete().eq('id', id)
+    setCosts(prev => prev.filter(c => c.id !== id))
+    setCostAmounts(prev => { const n = { ...prev }; delete n[id]; return n })
+  }
+
+  async function saveCostAmount(id: string) {
+    const amount = parseFloat(costAmounts[id] ?? '0') || 0
+    const supabase = createClient()
+    await supabase.from('event_organizer_costs').update({ amount }).eq('id', id)
+    setCosts(prev => prev.map(c => c.id === id ? { ...c, amount } : c))
+  }
+
+  async function addCustomCost() {
+    const lbl = customCostLabel.trim()
+    if (!lbl) return
+    setCustomCostLabel('')
+    await addCost(lbl)
+  }
 
   const mealCounts = guests.reduce<Record<string, number>>((acc, g) => {
     const k = g.meal_choice ?? 'Keine Angabe'
@@ -272,23 +336,113 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms 
           </Section>
         )}
 
-        {/* ── Budget ── */}
-        {vis(sectionPerms, tabAccess, 'budget') && plan && plan.budget_per_person > 0 && (
-          <Section title="Budget">
-            <Row
-              label="Budget pro Person"
-              value={`${plan.budget_per_person.toLocaleString('de-DE')} €${plan.budget_includes_drinks ? ' inkl. Getränke' : ''}`}
-            />
-            <Row
-              label={plan.plan_guest_count_enabled ? 'Kalkulationsbasis (Planzahl)' : 'Kalkulationsbasis (Zusagen)'}
-              value={`${effectiveCount} Personen`}
-            />
-            <Row
-              label="Kalkuliertes Gesamtbudget"
-              value={`${(plan.budget_per_person * effectiveCount).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}`}
-            />
-          </Section>
-        )}
+        {/* ── Catering-Kosten ── */}
+        {vis(sectionPerms, tabAccess, 'budget') && (() => {
+          const totalCosts = costs.reduce((s, c) => s + (c.amount ?? 0), 0)
+          const canWrite = tabAccess === 'write'
+          return (
+            <Section title="Catering-Kosten">
+              {costs.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  {costs.map(cost => {
+                    const perPerson = effectiveCount > 0 && cost.amount > 0
+                      ? ` (${(cost.amount / effectiveCount).toLocaleString('de-DE', { maximumFractionDigits: 2 })} €/P)`
+                      : ''
+                    return (
+                      <div key={cost.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '9px 12px', marginBottom: 8,
+                        background: '#F5F5F7', borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border)',
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: 13, fontWeight: 500 }}>{cost.category}</span>
+                          {perPerson && <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>{perPerson}</span>}
+                        </div>
+                        {canWrite ? (
+                          <>
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                              <span style={{ position: 'absolute', left: 9, fontSize: 13, color: 'var(--text-tertiary)', pointerEvents: 'none' }}>€</span>
+                              <input type="number" min={0} step="0.01"
+                                value={costAmounts[cost.id] ?? '0'}
+                                onChange={e => setCostAmounts(prev => ({ ...prev, [cost.id]: e.target.value }))}
+                                onBlur={() => saveCostAmount(cost.id)}
+                                style={{ ...inputStyle, width: 120, paddingLeft: 24 }} />
+                            </div>
+                            <button type="button" onClick={() => removeCost(cost.id)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                              <X size={15} />
+                            </button>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: 14, fontWeight: 600 }}>
+                            {cost.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {costs.length > 0 && (
+                <div style={{ background: '#F5F5F7', borderRadius: 'var(--radius-sm)', padding: '9px 12px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <TrendingUp size={13} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    Basis: {effectiveCount} {plan?.plan_guest_count_enabled ? 'Planzahl-Gäste' : 'bestätigte Zusagen'}
+                  </span>
+                </div>
+              )}
+
+              {canWrite && (
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
+                      Kategorie hinzufügen
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                      {CATERING_COST_CATEGORIES.map(cat => (
+                        <button key={cat} type="button" onClick={() => addCost(cat)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            background: 'var(--surface)', border: '1px solid var(--border)',
+                            borderRadius: 20, padding: '5px 11px', fontSize: 12,
+                            color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'inherit',
+                          }}
+                        >
+                          <Plus size={11} /> {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input style={{ ...inputStyle, flex: 1 }} value={customCostLabel}
+                      onChange={e => setCustomCostLabel(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addCustomCost()}
+                      placeholder="Eigener Kostenpunkt…" />
+                    <button type="button" onClick={addCustomCost}
+                      style={{ padding: '8px 13px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500, flexShrink: 0 }}>
+                      <Plus size={13} /> Hinzufügen
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {costs.length === 0 && !canWrite && (
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Noch keine Kosten hinterlegt.</p>
+              )}
+
+              {costs.length > 0 && (
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>Summe</span>
+                  <span style={{ fontSize: 15, fontWeight: 700 }}>
+                    {totalCosts.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                  </span>
+                </div>
+              )}
+            </Section>
+          )
+        })()}
 
         {/* ── Menüwahl + Allergien (statistik) ── */}
         {vis(sectionPerms, tabAccess, 'statistik') && (

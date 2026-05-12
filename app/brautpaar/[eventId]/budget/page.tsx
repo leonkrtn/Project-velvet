@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import BrautpaarBudget from './BrautpaarBudget'
 
@@ -9,6 +10,7 @@ interface Props {
 export default async function BudgetPage({ params }: Props) {
   const { eventId } = await params
   const supabase = await createClient()
+  const admin = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -24,7 +26,7 @@ export default async function BudgetPage({ params }: Props) {
       .select('*')
       .eq('event_id', eventId)
       .order('created_at', { ascending: true }),
-    supabase
+    admin
       .from('event_organizer_costs')
       .select('id, category, amount, notes')
       .eq('event_id', eventId)

@@ -163,16 +163,18 @@ function CateringRow({ costs }: { costs: CateringCostItem[] }) {
   return (
     <>
       <tr
-        onClick={() => setExpanded(p => !p)}
-        style={{ cursor: 'pointer', background: expanded ? 'var(--bp-surface-2, #faf9f7)' : undefined }}
+        onClick={() => costs.length > 0 && setExpanded(p => !p)}
+        style={{ cursor: costs.length > 0 ? 'pointer' : 'default', background: expanded ? 'var(--bp-surface-2, #faf9f7)' : undefined }}
       >
         <td>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {expanded ? <ChevronDown size={14} color="var(--bp-ink-3)" /> : <ChevronRight size={14} color="var(--bp-ink-3)" />}
+            {costs.length > 0 && (expanded ? <ChevronDown size={14} color="var(--bp-ink-3)" /> : <ChevronRight size={14} color="var(--bp-ink-3)" />)}
             <UtensilsCrossed size={14} color="var(--bp-ink-3)" />
             <div>
               <div style={{ fontWeight: 500, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>Catering</div>
-              <div style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>Vom Veranstalter gepflegt · {costs.length} Posten</div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
+                {costs.length > 0 ? `Vom Veranstalter gepflegt · ${costs.length} Posten` : 'Noch keine Posten hinterlegt'}
+              </div>
             </div>
           </div>
         </td>
@@ -355,7 +357,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
                 <td></td>
               </tr>
             )}
-            {cateringCosts.length > 0 && <CateringRow costs={cateringCosts} />}
+            <CateringRow costs={cateringCosts} />
             {items.map(item => (
               <ItemRow
                 key={item.id}
@@ -364,7 +366,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
                 onDelete={() => deleteItem(item.id)}
               />
             ))}
-            {items.length === 0 && !organizerFee && cateringCosts.length === 0 && (
+            {items.length === 0 && !organizerFee && (
               <tr>
                 <td colSpan={6}>
                   <div className="bp-empty">
