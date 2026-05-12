@@ -1118,12 +1118,19 @@ function RsvpTab({ guests, onUpdateGuest }: { guests: Guest[]; onUpdateGuest: (g
   const [selected, setSelected]             = useState<Set<string>>(new Set())
   const [massModal, setMassModal]           = useState(false)
   const [allLinksCopied, setAllLinksCopied] = useState(false)
+  const [search, setSearch]                 = useState('')
 
-  const allSelected   = guests.length > 0 && guests.every(g => selected.has(g.id))
-  const someSelected  = selected.size > 0
+  const filtered     = guests.filter(g => g.name.toLowerCase().includes(search.toLowerCase()))
+  const allSelected  = filtered.length > 0 && filtered.every(g => selected.has(g.id))
+  const someSelected = selected.size > 0
 
   function toggleAll() {
-    setSelected(allSelected ? new Set() : new Set(guests.map(g => g.id)))
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (allSelected) { filtered.forEach(g => next.delete(g.id)) }
+      else             { filtered.forEach(g => next.add(g.id)) }
+      return next
+    })
   }
 
   function toggleOne(id: string) {
@@ -1208,9 +1215,14 @@ function RsvpTab({ guests, onUpdateGuest }: { guests: Guest[]; onUpdateGuest: (g
 
   return (
     <div>
-      <div style={{ marginBottom: '1.25rem' }}>
-        <h3 className="bp-section-title" style={{ margin: '0 0 0.25rem' }}>Einladungslinks</h3>
-        <p className="bp-caption">Gäste auswählen und Einladungen auf einmal versenden.</p>
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          className="bp-input"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Name suchen…"
+          style={{ flex: 1, minWidth: 200 }}
+        />
       </div>
 
       {/* Action bar */}
@@ -1249,6 +1261,11 @@ function RsvpTab({ guests, onUpdateGuest }: { guests: Guest[]; onUpdateGuest: (g
             <div className="bp-empty-title">Noch keine Gäste</div>
             <div className="bp-empty-body">Fügt Gäste in der Gästeliste hinzu.</div>
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="bp-empty">
+            <div className="bp-empty-title">Keine Ergebnisse</div>
+            <div className="bp-empty-body">Kein Gast passt zur Suche.</div>
+          </div>
         ) : (
           <table className="bp-table">
             <thead>
@@ -1266,7 +1283,7 @@ function RsvpTab({ guests, onUpdateGuest }: { guests: Guest[]; onUpdateGuest: (g
               </tr>
             </thead>
             <tbody>
-              {guests.map(guest => (
+              {filtered.map(guest => (
                 <tr key={guest.id} onClick={() => toggleOne(guest.id)} style={{ cursor: 'pointer' }}>
                   <td style={{ paddingRight: 0 }} onClick={e => e.stopPropagation()}>
                     <input
