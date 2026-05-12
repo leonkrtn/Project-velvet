@@ -64,6 +64,7 @@ interface Props {
   confirmedGuestCount: number
   mealCounts: Record<string, number>
   allergyCounts: Record<string, number>
+  hideCosts?: boolean
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -258,7 +259,7 @@ function parsePlan(raw: Record<string, unknown> | null): CateringPlan {
 
 export default function CateringForm({
   eventId, initialEvent, initialPlan, initialCosts,
-  confirmedGuestCount, mealCounts, allergyCounts,
+  confirmedGuestCount, mealCounts, allergyCounts, hideCosts = false,
 }: Props) {
   const router = useRouter()
   const [event, setEvent] = useState(initialEvent)
@@ -783,7 +784,7 @@ export default function CateringForm({
       </SectionWrap>
 
       {/* ── 8. Catering-Kosten ───────────────────────────────────────────── */}
-      <SectionWrap title="Catering-Kosten">
+      {!hideCosts && <SectionWrap title="Catering-Kosten">
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -4 }}>
           Diese Kosten erscheinen auch in den Veranstalterkosten unter Allgemein.
         </p>
@@ -902,7 +903,7 @@ export default function CateringForm({
           </div>
         )}
 
-      </SectionWrap>
+      </SectionWrap>}
 
       {/* ── Save bar ──────────────────────────────────────────────────────── */}
       {dirty && (

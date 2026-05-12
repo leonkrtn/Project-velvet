@@ -50,6 +50,7 @@ export default async function CateringPage({ params }: Props) {
         confirmedGuestCount={attending.length}
         mealCounts={mealCounts}
         allergyCounts={allergyCounts}
+        hideCosts
       />
     </div>
   )
