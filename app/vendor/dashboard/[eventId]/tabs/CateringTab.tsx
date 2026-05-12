@@ -8,7 +8,7 @@ import { AlertTriangle, Plus, X, TrendingUp } from 'lucide-react'
 interface OrganizerCost {
   id: string
   category: string
-  amount: number
+  price_per_person: number
   notes: string | null
 }
 
@@ -136,8 +136,8 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms 
   const [plan, setPlan]             = useState<CateringPlan | null>(null)
   const [event, setEvent]           = useState<EventInfo | null>(null)
   const [guests, setGuests]         = useState<Guest[]>([])
-  const [costs, setCosts]           = useState<OrganizerCost[]>([])
-  const [costAmounts, setCostAmounts] = useState<Record<string, string>>({})
+  const [costs, setCosts]             = useState<OrganizerCost[]>([])
+  const [costPrices, setCostPrices]   = useState<Record<string, string>>({})
   const [customCostLabel, setCustomCostLabel] = useState('')
   const [loading, setLoading]       = useState(true)
 
@@ -148,7 +148,7 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms 
       supabase.from('events').select('menu_type, meal_options, children_allowed').eq('id', eventId).single(),
       supabase.from('guests').select('id, name, meal_choice, allergy_tags, allergy_custom')
         .eq('event_id', eventId).eq('status', 'zugesagt').order('name'),
-      supabase.from('event_organizer_costs').select('id, category, amount, notes')
+      supabase.from('event_organizer_costs').select('id, category, price_per_person, notes')
         .eq('event_id', eventId).eq('source', 'catering').order('created_at', { ascending: true }),
     ]).then(([{ data: p }, { data: e }, { data: g }, { data: c }]) => {
       setPlan(p ?? null)
@@ -156,7 +156,7 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms 
       setGuests(g ?? [])
       const loadedCosts = c ?? []
       setCosts(loadedCosts)
-      setCostAmounts(Object.fromEntries(loadedCosts.map(x => [x.id, String(x.amount)])))
+      setCostPrices(Object.fromEntries(loadedCosts.map(x => [x.id, String(x.price_per_person ?? 0)])))
       setLoading(false)
     })
   }, [eventId])
@@ -165,26 +165,26 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms 
     const supabase = createClient()
     const { data, error } = await supabase
       .from('event_organizer_costs')
-      .insert({ event_id: eventId, category, amount: 0, source: 'catering' })
-      .select('id, category, amount, notes')
+      .insert({ event_id: eventId, category, price_per_person: 0, amount: 0, source: 'catering' })
+      .select('id, category, price_per_person, notes')
       .single()
     if (error || !data) return
     setCosts(prev => [...prev, data])
-    setCostAmounts(prev => ({ ...prev, [data.id]: '0' }))
+    setCostPrices(prev => ({ ...prev, [data.id]: '0' }))
   }
 
   async function removeCost(id: string) {
     const supabase = createClient()
     await supabase.from('event_organizer_costs').delete().eq('id', id)
     setCosts(prev => prev.filter(c => c.id !== id))
-    setCostAmounts(prev => { const n = { ...prev }; delete n[id]; return n })
+    setCostPrices(prev => { const n = { ...prev }; delete n[id]; return n })
   }
 
-  async function saveCostAmount(id: string) {
-    const amount = parseFloat(costAmounts[id] ?? '0') || 0
+  async function saveCostPrice(id: string) {
+    const price_per_person = parseFloat(costPrices[id] ?? '0') || 0
     const supabase = createClient()
-    await supabase.from('event_organizer_costs').update({ amount }).eq('id', id)
-    setCosts(prev => prev.map(c => c.id === id ? { ...c, amount } : c))
+    await supabase.from('event_organizer_costs').update({ price_per_person }).eq('id', id)
+    setCosts(prev => prev.map(c => c.id === id ? { ...c, price_per_person } : c))
   }
 
   async function addCustomCost() {
@@ -338,16 +338,16 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms 
 
         {/* ── Catering-Kosten ── */}
         {vis(sectionPerms, tabAccess, 'budget') && (() => {
-          const totalCosts = costs.reduce((s, c) => s + (c.amount ?? 0), 0)
-          const canWrite = tabAccess === 'write'
+          const canWrite          = tabAccess === 'write'
+          const totalPricePerPerson = costs.reduce((s, c) => s + (c.price_per_person ?? 0), 0)
+          const totalCosts        = totalPricePerPerson * effectiveCount
           return (
             <Section title="Catering-Kosten">
               {costs.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 14 }}>
                   {costs.map(cost => {
-                    const perPerson = effectiveCount > 0 && cost.amount > 0
-                      ? ` (${(cost.amount / effectiveCount).toLocaleString('de-DE', { maximumFractionDigits: 2 })} €/P)`
-                      : ''
+                    const pp    = cost.price_per_person ?? 0
+                    const total = pp * effectiveCount
                     return (
                       <div key={cost.id} style={{
                         display: 'flex', alignItems: 'center', gap: 10,
@@ -357,27 +357,39 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms 
                       }}>
                         <div style={{ flex: 1 }}>
                           <span style={{ fontSize: 13, fontWeight: 500 }}>{cost.category}</span>
-                          {perPerson && <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>{perPerson}</span>}
                         </div>
                         {canWrite ? (
                           <>
-                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                              <span style={{ position: 'absolute', left: 9, fontSize: 13, color: 'var(--text-tertiary)', pointerEvents: 'none' }}>€</span>
-                              <input type="number" min={0} step="0.01"
-                                value={costAmounts[cost.id] ?? '0'}
-                                onChange={e => setCostAmounts(prev => ({ ...prev, [cost.id]: e.target.value }))}
-                                onBlur={() => saveCostAmount(cost.id)}
-                                style={{ ...inputStyle, width: 120, paddingLeft: 24 }} />
-                            </div>
+                            <input type="number" min={0} step="0.01"
+                              value={costPrices[cost.id] ?? '0'}
+                              onChange={e => setCostPrices(prev => ({ ...prev, [cost.id]: e.target.value }))}
+                              onBlur={() => saveCostPrice(cost.id)}
+                              style={{ ...inputStyle, width: 100, textAlign: 'right' }} />
+                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>€/P</span>
+                            {effectiveCount > 0 && (
+                              <div style={{ minWidth: 80, textAlign: 'right' }}>
+                                <div style={{ fontSize: 13, fontWeight: 600 }}>
+                                  {total.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>gesamt</div>
+                              </div>
+                            )}
                             <button type="button" onClick={() => removeCost(cost.id)}
                               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-tertiary)', flexShrink: 0 }}>
                               <X size={15} />
                             </button>
                           </>
                         ) : (
-                          <span style={{ fontSize: 14, fontWeight: 600 }}>
-                            {cost.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                          </span>
+                          <>
+                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                              {pp.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} /P
+                            </span>
+                            {effectiveCount > 0 && (
+                              <span style={{ fontSize: 14, fontWeight: 600, minWidth: 80, textAlign: 'right' }}>
+                                {total.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     )
@@ -433,11 +445,21 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms 
               )}
 
               {costs.length > 0 && (
-                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>Summe</span>
-                  <span style={{ fontSize: 15, fontWeight: 700 }}>
-                    {totalCosts.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                  </span>
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>Summe pro Person</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      {totalPricePerPerson.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} /P
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                      Gesamt ({effectiveCount} {plan?.plan_guest_count_enabled ? 'Planzahl' : 'Zusagen'})
+                    </span>
+                    <span style={{ fontSize: 15, fontWeight: 700 }}>
+                      {totalCosts.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                    </span>
+                  </div>
                 </div>
               )}
             </Section>
