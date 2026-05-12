@@ -27,7 +27,7 @@ export default async function CateringPage({ params }: Props) {
   const [{ data: cateringCosts }, { data: guestStats }] = await Promise.all([
     supabase
       .from('event_organizer_costs')
-      .select('id, category, amount, notes')
+      .select('id, category, price_per_person, notes')
       .eq('event_id', eventId)
       .eq('source', 'catering')
       .order('created_at', { ascending: true }),

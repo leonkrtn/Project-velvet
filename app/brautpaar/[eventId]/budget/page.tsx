@@ -15,7 +15,7 @@ export default async function BudgetPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [eventRes, itemsRes, cateringCostsRes] = await Promise.all([
+  const [eventRes, itemsRes, cateringCostsRes, cateringPlanRes, guestCountRes] = await Promise.all([
     supabase
       .from('events')
       .select('id, organizer_fee, organizer_fee_type, budget_total')
@@ -28,13 +28,29 @@ export default async function BudgetPage({ params }: Props) {
       .order('created_at', { ascending: true }),
     admin
       .from('event_organizer_costs')
-      .select('id, category, amount, notes')
+      .select('id, category, price_per_person, notes')
       .eq('event_id', eventId)
       .eq('source', 'catering')
       .order('created_at', { ascending: true }),
+    admin
+      .from('catering_plans')
+      .select('plan_guest_count_enabled, plan_guest_count')
+      .eq('event_id', eventId)
+      .single(),
+    admin
+      .from('guests')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .eq('status', 'zugesagt'),
   ])
 
   if (!eventRes.data) redirect('/login')
+
+  const confirmedCount = guestCountRes.count ?? 0
+  const plan = cateringPlanRes.data
+  const effectiveGuestCount = plan?.plan_guest_count_enabled && (plan.plan_guest_count ?? 0) > 0
+    ? plan.plan_guest_count
+    : confirmedCount
 
   return (
     <BrautpaarBudget
@@ -44,6 +60,7 @@ export default async function BudgetPage({ params }: Props) {
       budgetLimit={Number(eventRes.data.budget_total) || 0}
       initialItems={itemsRes.data ?? []}
       cateringCosts={cateringCostsRes.data ?? []}
+      effectiveGuestCount={effectiveGuestCount}
     />
   )
 }

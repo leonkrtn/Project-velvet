@@ -52,7 +52,7 @@ interface MenuCourse {
 interface OrganizerCost {
   id: string
   category: string
-  amount: number
+  price_per_person: number
   notes: string | null
 }
 
@@ -264,8 +264,8 @@ export default function CateringForm({
   const [event, setEvent] = useState(initialEvent)
   const [plan, setPlan] = useState<CateringPlan>(() => parsePlan(initialPlan))
   const [costs, setCosts] = useState<OrganizerCost[]>(initialCosts)
-  const [costAmounts, setCostAmounts] = useState<Record<string, string>>(
-    Object.fromEntries(initialCosts.map(c => [c.id, String(c.amount)]))
+  const [costPrices, setCostPrices] = useState<Record<string, string>>(
+    Object.fromEntries(initialCosts.map(c => [c.id, String(c.price_per_person ?? 0)]))
   )
   const [newMealOption, setNewMealOption] = useState('')
   const [newKinderOption, setNewKinderOption] = useState('')
@@ -394,26 +394,26 @@ export default function CateringForm({
     const supabase = createClient()
     const { data, error: err } = await supabase
       .from('event_organizer_costs')
-      .insert({ event_id: eventId, category, amount: 0, source: 'catering' })
-      .select('id, category, amount, notes')
+      .insert({ event_id: eventId, category, price_per_person: 0, amount: 0, source: 'catering' })
+      .select('id, category, price_per_person, notes')
       .single()
     if (err || !data) return
     setCosts(prev => [...prev, data])
-    setCostAmounts(prev => ({ ...prev, [data.id]: '0' }))
+    setCostPrices(prev => ({ ...prev, [data.id]: '0' }))
   }
 
   async function removeCost(id: string) {
     const supabase = createClient()
     await supabase.from('event_organizer_costs').delete().eq('id', id)
     setCosts(prev => prev.filter(c => c.id !== id))
-    setCostAmounts(prev => { const n = { ...prev }; delete n[id]; return n })
+    setCostPrices(prev => { const n = { ...prev }; delete n[id]; return n })
   }
 
-  async function saveCostAmount(id: string) {
-    const amount = parseFloat(costAmounts[id] ?? '0') || 0
+  async function saveCostPrice(id: string) {
+    const price_per_person = parseFloat(costPrices[id] ?? '0') || 0
     const supabase = createClient()
-    await supabase.from('event_organizer_costs').update({ amount }).eq('id', id)
-    setCosts(prev => prev.map(c => c.id === id ? { ...c, amount } : c))
+    await supabase.from('event_organizer_costs').update({ price_per_person }).eq('id', id)
+    setCosts(prev => prev.map(c => c.id === id ? { ...c, price_per_person } : c))
   }
 
   async function addCustomCost() {
@@ -423,7 +423,8 @@ export default function CateringForm({
     await addCost(lbl)
   }
 
-  const totalCateringCosts = costs.reduce((s, c) => s + (c.amount ?? 0), 0)
+  const totalPricePerPerson = costs.reduce((s, c) => s + (c.price_per_person ?? 0), 0)
+  const totalCateringCosts  = totalPricePerPerson * effectiveGuestCount
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -790,9 +791,8 @@ export default function CateringForm({
         {costs.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             {costs.map(cost => {
-              const perPerson = effectiveGuestCount > 0 && cost.amount > 0
-                ? ` (${(cost.amount / effectiveGuestCount).toLocaleString('de-DE', { maximumFractionDigits: 2 })} €/P)`
-                : ''
+              const pp   = cost.price_per_person ?? 0
+              const total = pp * effectiveGuestCount
               return (
                 <div key={cost.id} style={{
                   display: 'flex', alignItems: 'center', gap: 10,
@@ -804,20 +804,25 @@ export default function CateringForm({
                     <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
                       {cost.category}
                     </span>
-                    {perPerson && (
-                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginLeft: 8 }}>
-                        {perPerson}
-                      </span>
-                    )}
                   </div>
                   <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <span style={{ position: 'absolute', left: 10, fontSize: 14, color: 'var(--text-tertiary)', pointerEvents: 'none' }}>€</span>
                     <input type="number" min={0} step="0.01"
-                      value={costAmounts[cost.id] ?? '0'}
-                      onChange={e => setCostAmounts(prev => ({ ...prev, [cost.id]: e.target.value }))}
-                      onBlur={() => saveCostAmount(cost.id)}
-                      style={{ ...input, width: 130, paddingLeft: 26, background: '#fff' }} />
+                      value={costPrices[cost.id] ?? '0'}
+                      onChange={e => setCostPrices(prev => ({ ...prev, [cost.id]: e.target.value }))}
+                      onBlur={() => saveCostPrice(cost.id)}
+                      style={{ ...input, width: 110, textAlign: 'right', background: '#fff' }} />
+                    <span style={{ marginLeft: 6, fontSize: 12, color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>€/P</span>
                   </div>
+                  {effectiveGuestCount > 0 && (
+                    <div style={{ minWidth: 90, textAlign: 'right' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {total.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                        gesamt
+                      </div>
+                    </div>
+                  )}
                   <button type="button" onClick={() => removeCost(cost.id)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-tertiary)', flexShrink: 0 }}>
                     <X size={16} />
@@ -879,11 +884,21 @@ export default function CateringForm({
         </div>
 
         {costs.length > 0 && (
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>Summe Catering-Kosten</span>
-            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-              {totalCateringCosts.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-            </span>
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>Summe pro Person</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                {totalPricePerPerson.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} /P
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                Gesamt ({effectiveGuestCount} {plan.plan_guest_count_enabled ? 'Planzahl' : 'Zusagen'})
+              </span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                {totalCateringCosts.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+              </span>
+            </div>
           </div>
         )}
 

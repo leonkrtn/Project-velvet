@@ -10,7 +10,7 @@ type PaymentStatus = 'offen' | 'angezahlt' | 'bezahlt'
 interface CateringCostItem {
   id: string
   category: string | null
-  amount: number
+  price_per_person: number
   notes: string | null
 }
 
@@ -33,6 +33,7 @@ interface Props {
   budgetLimit: number
   initialItems: BudgetItem[]
   cateringCosts: CateringCostItem[]
+  effectiveGuestCount: number
 }
 
 const CATEGORIES = ['Catering', 'Dekoration', 'Musik', 'Location', 'Fotografie', 'Kleidung', 'Transport', 'Sonstiges']
@@ -156,9 +157,10 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
   )
 }
 
-function CateringRow({ costs }: { costs: CateringCostItem[] }) {
+function CateringRow({ costs, effectiveGuestCount }: { costs: CateringCostItem[]; effectiveGuestCount: number }) {
   const [expanded, setExpanded] = useState(false)
-  const total = costs.reduce((s, c) => s + (Number(c.amount) || 0), 0)
+  const totalPricePerPerson = costs.reduce((s, c) => s + (Number(c.price_per_person) || 0), 0)
+  const total = totalPricePerPerson * effectiveGuestCount
 
   return (
     <>
@@ -173,7 +175,9 @@ function CateringRow({ costs }: { costs: CateringCostItem[] }) {
             <div>
               <div style={{ fontWeight: 500, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>Catering</div>
               <div style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
-                {costs.length > 0 ? `Vom Veranstalter gepflegt · ${costs.length} Posten` : 'Noch keine Posten hinterlegt'}
+                {costs.length > 0
+                  ? `${formatCurrency(totalPricePerPerson)}/P · ${costs.length} Posten · ${effectiveGuestCount} Gäste`
+                  : 'Noch keine Posten hinterlegt'}
               </div>
             </div>
           </div>
@@ -186,21 +190,28 @@ function CateringRow({ costs }: { costs: CateringCostItem[] }) {
         <td></td>
         <td></td>
       </tr>
-      {expanded && costs.map(c => (
-        <tr key={c.id} style={{ background: 'var(--bp-surface-2, #faf9f7)' }}>
-          <td style={{ paddingLeft: '2.75rem' }}>
-            <div style={{ color: 'var(--bp-ink-2)', fontSize: '0.9rem' }}>{c.category || 'Sonstiges'}</div>
-            {c.notes && <div style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>{c.notes}</div>}
-          </td>
-          <td></td>
-          <td style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1rem', color: 'var(--bp-ink-2)' }}>
-            {formatCurrency(Number(c.amount) || 0)}
-          </td>
-          <td></td>
-          <td></td>
-          <td></td>
-        </tr>
-      ))}
+      {expanded && costs.map(c => {
+        const pp        = Number(c.price_per_person) || 0
+        const itemTotal = pp * effectiveGuestCount
+        return (
+          <tr key={c.id} style={{ background: 'var(--bp-surface-2, #faf9f7)' }}>
+            <td style={{ paddingLeft: '2.75rem' }}>
+              <div style={{ color: 'var(--bp-ink-2)', fontSize: '0.9rem' }}>{c.category || 'Sonstiges'}</div>
+            </td>
+            <td>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
+                {formatCurrency(pp)}/P
+              </span>
+            </td>
+            <td style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1rem', color: 'var(--bp-ink-2)' }}>
+              {formatCurrency(itemTotal)}
+            </td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+        )
+      })}
     </>
   )
 }
@@ -270,7 +281,7 @@ function AddItemForm({ eventId, onAdded }: { eventId: string; onAdded: (i: Budge
   )
 }
 
-export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, initialItems, cateringCosts }: Props) {
+export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, initialItems, cateringCosts, effectiveGuestCount }: Props) {
   const [items, setItems] = useState<BudgetItem[]>(initialItems)
 
   async function deleteItem(id: string) {
@@ -279,7 +290,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
     if (!error) setItems(prev => prev.filter(i => i.id !== id))
   }
 
-  const cateringTotal = cateringCosts.reduce((s, c) => s + (Number(c.amount) || 0), 0)
+  const cateringTotal = cateringCosts.reduce((s, c) => s + (Number(c.price_per_person) || 0), 0) * effectiveGuestCount
   const plannedTotal  = items.reduce((s, i) => s + (Number(i.planned) || 0), 0)
   const actualTotal   = items.reduce((s, i) => s + (Number(i.actual)  || 0), 0)
   const totalWithFee  = plannedTotal + organizerFee + cateringTotal
@@ -357,7 +368,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
                 <td></td>
               </tr>
             )}
-            <CateringRow costs={cateringCosts} />
+            <CateringRow costs={cateringCosts} effectiveGuestCount={effectiveGuestCount} />
             {items.map(item => (
               <ItemRow
                 key={item.id}
