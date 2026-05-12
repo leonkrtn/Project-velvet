@@ -94,16 +94,6 @@ export default function DekoPageClient({
     }
   }
 
-  if (!activeCanvasId) {
-    return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
-        {canEdit
-          ? 'Noch keine Bereiche — erstelle einen Bereich über die linke Navigation.'
-          : 'Noch keine Dekorationsbereiche angelegt.'}
-      </div>
-    )
-  }
-
   return (
     <div style={{ display: 'flex', height: '100%', minHeight: 0, position: 'relative' }}>
       {/* ── Left nav ── */}
@@ -120,8 +110,18 @@ export default function DekoPageClient({
 
       {/* ── Main area ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
-        {/* Canvas header */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 10, background: 'var(--surface)' }}>
+
+        {/* Empty state — no areas yet */}
+        {!activeCanvasId && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
+            {canEdit
+              ? 'Noch keine Bereiche — erstelle einen Bereich über die linke Navigation.'
+              : 'Noch keine Dekorationsbereiche angelegt.'}
+          </div>
+        )}
+
+        {/* Canvas header — only when a canvas is selected */}
+        {activeCanvasId && <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 10, background: 'var(--surface)' }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, flex: 1 }}>
             {activeCanvas?.name ?? 'Canvas'}
             {activeCanvas?.canvas_type === 'variant' && (
@@ -153,10 +153,10 @@ export default function DekoPageClient({
               <Unlock size={13} /> Freeze aufheben
             </button>
           )}
-        </div>
+        </div>}
 
         {/* Canvas */}
-        <DekoCanvas
+        {activeCanvasId && <DekoCanvas
           key={activeCanvasId}
           canvasId={activeCanvasId}
           eventId={eventId}
@@ -171,11 +171,11 @@ export default function DekoPageClient({
           onOpenLightbox={setLightboxItem}
           pendingItemType={pendingType}
           onPendingItemPlaced={() => setPendingType(null)}
-        />
+        />}
       </div>
 
-      {/* ── Floating toolbar (only when canEdit) ── */}
-      {canEdit && !isActiveFrozen && (
+      {/* ── Floating toolbar (only when canEdit and canvas selected) ── */}
+      {activeCanvasId && canEdit && !isActiveFrozen && (
         <DekoFloatingToolbar
           pendingType={pendingType}
           onSelect={setPendingType}
