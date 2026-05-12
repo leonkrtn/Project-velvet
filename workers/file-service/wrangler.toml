@@ -8,6 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "velvet-files"
+jurisdiction = "eu"
 
 # For local dev with `wrangler dev`, set these in .dev.vars:
 # INTERNAL_SECRET=dev-secret-change-me
