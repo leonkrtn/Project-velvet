@@ -13,7 +13,7 @@ export default async function BudgetPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [eventRes, itemsRes] = await Promise.all([
+  const [eventRes, itemsRes, cateringCostsRes] = await Promise.all([
     supabase
       .from('events')
       .select('id, organizer_fee, organizer_fee_type, budget_total')
@@ -23,6 +23,12 @@ export default async function BudgetPage({ params }: Props) {
       .from('budget_items')
       .select('*')
       .eq('event_id', eventId)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('event_organizer_costs')
+      .select('id, category, amount, notes')
+      .eq('event_id', eventId)
+      .eq('source', 'catering')
       .order('created_at', { ascending: true }),
   ])
 
@@ -35,6 +41,7 @@ export default async function BudgetPage({ params }: Props) {
       organizerFeeType={eventRes.data.organizer_fee_type ?? 'fixed'}
       budgetLimit={Number(eventRes.data.budget_total) || 0}
       initialItems={itemsRes.data ?? []}
+      cateringCosts={cateringCostsRes.data ?? []}
     />
   )
 }
