@@ -48,14 +48,18 @@ export async function GET(request: Request) {
     .eq('user_id', user.id)
 
   if (memberships && memberships.length > 0) {
-    const isVendor = memberships.some(m => m.role === 'dienstleister')
+    // Prioritize non-vendor role; pure-vendor falls through to vendor dashboard
     const nonVendor = memberships.find(m => m.role !== 'dienstleister')
-
-    if (isVendor && !nonVendor) {
-      return NextResponse.redirect(`${origin}/vendor/dashboard`)
-    }
     if (nonVendor) {
-      return NextResponse.redirect(`${origin}/dashboard?event=${nonVendor.event_id}`)
+      switch (nonVendor.role) {
+        case 'veranstalter': return NextResponse.redirect(`${origin}/veranstalter/events`)
+        case 'brautpaar':    return NextResponse.redirect(`${origin}/brautpaar`)
+        case 'trauzeuge':    return NextResponse.redirect(`${origin}/trauzeuge/${nonVendor.event_id}`)
+        default:             return NextResponse.redirect(`${origin}/brautpaar`)
+      }
+    }
+    if (memberships.some(m => m.role === 'dienstleister')) {
+      return NextResponse.redirect(`${origin}/vendor/dashboard`)
     }
   }
 

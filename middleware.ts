@@ -3,6 +3,22 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 const PUBLIC_ROUTES = ['/', '/login', '/signup', '/auth/callback', '/join']
 
+type Membership = { event_id: string; role: string }
+
+function resolvePortal(user: { app_metadata?: Record<string, unknown> }, memberships: Membership[]): string {
+  if (user.app_metadata?.is_approved_organizer === true) return '/veranstalter/events'
+  const nonVendor = memberships.find(m => m.role !== 'dienstleister')
+  if (nonVendor) {
+    switch (nonVendor.role) {
+      case 'veranstalter': return '/veranstalter/events'
+      case 'brautpaar':    return '/brautpaar'
+      case 'trauzeuge':    return `/trauzeuge/${nonVendor.event_id}`
+    }
+  }
+  if (memberships.some(m => m.role === 'dienstleister')) return '/vendor/dashboard'
+  return '/signup'
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -56,6 +72,26 @@ export async function middleware(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/veranstalter/pending'
       return NextResponse.redirect(url)
+    }
+  }
+
+  // Layer 4: role guards for brautpaar + vendor portals
+  const isBrautpaarRoute = pathname.startsWith('/brautpaar')
+  const isVendorRoute = pathname.startsWith('/vendor/dashboard')
+
+  if (isBrautpaarRoute || isVendorRoute) {
+    const { data: memberships } = await supabase
+      .from('event_members')
+      .select('event_id, role')
+      .eq('user_id', user.id)
+
+    const roles = (memberships ?? []).map(m => m.role)
+
+    if (isBrautpaarRoute && !roles.includes('brautpaar')) {
+      return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? []), request.url))
+    }
+    if (isVendorRoute && !roles.includes('dienstleister')) {
+      return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? []), request.url))
     }
   }
 
