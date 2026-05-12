@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Users, Hotel as HotelIcon, Mail, Settings, Plus, Copy, Check,
@@ -23,6 +23,12 @@ interface Guest {
   hotel_room_id: string | null
   notes: string | null
   token: string | null
+  trink_alkohol: boolean | null
+  arrival_date: string | null
+  arrival_time: string | null
+  transport_mode: string | null
+  responded_at: string | null
+  message: string | null
 }
 
 interface HotelRoom {
@@ -73,9 +79,9 @@ type Tab = 'gaesteliste' | 'geschenke' | 'hotel' | 'rsvp' | 'einstellungen'
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: 'gaesteliste',   label: 'Gästeliste',         icon: <Users size={15} /> },
+  { key: 'rsvp',          label: 'Einladungen',         icon: <Mail size={15} /> },
   { key: 'geschenke',     label: 'Geschenkliste',       icon: <Gift size={15} /> },
   { key: 'hotel',         label: 'Hotel',               icon: <HotelIcon size={15} /> },
-  { key: 'rsvp',          label: 'Einladungen',         icon: <Mail size={15} /> },
   { key: 'einstellungen', label: 'Gäste-Einstellungen', icon: <Settings size={15} /> },
 ]
 
@@ -631,10 +637,276 @@ function HotelTab({ eventId, hotels: initialHotels }: { eventId: string; hotels:
   )
 }
 
+// ── Guest lightbox helpers ────────────────────────────────────────────────────
+
+const MEAL_LABELS: Record<string, string> = {
+  fleisch: 'Fleisch', fisch: 'Fisch', vegetarisch: 'Vegetarisch', vegan: 'Vegan',
+}
+const TRANSPORT_LABELS: Record<string, string> = {
+  auto: 'Auto', bahn: 'Bahn', flugzeug: 'Flugzeug', andere: 'Andere',
+}
+const AGE_LABELS: Record<string, string> = {
+  erwachsen: 'Erwachsen', '13-17': '13–17 J.', '6-12': '6–12 J.', '0-6': '0–6 J.',
+}
+
+function InfoSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--bp-ink-4)', margin: '0 0 0.5rem' }}>{title}</p>
+      <div style={{ background: 'var(--bp-bg)', borderRadius: 'var(--bp-r-md)', padding: '0.75rem 1rem', border: '1px solid var(--bp-rule)' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function InfoRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: last ? 0 : '0.375rem' }}>
+      <span style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)', flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: '0.8125rem', color: 'var(--bp-ink)', fontWeight: 500, textAlign: 'right' }}>{value}</span>
+    </div>
+  )
+}
+
+interface Begleitperson {
+  id: string
+  name: string | null
+  age_category: string | null
+  meal_choice: string | null
+  allergy_tags: string[] | null
+  allergy_custom: string | null
+}
+
+function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
+  guest: Guest
+  hotels: Hotel[]
+  onClose: () => void
+  onUpdate: (g: Guest) => void
+}) {
+  const [editing, setEditing]   = useState(false)
+  const [saving, setSaving]     = useState(false)
+  const [copied, setCopied]     = useState(false)
+  const [begleit, setBegleit]   = useState<Begleitperson[]>([])
+  const [form, setForm] = useState({
+    name:  guest.name,
+    side:  guest.side  ?? '',
+    email: guest.email ?? '',
+    phone: guest.phone ?? '',
+    notes: guest.notes ?? '',
+  })
+
+  useEffect(() => {
+    if (guest.status !== 'zugesagt') return
+    const supabase = createClient()
+    supabase
+      .from('begleitpersonen')
+      .select('id, name, age_category, meal_choice, allergy_tags, allergy_custom')
+      .eq('guest_id', guest.id)
+      .then(({ data }) => setBegleit(data ?? []))
+  }, [guest.id, guest.status])
+
+  function cancelEdit() {
+    setEditing(false)
+    setForm({ name: guest.name, side: guest.side ?? '', email: guest.email ?? '', phone: guest.phone ?? '', notes: guest.notes ?? '' })
+  }
+
+  async function save() {
+    setSaving(true)
+    const supabase = createClient()
+    const patch = {
+      name:  form.name.trim() || guest.name,
+      side:  form.side.trim()  || null,
+      email: form.email.trim() || null,
+      phone: form.phone.trim() || null,
+      notes: form.notes.trim() || null,
+    }
+    const { error } = await supabase.from('guests').update(patch).eq('id', guest.id)
+    setSaving(false)
+    if (!error) { onUpdate({ ...guest, ...patch }); setEditing(false) }
+  }
+
+  function copyLink() {
+    if (!guest.token) return
+    navigator.clipboard.writeText(`${window.location.origin}/rsvp/${guest.token}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const allRooms  = hotels.flatMap(h => h.hotel_rooms.map(r => ({ ...r, hotelName: h.name })))
+  const roomEntry = allRooms.find(r => r.id === guest.hotel_room_id)
+
+  const respondedLabel = guest.responded_at
+    ? new Date(guest.responded_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })
+    : null
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(44,40,37,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{ background: 'var(--bp-paper)', borderRadius: 'var(--bp-r-lg)', width: '100%', maxWidth: 600, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--bp-shadow-elevated)' }}>
+
+        {/* ── Sticky header ── */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bp-paper)', borderBottom: '1px solid var(--bp-rule)', padding: '1.25rem 1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+            <div>
+              <h2 style={{ fontFamily: 'var(--bp-font-serif)', fontSize: '1.375rem', fontWeight: 400, margin: '0 0 0.375rem', color: 'var(--bp-ink)' }}>
+                {guest.name}
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <AttendingBadge status={guest.status} />
+                {guest.side && <span style={{ fontSize: '0.8rem', color: 'var(--bp-ink-3)' }}>{guest.side}</span>}
+                {respondedLabel && <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-4)' }}>· Geantwortet {respondedLabel}</span>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0 }}>
+              <button
+                className={`bp-btn bp-btn-sm bp-btn-icon${editing ? ' bp-btn-primary' : ' bp-btn-ghost'}`}
+                onClick={() => editing ? cancelEdit() : setEditing(true)}
+                title={editing ? 'Abbrechen' : 'Bearbeiten'}
+              >
+                <Edit2 size={14} />
+              </button>
+              <button className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon" onClick={onClose}><X size={18} /></button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Body ── */}
+        <div style={{ padding: '1.25rem 1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+          {editing ? (
+            <>
+              <div className="bp-grid-2">
+                <div className="bp-field" style={{ marginBottom: 0 }}>
+                  <label className="bp-label-text">Name</label>
+                  <input className="bp-input" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+                </div>
+                <div className="bp-field" style={{ marginBottom: 0 }}>
+                  <label className="bp-label-text">Seite</label>
+                  <select className="bp-select" value={form.side} onChange={e => setForm(p => ({ ...p, side: e.target.value }))}>
+                    <option value="">Nicht zugeordnet</option>
+                    <option value="Braut">Brautseite</option>
+                    <option value="Bräutigam">Bräutigam-Seite</option>
+                    <option value="Gemeinsam">Gemeinsam</option>
+                  </select>
+                </div>
+                <div className="bp-field" style={{ marginBottom: 0 }}>
+                  <label className="bp-label-text">E-Mail</label>
+                  <input className="bp-input" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+                </div>
+                <div className="bp-field" style={{ marginBottom: 0 }}>
+                  <label className="bp-label-text">Telefon</label>
+                  <input className="bp-input" type="tel" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
+                </div>
+              </div>
+              <div className="bp-field" style={{ marginBottom: 0 }}>
+                <label className="bp-label-text">Notizen</label>
+                <textarea className="bp-textarea" rows={3} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} placeholder="Interne Notizen zu diesem Gast…" />
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={cancelEdit}>Abbrechen</button>
+                <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={save} disabled={saving}>{saving ? '…' : 'Speichern'}</button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Kontakt */}
+              {(guest.email || guest.phone) && (
+                <InfoSection title="Kontakt">
+                  {guest.email && <InfoRow label="E-Mail" value={guest.email} />}
+                  {guest.phone && <InfoRow label="Telefon" value={guest.phone} last={!guest.email || !guest.phone} />}
+                </InfoSection>
+              )}
+
+              {/* Menü & Ernährung */}
+              {guest.status === 'zugesagt' && (guest.meal_choice || guest.trink_alkohol !== null || (guest.allergy_tags && guest.allergy_tags.length > 0) || guest.allergy_custom) && (
+                <InfoSection title="Menü & Ernährung">
+                  {guest.meal_choice && <InfoRow label="Menü" value={MEAL_LABELS[guest.meal_choice] ?? guest.meal_choice} />}
+                  {guest.trink_alkohol !== null && guest.trink_alkohol !== undefined && (
+                    <InfoRow label="Alkohol" value={guest.trink_alkohol ? 'Ja' : 'Nein'} />
+                  )}
+                  {guest.allergy_tags && guest.allergy_tags.length > 0 && (
+                    <InfoRow label="Allergien" value={guest.allergy_tags.join(', ')} />
+                  )}
+                  {guest.allergy_custom && <InfoRow label="Sonstiges" value={guest.allergy_custom} last />}
+                </InfoSection>
+              )}
+
+              {/* Anreise */}
+              {guest.status === 'zugesagt' && (guest.arrival_date || guest.arrival_time || guest.transport_mode) && (
+                <InfoSection title="Anreise">
+                  {guest.arrival_date && (
+                    <InfoRow label="Datum" value={new Date(guest.arrival_date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })} />
+                  )}
+                  {guest.arrival_time && <InfoRow label="Uhrzeit" value={guest.arrival_time} />}
+                  {guest.transport_mode && <InfoRow label="Transport" value={TRANSPORT_LABELS[guest.transport_mode] ?? guest.transport_mode} last />}
+                </InfoSection>
+              )}
+
+              {/* Hotel */}
+              {guest.status === 'zugesagt' && roomEntry && (
+                <InfoSection title="Hotel">
+                  <InfoRow label="Hotel" value={roomEntry.hotelName} />
+                  {roomEntry.room_type && <InfoRow label="Zimmertyp" value={roomEntry.room_type} last />}
+                </InfoSection>
+              )}
+
+              {/* Begleitpersonen */}
+              {guest.status === 'zugesagt' && begleit.length > 0 && (
+                <InfoSection title={`Begleitpersonen (${begleit.length})`}>
+                  {begleit.map((b, i) => (
+                    <div key={b.id} style={{ paddingBottom: i < begleit.length - 1 ? '0.75rem' : 0, marginBottom: i < begleit.length - 1 ? '0.75rem' : 0, borderBottom: i < begleit.length - 1 ? '1px solid var(--bp-rule)' : 'none' }}>
+                      <p style={{ fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.875rem', margin: '0 0 0.25rem' }}>{b.name || `Person ${i + 1}`}</p>
+                      {b.age_category && <InfoRow label="Alter" value={AGE_LABELS[b.age_category] ?? b.age_category} />}
+                      {b.meal_choice && <InfoRow label="Menü" value={MEAL_LABELS[b.meal_choice] ?? b.meal_choice} />}
+                      {b.allergy_tags && b.allergy_tags.length > 0 && <InfoRow label="Allergien" value={b.allergy_tags.join(', ')} last />}
+                    </div>
+                  ))}
+                </InfoSection>
+              )}
+
+              {/* Nachricht vom Gast */}
+              {guest.message && (
+                <InfoSection title="Nachricht">
+                  <p style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)', fontStyle: 'italic', margin: 0, lineHeight: 1.6 }}>„{guest.message}"</p>
+                </InfoSection>
+              )}
+
+              {/* Interne Notizen */}
+              {guest.notes && (
+                <InfoSection title="Notizen (intern)">
+                  <p style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)', margin: 0, lineHeight: 1.6 }}>{guest.notes}</p>
+                </InfoSection>
+              )}
+
+              {/* RSVP-Link */}
+              {guest.token && (
+                <InfoSection title="Einladungslink">
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <code style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)', background: 'var(--bp-paper)', padding: '0.375rem 0.625rem', borderRadius: 'var(--bp-r-sm)', border: '1px solid var(--bp-rule)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      /rsvp/{guest.token.slice(0, 28)}…
+                    </code>
+                    <button className="bp-btn bp-btn-secondary bp-btn-sm" onClick={copyLink} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                      {copied ? <><Check size={13} /> Kopiert</> : <><Copy size={13} /> Kopieren</>}
+                    </button>
+                  </div>
+                </InfoSection>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Gästeliste tab ────────────────────────────────────────────────────────────
 
-function GaestelisteTab({ guests, eventId, userId, onUpdate, onDelete }: {
-  guests: Guest[]; eventId: string; userId: string; onUpdate: (g: Guest) => void; onDelete: (id: string) => void
+function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }: {
+  guests: Guest[]; eventId: string; userId: string; hotels: Hotel[]
+  onUpdate: (g: Guest) => void; onDelete: (id: string) => void
 }) {
   const [search, setSearch]       = useState('')
   const [filter, setFilter]       = useState<'all' | 'zugesagt' | 'abgesagt' | 'ausstehend'>('all')
@@ -645,6 +917,7 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate, onDelete }: {
   const [saving, setSaving]       = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting]   = useState(false)
+  const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null)
 
   const filtered = guests.filter(g => {
     const matchSearch = g.name.toLowerCase().includes(search.toLowerCase())
@@ -774,17 +1047,21 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate, onDelete }: {
             </thead>
             <tbody>
               {filtered.map(g => (
-                <tr key={g.id}>
+                <tr
+                  key={g.id}
+                  onClick={() => setSelectedGuest(g)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <td style={{ fontWeight: 500, color: 'var(--bp-ink)' }}>{g.name}</td>
                   <td><AttendingBadge status={g.status} /></td>
                   <td style={{ color: 'var(--bp-ink-3)' }}>{g.side ?? '—'}</td>
-                  <td style={{ color: 'var(--bp-ink-3)' }}>{g.meal_choice ?? '—'}</td>
+                  <td style={{ color: 'var(--bp-ink-3)' }}>{g.meal_choice ? (MEAL_LABELS[g.meal_choice] ?? g.meal_choice) : '—'}</td>
                   <td>
                     {g.allergy_tags && g.allergy_tags.length > 0
                       ? g.allergy_tags.map(t => <span key={t} className="bp-badge bp-badge-neutral" style={{ marginRight: 4 }}>{t}</span>)
                       : '—'}
                   </td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                     {confirmDeleteId === g.id ? (
                       <div style={{ display: 'inline-flex', gap: '0.375rem', alignItems: 'center' }}>
                         <button
@@ -815,6 +1092,15 @@ function GaestelisteTab({ guests, eventId, userId, onUpdate, onDelete }: {
           </table>
         )}
       </div>
+
+      {selectedGuest && (
+        <GuestLightbox
+          guest={selectedGuest}
+          hotels={hotels}
+          onClose={() => setSelectedGuest(null)}
+          onUpdate={g => { onUpdate(g); setSelectedGuest(g) }}
+        />
+      )}
     </div>
   )
 }
@@ -1085,7 +1371,7 @@ export default function BrautpaarGaeste({ eventId, userId, initialGuests, mealOp
       </div>
 
       <div style={{ minHeight: 480 }}>
-        {activeTab === 'gaesteliste'   && <GaestelisteTab guests={guests} eventId={eventId} userId={userId} onUpdate={handleGuestUpdate} onDelete={handleGuestDelete} />}
+        {activeTab === 'gaesteliste'   && <GaestelisteTab guests={guests} eventId={eventId} userId={userId} hotels={hotels} onUpdate={handleGuestUpdate} onDelete={handleGuestDelete} />}
         {activeTab === 'geschenke'     && <GeschenkTab eventId={eventId} />}
         {activeTab === 'hotel'         && <HotelTab eventId={eventId} hotels={hotels} />}
         {activeTab === 'rsvp'          && <RsvpTab guests={guests} onUpdateGuest={handleGuestUpdate} />}
