@@ -503,6 +503,125 @@ function EditFlatRateArticle({ data, catalog, flatRates, onChange, eventId, role
   )
 }
 
+// ── EditImageUpload ───────────────────────────────────────────────────────────
+
+function EditImageUpload({ data, onChange, eventId }: {
+  data: ImageUploadData
+  onChange: (d: ImageUploadData) => void
+  eventId: string
+}) {
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Load presigned URL for existing image
+  useEffect(() => {
+    if (!data.storage_key) return
+    fetch(`/api/deko/image-url?r2Key=${encodeURIComponent(data.storage_key)}&eventId=${eventId}`)
+      .then(r => r.json())
+      .then(({ url }) => { if (url) setPreviewUrl(url) })
+      .catch(() => {})
+  }, [data.storage_key, eventId])
+
+  async function handleFile(file: File) {
+    setError(null)
+    setUploading(true)
+    setProgress(0)
+    try {
+      const res = await fetch('/api/deko/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, filename: file.name, contentType: file.type, sizeBytes: file.size }),
+      })
+      if (!res.ok) {
+        const { error: e } = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        throw new Error(e)
+      }
+      const { uploadUrl, r2Key } = await res.json() as { uploadUrl: string; r2Key: string }
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 95))
+        }
+        xhr.onload = () => xhr.status < 300 ? resolve() : reject(new Error(`R2 ${xhr.status}`))
+        xhr.onerror = () => reject(new Error('Netzwerkfehler'))
+        xhr.open('PUT', uploadUrl)
+        xhr.setRequestHeader('Content-Type', file.type)
+        xhr.send(file)
+      })
+
+      // Local preview while presigned URL is still warm
+      const localUrl = URL.createObjectURL(file)
+      setPreviewUrl(localUrl)
+      setProgress(100)
+      onChange({ ...data, storage_key: r2Key, caption: data.caption })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload fehlgeschlagen')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (file) handleFile(file)
+  }
+
+  return (
+    <div>
+      {/* Drop zone / preview */}
+      <div
+        onDrop={handleDrop}
+        onDragOver={e => e.preventDefault()}
+        onClick={() => !uploading && inputRef.current?.click()}
+        style={{
+          border: `2px dashed var(--border)`, borderRadius: 8, cursor: uploading ? 'default' : 'pointer',
+          overflow: 'hidden', minHeight: 140, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--surface)', marginBottom: 12, position: 'relative',
+        }}
+      >
+        {previewUrl
+          ? <img src={previewUrl} alt="" style={{ width: '100%', maxHeight: 240, objectFit: 'contain', display: 'block' }} />
+          : <div style={{ textAlign: 'center', padding: 24 }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>🖼</div>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Klicken oder Bild hierher ziehen</p>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>JPEG, PNG, WebP, GIF · max. 20 MB</p>
+            </div>
+        }
+        {uploading && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <div style={{ width: 160, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ width: `${progress}%`, height: '100%', background: 'var(--accent)', transition: 'width .15s' }} />
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{progress}%</p>
+          </div>
+        )}
+      </div>
+
+      {error && <p style={{ fontSize: 12, color: '#E06C75', marginBottom: 10 }}>{error}</p>}
+
+      {previewUrl && !uploading && (
+        <button onClick={() => inputRef.current?.click()}
+          style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 12, fontFamily: 'inherit' }}>
+          Anderes Bild wählen
+        </button>
+      )}
+
+      <Field label="Beschriftung (optional)">
+        <input value={data.caption ?? ''} onChange={e => onChange({ ...data, caption: e.target.value })}
+          placeholder="z. B. Tischdekoration Variante A" style={inputStyle} />
+      </Field>
+
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+    </div>
+  )
+}
+
 // ── Main Lightbox ─────────────────────────────────────────────────────────────
 
 const TITLES: Record<string, string> = {
@@ -556,7 +675,7 @@ export default function DekoItemLightbox({
             style={{ ...inputStyle, resize: 'vertical' }} />
         </Field>
       )
-      case 'image_upload':      return <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Bild-Upload direkt auf dem Canvas per Toolbar.</p>
+      case 'image_upload':      return <EditImageUpload data={data as ImageUploadData} onChange={commit} eventId={eventId} />
       case 'room_info':
       case 'guest_count':       return <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Dieses Item zeigt Live-Daten — keine Konfiguration nötig.</p>
       default:                  return null
