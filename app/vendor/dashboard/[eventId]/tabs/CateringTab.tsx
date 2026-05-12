@@ -132,24 +132,29 @@ function vis(sectionPerms: Record<string, Access> | undefined, tabAccess: Access
   return (sectionPerms?.[key] ?? tabAccess) !== 'none'
 }
 
-export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms }: { eventId: string; tabAccess?: Access; sectionPerms?: Record<string, Access> }) {
+export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms, initialCosts: preloadedCosts }: { eventId: string; tabAccess?: Access; sectionPerms?: Record<string, Access>; initialCosts?: unknown[] }) {
   const [plan, setPlan]             = useState<CateringPlan | null>(null)
   const [event, setEvent]           = useState<EventInfo | null>(null)
   const [guests, setGuests]         = useState<Guest[]>([])
-  const [costs, setCosts]             = useState<OrganizerCost[]>([])
-  const [costPrices, setCostPrices]   = useState<Record<string, string>>({})
+  const [costs, setCosts]           = useState<OrganizerCost[]>((preloadedCosts ?? []) as OrganizerCost[])
+  const [costPrices, setCostPrices] = useState<Record<string, string>>(
+    Object.fromEntries(((preloadedCosts ?? []) as OrganizerCost[]).map(c => [c.id, String(c.price_per_person ?? 0)]))
+  )
   const [customCostLabel, setCustomCostLabel] = useState('')
   const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
     const supabase = createClient()
+    const costsQuery = preloadedCosts
+      ? Promise.resolve({ data: preloadedCosts as OrganizerCost[] })
+      : supabase.from('event_organizer_costs').select('id, category, price_per_person, notes')
+          .eq('event_id', eventId).eq('source', 'catering').order('created_at', { ascending: true })
     Promise.all([
       supabase.from('catering_plans').select('*').eq('event_id', eventId).single(),
       supabase.from('events').select('menu_type, meal_options, children_allowed').eq('id', eventId).single(),
       supabase.from('guests').select('id, name, meal_choice, allergy_tags, allergy_custom')
         .eq('event_id', eventId).eq('status', 'zugesagt').order('name'),
-      supabase.from('event_organizer_costs').select('id, category, price_per_person, notes')
-        .eq('event_id', eventId).eq('source', 'catering').order('created_at', { ascending: true }),
+      costsQuery,
     ]).then(([{ data: p }, { data: e }, { data: g }, { data: c }]) => {
       setPlan(p ?? null)
       setEvent(e ?? null)

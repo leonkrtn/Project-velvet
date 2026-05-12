@@ -8,6 +8,7 @@ interface TabContentProps {
   mode: 'veranstalter' | 'dienstleister' | 'brautpaar'
   tabAccess?: 'read' | 'write'
   itemPermissions?: Record<string, 'none' | 'read' | 'write'>
+  initialCosts?: unknown[]
 }
 
 type CateringFormType = React.ComponentType<{
@@ -24,7 +25,7 @@ type CateringFormType = React.ComponentType<{
 
 // CateringForm requires initialEvent, initialPlan, initialCosts, confirmedGuestCount, mealCounts, allergyCounts
 // We fetch these client-side and render CateringForm for write access.
-function CateringFormWrapper({ eventId }: { eventId: string }) {
+function CateringFormWrapper({ eventId, initialCosts: preloadedCosts }: { eventId: string; initialCosts?: unknown[] }) {
   const componentRef = useRef<CateringFormType | null>(null)
   const [componentReady, setComponentReady] = useState(false)
   const [props, setProps] = useState<{
@@ -47,7 +48,9 @@ function CateringFormWrapper({ eventId }: { eventId: string }) {
     Promise.all([
       supabase.from('events').select('id, meal_options, menu_type, collect_allergies, children_allowed, children_note').eq('id', eventId).single(),
       supabase.from('catering_plans').select('*').eq('event_id', eventId).single(),
-      supabase.from('event_organizer_costs').select('id, category, amount, notes').eq('event_id', eventId).eq('source', 'catering').order('created_at', { ascending: true }),
+      preloadedCosts
+        ? Promise.resolve({ data: preloadedCosts })
+        : supabase.from('event_organizer_costs').select('id, category, price_per_person, notes').eq('event_id', eventId).eq('source', 'catering').order('created_at', { ascending: true }),
       supabase.from('guest_rsvps').select('id, meal_choice, allergies, attending, bring_children').eq('event_id', eventId),
     ]).then(([eventRes, planRes, costsRes, rsvpsRes]) => {
       const rsvps = rsvpsRes.data ?? []
@@ -98,9 +101,9 @@ function CateringFormWrapper({ eventId }: { eventId: string }) {
   )
 }
 
-export default function CateringTabContent({ eventId, mode, tabAccess, itemPermissions }: TabContentProps) {
+export default function CateringTabContent({ eventId, mode, tabAccess, itemPermissions, initialCosts }: TabContentProps) {
   if (mode !== 'dienstleister' || tabAccess === 'write') {
-    return <CateringFormWrapper eventId={eventId} />
+    return <CateringFormWrapper eventId={eventId} initialCosts={initialCosts} />
   }
-  return <CateringTab eventId={eventId} tabAccess={tabAccess} sectionPerms={itemPermissions} />
+  return <CateringTab eventId={eventId} tabAccess={tabAccess} sectionPerms={itemPermissions} initialCosts={initialCosts} />
 }
