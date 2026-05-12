@@ -21,7 +21,7 @@ export default async function UebersichtPage({ params }: Props) {
       .single(),
     supabase
       .from('guests')
-      .select('id, attending')
+      .select('id, status')
       .eq('event_id', eventId),
     supabase
       .from('budget_items')
@@ -38,8 +38,8 @@ export default async function UebersichtPage({ params }: Props) {
 
   const guests = guestsRes.data ?? []
   const guestTotal = guests.length
-  const guestConfirmed = guests.filter(g => g.attending === 'ja').length
-  const guestPending = guests.filter(g => g.attending === 'ausstehend').length
+  const guestConfirmed = guests.filter(g => g.status === 'zugesagt').length
+  const guestPending = guests.filter(g => g.status === 'ausstehend').length
 
   const budgetItems = budgetRes.data ?? []
   const budgetTotal = budgetItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)

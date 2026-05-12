@@ -26,11 +26,11 @@ export default async function CateringPage({ params }: Props) {
   const [{ data: guestStats }] = await Promise.all([
     supabase
       .from('guests')
-      .select('attending, meal_choice, allergy_tags')
+      .select('status, meal_choice, allergy_tags')
       .eq('event_id', eventId),
   ])
 
-  const attending = (guestStats ?? []).filter(g => g.attending === 'ja')
+  const attending = (guestStats ?? []).filter(g => g.status === 'zugesagt')
   const mealCounts: Record<string, number> = {}
   const allergyCounts: Record<string, number> = {}
   for (const g of attending) {
