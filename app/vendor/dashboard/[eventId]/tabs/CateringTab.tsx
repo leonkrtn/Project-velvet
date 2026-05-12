@@ -121,7 +121,7 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms 
       supabase.from('catering_plans').select('*').eq('event_id', eventId).single(),
       supabase.from('events').select('menu_type, meal_options, children_allowed').eq('id', eventId).single(),
       supabase.from('guests').select('id, name, meal_choice, allergy_tags, allergy_custom')
-        .eq('event_id', eventId).eq('attending', 'ja').order('name'),
+        .eq('event_id', eventId).eq('status', 'zugesagt').order('name'),
     ]).then(([{ data: p }, { data: e }, { data: g }]) => {
       setPlan(p ?? null)
       setEvent(e ?? null)
