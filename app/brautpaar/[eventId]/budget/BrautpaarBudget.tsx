@@ -3,9 +3,16 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, Pencil, Settings } from 'lucide-react'
+import { Plus, Trash2, Pencil, Settings, ChevronDown, ChevronRight, UtensilsCrossed } from 'lucide-react'
 
 type PaymentStatus = 'offen' | 'angezahlt' | 'bezahlt'
+
+interface CateringCostItem {
+  id: string
+  category: string | null
+  amount: number
+  notes: string | null
+}
 
 interface BudgetItem {
   id: string
@@ -25,6 +32,7 @@ interface Props {
   organizerFeeType: string
   budgetLimit: number
   initialItems: BudgetItem[]
+  cateringCosts: CateringCostItem[]
 }
 
 const CATEGORIES = ['Catering', 'Dekoration', 'Musik', 'Location', 'Fotografie', 'Kleidung', 'Transport', 'Sonstiges']
@@ -148,6 +156,53 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
   )
 }
 
+function CateringRow({ costs }: { costs: CateringCostItem[] }) {
+  const [expanded, setExpanded] = useState(false)
+  const total = costs.reduce((s, c) => s + (Number(c.amount) || 0), 0)
+
+  return (
+    <>
+      <tr
+        onClick={() => setExpanded(p => !p)}
+        style={{ cursor: 'pointer', background: expanded ? 'var(--bp-surface-2, #faf9f7)' : undefined }}
+      >
+        <td>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {expanded ? <ChevronDown size={14} color="var(--bp-ink-3)" /> : <ChevronRight size={14} color="var(--bp-ink-3)" />}
+            <UtensilsCrossed size={14} color="var(--bp-ink-3)" />
+            <div>
+              <div style={{ fontWeight: 500, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>Catering</div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>Vom Veranstalter gepflegt · {costs.length} Posten</div>
+            </div>
+          </div>
+        </td>
+        <td><span className="bp-badge" style={{ color: 'var(--bp-gold-deep)', borderColor: 'var(--bp-gold)' }}>Catering</span></td>
+        <td style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', fontWeight: 600 }}>
+          {formatCurrency(total)}
+        </td>
+        <td style={{ textAlign: 'right', color: 'var(--bp-ink-3)' }}>—</td>
+        <td></td>
+        <td></td>
+      </tr>
+      {expanded && costs.map(c => (
+        <tr key={c.id} style={{ background: 'var(--bp-surface-2, #faf9f7)' }}>
+          <td style={{ paddingLeft: '2.75rem' }}>
+            <div style={{ color: 'var(--bp-ink-2)', fontSize: '0.9rem' }}>{c.category || 'Sonstiges'}</div>
+            {c.notes && <div style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>{c.notes}</div>}
+          </td>
+          <td></td>
+          <td style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1rem', color: 'var(--bp-ink-2)' }}>
+            {formatCurrency(Number(c.amount) || 0)}
+          </td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      ))}
+    </>
+  )
+}
+
 function AddItemForm({ eventId, onAdded }: { eventId: string; onAdded: (i: BudgetItem) => void }) {
   const [open, setOpen]           = useState(false)
   const [description, setDescription] = useState('')
@@ -213,7 +268,7 @@ function AddItemForm({ eventId, onAdded }: { eventId: string; onAdded: (i: Budge
   )
 }
 
-export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, initialItems }: Props) {
+export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, initialItems, cateringCosts }: Props) {
   const [items, setItems] = useState<BudgetItem[]>(initialItems)
 
   async function deleteItem(id: string) {
@@ -222,9 +277,10 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
     if (!error) setItems(prev => prev.filter(i => i.id !== id))
   }
 
+  const cateringTotal = cateringCosts.reduce((s, c) => s + (Number(c.amount) || 0), 0)
   const plannedTotal  = items.reduce((s, i) => s + (Number(i.planned) || 0), 0)
   const actualTotal   = items.reduce((s, i) => s + (Number(i.actual)  || 0), 0)
-  const totalWithFee  = plannedTotal + organizerFee
+  const totalWithFee  = plannedTotal + organizerFee + cateringTotal
   const budgetUsed    = budgetLimit > 0 ? (totalWithFee / budgetLimit) * 100 : 0
 
   return (
@@ -299,6 +355,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
                 <td></td>
               </tr>
             )}
+            {cateringCosts.length > 0 && <CateringRow costs={cateringCosts} />}
             {items.map(item => (
               <ItemRow
                 key={item.id}
@@ -307,7 +364,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
                 onDelete={() => deleteItem(item.id)}
               />
             ))}
-            {items.length === 0 && !organizerFee && (
+            {items.length === 0 && !organizerFee && cateringCosts.length === 0 && (
               <tr>
                 <td colSpan={6}>
                   <div className="bp-empty">
