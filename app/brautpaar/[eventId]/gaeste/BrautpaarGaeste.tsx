@@ -1115,6 +1115,24 @@ function RsvpTab({ guests, onUpdateGuest }: { guests: Guest[]; onUpdateGuest: (g
   const [qrGuestId, setQrGuestId]           = useState<string | null>(null)
   const [qrDataUrls, setQrDataUrls]         = useState<Record<string, string>>({})
   const [qrLoading, setQrLoading]           = useState(false)
+  const [selected, setSelected]             = useState<Set<string>>(new Set())
+  const [massModal, setMassModal]           = useState(false)
+  const [allLinksCopied, setAllLinksCopied] = useState(false)
+
+  const allSelected   = guests.length > 0 && guests.every(g => selected.has(g.id))
+  const someSelected  = selected.size > 0
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(guests.map(g => g.id)))
+  }
+
+  function toggleOne(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   function getRsvpUrl(token: string) {
     if (typeof window === 'undefined') return ''
@@ -1159,15 +1177,71 @@ function RsvpTab({ guests, onUpdateGuest }: { guests: Guest[]; onUpdateGuest: (g
     setEditingEmailId(null)
   }
 
+  const selectedGuests = guests.filter(g => selected.has(g.id))
+
+  function copyAllLinks() {
+    const text = selectedGuests
+      .filter(g => g.token)
+      .map(g => `${g.name}\n${getRsvpUrl(g.token!)}`)
+      .join('\n\n')
+    navigator.clipboard.writeText(text).then(() => {
+      setAllLinksCopied(true)
+      setTimeout(() => setAllLinksCopied(false), 2000)
+    })
+  }
+
+  function openBccMail() {
+    const emails = selectedGuests.filter(g => g.email && g.token).map(g => g.email!).join(',')
+    if (!emails) return
+    const subject = encodeURIComponent('Eure persönliche Hochzeitseinladung')
+    const body = encodeURIComponent(
+      'Liebe Gäste,\n\neure persönlichen RSVP-Links findet ihr unten in dieser Nachricht.\n\nWir freuen uns auf eure Antwort!\n\n' +
+      selectedGuests.filter(g => g.email && g.token).map(g => `${g.name}: ${getRsvpUrl(g.token!)}`).join('\n')
+    )
+    window.open(`mailto:?bcc=${encodeURIComponent(emails)}&subject=${subject}&body=${body}`)
+  }
+
   const activeQrGuest = qrGuestId ? guests.find(g => g.id === qrGuestId) ?? null : null
   const activeQrUrl   = activeQrGuest ? qrDataUrls[activeQrGuest.id] ?? null : null
+  const withEmail     = selectedGuests.filter(g => g.email && g.token).length
+  const withoutEmail  = selectedGuests.filter(g => !g.email).length
 
   return (
     <div>
       <div style={{ marginBottom: '1.25rem' }}>
         <h3 className="bp-section-title" style={{ margin: '0 0 0.25rem' }}>Einladungslinks</h3>
-        <p className="bp-caption">Jeder Gast hat einen personalisierten RSVP-Link.</p>
+        <p className="bp-caption">Gäste auswählen und Einladungen auf einmal versenden.</p>
       </div>
+
+      {/* Action bar */}
+      {someSelected && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
+          background: 'var(--bp-gold-pale)', border: '1px solid var(--bp-gold-rule)',
+          borderRadius: 'var(--bp-r-md)', padding: '0.625rem 1rem', marginBottom: '0.75rem',
+        }}>
+          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--bp-ink)', marginRight: 'auto' }}>
+            {selected.size} {selected.size === 1 ? 'Gast' : 'Gäste'} ausgewählt
+          </span>
+          <button
+            className="bp-btn bp-btn-secondary bp-btn-sm"
+            onClick={copyAllLinks}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+          >
+            {allLinksCopied ? <><Check size={13} /> Kopiert</> : <><Copy size={13} /> Alle Links kopieren</>}
+          </button>
+          <button
+            className="bp-btn bp-btn-primary bp-btn-sm"
+            onClick={() => setMassModal(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+          >
+            <Mail size={13} /> Masseneinladung
+          </button>
+          <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={() => setSelected(new Set())}>
+            Auswahl aufheben
+          </button>
+        </div>
+      )}
 
       <div className="bp-card" style={{ overflow: 'hidden' }}>
         {guests.length === 0 ? (
@@ -1177,12 +1251,33 @@ function RsvpTab({ guests, onUpdateGuest }: { guests: Guest[]; onUpdateGuest: (g
           </div>
         ) : (
           <table className="bp-table">
-            <thead><tr><th>Gast</th><th>E-Mail</th><th style={{ textAlign: 'right' }}>Aktionen</th></tr></thead>
+            <thead>
+              <tr>
+                <th style={{ width: 36, paddingRight: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    ref={el => { if (el) el.indeterminate = someSelected && !allSelected }}
+                    onChange={toggleAll}
+                    style={{ cursor: 'pointer', accentColor: 'var(--bp-gold)' }}
+                  />
+                </th>
+                <th>Gast</th><th>E-Mail</th><th style={{ textAlign: 'right' }}>Aktionen</th>
+              </tr>
+            </thead>
             <tbody>
               {guests.map(guest => (
-                <tr key={guest.id}>
+                <tr key={guest.id} onClick={() => toggleOne(guest.id)} style={{ cursor: 'pointer' }}>
+                  <td style={{ paddingRight: 0 }} onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selected.has(guest.id)}
+                      onChange={() => toggleOne(guest.id)}
+                      style={{ cursor: 'pointer', accentColor: 'var(--bp-gold)' }}
+                    />
+                  </td>
                   <td style={{ fontWeight: 500, color: 'var(--bp-ink)' }}>{guest.name}</td>
-                  <td>
+                  <td onClick={e => e.stopPropagation()}>
                     {editingEmailId === guest.id ? (
                       <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center' }}>
                         <input
@@ -1210,7 +1305,7 @@ function RsvpTab({ guests, onUpdateGuest }: { guests: Guest[]; onUpdateGuest: (g
                       </button>
                     )}
                   </td>
-                  <td>
+                  <td onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'flex-end' }}>
                       <button className="bp-btn bp-btn-secondary bp-btn-sm" onClick={() => copyLink(guest)} disabled={!guest.token} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                         {copiedId === guest.id ? <Check size={13} /> : <Copy size={13} />}
@@ -1237,6 +1332,7 @@ function RsvpTab({ guests, onUpdateGuest }: { guests: Guest[]; onUpdateGuest: (g
         )}
       </div>
 
+      {/* QR panel */}
       {qrGuestId && activeQrGuest && (
         <div className="bp-card" style={{ marginTop: '1rem', padding: '1.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -1259,6 +1355,87 @@ function RsvpTab({ guests, onUpdateGuest }: { guests: Guest[]; onUpdateGuest: (g
                 </p>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Mass invite modal */}
+      {massModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(44,40,37,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={e => { if (e.target === e.currentTarget) setMassModal(false) }}
+        >
+          <div style={{ background: 'var(--bp-paper)', borderRadius: 'var(--bp-r-lg)', width: '100%', maxWidth: 560, maxHeight: '88vh', overflowY: 'auto', boxShadow: 'var(--bp-shadow-elevated)' }}>
+            <div style={{ position: 'sticky', top: 0, background: 'var(--bp-paper)', borderBottom: '1px solid var(--bp-rule)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 className="bp-h2" style={{ margin: '0 0 0.25rem' }}>Masseneinladung</h2>
+                <p className="bp-caption" style={{ margin: 0 }}>
+                  {selected.size} {selected.size === 1 ? 'Gast' : 'Gäste'} ausgewählt
+                  {withoutEmail > 0 && <span style={{ color: '#B91C1C', marginLeft: '0.5rem' }}>· {withoutEmail} ohne E-Mail</span>}
+                </p>
+              </div>
+              <button className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon" onClick={() => setMassModal(false)}><X size={18} /></button>
+            </div>
+
+            <div style={{ padding: '1.25rem 1.5rem' }}>
+              {/* Bulk actions */}
+              <div style={{ display: 'flex', gap: '0.625rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+                <button
+                  className="bp-btn bp-btn-primary"
+                  onClick={openBccMail}
+                  disabled={withEmail === 0}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  <Mail size={15} /> E-Mail-Programm öffnen ({withEmail} mit E-Mail)
+                </button>
+                <button
+                  className="bp-btn bp-btn-secondary"
+                  onClick={copyAllLinks}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  {allLinksCopied ? <><Check size={14} /> Kopiert!</> : <><Copy size={14} /> Alle Links kopieren</>}
+                </button>
+              </div>
+
+              {/* Per-guest list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {selectedGuests.map(guest => {
+                  const url = guest.token ? getRsvpUrl(guest.token) : null
+                  return (
+                    <div key={guest.id} style={{
+                      background: 'var(--bp-bg)', borderRadius: 'var(--bp-r-md)',
+                      border: '1px solid var(--bp-rule)', padding: '0.75rem 1rem',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9rem', margin: '0 0 0.2rem' }}>{guest.name}</p>
+                          {guest.email
+                            ? <p style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)', margin: 0 }}>{guest.email}</p>
+                            : <p style={{ fontSize: '0.8125rem', color: '#B91C1C', margin: 0 }}>Keine E-Mail hinterlegt</p>
+                          }
+                          {url && (
+                            <p style={{ fontSize: '0.75rem', color: 'var(--bp-ink-4)', fontFamily: 'monospace', margin: '0.25rem 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {url}
+                            </p>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0 }}>
+                          {guest.email && url && (
+                            <a
+                              href={`mailto:${guest.email}?subject=${encodeURIComponent('Deine persönliche Hochzeitseinladung')}&body=${encodeURIComponent(`Liebe/r ${guest.name},\n\nbitte bestätige deine Teilnahme über deinen persönlichen Link:\n${url}`)}`}
+                              className="bp-btn bp-btn-secondary bp-btn-sm"
+                              style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', textDecoration: 'none' }}
+                            >
+                              <Mail size={13} /> Mail
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           </div>
         </div>
       )}
