@@ -45,6 +45,13 @@ export default function DekoNavigationBar({
     if (moodboards.length > 0 || !canEdit || moodboardCreated.current) return
     moodboardCreated.current = true
     async function createDefault() {
+      // DB-level check prevents duplicates from React StrictMode double-mount
+      const { count } = await supabase
+        .from('deko_canvases')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_id', eventId)
+        .eq('canvas_type', 'moodboard')
+      if ((count ?? 0) > 0) return
       const { data: canvas } = await supabase.from('deko_canvases').insert({
         event_id: eventId,
         area_id: null,

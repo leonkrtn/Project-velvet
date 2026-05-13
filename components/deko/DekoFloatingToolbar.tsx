@@ -62,8 +62,8 @@ interface Props {
 
 export default function DekoFloatingToolbar({ pendingType, onSelect, onCancel }: Props) {
   const [collapsed, setCollapsed] = useState(false)
-  // Start right of the 220px sidebar, clear of it
-  const [pos, setPos] = useState({ x: 240, y: 80 })
+  // Start past both the 220px Velvet sidebar and the 220px deko nav
+  const [pos, setPos] = useState({ x: 460, y: 80 })
   const dragging = useRef(false)
   const dragOffset = useRef({ x: 0, y: 0 })
 
