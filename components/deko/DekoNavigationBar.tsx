@@ -264,7 +264,7 @@ export default function DekoNavigationBar({
 
       {canEdit && (
         addingArea
-          ? <div style={{ padding: '6px 8px', borderTop: '1px dashed var(--border)' }}>
+          ? <div style={{ padding: '6px 14px 6px 8px', borderTop: '1px dashed var(--border)' }}>
             <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
               <input autoFocus value={newAreaName} onChange={e => setNewAreaName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') createArea(); if (e.key === 'Escape') setAddingArea(false) }}

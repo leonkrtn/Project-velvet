@@ -271,6 +271,7 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
   // ── Mouse handlers ────────────────────────────────────────────────────────
 
   const handleViewportMouseDown = useCallback((e: React.MouseEvent) => {
+    document.body.style.userSelect = 'none'
     if (e.button === 1 || (e.button === 0 && e.altKey) || (e.button === 0 && spaceHeld.current)) {
       e.preventDefault()
       if (inertiaRafRef.current) { cancelAnimationFrame(inertiaRafRef.current); inertiaRafRef.current = null }
@@ -350,6 +351,7 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
   }, [canvas, broadcastCursor])
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    document.body.style.userSelect = ''
     if (isPanning.current) {
       isPanning.current = false
       startInertia(velRef.current.vx, velRef.current.vy)
@@ -502,6 +504,7 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => {
+          document.body.style.userSelect = ''
           if (isPanning.current) isPanning.current = false
           lassoStartRef.current = null; lassoRef.current = null; setLasso(null)
           if (canvas.dragState) canvas.endDrag()
@@ -510,7 +513,7 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
         onWheel={handleWheel}
       >
         {/* Canvas world */}
-        <div style={{ position: 'absolute', left: panX, top: panY, width: CANVAS_W, height: CANVAS_H, zoom, background: '#FDFCFA', boxShadow: '0 8px 48px rgba(0,0,0,0.18)', borderRadius: 2 }}>
+        <div style={{ position: 'absolute', left: panX, top: panY, width: CANVAS_W, height: CANVAS_H, zoom, background: '#FDFCFA', boxShadow: '0 8px 48px rgba(0,0,0,0.18)', borderRadius: 2, userSelect: 'none' }}>
           <CanvasBackground />
           <div data-canvasbg="true" style={{ position: 'absolute', inset: 0, zIndex: 0 }} />
 
@@ -526,6 +529,7 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
               isAutoHeight={AUTO_HEIGHT_TYPES.has(item.type) && !(item.data as Record<string, unknown>)._manual_size}
               onMouseDown={(e) => {
                 e.stopPropagation()
+                document.body.style.userSelect = 'none'
                 const isMulti = e.shiftKey || e.metaKey || e.ctrlKey
                 if (isMulti) {
                   const next = selectedSet.has(item.id)
@@ -664,6 +668,7 @@ function DekoItemWrapper({ item, isSelected, isInSelection, isDraggedByOther, is
         borderRadius: isFrame ? 10 : isTransparent ? 0 : 6,
         cursor: canEdit ? 'grab' : 'default',
         boxSizing: 'border-box',
+        userSelect: 'none',
         animation: isNew ? 'deko-fadein 0.25s ease-out' : undefined,
       }}
       onMouseDown={onMouseDown}
