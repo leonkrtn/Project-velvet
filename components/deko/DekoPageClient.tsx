@@ -1,6 +1,7 @@
 'use client'
-import React, { useState, useRef } from 'react'
-import { Lock, Unlock } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { Lock, Unlock, GitBranch } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import DekoNavigationBar from './DekoNavigationBar'
 import DekoCanvas, { type DekoCanvasHandle, type ScreenRect } from './DekoCanvas'
 import DekoFloatingToolbar from './DekoFloatingToolbar'
@@ -40,10 +41,20 @@ export default function DekoPageClient({
   const [areas, setAreas] = useState<DekoArea[]>(initialAreas)
   const [moodboards, setMoodboards] = useState<DekoCanvasType[]>(initialMoodboards)
   const [catalog, setCatalog] = useState<DekoCatalogItem[]>(initialCatalog)
+  const [itemsByCanvas, setItemsByCanvas] = useState<Record<string, DekoItem[]>>(initialItemsByCanvas)
 
   // Determine first canvas to show
   const firstCanvasId = areas[0]?.canvases?.[0]?.id ?? moodboards[0]?.id ?? null
   const [activeCanvasId, setActiveCanvasId] = useState<string | null>(firstCanvasId)
+
+  // Fetch items for canvases not present in initial server load (e.g. created during session)
+  useEffect(() => {
+    if (!activeCanvasId || itemsByCanvas[activeCanvasId] !== undefined) return
+    const supabase = createClient()
+    supabase.from('deko_items').select('*').eq('canvas_id', activeCanvasId).then(({ data }) => {
+      setItemsByCanvas(prev => ({ ...prev, [activeCanvasId]: (data ?? []) as DekoItem[] }))
+    })
+  }, [activeCanvasId]) // eslint-disable-line react-hooks/exhaustive-deps
   const [pendingType, setPendingType] = useState<DekoItemType | null>(null)
   const [lightboxItem, setLightboxItem] = useState<DekoItem | null>(null)
   const [lightboxAnchor, setLightboxAnchor] = useState<ScreenRect | undefined>(undefined)
@@ -78,6 +89,25 @@ export default function DekoPageClient({
         ...a, canvases: (a.canvases ?? []).map(c => c.canvas_type === 'main' ? { ...c, is_frozen: true } : c),
       })))
     }
+  }
+
+  async function handlePromoteVariant(variant: DekoCanvasType) {
+    const area = areas.find(a => a.canvases?.some(c => c.id === variant.id))
+    if (!area) return
+    const mainCanvas = area.canvases?.find(c => c.canvas_type === 'main')
+    const supabase = createClient()
+    if (mainCanvas) {
+      await supabase.from('deko_canvases').update({ canvas_type: 'variant' }).eq('id', mainCanvas.id)
+    }
+    await supabase.from('deko_canvases').update({ canvas_type: 'main' }).eq('id', variant.id)
+    setAreas(prev => prev.map(a => a.id === area.id ? {
+      ...a,
+      canvases: (a.canvases ?? []).map(c => {
+        if (c.id === variant.id) return { ...c, canvas_type: 'main' as DekoCanvasType['canvas_type'] }
+        if (mainCanvas && c.id === mainCanvas.id) return { ...c, canvas_type: 'variant' as DekoCanvasType['canvas_type'] }
+        return c
+      }),
+    } : a))
   }
 
   async function handleUnfreeze() {
@@ -129,6 +159,14 @@ export default function DekoPageClient({
             )}
           </h2>
 
+          {/* Promote variant to main */}
+          {activeCanvas?.canvas_type === 'variant' && canEdit && (
+            <button onClick={() => activeCanvas && handlePromoteVariant(activeCanvas)}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', background: 'none', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+              <GitBranch size={12} /> Als Hauptcanvas setzen
+            </button>
+          )}
+
           {/* Comment button for canvas-level */}
           <DekoCommentOverlay
             eventId={eventId} targetType="canvas" targetId={activeCanvasId}
@@ -165,7 +203,7 @@ export default function DekoPageClient({
           userId={userId}
           userName={userName}
           isFrozen={isActiveFrozen}
-          initialItems={initialItemsByCanvas[activeCanvasId] ?? []}
+          initialItems={itemsByCanvas[activeCanvasId] ?? []}
           initialCatalog={catalog}
           initialFlatRates={initialFlatRates}
           onItemSelect={setSelectedItem}

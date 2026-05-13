@@ -182,7 +182,8 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
   const [presenceUsers, setPresenceUsers] = useState<PresenceUser[]>([])
   const [othersItems, setOthersItems] = useState<Set<string>>(new Set())
   const [newItemId, setNewItemId] = useState<string | null>(null)
-  const [vpDims, setVpDims] = useState({ w: 800, h: 600 })
+  const [vpDims, setVpDims] = useState({ w: 0, h: 0 })
+  const centeredRef = useRef(false)
   const lassoStartRef = useRef<{ x: number; y: number } | null>(null)
   const lassoRef = useRef<LassoRect | null>(null)
   const [lasso, setLasso] = useState<LassoRect | null>(null)
@@ -208,6 +209,32 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+
+  // Restore viewport from localStorage, or center canvas on first open
+  useEffect(() => {
+    if (centeredRef.current || vpDims.w < 100) return
+    centeredRef.current = true
+    try {
+      const saved = localStorage.getItem(`deko_vp_${canvasId}`)
+      if (saved) {
+        canvas.setViewport(JSON.parse(saved))
+      } else {
+        canvas.setViewport({
+          zoom: 0.45,
+          panX: Math.max(20, vpDims.w / 2 - CANVAS_W * 0.45 / 2),
+          panY: Math.max(20, vpDims.h / 2 - CANVAS_H * 0.45 / 2),
+        })
+      }
+    } catch {}
+  }, [vpDims, canvasId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save viewport to localStorage (debounced)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try { localStorage.setItem(`deko_vp_${canvasId}`, JSON.stringify(canvas.viewport)) } catch {}
+    }, 150)
+    return () => clearTimeout(t)
+  }, [canvasId, canvas.viewport])
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -474,11 +501,22 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', background: 'var(--surface)', borderBottom: '1px solid var(--border)', fontSize: 12, color: 'var(--text-secondary)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg, #F5F3EF)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 4px' }}>
-          <button onClick={() => canvas.setViewport(v => ({ ...v, zoom: Math.max(0.1, v.zoom * 0.8) }))} style={zoomBtnStyle}>−</button>
+          <button onClick={() => canvas.setViewport(v => {
+            const nz = Math.max(0.1, v.zoom * 0.8); const s = nz / v.zoom
+            const cx = vpDims.w / 2; const cy = vpDims.h / 2
+            return { zoom: nz, panX: cx - s * (cx - v.panX), panY: cy - s * (cy - v.panY) }
+          })} style={zoomBtnStyle}>−</button>
           <span style={{ minWidth: 44, textAlign: 'center', fontSize: 11, fontWeight: 600 }}>{Math.round(zoom * 100)}%</span>
-          <button onClick={() => canvas.setViewport(v => ({ ...v, zoom: Math.min(4, v.zoom * 1.25) }))} style={zoomBtnStyle}>+</button>
+          <button onClick={() => canvas.setViewport(v => {
+            const nz = Math.min(4, v.zoom * 1.25); const s = nz / v.zoom
+            const cx = vpDims.w / 2; const cy = vpDims.h / 2
+            return { zoom: nz, panX: cx - s * (cx - v.panX), panY: cy - s * (cy - v.panY) }
+          })} style={zoomBtnStyle}>+</button>
         </div>
-        <button onClick={() => canvas.setViewport({ zoom: 0.45, panX: 0, panY: 0 })} style={{ ...zoomBtnStyle, padding: '0 8px', width: 'auto', fontSize: 11 }}>Reset</button>
+        <button onClick={() => {
+          try { localStorage.removeItem(`deko_vp_${canvasId}`) } catch {}
+          canvas.setViewport({ zoom: 0.45, panX: Math.max(20, vpDims.w / 2 - CANVAS_W * 0.45 / 2), panY: Math.max(20, vpDims.h / 2 - CANVAS_H * 0.45 / 2) })
+        }} style={{ ...zoomBtnStyle, padding: '0 8px', width: 'auto', fontSize: 11 }}>Reset</button>
         <button onClick={canvas.undo} disabled={!canvas.canUndo} title="Rückgängig (Ctrl+Z)" style={{ ...zoomBtnStyle, opacity: canvas.canUndo ? 1 : 0.35, fontSize: 14 }}>↩</button>
         <button onClick={canvas.redo} disabled={!canvas.canRedo} title="Wiederholen (Ctrl+Y)" style={{ ...zoomBtnStyle, opacity: canvas.canRedo ? 1 : 0.35, fontSize: 14 }}>↪</button>
         <button
@@ -513,7 +551,7 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
         onWheel={handleWheel}
       >
         {/* Canvas world */}
-        <div style={{ position: 'absolute', left: panX, top: panY, width: CANVAS_W, height: CANVAS_H, zoom, background: '#FDFCFA', boxShadow: '0 8px 48px rgba(0,0,0,0.18)', borderRadius: 2, userSelect: 'none' }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, width: CANVAS_W, height: CANVAS_H, transformOrigin: '0 0', transform: `translate(${panX}px, ${panY}px) scale(${zoom})`, background: '#FDFCFA', boxShadow: '0 8px 48px rgba(0,0,0,0.18)', borderRadius: 2, userSelect: 'none' }}>
           <CanvasBackground />
           <div data-canvasbg="true" style={{ position: 'absolute', inset: 0, zIndex: 0 }} />
 
