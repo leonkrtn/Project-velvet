@@ -153,36 +153,109 @@ function ColorSwatchRenderer({ item }: RendererProps) {
 
 // ── 5. TextBlock ──────────────────────────────────────────────────────────────
 
+const TEXT_FONT_SIZES = [10, 12, 13, 14, 16, 18, 20, 24]
+
 function TextBlockRenderer({ item, canEdit, onDataChange }: RendererProps) {
   const d = item.data as TextBlockData
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(d.content ?? '')
+  const [showFormat, setShowFormat] = useState(false)
 
-  if (editing) return (
-    <textarea
-      autoFocus
-      value={draft}
-      onChange={e => setDraft(e.target.value)}
-      onBlur={() => { setEditing(false); onDataChange({ content: draft }) }}
-      style={{
-        width: '100%', height: '100%', border: 'none', outline: 'none',
-        resize: 'none', padding: 14, fontSize: 13, fontFamily: 'inherit',
-        background: '#fff', boxSizing: 'border-box', borderRadius: 8,
-        lineHeight: 1.65, color: 'var(--text)',
-      }}
-    />
-  )
+  const textStyle: React.CSSProperties = {
+    fontSize: d.font_size ?? 13,
+    fontWeight: d.bold ? 700 : 400,
+    fontStyle: d.italic ? 'italic' : 'normal',
+    textAlign: d.align ?? 'left',
+    color: 'var(--text)',
+    lineHeight: 1.65,
+  }
+
+  function saveContent() {
+    setEditing(false)
+    onDataChange({ ...d, content: draft })
+  }
+
+  function updateStyle(patch: Partial<TextBlockData>) {
+    onDataChange({ ...d, content: draft, ...patch })
+  }
+
+  const fs = d.font_size ?? 13
+
   return (
-    <div style={{
-      width: '100%', height: '100%', padding: 14, fontSize: 13, color: 'var(--text)',
-      background: '#fff', borderRadius: 8, overflow: 'hidden', boxSizing: 'border-box',
-      lineHeight: 1.65, whiteSpace: 'pre-wrap',
-      cursor: canEdit ? 'text' : 'default',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-    }}
-      onDoubleClick={() => canEdit && setEditing(true)}
-    >
-      {d.content || <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic', fontSize: 12 }}>Doppelklick → Text eingeben…</span>}
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {/* Format bar — floats above the item */}
+      {showFormat && canEdit && (
+        <div
+          style={{
+            position: 'absolute', bottom: 'calc(100% + 6px)', left: 0, zIndex: 200,
+            background: '#fff', border: '1px solid var(--border)', borderRadius: 8,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.13)', padding: '5px 8px',
+            display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseDown={e => e.stopPropagation()}
+        >
+          {/* Font sizes */}
+          {TEXT_FONT_SIZES.map(s => (
+            <button key={s} onClick={() => updateStyle({ font_size: s })}
+              style={{ padding: '2px 5px', border: `1px solid ${fs === s ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontSize: 10, fontFamily: 'inherit', background: fs === s ? 'rgba(201,185,154,0.15)' : 'none', color: fs === s ? '#C9B99A' : 'var(--text)', fontWeight: fs === s ? 700 : 400 }}>
+              {s}
+            </button>
+          ))}
+          <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 2px' }} />
+          {/* Bold / Italic */}
+          <button onClick={() => updateStyle({ bold: !d.bold })}
+            style={{ width: 26, height: 26, border: `1px solid ${d.bold ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontWeight: 800, fontSize: 13, background: d.bold ? 'rgba(201,185,154,0.15)' : 'none', fontFamily: 'inherit', color: d.bold ? '#C9B99A' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>B</button>
+          <button onClick={() => updateStyle({ italic: !d.italic })}
+            style={{ width: 26, height: 26, border: `1px solid ${d.italic ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontStyle: 'italic', fontSize: 13, background: d.italic ? 'rgba(201,185,154,0.15)' : 'none', fontFamily: 'inherit', color: d.italic ? '#C9B99A' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>I</button>
+          <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 2px' }} />
+          {/* Alignment */}
+          {(['left', 'center', 'right'] as const).map(a => {
+            const active = (d.align ?? 'left') === a
+            const icons: Record<string, string> = { left: '⇤', center: '↔', right: '⇥' }
+            return (
+              <button key={a} onClick={() => updateStyle({ align: a })}
+                style={{ width: 26, height: 26, border: `1px solid ${active ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontSize: 12, background: active ? 'rgba(201,185,154,0.15)' : 'none', fontFamily: 'inherit', color: active ? '#C9B99A' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {icons[a]}
+              </button>
+            )
+          })}
+          <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 2px' }} />
+          {/* Close */}
+          <button onClick={() => setShowFormat(false)}
+            style={{ width: 22, height: 22, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'none', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={11} />
+          </button>
+        </div>
+      )}
+
+      {editing ? (
+        <textarea
+          autoFocus
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={saveContent}
+          onKeyDown={e => e.stopPropagation()}
+          style={{
+            width: '100%', height: '100%', border: 'none', outline: 'none',
+            resize: 'none', padding: 14, boxSizing: 'border-box', borderRadius: 8,
+            background: '#fff', fontFamily: 'inherit', ...textStyle,
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            width: '100%', height: '100%', padding: 14, background: '#fff',
+            borderRadius: 8, overflow: 'hidden', boxSizing: 'border-box',
+            whiteSpace: 'pre-wrap', cursor: canEdit ? 'text' : 'default',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)', ...textStyle,
+          }}
+          onClick={() => canEdit && setEditing(true)}
+          onDoubleClick={e => { e.stopPropagation(); if (canEdit) { setEditing(true); setShowFormat(s => !s) } }}
+        >
+          {d.content || <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic', fontSize: 12, fontWeight: 400 }}>Klick → Text eingeben · Doppelklick → Format</span>}
+        </div>
+      )}
     </div>
   )
 }
@@ -191,19 +264,19 @@ function TextBlockRenderer({ item, canEdit, onDataChange }: RendererProps) {
 
 const STICKY_COLORS = ['#FFF8DC', '#DDEEFF', '#DDFFDD', '#FFE4E4', '#EEE0FF', '#FFE4C0', '#F0F0F0']
 
-function StickyColorDot({ color, active, onClick }: { color: string; active: boolean; onClick: () => void }) {
-  const [hovered, setHovered] = useState(false)
-  const size = hovered ? 15 : 11
+function StickyColorDot({ color, active, onClick, areaHovered }: { color: string; active: boolean; onClick: () => void; areaHovered: boolean }) {
+  const [selfHovered, setSelfHovered] = useState(false)
+  const size = selfHovered ? 15 : areaHovered ? 13 : 11
   return (
     <div
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => setSelfHovered(true)}
+      onMouseLeave={() => setSelfHovered(false)}
       style={{
         width: size, height: size, borderRadius: '50%', background: color,
         cursor: 'pointer', flexShrink: 0,
         border: active ? '2px solid rgba(0,0,0,0.35)' : '1px solid rgba(0,0,0,0.12)',
-        transition: 'width 0.1s, height 0.1s',
+        transition: 'width 0.12s, height 0.12s',
       }}
     />
   )
@@ -214,6 +287,7 @@ function StickyNoteRenderer({ item, canEdit, onDataChange }: RendererProps) {
   const bg = d.color || STICKY_COLORS[0]
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(d.content ?? '')
+  const [dotsHovered, setDotsHovered] = useState(false)
   return (
     <div style={{
       width: '100%', height: '100%', background: bg,
@@ -221,9 +295,13 @@ function StickyNoteRenderer({ item, canEdit, onDataChange }: RendererProps) {
       boxShadow: '2px 3px 10px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)',
       position: 'relative', display: 'flex', flexDirection: 'column',
     }}>
-      <div style={{ display: 'flex', gap: 5, marginBottom: 9, flexShrink: 0, alignItems: 'center' }}>
+      <div
+        style={{ display: 'flex', gap: 5, marginBottom: 9, flexShrink: 0, alignItems: 'center' }}
+        onMouseEnter={() => setDotsHovered(true)}
+        onMouseLeave={() => setDotsHovered(false)}
+      >
         {STICKY_COLORS.map(c => (
-          <StickyColorDot key={c} color={c} active={c === bg} onClick={() => onDataChange({ ...d, color: c })} />
+          <StickyColorDot key={c} color={c} active={c === bg} areaHovered={dotsHovered} onClick={() => onDataChange({ ...d, color: c })} />
         ))}
       </div>
       {editing
