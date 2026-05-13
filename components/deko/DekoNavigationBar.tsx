@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
-import { Plus, ChevronDown, Map, GitBranch, X, Check } from 'lucide-react'
+import { Plus, ChevronDown, Map, GitBranch, X, Check, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { DekoArea, DekoCanvas, CanvasType } from '@/lib/deko/types'
 
@@ -36,6 +36,8 @@ export default function DekoNavigationBar({
   const [savingArea, setSavingArea] = useState(false)
   const [addingVariant, setAddingVariant] = useState<string | null>(null)
   const [newVariantName, setNewVariantName] = useState('')
+  const [deleteConfirmArea, setDeleteConfirmArea] = useState<DekoArea | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const moodboardCreated = useRef(false)
 
   // Keep expandedAreaId in sync when areas change (e.g. first area added)
@@ -132,6 +134,35 @@ export default function DekoNavigationBar({
     setNewVariantName('')
   }
 
+  // ── Delete area ───────────────────────────────────────────────────────────
+
+  async function confirmDeleteArea() {
+    if (!deleteConfirmArea) return
+    setDeleting(true)
+    const area = deleteConfirmArea
+    const canvasIds = (area.canvases ?? []).map(c => c.id)
+
+    // Delete items → canvases → area (in order; cascade may handle it but be explicit)
+    if (canvasIds.length > 0) {
+      await supabase.from('deko_items').delete().in('canvas_id', canvasIds)
+      await supabase.from('deko_canvases').delete().in('id', canvasIds)
+    }
+    await supabase.from('deko_areas').delete().eq('id', area.id)
+
+    const remaining = areas.filter(a => a.id !== area.id)
+    onAreasChange(remaining)
+
+    // Switch away if active canvas belonged to this area
+    const deletedCanvasIds = new Set(canvasIds)
+    if (activeCanvasId && deletedCanvasIds.has(activeCanvasId)) {
+      const nextCanvas = remaining[0]?.canvases?.[0]?.id ?? null
+      if (nextCanvas) onSelectCanvas(nextCanvas)
+    }
+
+    setDeleteConfirmArea(null)
+    setDeleting(false)
+  }
+
   return (
     <nav style={{
       width: 220, minWidth: 220, flexShrink: 0,
@@ -181,6 +212,17 @@ export default function DekoNavigationBar({
               {variants.length > 0 && (
                 <ChevronDown size={12} color="var(--text-tertiary)"
                   style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: '.15s', flexShrink: 0 }} />
+              )}
+              {canEdit && (
+                <button
+                  title="Bereich löschen"
+                  onClick={e => { e.stopPropagation(); setDeleteConfirmArea(area) }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-tertiary)', display: 'flex', flexShrink: 0, borderRadius: 4, lineHeight: 0 }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#E06C75')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
+                >
+                  <X size={11} />
+                </button>
               )}
             </div>
 
@@ -275,6 +317,38 @@ export default function DekoNavigationBar({
           <p style={{ padding: '6px 12px', fontSize: 11, color: 'var(--text-tertiary)' }}>Wird erstellt…</p>
         )}
       </div>
+      {/* ── Delete confirmation modal ── */}
+      {deleteConfirmArea && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => !deleting && setDeleteConfirmArea(null)}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }} />
+          <div style={{ position: 'relative', background: '#fff', borderRadius: 14, boxShadow: '0 24px 80px rgba(0,0,0,0.22)', padding: '28px 28px 22px', maxWidth: 380, width: 'calc(100vw - 48px)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Trash2 size={16} color="#E06C75" />
+              </div>
+              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: 'var(--text)' }}>Bereich löschen</h3>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: 6 }}>
+              <strong style={{ color: 'var(--text)' }}>„{deleteConfirmArea.name}"</strong> und alle dazugehörigen Canvases und Dekoelemente werden <strong style={{ color: '#E06C75' }}>unwiderruflich gelöscht</strong>.
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 22 }}>
+              Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setDeleteConfirmArea(null)} disabled={deleting}
+                style={{ padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'none', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+                Abbrechen
+              </button>
+              <button onClick={confirmDeleteArea} disabled={deleting}
+                style={{ padding: '8px 16px', border: 'none', borderRadius: 8, background: '#E06C75', color: '#fff', cursor: deleting ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', opacity: deleting ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {deleting ? 'Wird gelöscht…' : <><Trash2 size={13} /> Löschen</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   )
 }
