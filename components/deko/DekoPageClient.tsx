@@ -47,13 +47,18 @@ export default function DekoPageClient({
   const firstCanvasId = areas[0]?.canvases?.[0]?.id ?? moodboards[0]?.id ?? null
   const [activeCanvasId, setActiveCanvasId] = useState<string | null>(firstCanvasId)
 
-  // Fetch items for canvases not present in initial server load (e.g. created during session)
+  // Always fetch fresh items when switching canvas — keeps state in sync after reconnects/edits
   useEffect(() => {
-    if (!activeCanvasId || itemsByCanvas[activeCanvasId] !== undefined) return
+    if (!activeCanvasId) return
+    let cancelled = false
     const supabase = createClient()
     supabase.from('deko_items').select('*').eq('canvas_id', activeCanvasId).then(({ data }) => {
-      setItemsByCanvas(prev => ({ ...prev, [activeCanvasId]: (data ?? []) as DekoItem[] }))
+      if (cancelled) return
+      const items = (data ?? []) as DekoItem[]
+      setItemsByCanvas(prev => ({ ...prev, [activeCanvasId]: items }))
+      canvasRef.current?.resetItems(items)
     })
+    return () => { cancelled = true }
   }, [activeCanvasId]) // eslint-disable-line react-hooks/exhaustive-deps
   const [pendingType, setPendingType] = useState<DekoItemType | null>(null)
   const [lightboxItem, setLightboxItem] = useState<DekoItem | null>(null)
