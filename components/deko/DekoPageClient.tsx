@@ -95,7 +95,7 @@ export default function DekoPageClient({
   }
 
   return (
-    <div style={{ display: 'flex', height: '100%', minHeight: 0, position: 'relative' }}>
+    <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
       {/* ── Left nav ── */}
       <DekoNavigationBar
         eventId={eventId}
