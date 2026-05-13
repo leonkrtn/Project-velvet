@@ -1,8 +1,8 @@
 'use client'
 import React, { useState, useRef, useCallback } from 'react'
 import {
-  Image, Link, Palette, Square, Type, StickyNote, Heading,
-  Flower2, Grid2X2, Minus, Tag, Vote, CheckSquare,
+  Image, Link, Palette, Type, StickyNote, Heading,
+  Flower2, Grid2X2, Minus, Vote, CheckSquare,
   Globe, LayoutGrid, Info, Users, Scissors, GripVertical,
   ChevronLeft, ChevronRight, X,
 } from 'lucide-react'
@@ -22,7 +22,6 @@ const TOOLS: ToolItem[] = [
   { type: 'image_upload',  icon: <Image size={14} />,       label: 'Bild hochladen', group: 'Medien' },
   { type: 'image_url',     icon: <Globe size={14} />,       label: 'Bild-URL',       group: 'Medien' },
   { type: 'color_palette', icon: <Palette size={14} />,     label: 'Farbpalette',    group: 'Medien' },
-  { type: 'color_swatch',  icon: <Square size={14} />,      label: 'Farbfeld',       group: 'Medien' },
   { type: 'text_block',    icon: <Type size={14} />,        label: 'Textblock',      group: 'Text' },
   { type: 'sticky_note',   icon: <StickyNote size={14} />,  label: 'Notizzettel',    group: 'Text' },
   { type: 'heading',       icon: <Heading size={14} />,     label: 'Überschrift',    group: 'Text' },
@@ -30,7 +29,6 @@ const TOOLS: ToolItem[] = [
   { type: 'fabric',        icon: <Scissors size={14} />,    label: 'Stoff',          group: 'Artikel' },
   { type: 'frame',         icon: <LayoutGrid size={14} />,  label: 'Rahmen',         group: 'Struktur' },
   { type: 'divider',       icon: <Minus size={14} />,       label: 'Trennlinie',     group: 'Struktur' },
-  { type: 'area_label',    icon: <Tag size={14} />,         label: 'Bereichs-Label', group: 'Struktur' },
   { type: 'vote_card',     icon: <Vote size={14} />,        label: 'Abstimmung',     group: 'Interaktiv' },
   { type: 'checklist',     icon: <CheckSquare size={14} />, label: 'Checkliste',     group: 'Interaktiv' },
   { type: 'link_card',     icon: <Link size={14} />,        label: 'Link-Karte',     group: 'Interaktiv' },

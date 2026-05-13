@@ -1,6 +1,6 @@
 'use client'
-import React, { useState, useEffect } from 'react'
-import { Check, Link, Users, Info, ThumbsUp, ThumbsDown } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { Check, Link, Users, Info, ThumbsUp, ThumbsDown, X, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type {
   DekoItem, DekoRole, DekoCatalogItem, DekoFlatRate,
@@ -107,8 +107,7 @@ function ColorPaletteRenderer({ item }: RendererProps) {
   const colors = d.colors ?? []
   if (!colors.length) return (
     <div style={emptyStyle}>
-      <div style={{ fontSize: 22, marginBottom: 6 }}>🎨</div>
-      <span style={emptyLabel}>Doppelklick → Farben bearbeiten</span>
+      <span style={emptyLabel}>Doppelklick → Farben hinzufügen</span>
     </div>
   )
   return (
@@ -192,6 +191,24 @@ function TextBlockRenderer({ item, canEdit, onDataChange }: RendererProps) {
 
 const STICKY_COLORS = ['#FFF8DC', '#DDEEFF', '#DDFFDD', '#FFE4E4', '#EEE0FF', '#FFE4C0', '#F0F0F0']
 
+function StickyColorDot({ color, active, onClick }: { color: string; active: boolean; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false)
+  const size = hovered ? 15 : 11
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width: size, height: size, borderRadius: '50%', background: color,
+        cursor: 'pointer', flexShrink: 0,
+        border: active ? '2px solid rgba(0,0,0,0.35)' : '1px solid rgba(0,0,0,0.12)',
+        transition: 'width 0.1s, height 0.1s',
+      }}
+    />
+  )
+}
+
 function StickyNoteRenderer({ item, canEdit, onDataChange }: RendererProps) {
   const d = item.data as StickyNoteData
   const bg = d.color || STICKY_COLORS[0]
@@ -204,17 +221,9 @@ function StickyNoteRenderer({ item, canEdit, onDataChange }: RendererProps) {
       boxShadow: '2px 3px 10px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)',
       position: 'relative', display: 'flex', flexDirection: 'column',
     }}>
-      <div style={{ display: 'flex', gap: 5, marginBottom: 9, flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 5, marginBottom: 9, flexShrink: 0, alignItems: 'center' }}>
         {STICKY_COLORS.map(c => (
-          <div key={c}
-            onClick={() => onDataChange({ ...d, color: c })}
-            style={{
-              width: 11, height: 11, borderRadius: '50%', background: c,
-              cursor: 'pointer',
-              border: c === bg ? '2px solid rgba(0,0,0,0.35)' : '1px solid rgba(0,0,0,0.12)',
-              flexShrink: 0,
-            }}
-          />
+          <StickyColorDot key={c} color={c} active={c === bg} onClick={() => onDataChange({ ...d, color: c })} />
         ))}
       </div>
       {editing
@@ -238,29 +247,39 @@ function HeadingRenderer({ item, canEdit, onDataChange }: RendererProps) {
   const sizes: Record<number, number> = { 1: 32, 2: 22, 3: 16 }
   const weights: Record<number, number> = { 1: 800, 2: 700, 3: 600 }
   const [editing, setEditing] = useState(false)
+  const [showStyle, setShowStyle] = useState(false)
   const [draft, setDraft] = useState(d.text ?? '')
-  if (editing) return (
-    <input autoFocus value={draft} onChange={e => setDraft(e.target.value)}
-      onBlur={() => { setEditing(false); onDataChange({ ...d, text: draft }) }}
-      onKeyDown={e => e.key === 'Enter' && (setEditing(false), onDataChange({ ...d, text: draft }))}
-      style={{
-        width: '100%', height: '100%', border: 'none', outline: 'none',
-        background: 'transparent', fontSize: sizes[d.level ?? 1],
-        fontWeight: weights[d.level ?? 1], letterSpacing: '-0.4px',
-        fontFamily: 'inherit', boxSizing: 'border-box',
-        color: 'var(--text)',
-      }}
-    />
-  )
+
+  function saveText(text: string) { setEditing(false); onDataChange({ ...d, text }) }
+
   return (
-    <div style={{
-      fontSize: sizes[d.level ?? 1], fontWeight: weights[d.level ?? 1],
-      letterSpacing: '-0.4px', whiteSpace: 'nowrap', overflow: 'hidden',
-      textOverflow: 'ellipsis', height: '100%', display: 'flex', alignItems: 'center',
-      cursor: canEdit ? 'text' : 'default', color: 'var(--text)',
-    }}
-      onDoubleClick={() => canEdit && setEditing(true)}>
-      {d.text || <span style={{ color: 'var(--text-tertiary)', fontWeight: 400, fontSize: 14, fontStyle: 'italic' }}>Überschrift…</span>}
+    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
+      {editing
+        ? <input autoFocus value={draft} onChange={e => setDraft(e.target.value)}
+            onBlur={() => saveText(draft)}
+            onKeyDown={e => { if (e.key === 'Enter') saveText(draft); if (e.key === 'Escape') { setEditing(false); setDraft(d.text ?? '') } }}
+            style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: sizes[d.level ?? 1], fontWeight: weights[d.level ?? 1], letterSpacing: '-0.4px', fontFamily: 'inherit', color: 'var(--text)' }}
+          />
+        : <div
+            style={{ fontSize: sizes[d.level ?? 1], fontWeight: weights[d.level ?? 1], letterSpacing: '-0.4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', cursor: canEdit ? 'text' : 'default', color: 'var(--text)' }}
+            onClick={() => canEdit && setEditing(true)}
+            onDoubleClick={(e) => { e.stopPropagation(); if (canEdit) { setEditing(false); setShowStyle(s => !s) } }}>
+            {d.text || <span style={{ color: 'var(--text-tertiary)', fontWeight: 400, fontSize: 14, fontStyle: 'italic' }}>Überschrift…</span>}
+          </div>
+      }
+      {showStyle && (
+        <div
+          style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: '#fff', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: '8px 10px', display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}
+          onMouseDown={e => e.stopPropagation()}>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>Größe</span>
+          {([1, 2, 3] as const).map(lvl => (
+            <button key={lvl} onClick={() => { onDataChange({ ...d, level: lvl }); setShowStyle(false) }}
+              style={{ width: 28, height: 28, border: (d.level ?? 1) === lvl ? '2px solid #C9B99A' : '1px solid var(--border)', borderRadius: 6, background: (d.level ?? 1) === lvl ? 'rgba(201,185,154,0.12)' : 'none', cursor: 'pointer', fontWeight: weights[lvl], fontSize: 10 + (4 - lvl) * 2 }}>
+              H{lvl}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -432,6 +451,7 @@ function VoteCardRenderer({ item, eventId, userId }: RendererProps) {
   const d = item.data as VoteCardData
   const [votes, setVotes] = useState<{ up: number; down: number; mine: 'up' | 'down' | null }>({ up: 0, down: 0, mine: null })
   const [voting, setVoting] = useState(false)
+  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -445,6 +465,14 @@ function VoteCardRenderer({ item, eventId, userId }: RendererProps) {
         })
       }, () => {})
   }, [item.id, userId])
+
+  useEffect(() => {
+    if (!d.storage_key) return
+    fetch(`/api/deko/image-url?r2Key=${encodeURIComponent(d.storage_key)}&eventId=${eventId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j?.url) setResolvedImageUrl(j.url) })
+      .catch(() => {})
+  }, [d.storage_key, eventId])
 
   async function vote(v: 'up' | 'down') {
     if (voting) return
@@ -468,11 +496,14 @@ function VoteCardRenderer({ item, eventId, userId }: RendererProps) {
     }
   }
 
+  const displayImage = d.storage_key ? resolvedImageUrl : d.image_url
   return (
     <div style={cardStyle}>
-      {d.image_url
-        ? <img src={d.image_url} alt={d.title} style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
-        : <div style={{ height: 90, background: 'linear-gradient(135deg,#f5f0ea,#ede0ce)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>🗳</div>
+      {displayImage
+        ? <img src={displayImage} alt={d.title} style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+        : d.storage_key
+          ? <div style={{ height: 90, background: 'linear-gradient(135deg,#f5f0ea,#ede0ce)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: '#C9B99A', animation: 'spin 0.8s linear infinite' }} /></div>
+          : <div style={{ height: 90, background: 'linear-gradient(135deg,#f5f0ea,#ede0ce)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>🗳</div>
       }
       <div style={{ padding: '9px 10px', flex: 1 }}>
         <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.title || 'Variante'}</p>
@@ -511,47 +542,67 @@ function VoteCardRenderer({ item, eventId, userId }: RendererProps) {
 function ChecklistRenderer({ item, canEdit, onDataChange }: RendererProps) {
   const d = item.data as ChecklistData
   const items = d.items ?? []
+  const [newText, setNewText] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
   function toggle(id: string) {
     if (!canEdit) return
     onDataChange({ ...d, items: items.map(i => i.id === id ? { ...i, checked: !i.checked } : i) })
   }
+  function addItem() {
+    if (!newText.trim() || !canEdit) return
+    const newItem = { id: crypto.randomUUID(), text: newText.trim(), checked: false }
+    onDataChange({ ...d, items: [...items, newItem] })
+    setNewText('')
+  }
+  function removeItem(id: string) {
+    onDataChange({ ...d, items: items.filter(i => i.id !== id) })
+  }
+
   const done = items.filter(i => i.checked).length
   return (
-    <div style={{ ...cardStyle, padding: '12px 12px 10px', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ ...cardStyle, padding: '10px 10px 8px', display: 'flex', flexDirection: 'column' }}
+      onMouseDown={e => e.stopPropagation()}>
       {d.title && (
-        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 9 }}>
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 7, flexShrink: 0 }}>
           {d.title}
         </p>
       )}
-      {items.length === 0 && (
-        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Doppelklick → Punkte hinzufügen</p>
-      )}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      <div style={{ flex: 1, overflowY: 'auto' }}>
         {items.map(i => (
-          <div key={i.id}
-            style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6, cursor: canEdit ? 'pointer' : 'default' }}
-            onClick={() => toggle(i.id)}>
-            <div style={{
-              width: 14, height: 14, borderRadius: 4, flexShrink: 0, marginTop: 1,
-              border: `2px solid ${i.checked ? '#4CAF50' : '#C9B99A'}`,
-              background: i.checked ? '#4CAF50' : 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.15s',
-            }}>
+          <div key={i.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 5 }}>
+            <div onClick={() => toggle(i.id)}
+              style={{ width: 14, height: 14, borderRadius: 4, flexShrink: 0, marginTop: 1, border: `2px solid ${i.checked ? '#4CAF50' : '#C9B99A'}`, background: i.checked ? '#4CAF50' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', cursor: canEdit ? 'pointer' : 'default' }}>
               {i.checked && <Check size={8} color="white" strokeWidth={3} />}
             </div>
-            <span style={{
-              fontSize: 12, lineHeight: 1.4, flex: 1,
-              textDecoration: i.checked ? 'line-through' : 'none',
-              color: i.checked ? 'var(--text-tertiary)' : 'var(--text)',
-            }}>
+            <span style={{ fontSize: 12, lineHeight: 1.4, flex: 1, textDecoration: i.checked ? 'line-through' : 'none', color: i.checked ? 'var(--text-tertiary)' : 'var(--text)' }}>
               {i.text}
             </span>
+            {canEdit && (
+              <button onClick={() => removeItem(i.id)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 1, color: 'var(--text-tertiary)', opacity: 0, lineHeight: 1, flexShrink: 0 }}
+                onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '0')}>
+                <X size={9} />
+              </button>
+            )}
           </div>
         ))}
       </div>
+      {canEdit && (
+        <div style={{ display: 'flex', gap: 5, marginTop: 6, flexShrink: 0 }}>
+          <input ref={inputRef} value={newText} onChange={e => setNewText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem() } e.stopPropagation() }}
+            placeholder="Punkt hinzufügen…"
+            style={{ flex: 1, fontSize: 11, padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 5, outline: 'none', fontFamily: 'inherit', background: 'var(--bg, #F5F3EF)' }}
+          />
+          <button onClick={addItem} style={{ width: 22, height: 22, border: '1px solid var(--border)', borderRadius: 5, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Plus size={10} />
+          </button>
+        </div>
+      )}
       {items.length > 0 && (
-        <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <div style={{ flex: 1, height: 3, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
             <div style={{ width: `${(done / items.length) * 100}%`, height: '100%', background: '#4CAF50', borderRadius: 2, transition: 'width 0.2s' }} />
           </div>

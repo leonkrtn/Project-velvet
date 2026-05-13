@@ -96,6 +96,7 @@ export interface AreaLabelData {
 export interface VoteCardData {
   title: string
   image_url?: string
+  storage_key?: string
   description?: string
 }
 

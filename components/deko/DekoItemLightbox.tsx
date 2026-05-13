@@ -22,6 +22,7 @@ interface Props {
   userId: string
   eventId: string
   canEdit: boolean
+  anchorRect?: { left: number; top: number; width: number; height: number }
   onDataChange: (d: DekoItemData) => void
   onDelete: () => void
   onBringToFront: () => void
@@ -383,8 +384,15 @@ function EditArticle({ data, catalog, flatRates, onChange, eventId, role, userId
             <input type="checkbox" checked={catDraft.is_free ?? false} onChange={e => { setCatDraft(p => ({ ...p, is_free: e.target.checked })); saveCatalogItem() }} />
             Gratis (kein Budget-Eintrag)
           </label>
-          <Field label="Bild-URL">
-            <input value={catDraft.image_url ?? ''} onChange={e => setCatDraft(p => ({ ...p, image_url: e.target.value }))} onBlur={saveCatalogItem} placeholder="https://…" style={inputStyle} />
+          <Field label="Artikelbild">
+            <CatalogImageField
+              imageUrl={catDraft.image_url ?? ''}
+              eventId={eventId}
+              onSave={async (url) => {
+                setCatDraft(p => ({ ...p, image_url: url }))
+                await supabase.from('deko_catalog_items').update({ image_url: url }).eq('id', cat.id)
+              }}
+            />
           </Field>
         </>
       )}
@@ -464,7 +472,16 @@ function EditFabric({ data, catalog, onChange, eventId, role, userId, onCatalogC
             <Field label="Breite (cm)"><input type="number" value={catDraft.fabric_width_cm ?? ''} onChange={e => setCatDraft(p => ({ ...p, fabric_width_cm: parseFloat(e.target.value) || null }))} onBlur={saveCatalogItem} style={inputStyle} /></Field>
             <Field label="Preis / Meter (€)"><input type="number" value={catDraft.price_per_meter ?? ''} onChange={e => setCatDraft(p => ({ ...p, price_per_meter: parseFloat(e.target.value) || 0 }))} onBlur={saveCatalogItem} style={inputStyle} /></Field>
           </Row>
-          <Field label="Bild-URL"><input value={catDraft.image_url ?? ''} onChange={e => setCatDraft(p => ({ ...p, image_url: e.target.value }))} onBlur={saveCatalogItem} placeholder="https://…" style={inputStyle} /></Field>
+          <Field label="Stoffbild">
+            <CatalogImageField
+              imageUrl={catDraft.image_url ?? ''}
+              eventId={eventId}
+              onSave={async (url) => {
+                setCatDraft(p => ({ ...p, image_url: url }))
+                await supabase.from('deko_catalog_items').update({ image_url: url }).eq('id', cat.id)
+              }}
+            />
+          </Field>
         </>
       )}
     </>
@@ -598,11 +615,111 @@ function EditStickyNote({ data, onChange }: { data: StickyNoteData; onChange: (d
   )
 }
 
-function EditVoteCard({ data, onChange }: { data: VoteCardData; onChange: (d: VoteCardData) => void }) {
+function EditVoteCard({ data, onChange, eventId }: { data: VoteCardData; onChange: (d: VoteCardData) => void; eventId: string }) {
+  const [imgMode, setImgMode] = useState<'url' | 'file'>(data.storage_key ? 'file' : 'url')
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!data.storage_key) return
+    fetch(`/api/deko/image-url?r2Key=${encodeURIComponent(data.storage_key)}&eventId=${eventId}`)
+      .then(r => r.json()).then(({ url }) => { if (url) setPreviewUrl(url) }).catch(() => {})
+  }, [data.storage_key, eventId])
+
+  async function handleFile(file: File) {
+    setUploadError(null)
+    setUploading(true)
+    setProgress(0)
+    try {
+      const res = await fetch('/api/deko/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, filename: file.name, contentType: file.type, sizeBytes: file.size }),
+      })
+      if (!res.ok) {
+        const { error: e } = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        throw new Error(e)
+      }
+      const { uploadUrl, r2Key } = await res.json() as { uploadUrl: string; r2Key: string }
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.upload.onprogress = e => { if (e.lengthComputable) setProgress(Math.round(e.loaded / e.total * 95)) }
+        xhr.onload = () => xhr.status < 300 ? resolve() : reject(new Error(`R2 ${xhr.status}`))
+        xhr.onerror = () => reject(new Error('Netzwerkfehler'))
+        xhr.open('PUT', uploadUrl)
+        xhr.setRequestHeader('Content-Type', file.type)
+        xhr.send(file)
+      })
+      setPreviewUrl(URL.createObjectURL(file))
+      setProgress(100)
+      onChange({ ...data, storage_key: r2Key, image_url: undefined })
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload fehlgeschlagen')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const currentPreview = previewUrl || data.image_url
+
   return (
     <>
       <Field label="Titel"><input value={data.title ?? ''} onChange={e => onChange({ ...data, title: e.target.value })} style={inputStyle} /></Field>
-      <Field label="Bild-URL"><input value={data.image_url ?? ''} onChange={e => onChange({ ...data, image_url: e.target.value })} placeholder="https://…" style={inputStyle} /></Field>
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle}>Bild</label>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+          {(['url', 'file'] as const).map(m => (
+            <button key={m} onClick={() => setImgMode(m)} style={{
+              fontSize: 11, padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 6,
+              cursor: 'pointer', fontFamily: 'inherit',
+              background: imgMode === m ? 'rgba(201,185,154,0.15)' : 'none',
+              color: imgMode === m ? 'var(--accent, #C9B99A)' : 'var(--text-secondary)',
+              fontWeight: imgMode === m ? 600 : 400,
+            }}>
+              {m === 'url' ? 'URL' : 'Hochladen'}
+            </button>
+          ))}
+        </div>
+        {imgMode === 'url'
+          ? <input value={data.image_url ?? ''} onChange={e => onChange({ ...data, image_url: e.target.value, storage_key: undefined })} placeholder="https://…" style={inputStyle} />
+          : <div>
+            <div
+              onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
+              onDragOver={e => e.preventDefault()}
+              onClick={() => !uploading && fileRef.current?.click()}
+              style={{
+                border: `2px dashed ${uploading ? 'var(--accent, #C9B99A)' : 'var(--border)'}`,
+                borderRadius: 10, cursor: uploading ? 'default' : 'pointer',
+                overflow: 'hidden', minHeight: 110, display: 'flex',
+                alignItems: 'center', justifyContent: 'center',
+                background: '#faf8f5', position: 'relative',
+              }}
+            >
+              {currentPreview && imgMode === 'file'
+                ? <img src={currentPreview} alt="" style={{ width: '100%', maxHeight: 180, objectFit: 'contain', display: 'block' }} />
+                : <div style={{ textAlign: 'center', padding: 20 }}>
+                    <div style={{ fontSize: 24, marginBottom: 6 }}>🗳</div>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>Klicken oder Bild hierher ziehen</p>
+                  </div>
+              }
+              {uploading && (
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.9)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <div style={{ width: 120, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                    <div style={{ width: `${progress}%`, height: '100%', background: 'var(--accent, #C9B99A)', transition: 'width .15s', borderRadius: 2 }} />
+                  </div>
+                  <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>{progress}%</p>
+                </div>
+              )}
+            </div>
+            {uploadError && <p style={{ fontSize: 11, color: '#E06C75', margin: '4px 0 0' }}>{uploadError}</p>}
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+          </div>
+        }
+      </div>
       <Field label="Beschreibung">
         <textarea value={data.description ?? ''} onChange={e => onChange({ ...data, description: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
       </Field>
@@ -683,6 +800,112 @@ function EditTableRef({ data, onChange, eventId }: { data: TableRefData; onChang
   )
 }
 
+// ── Catalog image: URL or file upload ────────────────────────────────────────
+
+function CatalogImageField({ imageUrl, eventId, onSave }: {
+  imageUrl: string
+  eventId: string
+  onSave: (url: string) => void
+}) {
+  const [mode, setMode] = useState<'url' | 'file'>('url')
+  const [urlValue, setUrlValue] = useState(imageUrl)
+  const [uploading, setUploading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleFile(file: File) {
+    setError(null)
+    setUploading(true)
+    setProgress(0)
+    try {
+      const res = await fetch('/api/deko/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, filename: file.name, contentType: file.type, sizeBytes: file.size }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const { uploadUrl, r2Key } = await res.json() as { uploadUrl: string; r2Key: string }
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.upload.onprogress = e => { if (e.lengthComputable) setProgress(Math.round(e.loaded / e.total * 95)) }
+        xhr.onload = () => xhr.status < 300 ? resolve() : reject(new Error(`R2 ${xhr.status}`))
+        xhr.onerror = () => reject(new Error('Netzwerkfehler'))
+        xhr.open('PUT', uploadUrl)
+        xhr.setRequestHeader('Content-Type', file.type)
+        xhr.send(file)
+      })
+      setProgress(100)
+      const urlRes = await fetch(`/api/deko/image-url?r2Key=${encodeURIComponent(r2Key)}&eventId=${eventId}`)
+      const { url } = await urlRes.json() as { url?: string }
+      const finalUrl = url ?? ''
+      setUrlValue(finalUrl)
+      onSave(finalUrl)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload fehlgeschlagen')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+        {(['url', 'file'] as const).map(m => (
+          <button key={m} onClick={() => setMode(m)} style={{
+            fontSize: 11, padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 6,
+            cursor: 'pointer', fontFamily: 'inherit',
+            background: mode === m ? 'rgba(201,185,154,0.15)' : 'none',
+            color: mode === m ? 'var(--accent, #C9B99A)' : 'var(--text-secondary)',
+            fontWeight: mode === m ? 600 : 400,
+          }}>
+            {m === 'url' ? 'URL' : 'Hochladen'}
+          </button>
+        ))}
+      </div>
+
+      {mode === 'url' ? (
+        <input value={urlValue} onChange={e => setUrlValue(e.target.value)}
+          onBlur={() => onSave(urlValue)}
+          placeholder="https://…" style={inputStyle} />
+      ) : (
+        <div>
+          <div
+            onClick={() => !uploading && fileRef.current?.click()}
+            onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }}
+            onDragOver={e => e.preventDefault()}
+            style={{
+              border: `2px dashed ${uploading ? 'var(--accent, #C9B99A)' : 'var(--border)'}`,
+              borderRadius: 8, padding: 16, textAlign: 'center' as const,
+              cursor: uploading ? 'default' : 'pointer',
+              background: '#faf8f5', position: 'relative' as const, minHeight: 80,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+              {uploading ? `${progress}%` : 'Bild hochladen oder hierher ziehen'}
+            </p>
+            {uploading && (
+              <div style={{ position: 'absolute' as const, bottom: 8, left: 12, right: 12, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ width: `${progress}%`, height: '100%', background: 'var(--accent, #C9B99A)', transition: 'width .15s', borderRadius: 2 }} />
+              </div>
+            )}
+          </div>
+          {error && <p style={{ fontSize: 11, color: '#E06C75', margin: '4px 0 0' }}>{error}</p>}
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+        </div>
+      )}
+
+      {imageUrl && (
+        <div style={{ marginTop: 8, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)', maxHeight: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#faf8f5' }}>
+          <img src={imageUrl} alt="" style={{ maxHeight: 90, maxWidth: '100%', objectFit: 'contain' }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Lightbox ─────────────────────────────────────────────────────────────
 
 const TITLES: Record<string, string> = {
@@ -696,13 +919,18 @@ const TITLES: Record<string, string> = {
 
 export default function DekoItemLightbox({
   item, catalog, flatRates, role, userId, eventId, canEdit,
-  onDataChange, onDelete, onBringToFront, onClose, onCatalogCreated,
+  anchorRect, onDataChange, onDelete, onBringToFront, onClose, onCatalogCreated,
 }: Props) {
   const [data, setData] = useState(item.data)
 
+  // Only update local state — DB write happens when user confirms with ArrowUp
   function commit(d: DekoItemData) {
     setData(d)
-    onDataChange(d)
+  }
+
+  function handleSave() {
+    onDataChange(data)
+    onClose()
   }
 
   const editProps = { data, catalog, flatRates, role, userId, eventId, onChange: commit, onCatalogCreated }
@@ -728,7 +956,7 @@ export default function DekoItemLightbox({
       case 'frame':             return <EditFrame data={data as FrameData} onChange={commit} />
       case 'divider':           return <EditDivider data={data as DividerData} onChange={commit} />
       case 'area_label':        return <EditAreaLabel data={data as AreaLabelData} onChange={commit} />
-      case 'vote_card':         return <EditVoteCard data={data as VoteCardData} onChange={commit} />
+      case 'vote_card':         return <EditVoteCard data={data as VoteCardData} onChange={commit} eventId={eventId} />
       case 'checklist':         return <EditChecklist data={data as ChecklistData} onChange={commit} />
       case 'link_card':         return <EditLinkCard data={data as LinkCardData} onChange={commit} />
       case 'table_ref':         return <EditTableRef data={data as TableRefData} onChange={commit} eventId={eventId} />
@@ -738,16 +966,27 @@ export default function DekoItemLightbox({
     }
   }
 
+  const anchoredStyle: React.CSSProperties | undefined = (() => {
+    if (!anchorRect || typeof window === 'undefined') return undefined
+    const W = 460, MARGIN = 12
+    const vpW = window.innerWidth, vpH = window.innerHeight
+    let left = anchorRect.left + anchorRect.width + MARGIN
+    if (left + W > vpW - MARGIN) left = anchorRect.left - W - MARGIN
+    left = Math.max(MARGIN, left)
+    const top = Math.max(MARGIN, Math.min(anchorRect.top, vpH * 0.1))
+    return { position: 'fixed', left, top, maxWidth: W, width: W, maxHeight: `${vpH - top - MARGIN}px` }
+  })()
+
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: anchoredStyle ? 'block' : 'flex', alignItems: 'center', justifyContent: 'center' }}
       onClick={onClose}
     >
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)' }} />
       <div
         style={{
-          position: 'relative', background: '#fff', borderRadius: 14,
-          width: '100%', maxWidth: 460, maxHeight: '88vh',
+          ...(anchoredStyle ?? { position: 'relative', width: '100%', maxWidth: 460, maxHeight: '88vh' }),
+          background: '#fff', borderRadius: 14,
           overflow: 'hidden', display: 'flex', flexDirection: 'column',
           boxShadow: '0 24px 80px rgba(0,0,0,0.22)',
         }}
@@ -758,11 +997,14 @@ export default function DekoItemLightbox({
           <h3 style={{ fontSize: 14, fontWeight: 700, flex: 1, color: 'var(--text)' }}>{TITLES[item.type] ?? item.type}</h3>
           {canEdit && (
             <div style={{ display: 'flex', gap: 5 }}>
-              <button title="In den Vordergrund" onClick={onBringToFront} style={iconBtnStyle}><ArrowUp size={13} /></button>
+              <button title="Übernehmen" onClick={handleSave}
+                style={{ ...iconBtnStyle, background: 'rgba(201,185,154,0.12)', borderColor: '#C9B99A', color: '#C9B99A' }}>
+                <ArrowUp size={13} />
+              </button>
               <button title="Löschen" onClick={() => { onDelete(); onClose() }} style={{ ...iconBtnStyle, color: '#E06C75', borderColor: '#FECDD3' }}><Trash2 size={13} /></button>
             </div>
           )}
-          <button onClick={onClose} style={{ ...iconBtnStyle, marginLeft: 2 }}><X size={15} /></button>
+          <button title="Abbrechen" onClick={onClose} style={{ ...iconBtnStyle, marginLeft: 2 }}><X size={15} /></button>
         </div>
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 18px 22px' }}>

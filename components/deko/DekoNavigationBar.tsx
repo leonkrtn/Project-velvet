@@ -23,6 +23,12 @@ export default function DekoNavigationBar({
   eventId, areas, moodboards, activeCanvasId,
   onSelectCanvas, canEdit, onAreasChange, onMoodboardsChange,
 }: Props) {
+  const AREA_SUGGESTIONS = [
+    'Eingang', 'Empfang', 'Trauung', 'Cocktailstunde', 'Festsaal',
+    'Haupttafel', 'Buffet', 'Tanzfläche', 'Bar', 'Lounge',
+    'Außenbereich', 'Patisserie-Tisch', 'Brautpaarplatz', 'Sektempfang',
+  ]
+
   const supabase = createClient()
   const [expandedAreaId, setExpandedAreaId] = useState<string | null>(areas[0]?.id ?? null)
   const [addingArea, setAddingArea] = useState(false)
@@ -40,31 +46,40 @@ export default function DekoNavigationBar({
     })
   }, [areas])
 
-  // Auto-create a single moodboard if none exists
+  // Auto-create a single moodboard if none exists; trim duplicates to one
   useEffect(() => {
-    if (moodboards.length > 0 || !canEdit || moodboardCreated.current) return
+    if (!canEdit || moodboardCreated.current) return
     moodboardCreated.current = true
-    async function createDefault() {
-      // DB-level check prevents duplicates from React StrictMode double-mount
-      const { count } = await supabase
+    async function syncMoodboard() {
+      const { data: existing } = await supabase
         .from('deko_canvases')
-        .select('id', { count: 'exact', head: true })
+        .select('id, name, canvas_type, area_id, is_frozen, event_id, created_at')
         .eq('event_id', eventId)
         .eq('canvas_type', 'moodboard')
-      if ((count ?? 0) > 0) return
-      const { data: canvas } = await supabase.from('deko_canvases').insert({
-        event_id: eventId,
-        area_id: null,
-        name: 'Moodboard',
-        canvas_type: 'moodboard' as CanvasType,
-      }).select().single()
-      if (canvas) {
-        onMoodboardsChange([canvas as DekoCanvas])
-        // Only navigate to moodboard if no area canvas is active
-        if (!activeCanvasId) onSelectCanvas(canvas.id)
+        .order('created_at', { ascending: true })
+      if (!existing) return
+
+      if (existing.length > 1) {
+        // Keep the oldest, delete the rest
+        const toDelete = existing.slice(1).map(c => c.id)
+        await Promise.all(toDelete.map(id => supabase.from('deko_canvases').delete().eq('id', id)))
+        onMoodboardsChange([existing[0] as DekoCanvas])
+        if (toDelete.includes(activeCanvasId ?? '')) onSelectCanvas(existing[0].id)
+      } else if (existing.length === 1) {
+        onMoodboardsChange([existing[0] as DekoCanvas])
+      } else {
+        // Create one
+        const { data: canvas } = await supabase.from('deko_canvases').insert({
+          event_id: eventId, area_id: null,
+          name: 'Moodboard', canvas_type: 'moodboard' as CanvasType,
+        }).select().single()
+        if (canvas) {
+          onMoodboardsChange([canvas as DekoCanvas])
+          if (!activeCanvasId) onSelectCanvas(canvas.id)
+        }
       }
     }
-    createDefault()
+    syncMoodboard()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -207,12 +222,26 @@ export default function DekoNavigationBar({
 
       {canEdit && (
         addingArea
-          ? <div style={{ padding: '6px 8px', display: 'flex', gap: 4, borderTop: '1px dashed var(--border)' }}>
-            <input autoFocus value={newAreaName} onChange={e => setNewAreaName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') createArea(); if (e.key === 'Escape') setAddingArea(false) }}
-              placeholder="Bereichsname…" style={{ ...inlineInputStyle, flex: 1 }} />
-            <button onClick={createArea} disabled={savingArea} style={miniBtn}><Check size={10} /></button>
-            <button onClick={() => setAddingArea(false)} style={miniBtn}><X size={10} /></button>
+          ? <div style={{ padding: '6px 8px', borderTop: '1px dashed var(--border)' }}>
+            <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+              <input autoFocus value={newAreaName} onChange={e => setNewAreaName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') createArea(); if (e.key === 'Escape') setAddingArea(false) }}
+                placeholder="Bereichsname…" style={{ ...inlineInputStyle, flex: 1 }} />
+              <button onClick={createArea} disabled={savingArea} style={miniBtn}><Check size={10} /></button>
+              <button onClick={() => setAddingArea(false)} style={miniBtn}><X size={10} /></button>
+            </div>
+            {/* Suggestion chips */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {AREA_SUGGESTIONS
+                .filter(s => !areas.some(a => a.name.toLowerCase() === s.toLowerCase()))
+                .slice(0, 8)
+                .map(s => (
+                  <button key={s} onClick={() => setNewAreaName(s)}
+                    style={{ fontSize: 10, padding: '2px 7px', border: '1px solid var(--border)', borderRadius: 10, background: newAreaName === s ? 'rgba(201,185,154,0.2)' : 'none', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+                    {s}
+                  </button>
+                ))}
+            </div>
           </div>
           : <button onClick={() => setAddingArea(true)} style={ghostRowStyle}>
             <Plus size={11} /> <span>Bereich hinzufügen</span>
