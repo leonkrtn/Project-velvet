@@ -42,7 +42,11 @@ export interface ColorSwatchData {
 }
 
 export interface TextBlockData {
-  content: string   // plain text for now; extend to rich-text JSON if needed
+  content: string
+  font_size?: number
+  bold?: boolean
+  italic?: boolean
+  align?: 'left' | 'center' | 'right'
 }
 
 export interface StickyNoteData {
@@ -96,6 +100,7 @@ export interface AreaLabelData {
 export interface VoteCardData {
   title: string
   image_url?: string
+  storage_key?: string
   description?: string
 }
 

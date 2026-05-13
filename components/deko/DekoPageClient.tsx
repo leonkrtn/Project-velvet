@@ -1,15 +1,15 @@
 'use client'
-import React, { useState, useCallback } from 'react'
+import React, { useState, useRef } from 'react'
 import { Lock, Unlock } from 'lucide-react'
 import DekoNavigationBar from './DekoNavigationBar'
-import DekoCanvas from './DekoCanvas'
+import DekoCanvas, { type DekoCanvasHandle, type ScreenRect } from './DekoCanvas'
 import DekoFloatingToolbar from './DekoFloatingToolbar'
 import DekoItemLightbox from './DekoItemLightbox'
 import DekoFreezeDialog from './DekoFreezeDialog'
 import DekoCommentOverlay from './DekoCommentOverlay'
 import type {
   DekoArea, DekoCanvas as DekoCanvasType, DekoItem,
-  DekoCatalogItem, DekoFlatRate, DekoRole, DekoItemType, DekoItemData,
+  DekoCatalogItem, DekoFlatRate, DekoRole, DekoItemType,
 } from '@/lib/deko/types'
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -46,6 +46,7 @@ export default function DekoPageClient({
   const [activeCanvasId, setActiveCanvasId] = useState<string | null>(firstCanvasId)
   const [pendingType, setPendingType] = useState<DekoItemType | null>(null)
   const [lightboxItem, setLightboxItem] = useState<DekoItem | null>(null)
+  const [lightboxAnchor, setLightboxAnchor] = useState<ScreenRect | undefined>(undefined)
   const [showFreeze, setShowFreeze] = useState(false)
   const [freezing, setFreezing] = useState(false)
   const [frozen, setFrozen] = useState(allFrozen)
@@ -58,9 +59,8 @@ export default function DekoPageClient({
   const activeCanvas = allCanvases.find(c => c.id === activeCanvasId)
   const isActiveFrozen = frozen || (activeCanvas?.is_frozen ?? false)
 
-  // Callback refs for canvas item interaction
+  const canvasRef = useRef<DekoCanvasHandle>(null)
   const [selectedItem, setSelectedItem] = useState<DekoItem | null>(null)
-  const [itemDataStore, setItemDataStore] = useState<Record<string, DekoItemData>>({})
 
   async function handleFreeze() {
     setFreezing(true)
@@ -95,7 +95,7 @@ export default function DekoPageClient({
   }
 
   return (
-    <div style={{ display: 'flex', height: '100%', minHeight: 0, position: 'relative' }}>
+    <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
       {/* ── Left nav ── */}
       <DekoNavigationBar
         eventId={eventId}
@@ -157,6 +157,7 @@ export default function DekoPageClient({
 
         {/* Canvas */}
         {activeCanvasId && <DekoCanvas
+          ref={canvasRef}
           key={activeCanvasId}
           canvasId={activeCanvasId}
           eventId={eventId}
@@ -168,7 +169,7 @@ export default function DekoPageClient({
           initialCatalog={catalog}
           initialFlatRates={initialFlatRates}
           onItemSelect={setSelectedItem}
-          onOpenLightbox={setLightboxItem}
+          onOpenLightbox={(item, anchor) => { setLightboxItem(item); setLightboxAnchor(anchor) }}
           pendingItemType={pendingType}
           onPendingItemPlaced={() => setPendingType(null)}
         />}
@@ -193,14 +194,18 @@ export default function DekoPageClient({
           userId={userId}
           eventId={eventId}
           canEdit={canEdit && !isActiveFrozen && (role !== 'dienstleister' || lightboxItem.created_by === userId)}
+          anchorRect={lightboxAnchor}
           onDataChange={(data) => {
-            setItemDataStore(prev => ({ ...prev, [lightboxItem.id]: data }))
+            canvasRef.current?.updateItemData(lightboxItem.id, data, lightboxItem.data)
           }}
           onDelete={() => {
+            canvasRef.current?.deleteItem(lightboxItem.id)
             setLightboxItem(null)
           }}
-          onBringToFront={() => {}}
-          onClose={() => setLightboxItem(null)}
+          onBringToFront={() => {
+            canvasRef.current?.bringToFront(lightboxItem.id)
+          }}
+          onClose={() => { setLightboxItem(null); setLightboxAnchor(undefined) }}
           onCatalogCreated={(item) => setCatalog(prev => [...prev, item])}
         />
       )}

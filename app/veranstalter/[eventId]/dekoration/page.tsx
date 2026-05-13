@@ -60,7 +60,7 @@ async function DekoPageInner({ eventId, userId, userName, role }: { eventId: str
   const allFrozen = mainCanvases.length > 0 && mainCanvases.every(c => c.is_frozen)
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
         <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.5px' }}>Dekoration</h1>
       </div>

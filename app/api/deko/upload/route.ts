@@ -34,6 +34,11 @@ export async function POST(req: NextRequest) {
   const fileId = randomUUID()
   const r2Key = `events/${eventId}/deko/${fileId}/${sanitizeFilename(filename)}`
 
-  const uploadUrl = await requestUploadUrl(r2Key, contentType)
-  return NextResponse.json({ uploadUrl, r2Key })
+  try {
+    const uploadUrl = await requestUploadUrl(r2Key, contentType)
+    return NextResponse.json({ uploadUrl, r2Key })
+  } catch (err) {
+    console.error('[deko/upload] worker error:', err)
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Upload-Service nicht erreichbar' }, { status: 500 })
+  }
 }
