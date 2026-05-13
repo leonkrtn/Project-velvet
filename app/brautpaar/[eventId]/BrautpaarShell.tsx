@@ -162,6 +162,8 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
     })
   }, [])
 
+  const isDeko = pathname === `/brautpaar/${eventId}/dekoration` || pathname.startsWith(`/brautpaar/${eventId}/dekoration/`)
+
   function isActive(item: NavItem) {
     return pathname === item.href || pathname.startsWith(item.href + '/')
   }
@@ -243,7 +245,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
         />
       )}
 
-      <div className="bp-shell">
+      <div className="bp-shell" style={isDeko ? { height: '100dvh', overflow: 'hidden' } : undefined}>
         {/* Sidebar — single element, CSS adapts desktop (data-expanded) vs mobile (data-mobile-open) */}
         <aside
           className="bp-sidebar"
@@ -284,9 +286,15 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
             <div style={{ width: 36 }} />
           </header>
 
-          <main style={{ flex: 1 }}>
-            {children}
-          </main>
+          {isDeko ? (
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              {children}
+            </div>
+          ) : (
+            <main style={{ flex: 1 }}>
+              {children}
+            </main>
+          )}
         </div>
       </div>
     </>
