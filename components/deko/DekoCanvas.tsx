@@ -1,5 +1,6 @@
 'use client'
 import React, { useRef, useCallback, useState, useEffect, useImperativeHandle, forwardRef } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   CANVAS_W, CANVAS_H,
   type DekoItem, type DekoItemType, type DekoItemData,
@@ -52,6 +53,7 @@ export interface DekoCanvasHandle {
   updateItemData: (id: string, data: DekoItemData, prevData?: DekoItemData) => Promise<void>
   bringToFront: (id: string) => Promise<void>
   reloadCatalog: () => Promise<void>
+  resetItems: (items: DekoItem[]) => void
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -185,6 +187,7 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
   const [newItemId, setNewItemId] = useState<string | null>(null)
   const [vpDims, setVpDims] = useState({ w: 0, h: 0 })
   const centeredRef = useRef(false)
+  const isFirstSubscriptionRef = useRef(true)
   const lassoStartRef = useRef<{ x: number; y: number } | null>(null)
   const lassoRef = useRef<LassoRect | null>(null)
   const [lasso, setLasso] = useState<LassoRect | null>(null)
@@ -198,7 +201,8 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
     updateItemData: canvas.updateItemData,
     bringToFront: canvas.bringToFront,
     reloadCatalog: canvas.reloadCatalog,
-  }), [canvas.deleteItem, canvas.updateItemData, canvas.bringToFront, canvas.reloadCatalog])
+    resetItems: (items) => { if (!canvas.dragState) canvas.setItems(items) },
+  }), [canvas.deleteItem, canvas.updateItemData, canvas.bringToFront, canvas.reloadCatalog, canvas.dragState, canvas.setItems])
 
   useEffect(() => { injectAnims() }, [])
 
@@ -270,6 +274,14 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
       const others = users.filter(u => u.user_id !== userId)
       setPresenceUsers(others)
       setOthersItems(new Set(others.filter(u => u.dragging_item_id).map(u => u.dragging_item_id!)))
+    },
+    onChannelSubscribed: () => {
+      if (isFirstSubscriptionRef.current) { isFirstSubscriptionRef.current = false; return }
+      // Reconnected — pull fresh state to recover any missed events
+      const supabase = createClient()
+      supabase.from('deko_items').select('*').eq('canvas_id', canvasId).then(({ data }) => {
+        if (data && !canvas.dragState) canvas.setItems(data as DekoItem[])
+      })
     },
   })
 
@@ -547,7 +559,15 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
           document.body.style.userSelect = ''
           if (isPanning.current) isPanning.current = false
           lassoStartRef.current = null; lassoRef.current = null; setLasso(null)
-          if (canvas.dragState) canvas.endDrag()
+          if (canvas.dragState) {
+            const { itemId, startItemX, startItemY } = canvas.dragState
+            const dragged = canvas.items.find(i => i.id === itemId)
+            if (dragged) {
+              const sg = (v: number) => canvas.snapToGrid ? Math.round(v / SNAP_GRID) * SNAP_GRID : v
+              canvas.commitItemPosition(itemId, sg(dragged.x), sg(dragged.y), startItemX, startItemY)
+            }
+            canvas.endDrag()
+          }
           if (canvas.resizeState) canvas.endResize()
         }}
         onWheel={handleWheel}
