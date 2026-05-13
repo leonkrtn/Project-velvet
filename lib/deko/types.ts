@@ -57,6 +57,10 @@ export interface StickyNoteData {
 export interface HeadingData {
   text: string
   level: 1 | 2 | 3
+  font_size?: number
+  bold?: boolean
+  italic?: boolean
+  align?: 'left' | 'center' | 'right'
 }
 
 export interface ArticleData {

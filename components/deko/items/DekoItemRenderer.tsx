@@ -66,7 +66,7 @@ function ImageUploadRenderer({ item, eventId }: RendererProps) {
   )
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', borderRadius: 8 }}>
-      <img src={url} alt={d.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      <img src={url} alt={d.caption ?? ''} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       {d.caption && (
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.55))', padding: '16px 10px 8px', color: '#fff', fontSize: 11, fontWeight: 500 }}>
           {d.caption}
@@ -88,8 +88,8 @@ function ImageUrlRenderer({ item }: RendererProps) {
   )
   const src = d.preview_url || d.url
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', borderRadius: 8 }}>
-      <img src={src} alt={d.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+    <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', borderRadius: 8 }} onDragStart={e => e.preventDefault()}>
+      <img src={src} alt={d.caption ?? ''} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
       {d.caption && (
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.55))', padding: '16px 10px 8px', color: '#fff', fontSize: 11, fontWeight: 500 }}>
@@ -155,11 +155,62 @@ function ColorSwatchRenderer({ item }: RendererProps) {
 
 const TEXT_FONT_SIZES = [10, 12, 13, 14, 16, 18, 20, 24]
 
+function FormatBar({ fs, bold, italic, align, onSize, onBold, onItalic, onAlign, onClose, fontSizes = TEXT_FONT_SIZES }: {
+  fs: number; bold: boolean; italic: boolean; align: string; fontSizes?: number[]
+  onSize: (s: number) => void; onBold: () => void; onItalic: () => void
+  onAlign: (a: 'left' | 'center' | 'right') => void; onClose: () => void
+}) {
+  return (
+    <div
+      style={{
+        position: 'absolute', bottom: 'calc(100% + 6px)', left: 0, zIndex: 200,
+        background: '#fff', border: '1px solid var(--border)', borderRadius: 8,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.13)', padding: '5px 8px',
+        display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap',
+        whiteSpace: 'nowrap',
+      }}
+      onMouseDown={e => e.stopPropagation()}
+    >
+      {fontSizes.map(s => (
+        <button key={s} onClick={() => onSize(s)}
+          style={{ padding: '2px 5px', border: `1px solid ${fs === s ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontSize: 10, fontFamily: 'inherit', background: fs === s ? 'rgba(201,185,154,0.15)' : 'none', color: fs === s ? '#C9B99A' : 'var(--text)', fontWeight: fs === s ? 700 : 400 }}>
+          {s}
+        </button>
+      ))}
+      <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 2px' }} />
+      <button onClick={onBold}
+        style={{ width: 26, height: 26, border: `1px solid ${bold ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontWeight: 800, fontSize: 13, background: bold ? 'rgba(201,185,154,0.15)' : 'none', fontFamily: 'inherit', color: bold ? '#C9B99A' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>B</button>
+      <button onClick={onItalic}
+        style={{ width: 26, height: 26, border: `1px solid ${italic ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontStyle: 'italic', fontSize: 13, background: italic ? 'rgba(201,185,154,0.15)' : 'none', fontFamily: 'inherit', color: italic ? '#C9B99A' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>I</button>
+      <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 2px' }} />
+      {(['left', 'center', 'right'] as const).map(a => {
+        const active = align === a
+        const icons: Record<string, string> = { left: '⇤', center: '↔', right: '⇥' }
+        return (
+          <button key={a} onClick={() => onAlign(a)}
+            style={{ width: 26, height: 26, border: `1px solid ${active ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontSize: 12, background: active ? 'rgba(201,185,154,0.15)' : 'none', fontFamily: 'inherit', color: active ? '#C9B99A' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {icons[a]}
+          </button>
+        )
+      })}
+      <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 2px' }} />
+      <button onClick={onClose}
+        style={{ width: 22, height: 22, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'none', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <X size={11} />
+      </button>
+    </div>
+  )
+}
+
 function TextBlockRenderer({ item, canEdit, onDataChange }: RendererProps) {
   const d = item.data as TextBlockData
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(d.content ?? '')
   const [showFormat, setShowFormat] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => { if (!editing) setDraft(d.content ?? '') }, [d.content, editing])
+  useEffect(() => { if (editing) textareaRef.current?.focus() }, [editing])
 
   const textStyle: React.CSSProperties = {
     fontSize: d.font_size ?? 13,
@@ -170,91 +221,57 @@ function TextBlockRenderer({ item, canEdit, onDataChange }: RendererProps) {
     lineHeight: 1.65,
   }
 
-  function saveContent() {
-    setEditing(false)
-    onDataChange({ ...d, content: draft })
-  }
-
-  function updateStyle(patch: Partial<TextBlockData>) {
-    onDataChange({ ...d, content: draft, ...patch })
-  }
+  function saveContent() { setEditing(false); onDataChange({ ...d, content: draft }) }
+  function updateStyle(patch: Partial<TextBlockData>) { onDataChange({ ...d, content: draft, ...patch }) }
 
   const fs = d.font_size ?? 13
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {/* Format bar — floats above the item */}
       {showFormat && canEdit && (
-        <div
-          style={{
-            position: 'absolute', bottom: 'calc(100% + 6px)', left: 0, zIndex: 200,
-            background: '#fff', border: '1px solid var(--border)', borderRadius: 8,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.13)', padding: '5px 8px',
-            display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap',
-            whiteSpace: 'nowrap',
-          }}
-          onMouseDown={e => e.stopPropagation()}
-        >
-          {/* Font sizes */}
-          {TEXT_FONT_SIZES.map(s => (
-            <button key={s} onClick={() => updateStyle({ font_size: s })}
-              style={{ padding: '2px 5px', border: `1px solid ${fs === s ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontSize: 10, fontFamily: 'inherit', background: fs === s ? 'rgba(201,185,154,0.15)' : 'none', color: fs === s ? '#C9B99A' : 'var(--text)', fontWeight: fs === s ? 700 : 400 }}>
-              {s}
-            </button>
-          ))}
-          <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 2px' }} />
-          {/* Bold / Italic */}
-          <button onClick={() => updateStyle({ bold: !d.bold })}
-            style={{ width: 26, height: 26, border: `1px solid ${d.bold ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontWeight: 800, fontSize: 13, background: d.bold ? 'rgba(201,185,154,0.15)' : 'none', fontFamily: 'inherit', color: d.bold ? '#C9B99A' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>B</button>
-          <button onClick={() => updateStyle({ italic: !d.italic })}
-            style={{ width: 26, height: 26, border: `1px solid ${d.italic ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontStyle: 'italic', fontSize: 13, background: d.italic ? 'rgba(201,185,154,0.15)' : 'none', fontFamily: 'inherit', color: d.italic ? '#C9B99A' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>I</button>
-          <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 2px' }} />
-          {/* Alignment */}
-          {(['left', 'center', 'right'] as const).map(a => {
-            const active = (d.align ?? 'left') === a
-            const icons: Record<string, string> = { left: '⇤', center: '↔', right: '⇥' }
-            return (
-              <button key={a} onClick={() => updateStyle({ align: a })}
-                style={{ width: 26, height: 26, border: `1px solid ${active ? '#C9B99A' : 'var(--border)'}`, borderRadius: 4, cursor: 'pointer', fontSize: 12, background: active ? 'rgba(201,185,154,0.15)' : 'none', fontFamily: 'inherit', color: active ? '#C9B99A' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {icons[a]}
-              </button>
-            )
-          })}
-          <div style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 2px' }} />
-          {/* Close */}
-          <button onClick={() => setShowFormat(false)}
-            style={{ width: 22, height: 22, border: 'none', borderRadius: 4, cursor: 'pointer', background: 'none', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <X size={11} />
-          </button>
-        </div>
+        <FormatBar
+          fs={fs} bold={!!d.bold} italic={!!d.italic} align={d.align ?? 'left'}
+          onSize={s => updateStyle({ font_size: s })}
+          onBold={() => updateStyle({ bold: !d.bold })}
+          onItalic={() => updateStyle({ italic: !d.italic })}
+          onAlign={a => updateStyle({ align: a })}
+          onClose={() => setShowFormat(false)}
+        />
       )}
 
-      {editing ? (
+      {/* Display div — always in flow (drives auto-height), visibility:hidden when editing */}
+      <div
+        style={{
+          width: '100%', height: '100%', padding: 14, background: '#fff',
+          borderRadius: 8, overflow: 'hidden', boxSizing: 'border-box',
+          whiteSpace: 'pre-wrap', cursor: canEdit ? 'text' : 'default',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)', ...textStyle,
+          visibility: editing ? 'hidden' : 'visible',
+        }}
+        onClick={() => canEdit && setEditing(true)}
+        onDoubleClick={e => { e.stopPropagation(); if (canEdit) { setEditing(true); setShowFormat(s => !s) } }}
+      >
+        {d.content || <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic', fontSize: 12, fontWeight: 400 }}>Klick → Text eingeben · Doppelklick → Format</span>}
+      </div>
+
+      {/* Textarea — absolute overlay, shown when editing; dblclick also toggles format bar */}
+      {canEdit && (
         <textarea
-          autoFocus
+          ref={textareaRef}
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onBlur={saveContent}
           onKeyDown={e => e.stopPropagation()}
+          onDoubleClick={e => { e.stopPropagation(); setShowFormat(s => !s) }}
           style={{
+            position: 'absolute', inset: 0,
             width: '100%', height: '100%', border: 'none', outline: 'none',
             resize: 'none', padding: 14, boxSizing: 'border-box', borderRadius: 8,
             background: '#fff', fontFamily: 'inherit', ...textStyle,
+            visibility: editing ? 'visible' : 'hidden',
+            pointerEvents: editing ? 'auto' : 'none',
           }}
         />
-      ) : (
-        <div
-          style={{
-            width: '100%', height: '100%', padding: 14, background: '#fff',
-            borderRadius: 8, overflow: 'hidden', boxSizing: 'border-box',
-            whiteSpace: 'pre-wrap', cursor: canEdit ? 'text' : 'default',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.06)', ...textStyle,
-          }}
-          onClick={() => canEdit && setEditing(true)}
-          onDoubleClick={e => { e.stopPropagation(); if (canEdit) { setEditing(true); setShowFormat(s => !s) } }}
-        >
-          {d.content || <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic', fontSize: 12, fontWeight: 400 }}>Klick → Text eingeben · Doppelklick → Format</span>}
-        </div>
       )}
     </div>
   )
@@ -264,19 +281,14 @@ function TextBlockRenderer({ item, canEdit, onDataChange }: RendererProps) {
 
 const STICKY_COLORS = ['#FFF8DC', '#DDEEFF', '#DDFFDD', '#FFE4E4', '#EEE0FF', '#FFE4C0', '#F0F0F0']
 
-function StickyColorDot({ color, active, onClick, areaHovered }: { color: string; active: boolean; onClick: () => void; areaHovered: boolean }) {
-  const [selfHovered, setSelfHovered] = useState(false)
-  const size = selfHovered ? 15 : areaHovered ? 13 : 11
+function StickyColorDot({ color, active, onClick }: { color: string; active: boolean; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
-      onMouseEnter={() => setSelfHovered(true)}
-      onMouseLeave={() => setSelfHovered(false)}
       style={{
-        width: size, height: size, borderRadius: '50%', background: color,
+        width: 11, height: 11, borderRadius: '50%', background: color,
         cursor: 'pointer', flexShrink: 0,
         border: active ? '2px solid rgba(0,0,0,0.35)' : '1px solid rgba(0,0,0,0.12)',
-        transition: 'width 0.12s, height 0.12s',
       }}
     />
   )
@@ -287,7 +299,6 @@ function StickyNoteRenderer({ item, canEdit, onDataChange }: RendererProps) {
   const bg = d.color || STICKY_COLORS[0]
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(d.content ?? '')
-  const [dotsHovered, setDotsHovered] = useState(false)
   return (
     <div style={{
       width: '100%', height: '100%', background: bg,
@@ -295,13 +306,9 @@ function StickyNoteRenderer({ item, canEdit, onDataChange }: RendererProps) {
       boxShadow: '2px 3px 10px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)',
       position: 'relative', display: 'flex', flexDirection: 'column',
     }}>
-      <div
-        style={{ display: 'flex', gap: 5, marginBottom: 9, flexShrink: 0, alignItems: 'center' }}
-        onMouseEnter={() => setDotsHovered(true)}
-        onMouseLeave={() => setDotsHovered(false)}
-      >
+      <div style={{ display: 'flex', gap: 5, marginBottom: 9, flexShrink: 0, alignItems: 'center' }}>
         {STICKY_COLORS.map(c => (
-          <StickyColorDot key={c} color={c} active={c === bg} areaHovered={dotsHovered} onClick={() => onDataChange({ ...d, color: c })} />
+          <StickyColorDot key={c} color={c} active={c === bg} onClick={() => onDataChange({ ...d, color: c })} />
         ))}
       </div>
       {editing
@@ -320,43 +327,86 @@ function StickyNoteRenderer({ item, canEdit, onDataChange }: RendererProps) {
 
 // ── 7. Heading ────────────────────────────────────────────────────────────────
 
+const HEADING_DEFAULT_SIZES: Record<number, number> = { 1: 32, 2: 22, 3: 16 }
+const HEADING_FONT_SIZES = [14, 16, 18, 20, 24, 28, 32, 36]
+
 function HeadingRenderer({ item, canEdit, onDataChange }: RendererProps) {
   const d = item.data as HeadingData
-  const sizes: Record<number, number> = { 1: 32, 2: 22, 3: 16 }
-  const weights: Record<number, number> = { 1: 800, 2: 700, 3: 600 }
   const [editing, setEditing] = useState(false)
-  const [showStyle, setShowStyle] = useState(false)
+  const [showFormat, setShowFormat] = useState(false)
   const [draft, setDraft] = useState(d.text ?? '')
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  function saveText(text: string) { setEditing(false); onDataChange({ ...d, text }) }
+  useEffect(() => { if (!editing) setDraft(d.text ?? '') }, [d.text, editing])
+  useEffect(() => { if (editing) inputRef.current?.focus() }, [editing])
+
+  const fontSize = d.font_size ?? HEADING_DEFAULT_SIZES[d.level ?? 1]
+  const boldActive = d.bold !== false
+  const textStyle: React.CSSProperties = {
+    fontSize,
+    fontWeight: boldActive ? 700 : 400,
+    fontStyle: d.italic ? 'italic' : 'normal',
+    textAlign: d.align ?? 'left',
+    letterSpacing: '-0.4px',
+    color: 'var(--text)',
+  }
+
+  function saveText() { setEditing(false); onDataChange({ ...d, text: draft }) }
+  function updateStyle(patch: Partial<HeadingData>) { onDataChange({ ...d, text: draft, ...patch }) }
+
+  const fs = d.font_size ?? HEADING_DEFAULT_SIZES[d.level ?? 1]
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center' }}>
-      {editing
-        ? <input autoFocus value={draft} onChange={e => setDraft(e.target.value)}
-            onBlur={() => saveText(draft)}
-            onKeyDown={e => { if (e.key === 'Enter') saveText(draft); if (e.key === 'Escape') { setEditing(false); setDraft(d.text ?? '') } }}
-            style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: sizes[d.level ?? 1], fontWeight: weights[d.level ?? 1], letterSpacing: '-0.4px', fontFamily: 'inherit', color: 'var(--text)' }}
-          />
-        : <div
-            style={{ fontSize: sizes[d.level ?? 1], fontWeight: weights[d.level ?? 1], letterSpacing: '-0.4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', cursor: canEdit ? 'text' : 'default', color: 'var(--text)' }}
-            onClick={() => canEdit && setEditing(true)}
-            onDoubleClick={(e) => { e.stopPropagation(); if (canEdit) { setEditing(false); setShowStyle(s => !s) } }}>
-            {d.text || <span style={{ color: 'var(--text-tertiary)', fontWeight: 400, fontSize: 14, fontStyle: 'italic' }}>Überschrift…</span>}
-          </div>
-      }
-      {showStyle && (
-        <div
-          style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: '#fff', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', padding: '8px 10px', display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}
-          onMouseDown={e => e.stopPropagation()}>
-          <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>Größe</span>
-          {([1, 2, 3] as const).map(lvl => (
-            <button key={lvl} onClick={() => { onDataChange({ ...d, level: lvl }); setShowStyle(false) }}
-              style={{ width: 28, height: 28, border: (d.level ?? 1) === lvl ? '2px solid #C9B99A' : '1px solid var(--border)', borderRadius: 6, background: (d.level ?? 1) === lvl ? 'rgba(201,185,154,0.12)' : 'none', cursor: 'pointer', fontWeight: weights[lvl], fontSize: 10 + (4 - lvl) * 2 }}>
-              H{lvl}
-            </button>
-          ))}
-        </div>
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      {showFormat && canEdit && (
+        <FormatBar
+          fs={fs} bold={boldActive} italic={!!d.italic} align={d.align ?? 'left'}
+          fontSizes={HEADING_FONT_SIZES}
+          onSize={s => updateStyle({ font_size: s })}
+          onBold={() => updateStyle({ bold: !boldActive })}
+          onItalic={() => updateStyle({ italic: !d.italic })}
+          onAlign={a => updateStyle({ align: a })}
+          onClose={() => setShowFormat(false)}
+        />
+      )}
+
+      {/* Display div — always in flow */}
+      <div
+        style={{
+          width: '100%', height: '100%', display: 'flex', alignItems: 'center',
+          overflow: 'hidden', cursor: canEdit ? 'text' : 'default',
+          visibility: editing ? 'hidden' : 'visible',
+        }}
+        onClick={() => canEdit && setEditing(true)}
+        onDoubleClick={e => { e.stopPropagation(); if (canEdit) { setEditing(true); setShowFormat(s => !s) } }}
+      >
+        <span style={{ ...textStyle, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', display: 'block' }}>
+          {d.text || <span style={{ color: 'var(--text-tertiary)', fontWeight: 400, fontSize: 14, fontStyle: 'italic', letterSpacing: 'normal' }}>Überschrift…</span>}
+        </span>
+      </div>
+
+      {/* Input — absolute overlay, visible when editing */}
+      {canEdit && (
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={saveText}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); saveText() }
+            if (e.key === 'Escape') { setEditing(false); setDraft(d.text ?? '') }
+            e.stopPropagation()
+          }}
+          onDoubleClick={e => { e.stopPropagation(); setShowFormat(s => !s) }}
+          style={{
+            position: 'absolute', inset: 0,
+            border: 'none', outline: 'none', background: 'transparent',
+            fontFamily: 'inherit', width: '100%', height: '100%', padding: 0,
+            ...textStyle,
+            visibility: editing ? 'visible' : 'hidden',
+            pointerEvents: editing ? 'auto' : 'none',
+          }}
+        />
       )}
     </div>
   )
@@ -380,7 +430,7 @@ function ArticleRenderer({ item, catalog, flatRates }: RendererProps) {
   return (
     <div style={cardStyle}>
       {cat.image_url
-        ? <img src={cat.image_url} alt={cat.name} style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+        ? <img src={cat.image_url} alt={cat.name} draggable={false} style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
         : <div style={{ height: 70, background: 'linear-gradient(135deg,#f9f5f0,#f0e8de)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>🌸</div>
       }
       <div style={{ padding: '9px 10px', flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -411,7 +461,7 @@ function FlatRateArticleRenderer({ item, catalog, flatRates }: RendererProps) {
   return (
     <div style={cardStyle}>
       {cat?.image_url
-        ? <img src={cat.image_url} alt={cat?.name ?? ''} style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+        ? <img src={cat.image_url} alt={cat?.name ?? ''} draggable={false} style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
         : <div style={{ height: 60, background: 'linear-gradient(135deg,#f9f5f0,#ede3d5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📦</div>
       }
       <div style={{ padding: '9px 10px' }}>
@@ -442,7 +492,7 @@ function FabricRenderer({ item, catalog }: RendererProps) {
   return (
     <div style={cardStyle}>
       {cat.image_url
-        ? <img src={cat.image_url} alt={cat.name} style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+        ? <img src={cat.image_url} alt={cat.name} draggable={false} style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
         : <div style={{ height: 70, background: 'linear-gradient(135deg,#f5f0ea,#e8dfd4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>🧵</div>
       }
       <div style={{ padding: '9px 10px' }}>
@@ -578,7 +628,7 @@ function VoteCardRenderer({ item, eventId, userId }: RendererProps) {
   return (
     <div style={cardStyle}>
       {displayImage
-        ? <img src={displayImage} alt={d.title} style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+        ? <img src={displayImage} alt={d.title} draggable={false} style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
         : d.storage_key
           ? <div style={{ height: 90, background: 'linear-gradient(135deg,#f5f0ea,#ede0ce)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: '#C9B99A', animation: 'spin 0.8s linear infinite' }} /></div>
           : <div style={{ height: 90, background: 'linear-gradient(135deg,#f5f0ea,#ede0ce)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>🗳</div>
@@ -621,7 +671,11 @@ function ChecklistRenderer({ item, canEdit, onDataChange }: RendererProps) {
   const d = item.data as ChecklistData
   const items = d.items ?? []
   const [newText, setNewText] = useState('')
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(d.title ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { if (!editingTitle) setTitleDraft(d.title ?? '') }, [d.title, editingTitle])
 
   function toggle(id: string) {
     if (!canEdit) return
@@ -629,27 +683,45 @@ function ChecklistRenderer({ item, canEdit, onDataChange }: RendererProps) {
   }
   function addItem() {
     if (!newText.trim() || !canEdit) return
-    const newItem = { id: crypto.randomUUID(), text: newText.trim(), checked: false }
-    onDataChange({ ...d, items: [...items, newItem] })
+    onDataChange({ ...d, items: [...items, { id: crypto.randomUUID(), text: newText.trim(), checked: false }] })
     setNewText('')
   }
   function removeItem(id: string) {
     onDataChange({ ...d, items: items.filter(i => i.id !== id) })
   }
+  function saveTitle() {
+    setEditingTitle(false)
+    onDataChange({ ...d, title: titleDraft.trim() || undefined })
+  }
 
   const done = items.filter(i => i.checked).length
   return (
-    <div style={{ ...cardStyle, padding: '10px 10px 8px', display: 'flex', flexDirection: 'column' }}
-      onMouseDown={e => e.stopPropagation()}>
-      {d.title && (
-        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 7, flexShrink: 0 }}>
-          {d.title}
-        </p>
-      )}
+    <div style={{ ...cardStyle, padding: '10px 10px 8px', display: 'flex', flexDirection: 'column' }}>
+      {/* Inline-editable title — always shown */}
+      <div style={{ marginBottom: 7, flexShrink: 0 }} onMouseDown={e => e.stopPropagation()}>
+        {editingTitle ? (
+          <input
+            autoFocus
+            value={titleDraft}
+            onChange={e => setTitleDraft(e.target.value)}
+            onBlur={saveTitle}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur(); e.stopPropagation() }}
+            placeholder="Überschrift…"
+            style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', fontFamily: 'inherit', padding: 0 }}
+          />
+        ) : (
+          <p
+            onClick={() => canEdit && setEditingTitle(true)}
+            style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0, cursor: canEdit ? 'text' : 'default', color: d.title ? 'var(--text-tertiary)' : 'rgba(0,0,0,0.2)', fontStyle: d.title ? 'normal' : 'italic' }}>
+            {d.title || 'Überschrift…'}
+          </p>
+        )}
+      </div>
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {items.map(i => (
           <div key={i.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 5 }}>
             <div onClick={() => toggle(i.id)}
+              onMouseDown={e => e.stopPropagation()}
               style={{ width: 14, height: 14, borderRadius: 4, flexShrink: 0, marginTop: 1, border: `2px solid ${i.checked ? '#4CAF50' : '#C9B99A'}`, background: i.checked ? '#4CAF50' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', cursor: canEdit ? 'pointer' : 'default' }}>
               {i.checked && <Check size={8} color="white" strokeWidth={3} />}
             </div>
@@ -658,6 +730,7 @@ function ChecklistRenderer({ item, canEdit, onDataChange }: RendererProps) {
             </span>
             {canEdit && (
               <button onClick={() => removeItem(i.id)}
+                onMouseDown={e => e.stopPropagation()}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 1, color: 'var(--text-tertiary)', opacity: 0, lineHeight: 1, flexShrink: 0 }}
                 onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
                 onMouseLeave={e => (e.currentTarget.style.opacity = '0')}>
@@ -668,7 +741,7 @@ function ChecklistRenderer({ item, canEdit, onDataChange }: RendererProps) {
         ))}
       </div>
       {canEdit && (
-        <div style={{ display: 'flex', gap: 5, marginTop: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 5, marginTop: 6, flexShrink: 0 }} onMouseDown={e => e.stopPropagation()}>
           <input ref={inputRef} value={newText} onChange={e => setNewText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem() } e.stopPropagation() }}
             placeholder="Punkt hinzufügen…"
@@ -723,7 +796,7 @@ function LinkCardRenderer({ item, eventId }: RendererProps) {
     <div style={{ ...cardStyle, cursor: 'pointer', overflow: 'hidden' }}
       onClick={e => { e.stopPropagation(); window.open(d.url, '_blank') }}>
       {imageUrl && (
-        <img src={imageUrl} alt="" style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block', flexShrink: 0 }}
+        <img src={imageUrl} alt="" draggable={false} style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block', flexShrink: 0 }}
           onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
       )}
       <div style={{ padding: '9px 10px', flex: 1, overflow: 'hidden' }}>

@@ -118,7 +118,7 @@ export default function DekoNavigationBar({
     setSavingArea(false)
   }
 
-  // ── Create variant ────────────────────────────────────────────────────────
+  // ── Create variant (copies main canvas items) ─────────────────────────────
 
   async function createVariant(areaId: string) {
     if (!newVariantName.trim()) return
@@ -129,6 +129,25 @@ export default function DekoNavigationBar({
       canvas_type: 'variant' as CanvasType,
     }).select().single()
     if (canvas) {
+      // Copy items from the main canvas of this area
+      const area = areas.find(a => a.id === areaId)
+      const mainCanvas = area?.canvases?.find(c => c.canvas_type === 'main')
+      if (mainCanvas) {
+        const { data: mainItems } = await supabase
+          .from('deko_items').select('*').eq('canvas_id', mainCanvas.id)
+        if (mainItems && mainItems.length > 0) {
+          const copies = (mainItems as Record<string, unknown>[]).map(item => {
+            const copy = { ...item }
+            delete copy.id
+            delete copy.created_at
+            delete copy.updated_at
+            copy.canvas_id = canvas.id
+            return copy
+          })
+          const { error } = await supabase.from('deko_items').insert(copies)
+          if (error) console.error('[deko] createVariant copy failed', error)
+        }
+      }
       onAreasChange(areas.map(a => a.id === areaId ? {
         ...a, canvases: [...(a.canvases ?? []), canvas as DekoCanvas],
       } : a))
@@ -246,7 +265,7 @@ export default function DekoNavigationBar({
                 onClick={() => onSelectCanvas(v.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '5px 8px 5px 28px', cursor: 'pointer', fontSize: 12,
+                  padding: '5px 14px 5px 28px', cursor: 'pointer', fontSize: 12,
                   background: v.id === activeCanvasId ? 'rgba(201,185,154,0.12)' : 'transparent',
                   color: v.id === activeCanvasId ? 'var(--accent, #C9B99A)' : 'var(--text-secondary)',
                   fontWeight: v.id === activeCanvasId ? 600 : 400,
