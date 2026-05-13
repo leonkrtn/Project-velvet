@@ -11,6 +11,7 @@ interface UseDekoRealtimeOptions {
   onItemUpdated: (item: DekoItem) => void
   onItemDeleted: (id: string) => void
   onPresenceSync: (users: PresenceUser[]) => void
+  onChannelSubscribed?: () => void
 }
 
 // Stable color from user id
@@ -26,6 +27,10 @@ export function useDekoRealtime(opts: UseDekoRealtimeOptions) {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const lastCursor = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
 
+  // Always-current callbacks — avoids stale closures in channel event handlers
+  const optsRef = useRef(opts)
+  optsRef.current = opts
+
   useEffect(() => {
     const channel = supabase.channel(`deko-canvas-${opts.canvasId}`, {
       config: { presence: { key: opts.userId } },
@@ -38,7 +43,7 @@ export function useDekoRealtime(opts: UseDekoRealtimeOptions) {
       table: 'deko_items',
       filter: `canvas_id=eq.${opts.canvasId}`,
     }, payload => {
-      opts.onItemInserted(payload.new as DekoItem)
+      optsRef.current.onItemInserted(payload.new as DekoItem)
     })
 
     channel.on('postgres_changes', {
@@ -47,7 +52,7 @@ export function useDekoRealtime(opts: UseDekoRealtimeOptions) {
       table: 'deko_items',
       filter: `canvas_id=eq.${opts.canvasId}`,
     }, payload => {
-      opts.onItemUpdated(payload.new as DekoItem)
+      optsRef.current.onItemUpdated(payload.new as DekoItem)
     })
 
     channel.on('postgres_changes', {
@@ -56,7 +61,7 @@ export function useDekoRealtime(opts: UseDekoRealtimeOptions) {
       table: 'deko_items',
       filter: `canvas_id=eq.${opts.canvasId}`,
     }, payload => {
-      opts.onItemDeleted((payload.old as { id: string }).id)
+      optsRef.current.onItemDeleted((payload.old as { id: string }).id)
     })
 
     // ── Presence ──────────────────────────────────────────────────────────────
@@ -65,7 +70,7 @@ export function useDekoRealtime(opts: UseDekoRealtimeOptions) {
       const users: PresenceUser[] = Object.values(state).flatMap(arr =>
         (arr as unknown as PresenceUser[]).filter(u => u.user_id)
       )
-      opts.onPresenceSync(users)
+      optsRef.current.onPresenceSync(users)
     })
 
     channel.subscribe(async status => {
@@ -77,6 +82,7 @@ export function useDekoRealtime(opts: UseDekoRealtimeOptions) {
           cursor_x: 0,
           cursor_y: 0,
         } satisfies PresenceUser)
+        optsRef.current.onChannelSubscribed?.()
       }
     })
 
