@@ -245,6 +245,10 @@ export default function DekoPageClient({
           }}
           onClose={() => { setLightboxItem(null); setLightboxAnchor(undefined) }}
           onCatalogCreated={(item) => setCatalog(prev => [...prev, item])}
+          onCatalogUpdated={(item) => {
+            setCatalog(prev => prev.map(c => c.id === item.id ? item : c))
+            canvasRef.current?.reloadCatalog()
+          }}
         />
       )}
 

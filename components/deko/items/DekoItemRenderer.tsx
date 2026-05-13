@@ -66,7 +66,7 @@ function ImageUploadRenderer({ item, eventId }: RendererProps) {
   )
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', borderRadius: 8 }}>
-      <img src={url} alt={d.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      <img src={url} alt={d.caption ?? ''} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       {d.caption && (
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.55))', padding: '16px 10px 8px', color: '#fff', fontSize: 11, fontWeight: 500 }}>
           {d.caption}
@@ -88,8 +88,8 @@ function ImageUrlRenderer({ item }: RendererProps) {
   )
   const src = d.preview_url || d.url
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', borderRadius: 8 }}>
-      <img src={src} alt={d.caption ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+    <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', borderRadius: 8 }} onDragStart={e => e.preventDefault()}>
+      <img src={src} alt={d.caption ?? ''} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
       {d.caption && (
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.55))', padding: '16px 10px 8px', color: '#fff', fontSize: 11, fontWeight: 500 }}>
@@ -281,19 +281,14 @@ function TextBlockRenderer({ item, canEdit, onDataChange }: RendererProps) {
 
 const STICKY_COLORS = ['#FFF8DC', '#DDEEFF', '#DDFFDD', '#FFE4E4', '#EEE0FF', '#FFE4C0', '#F0F0F0']
 
-function StickyColorDot({ color, active, onClick, areaHovered }: { color: string; active: boolean; onClick: () => void; areaHovered: boolean }) {
-  const [selfHovered, setSelfHovered] = useState(false)
+function StickyColorDot({ color, active, onClick }: { color: string; active: boolean; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
-      onMouseEnter={() => setSelfHovered(true)}
-      onMouseLeave={() => setSelfHovered(false)}
       style={{
         width: 11, height: 11, borderRadius: '50%', background: color,
         cursor: 'pointer', flexShrink: 0,
         border: active ? '2px solid rgba(0,0,0,0.35)' : '1px solid rgba(0,0,0,0.12)',
-        transform: `scale(${selfHovered ? 1.36 : areaHovered ? 1.18 : 1})`,
-        transition: 'transform 0.15s ease',
       }}
     />
   )
@@ -304,7 +299,6 @@ function StickyNoteRenderer({ item, canEdit, onDataChange }: RendererProps) {
   const bg = d.color || STICKY_COLORS[0]
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(d.content ?? '')
-  const [dotsHovered, setDotsHovered] = useState(false)
   return (
     <div style={{
       width: '100%', height: '100%', background: bg,
@@ -312,13 +306,9 @@ function StickyNoteRenderer({ item, canEdit, onDataChange }: RendererProps) {
       boxShadow: '2px 3px 10px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)',
       position: 'relative', display: 'flex', flexDirection: 'column',
     }}>
-      <div
-        style={{ display: 'flex', gap: 5, marginBottom: 9, flexShrink: 0, alignItems: 'center' }}
-        onMouseEnter={() => setDotsHovered(true)}
-        onMouseLeave={() => setDotsHovered(false)}
-      >
+      <div style={{ display: 'flex', gap: 5, marginBottom: 9, flexShrink: 0, alignItems: 'center' }}>
         {STICKY_COLORS.map(c => (
-          <StickyColorDot key={c} color={c} active={c === bg} areaHovered={dotsHovered} onClick={() => onDataChange({ ...d, color: c })} />
+          <StickyColorDot key={c} color={c} active={c === bg} onClick={() => onDataChange({ ...d, color: c })} />
         ))}
       </div>
       {editing
@@ -440,7 +430,7 @@ function ArticleRenderer({ item, catalog, flatRates }: RendererProps) {
   return (
     <div style={cardStyle}>
       {cat.image_url
-        ? <img src={cat.image_url} alt={cat.name} style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+        ? <img src={cat.image_url} alt={cat.name} draggable={false} style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
         : <div style={{ height: 70, background: 'linear-gradient(135deg,#f9f5f0,#f0e8de)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>🌸</div>
       }
       <div style={{ padding: '9px 10px', flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -471,7 +461,7 @@ function FlatRateArticleRenderer({ item, catalog, flatRates }: RendererProps) {
   return (
     <div style={cardStyle}>
       {cat?.image_url
-        ? <img src={cat.image_url} alt={cat?.name ?? ''} style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+        ? <img src={cat.image_url} alt={cat?.name ?? ''} draggable={false} style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
         : <div style={{ height: 60, background: 'linear-gradient(135deg,#f9f5f0,#ede3d5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📦</div>
       }
       <div style={{ padding: '9px 10px' }}>
@@ -502,7 +492,7 @@ function FabricRenderer({ item, catalog }: RendererProps) {
   return (
     <div style={cardStyle}>
       {cat.image_url
-        ? <img src={cat.image_url} alt={cat.name} style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+        ? <img src={cat.image_url} alt={cat.name} draggable={false} style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
         : <div style={{ height: 70, background: 'linear-gradient(135deg,#f5f0ea,#e8dfd4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>🧵</div>
       }
       <div style={{ padding: '9px 10px' }}>
@@ -638,7 +628,7 @@ function VoteCardRenderer({ item, eventId, userId }: RendererProps) {
   return (
     <div style={cardStyle}>
       {displayImage
-        ? <img src={displayImage} alt={d.title} style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
+        ? <img src={displayImage} alt={d.title} draggable={false} style={{ width: '100%', height: 130, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
         : d.storage_key
           ? <div style={{ height: 90, background: 'linear-gradient(135deg,#f5f0ea,#ede0ce)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><div style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--border)', borderTopColor: '#C9B99A', animation: 'spin 0.8s linear infinite' }} /></div>
           : <div style={{ height: 90, background: 'linear-gradient(135deg,#f5f0ea,#ede0ce)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>🗳</div>
@@ -706,10 +696,9 @@ function ChecklistRenderer({ item, canEdit, onDataChange }: RendererProps) {
 
   const done = items.filter(i => i.checked).length
   return (
-    <div style={{ ...cardStyle, padding: '10px 10px 8px', display: 'flex', flexDirection: 'column' }}
-      onMouseDown={e => e.stopPropagation()}>
+    <div style={{ ...cardStyle, padding: '10px 10px 8px', display: 'flex', flexDirection: 'column' }}>
       {/* Inline-editable title — always shown */}
-      <div style={{ marginBottom: 7, flexShrink: 0 }}>
+      <div style={{ marginBottom: 7, flexShrink: 0 }} onMouseDown={e => e.stopPropagation()}>
         {editingTitle ? (
           <input
             autoFocus
@@ -732,6 +721,7 @@ function ChecklistRenderer({ item, canEdit, onDataChange }: RendererProps) {
         {items.map(i => (
           <div key={i.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginBottom: 5 }}>
             <div onClick={() => toggle(i.id)}
+              onMouseDown={e => e.stopPropagation()}
               style={{ width: 14, height: 14, borderRadius: 4, flexShrink: 0, marginTop: 1, border: `2px solid ${i.checked ? '#4CAF50' : '#C9B99A'}`, background: i.checked ? '#4CAF50' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', cursor: canEdit ? 'pointer' : 'default' }}>
               {i.checked && <Check size={8} color="white" strokeWidth={3} />}
             </div>
@@ -740,6 +730,7 @@ function ChecklistRenderer({ item, canEdit, onDataChange }: RendererProps) {
             </span>
             {canEdit && (
               <button onClick={() => removeItem(i.id)}
+                onMouseDown={e => e.stopPropagation()}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 1, color: 'var(--text-tertiary)', opacity: 0, lineHeight: 1, flexShrink: 0 }}
                 onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
                 onMouseLeave={e => (e.currentTarget.style.opacity = '0')}>
@@ -750,7 +741,7 @@ function ChecklistRenderer({ item, canEdit, onDataChange }: RendererProps) {
         ))}
       </div>
       {canEdit && (
-        <div style={{ display: 'flex', gap: 5, marginTop: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 5, marginTop: 6, flexShrink: 0 }} onMouseDown={e => e.stopPropagation()}>
           <input ref={inputRef} value={newText} onChange={e => setNewText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addItem() } e.stopPropagation() }}
             placeholder="Punkt hinzufügen…"
@@ -805,7 +796,7 @@ function LinkCardRenderer({ item, eventId }: RendererProps) {
     <div style={{ ...cardStyle, cursor: 'pointer', overflow: 'hidden' }}
       onClick={e => { e.stopPropagation(); window.open(d.url, '_blank') }}>
       {imageUrl && (
-        <img src={imageUrl} alt="" style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block', flexShrink: 0 }}
+        <img src={imageUrl} alt="" draggable={false} style={{ width: '100%', height: 90, objectFit: 'cover', display: 'block', flexShrink: 0 }}
           onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
       )}
       <div style={{ padding: '9px 10px', flex: 1, overflow: 'hidden' }}>

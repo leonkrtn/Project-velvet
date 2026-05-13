@@ -28,6 +28,7 @@ interface Props {
   onBringToFront: () => void
   onClose: () => void
   onCatalogCreated?: (item: DekoCatalogItem) => void
+  onCatalogUpdated?: (item: DekoCatalogItem) => void
 }
 
 // ── Shared input styles ───────────────────────────────────────────────────────
@@ -317,10 +318,11 @@ function EditColorSwatch({ data, onChange }: { data: ColorSwatchData; onChange: 
   )
 }
 
-function EditArticle({ data, catalog, flatRates, onChange, eventId, role, userId, onCatalogCreated }: {
+function EditArticle({ data, catalog, flatRates, onChange, eventId, role, userId, onCatalogCreated, onCatalogUpdated }: {
   data: ArticleData; catalog: DekoCatalogItem[]; flatRates: DekoFlatRate[]
   onChange: (d: ArticleData) => void; eventId: string; role: DekoRole; userId: string
   onCatalogCreated?: (item: DekoCatalogItem) => void
+  onCatalogUpdated?: (item: DekoCatalogItem) => void
 }) {
   const cat = catalog.find(c => c.id === data.catalog_item_id)
   const supabase = createClient()
@@ -332,6 +334,7 @@ function EditArticle({ data, catalog, flatRates, onChange, eventId, role, userId
     setSavingCat(true)
     await supabase.from('deko_catalog_items').update(catDraft).eq('id', cat.id)
     setSavingCat(false)
+    onCatalogUpdated?.({ ...cat, ...catDraft } as DekoCatalogItem)
   }
 
   return (
@@ -391,6 +394,7 @@ function EditArticle({ data, catalog, flatRates, onChange, eventId, role, userId
               onSave={async (url) => {
                 setCatDraft(p => ({ ...p, image_url: url }))
                 await supabase.from('deko_catalog_items').update({ image_url: url }).eq('id', cat.id)
+                onCatalogUpdated?.({ ...cat, ...catDraft, image_url: url } as DekoCatalogItem)
               }}
             />
           </Field>
@@ -428,10 +432,11 @@ function EditFlatRateArticle({ data, catalog, flatRates, onChange, eventId, role
   )
 }
 
-function EditFabric({ data, catalog, onChange, eventId, role, userId, onCatalogCreated }: {
+function EditFabric({ data, catalog, onChange, eventId, role, userId, onCatalogCreated, onCatalogUpdated }: {
   data: FabricData; catalog: DekoCatalogItem[]
   onChange: (d: FabricData) => void; eventId: string; role: DekoRole; userId: string
   onCatalogCreated?: (item: DekoCatalogItem) => void
+  onCatalogUpdated?: (item: DekoCatalogItem) => void
 }) {
   const cat = catalog.find(c => c.id === data.catalog_item_id)
   const supabase = createClient()
@@ -440,6 +445,7 @@ function EditFabric({ data, catalog, onChange, eventId, role, userId, onCatalogC
   async function saveCatalogItem() {
     if (!cat) return
     await supabase.from('deko_catalog_items').update(catDraft).eq('id', cat.id)
+    onCatalogUpdated?.({ ...cat, ...catDraft } as DekoCatalogItem)
   }
 
   return (
@@ -479,6 +485,7 @@ function EditFabric({ data, catalog, onChange, eventId, role, userId, onCatalogC
               onSave={async (url) => {
                 setCatDraft(p => ({ ...p, image_url: url }))
                 await supabase.from('deko_catalog_items').update({ image_url: url }).eq('id', cat.id)
+                onCatalogUpdated?.({ ...cat, ...catDraft, image_url: url } as DekoCatalogItem)
               }}
             />
           </Field>
@@ -919,7 +926,7 @@ const TITLES: Record<string, string> = {
 
 export default function DekoItemLightbox({
   item, catalog, flatRates, role, userId, eventId, canEdit,
-  anchorRect, onDataChange, onDelete, onBringToFront, onClose, onCatalogCreated,
+  anchorRect, onDataChange, onDelete, onBringToFront, onClose, onCatalogCreated, onCatalogUpdated,
 }: Props) {
   const [data, setData] = useState(item.data)
 
@@ -933,7 +940,7 @@ export default function DekoItemLightbox({
     onClose()
   }
 
-  const editProps = { data, catalog, flatRates, role, userId, eventId, onChange: commit, onCatalogCreated }
+  const editProps = { data, catalog, flatRates, role, userId, eventId, onChange: commit, onCatalogCreated, onCatalogUpdated }
 
   function renderForm() {
     switch (item.type) {

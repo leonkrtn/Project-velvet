@@ -51,6 +51,7 @@ export interface DekoCanvasHandle {
   deleteItem: (id: string) => Promise<void>
   updateItemData: (id: string, data: DekoItemData, prevData?: DekoItemData) => Promise<void>
   bringToFront: (id: string) => Promise<void>
+  reloadCatalog: () => Promise<void>
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -196,7 +197,8 @@ const DekoCanvas = forwardRef<DekoCanvasHandle, Props>(function DekoCanvas({
     deleteItem: canvas.deleteItem,
     updateItemData: canvas.updateItemData,
     bringToFront: canvas.bringToFront,
-  }), [canvas.deleteItem, canvas.updateItemData, canvas.bringToFront])
+    reloadCatalog: canvas.reloadCatalog,
+  }), [canvas.deleteItem, canvas.updateItemData, canvas.bringToFront, canvas.reloadCatalog])
 
   useEffect(() => { injectAnims() }, [])
 

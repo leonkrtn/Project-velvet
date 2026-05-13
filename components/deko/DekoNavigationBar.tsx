@@ -136,11 +136,16 @@ export default function DekoNavigationBar({
         const { data: mainItems } = await supabase
           .from('deko_items').select('*').eq('canvas_id', mainCanvas.id)
         if (mainItems && mainItems.length > 0) {
-          const copies = mainItems.map(({ id: _id, created_at: _ca, updated_at: _ua, ...rest }: Record<string, unknown>) => ({
-            ...rest,
-            canvas_id: canvas.id,
-          }))
-          await supabase.from('deko_items').insert(copies)
+          const copies = (mainItems as Record<string, unknown>[]).map(item => {
+            const copy = { ...item }
+            delete copy.id
+            delete copy.created_at
+            delete copy.updated_at
+            copy.canvas_id = canvas.id
+            return copy
+          })
+          const { error } = await supabase.from('deko_items').insert(copies)
+          if (error) console.error('[deko] createVariant copy failed', error)
         }
       }
       onAreasChange(areas.map(a => a.id === areaId ? {
