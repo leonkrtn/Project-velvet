@@ -45,6 +45,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
   }
 
   const isChats = pathname === `${base}/chats` || pathname.startsWith(`${base}/chats/`)
+  const isDeko = pathname === `${base}/dekoration` || pathname.startsWith(`${base}/dekoration/`)
+  const isFullscreen = isChats || isDeko
 
   const sidebar = (
     <nav style={{
@@ -169,7 +171,7 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
       )}
 
       {/* Main content */}
-      <div style={{ flex: 1, overflow: isChats ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflow: isFullscreen ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
         {/* Mobile topbar */}
         <div className="mobile-topbar" style={{
           display: 'none', alignItems: 'center', gap: 12,
@@ -185,7 +187,7 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
           <span style={{ fontSize: 16, fontWeight: 600 }}>{eventTitle}</span>
         </div>
 
-        {isChats ? (
+        {isFullscreen ? (
           <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             {children}
           </div>

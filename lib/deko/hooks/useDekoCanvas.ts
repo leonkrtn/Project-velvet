@@ -23,6 +23,14 @@ export interface DragState {
   startItemY: number
 }
 
+export interface ResizeState {
+  itemId: string
+  startMouseX: number
+  startMouseY: number
+  startWidth: number
+  startHeight: number
+}
+
 export interface UseDekoCanvasResult {
   items: DekoItem[]
   setItems: React.Dispatch<React.SetStateAction<DekoItem[]>>
@@ -31,14 +39,18 @@ export interface UseDekoCanvasResult {
   viewport: CanvasViewport
   setViewport: React.Dispatch<React.SetStateAction<CanvasViewport>>
   dragState: DragState | null
+  resizeState: ResizeState | null
   addItem: (type: DekoItemType, x: number, y: number, data?: Partial<DekoItemData>) => Promise<DekoItem | null>
   updateItemPosition: (id: string, x: number, y: number) => void
   commitItemPosition: (id: string, x: number, y: number) => Promise<void>
   updateItemSize: (id: string, width: number, height: number) => Promise<void>
+  updateItemSizeLocal: (id: string, width: number, height: number) => void
   updateItemData: (id: string, data: DekoItemData) => Promise<void>
   deleteItem: (id: string) => Promise<void>
   startDrag: (itemId: string, mouseX: number, mouseY: number, itemX: number, itemY: number) => void
   endDrag: () => void
+  startResize: (itemId: string, mouseX: number, mouseY: number, width: number, height: number) => void
+  endResize: () => void
   bringToFront: (id: string) => Promise<void>
   catalog: DekoCatalogItem[]
   flatRates: DekoFlatRate[]
@@ -59,6 +71,7 @@ export function useDekoCanvas(
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [viewport, setViewport] = useState<CanvasViewport>({ zoom: 0.45, panX: 0, panY: 0 })
   const [dragState, setDragState] = useState<DragState | null>(null)
+  const [resizeState, setResizeState] = useState<ResizeState | null>(null)
   const [catalog, setCatalog] = useState<DekoCatalogItem[]>(initialCatalog)
   const [flatRates] = useState<DekoFlatRate[]>(initialFlatRates)
   const maxZRef = useRef(Math.max(0, ...initialItems.map(i => i.z_index)))
@@ -117,6 +130,10 @@ export function useDekoCanvas(
     if (error) console.error('[deko] updateItemSize failed', error)
   }, [canEdit, supabase])
 
+  const updateItemSizeLocal = useCallback((id: string, width: number, height: number) => {
+    setItems(prev => prev.map(item => item.id === id ? { ...item, width, height } : item))
+  }, [])
+
   const updateItemData = useCallback(async (id: string, data: DekoItemData) => {
     if (!canEdit) return
     setItems(prev => prev.map(item => item.id === id ? { ...item, data } : item))
@@ -151,6 +168,20 @@ export function useDekoCanvas(
     setDragState(null)
   }, [])
 
+  const startResize = useCallback((
+    itemId: string,
+    mouseX: number, mouseY: number,
+    width: number, height: number
+  ) => {
+    if (!canEdit) return
+    setResizeState({ itemId, startMouseX: mouseX, startMouseY: mouseY, startWidth: width, startHeight: height })
+    wrappedSetSelectedId(itemId)
+  }, [canEdit, wrappedSetSelectedId])
+
+  const endResize = useCallback(() => {
+    setResizeState(null)
+  }, [])
+
   const bringToFront = useCallback(async (id: string) => {
     if (!canEdit) return
     const newZ = maxZRef.current + 1
@@ -174,10 +205,10 @@ export function useDekoCanvas(
     items, setItems,
     selectedId, setSelectedId: wrappedSetSelectedId,
     viewport, setViewport,
-    dragState,
+    dragState, resizeState,
     addItem, updateItemPosition, commitItemPosition,
-    updateItemSize, updateItemData, deleteItem,
-    startDrag, endDrag, bringToFront,
+    updateItemSize, updateItemSizeLocal, updateItemData, deleteItem,
+    startDrag, endDrag, startResize, endResize, bringToFront,
     catalog, flatRates, reloadCatalog,
   }
 }

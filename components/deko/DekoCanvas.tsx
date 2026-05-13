@@ -130,16 +130,7 @@ export default function DekoCanvas({
       canvas.setSelectedId(null)
       onItemSelect?.(null)
     }
-    if (pendingItemType && canEdit) {
-      const rect = viewportRef.current!.getBoundingClientRect()
-      const canvasX = (e.clientX - rect.left - canvas.viewport.panX) / canvas.viewport.zoom
-      const canvasY = (e.clientY - rect.top - canvas.viewport.panY) / canvas.viewport.zoom
-      canvas.addItem(pendingItemType, Math.round(canvasX), Math.round(canvasY)).then(newItem => {
-        onPendingItemPlaced?.()
-        if (newItem) onOpenLightbox?.(newItem)
-      })
-    }
-  }, [canvas, onItemSelect, pendingItemType, canEdit, onPendingItemPlaced, onOpenLightbox])
+  }, [canvas, onItemSelect])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = viewportRef.current?.getBoundingClientRect()
@@ -149,6 +140,15 @@ export default function DekoCanvas({
       const dx = e.clientX - panStart.current.x
       const dy = e.clientY - panStart.current.y
       canvas.setViewport(v => ({ ...v, panX: panStart.current.px + dx, panY: panStart.current.py + dy }))
+      return
+    }
+
+    if (canvas.resizeState) {
+      const dx = (e.clientX - canvas.resizeState.startMouseX) / canvas.viewport.zoom
+      const dy = (e.clientY - canvas.resizeState.startMouseY) / canvas.viewport.zoom
+      const newW = Math.max(40, Math.round(canvas.resizeState.startWidth + dx))
+      const newH = Math.max(40, Math.round(canvas.resizeState.startHeight + dy))
+      canvas.updateItemSizeLocal(canvas.resizeState.itemId, newW, newH)
       return
     }
 
@@ -171,6 +171,15 @@ export default function DekoCanvas({
 
   const handleMouseUp = useCallback((e: React.MouseEvent) => {
     if (isPanning.current) { isPanning.current = false; return }
+    if (canvas.resizeState) {
+      const dx = (e.clientX - canvas.resizeState.startMouseX) / canvas.viewport.zoom
+      const dy = (e.clientY - canvas.resizeState.startMouseY) / canvas.viewport.zoom
+      const newW = Math.max(40, Math.round(canvas.resizeState.startWidth + dx))
+      const newH = Math.max(40, Math.round(canvas.resizeState.startHeight + dy))
+      canvas.updateItemSize(canvas.resizeState.itemId, newW, newH)
+      canvas.endResize()
+      return
+    }
     if (canvas.dragState) {
       const dx = (e.clientX - canvas.dragState.startMouseX) / canvas.viewport.zoom
       const dy = (e.clientY - canvas.dragState.startMouseY) / canvas.viewport.zoom
@@ -264,13 +273,17 @@ export default function DekoCanvas({
         style={{
           flex: 1, overflow: 'hidden', position: 'relative',
           background: '#EFECE7',
-          cursor: pendingItemType ? 'crosshair' : 'default',
+          cursor: canvas.resizeState ? 'se-resize' : pendingItemType ? 'crosshair' : 'default',
           userSelect: 'none',
         }}
         onMouseDown={handleViewportMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
-        onMouseLeave={() => { isPanning.current = false; if (canvas.dragState) canvas.endDrag() }}
+        onMouseLeave={() => {
+          isPanning.current = false
+          if (canvas.dragState) canvas.endDrag()
+          if (canvas.resizeState) canvas.endResize()
+        }}
         onWheel={handleWheel}
       >
         {/* Canvas world — CSS zoom replaces transform:scale() to avoid blur at high zoom */}
@@ -314,6 +327,9 @@ export default function DekoCanvas({
                 e.stopPropagation()
                 onOpenLightbox?.(item)
               }}
+              onResizeMouseDown={(e) => {
+                canvas.startResize(item.id, e.clientX, e.clientY, item.width, item.height)
+              }}
             >
               <DekoItemRenderer
                 item={item}
@@ -347,6 +363,25 @@ export default function DekoCanvas({
             y={panY + u.cursor_y * zoom}
           />
         ))}
+
+        {/* Placement overlay — captures click anywhere on viewport when a tool is selected */}
+        {pendingItemType && canEdit && (
+          <div
+            style={{ position: 'absolute', inset: 0, zIndex: 1000, cursor: 'crosshair' }}
+            onMouseDown={(e) => {
+              if (e.button === 1 || (e.button === 0 && e.altKey)) return
+              if (e.button !== 0) return
+              e.stopPropagation()
+              const rect = viewportRef.current!.getBoundingClientRect()
+              const canvasX = (e.clientX - rect.left - canvas.viewport.panX) / canvas.viewport.zoom
+              const canvasY = (e.clientY - rect.top - canvas.viewport.panY) / canvas.viewport.zoom
+              canvas.addItem(pendingItemType, Math.round(canvasX), Math.round(canvasY)).then(newItem => {
+                onPendingItemPlaced?.()
+                if (newItem) onOpenLightbox?.(newItem)
+              })
+            }}
+          />
+        )}
       </div>
 
       {/* ── Budget bar ── */}
@@ -369,10 +404,11 @@ interface WrapperProps {
   canEdit: boolean
   onMouseDown: (e: React.MouseEvent) => void
   onDoubleClick: (e: React.MouseEvent) => void
+  onResizeMouseDown: (e: React.MouseEvent) => void
   children: React.ReactNode
 }
 
-function DekoItemWrapper({ item, isSelected, isDraggedByOther, canEdit, onMouseDown, onDoubleClick, children }: WrapperProps) {
+function DekoItemWrapper({ item, isSelected, isDraggedByOther, canEdit, onMouseDown, onDoubleClick, onResizeMouseDown, children }: WrapperProps) {
   const isFrame = item.type === 'frame'
   const isTransparent = item.type === 'heading' || item.type === 'divider'
 
@@ -400,14 +436,20 @@ function DekoItemWrapper({ item, isSelected, isDraggedByOther, canEdit, onMouseD
     >
       {children}
       {isSelected && canEdit && (
-        <div style={{
-          position: 'absolute', bottom: -5, right: -5,
-          width: 10, height: 10,
-          background: '#C9B99A', borderRadius: '50%',
-          border: '2px solid white',
-          cursor: 'se-resize',
-          zIndex: 1,
-        }} />
+        <div
+          style={{
+            position: 'absolute', bottom: -6, right: -6,
+            width: 14, height: 14,
+            background: '#C9B99A', borderRadius: '50%',
+            border: '2px solid white',
+            cursor: 'se-resize',
+            zIndex: 1,
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+            onResizeMouseDown(e)
+          }}
+        />
       )}
     </div>
   )
