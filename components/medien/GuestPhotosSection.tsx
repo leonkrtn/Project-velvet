@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
-import { Images, Upload, Trash2, X, Loader } from 'lucide-react'
+import { Images, Upload, Trash2, X, Loader, Globe, Lock } from 'lucide-react'
 
 interface Photo {
   id: string
@@ -12,14 +12,17 @@ interface Photo {
 
 interface Props {
   eventId: string
+  mode?: string
 }
 
-export default function GuestPhotosSection({ eventId }: Props) {
-  const [photos, setPhotos]   = useState<Photo[]>([])
-  const [loading, setLoading] = useState(true)
+export default function GuestPhotosSection({ eventId, mode }: Props) {
+  const [photos, setPhotos]       = useState<Photo[]>([])
+  const [loading, setLoading]     = useState(true)
   const [uploading, setUploading] = useState(false)
   const [lightbox, setLightbox]   = useState<Photo | null>(null)
-  const [error, setError]     = useState<string | null>(null)
+  const [error, setError]         = useState<string | null>(null)
+  const [isPublic, setIsPublic]   = useState(true)
+  const [isBrautpaar, setIsBrautpaar] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { load() }, [eventId])
@@ -30,11 +33,22 @@ export default function GuestPhotosSection({ eventId }: Props) {
       const res  = await fetch(`/api/events/${eventId}/photos`)
       const data = await res.json()
       setPhotos(data.photos ?? [])
+      setIsPublic(data.isPublic ?? true)
+      setIsBrautpaar(data.isBrautpaar ?? false)
     } catch {
       setError('Fotos konnten nicht geladen werden.')
     } finally {
       setLoading(false)
     }
+  }
+
+  async function togglePublic(val: boolean) {
+    setIsPublic(val)
+    await fetch(`/api/events/${eventId}/photos`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isPublic: val }),
+    })
   }
 
   async function handleFiles(files: FileList | null) {
@@ -83,6 +97,32 @@ export default function GuestPhotosSection({ eventId }: Props) {
 
   return (
     <div style={{ marginTop: 32 }}>
+      {/* Brautpaar visibility toggle */}
+      {isBrautpaar && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', marginBottom: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isPublic
+              ? <Globe size={14} color="var(--accent)" />
+              : <Lock size={14} color="var(--text-secondary)" />}
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>
+                {isPublic ? 'Alle Gäste sehen alle Fotos' : 'Gäste sehen nur ihre eigenen Fotos'}
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>Sichtbarkeit für Gäste</p>
+            </div>
+          </div>
+          <button
+            onClick={() => togglePublic(!isPublic)}
+            style={{
+              width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
+              background: isPublic ? 'var(--accent)' : 'var(--border2)', position: 'relative', flexShrink: 0, transition: 'background 0.2s',
+            }}
+          >
+            <span style={{ position: 'absolute', top: 3, left: isPublic ? 20 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)' }}>

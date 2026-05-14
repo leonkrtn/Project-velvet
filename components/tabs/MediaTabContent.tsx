@@ -393,7 +393,7 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
           </div>
           )}
 
-          {galleryEnabled && <GuestPhotosSection eventId={eventId} />}
+          {galleryEnabled && <GuestPhotosSection eventId={eventId} mode={mode} />}
         </div>
       )}
     </div>
