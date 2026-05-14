@@ -332,7 +332,7 @@ function KostenübersichtCard({ eventId, organizerFee, budgetItems, cateringCost
     <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 22px', borderBottom: '1px solid var(--border)' }}>
         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Kostenübersicht (Brautpaar)</span>
-        <Link href={`/veranstalter/${eventId}/budget`} style={{ fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none', padding: '4px 8px', borderRadius: 6 }}>
+        <Link href={`/veranstalter/${eventId}/allgemein#budget`} style={{ fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none', padding: '4px 8px', borderRadius: 6 }}>
           Zum Budget →
         </Link>
       </div>
