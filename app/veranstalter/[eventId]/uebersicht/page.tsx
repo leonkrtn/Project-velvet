@@ -4,6 +4,21 @@ import Link from 'next/link'
 import { Users, Mail, Calendar, Phone } from 'lucide-react'
 import OrganizerTodoList from './OrganizerTodoList'
 
+interface BudgetLineItem {
+  id: string
+  description: string | null
+  category: string | null
+  planned: number
+  actual: number
+  payment_status: string
+}
+
+interface CateringCostItem {
+  id: string
+  category: string | null
+  price_per_person: number
+}
+
 interface Props {
   params: Promise<{ eventId: string }>
 }
@@ -99,6 +114,8 @@ export default async function UebersichtPage({ params }: Props) {
     budgetItemsRes,
     todosRes,
     organizerCostsRes,
+    cateringCostsRes,
+    cateringPlanRes,
     staffRes,
     daysRes,
   ] = await Promise.all([
@@ -109,9 +126,11 @@ export default async function UebersichtPage({ params }: Props) {
     supabase.from('invite_codes').select('id, status').eq('event_id', eventId).eq('status', 'offen'),
     supabase.from('guests').select('id, status').eq('event_id', eventId),
     supabase.from('vendors').select('id, name, status, price, category').eq('event_id', eventId),
-    supabase.from('budget_items').select('id, planned, actual, payment_status').eq('event_id', eventId),
+    supabase.from('budget_items').select('id, description, category, planned, actual, payment_status').eq('event_id', eventId).order('created_at', { ascending: true }),
     supabase.from('organizer_todos').select('id, title, done').eq('event_id', eventId).eq('organizer_id', user.id).order('created_at'),
     supabase.from('event_organizer_costs').select('amount').eq('event_id', eventId),
+    supabase.from('event_organizer_costs').select('id, category, price_per_person').eq('event_id', eventId).eq('source', 'catering').order('created_at', { ascending: true }),
+    supabase.from('catering_plans').select('plan_guest_count_enabled, plan_guest_count').eq('event_id', eventId).single(),
     supabase.from('organizer_staff').select('id, hourly_rate').eq('organizer_id', user.id),
     supabase.from('personalplanung_days').select('id').eq('event_id', eventId),
   ])
@@ -125,6 +144,7 @@ export default async function UebersichtPage({ params }: Props) {
   const vendors = vendorsRes.data ?? []
   const budgetItems = budgetItemsRes.data ?? []
   const organizerTodos = todosRes.data ?? []
+  const budgetLineItems = (budgetItemsRes.data ?? []) as BudgetLineItem[]
 
   const contactMembers = (contactMembersRes.data ?? []).map(m => ({
     ...m,
@@ -160,6 +180,11 @@ export default async function UebersichtPage({ params }: Props) {
   const daysLeft = daysUntil(event.date)
   const guestsTotal = guests.length
   const guestsConfirmed = guests.filter(g => g.status === 'zugesagt').length
+  const cateringCosts = (cateringCostsRes.data ?? []) as CateringCostItem[]
+  const cateringPlan = cateringPlanRes.data
+  const effectiveGuestCount = cateringPlan?.plan_guest_count_enabled && (cateringPlan.plan_guest_count ?? 0) > 0
+    ? cateringPlan.plan_guest_count
+    : guestsConfirmed
   const guestsDeclined = guests.filter(g => g.status === 'abgesagt').length
   const budgetTotal = event.budget_total ?? 0
   const totalSpent = budgetItems.reduce((s, b) => s + (b.actual ?? 0), 0)
@@ -261,8 +286,124 @@ export default async function UebersichtPage({ params }: Props) {
         />
       </div>
 
+      {/* Kostenübersicht */}
+      <div style={{ marginBottom: 24 }}>
+        <KostenübersichtCard
+          eventId={eventId}
+          organizerFee={event.organizer_fee ?? 0}
+          budgetItems={budgetLineItems}
+          cateringCosts={cateringCosts}
+          effectiveGuestCount={effectiveGuestCount}
+        />
+      </div>
+
       {/* Organizer To-Do Liste */}
       <OrganizerTodoList eventId={eventId} organizerId={user.id} initialTodos={organizerTodos} />
+    </div>
+  )
+}
+
+// ── Kostenübersicht ────────────────────────────────────────────────────────
+
+type PaymentStatus = 'offen' | 'angezahlt' | 'bezahlt'
+
+const STATUS_COLOR: Record<PaymentStatus, string> = {
+  offen:      'var(--text-tertiary)',
+  angezahlt:  '#C2410C',
+  bezahlt:    '#15803D',
+}
+
+function KostenübersichtCard({ eventId, organizerFee, budgetItems, cateringCosts, effectiveGuestCount }: {
+  eventId: string
+  organizerFee: number
+  budgetItems: BudgetLineItem[]
+  cateringCosts: CateringCostItem[]
+  effectiveGuestCount: number
+}) {
+  const cateringTotal = cateringCosts.reduce((s, c) => s + (Number(c.price_per_person) || 0), 0) * effectiveGuestCount
+  const nonCateringItems = budgetItems.filter(i => i.category?.toLowerCase() !== 'catering')
+  const plannedTotal = nonCateringItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)
+  const actualTotal  = nonCateringItems.reduce((s, i) => s + (Number(i.actual)  || 0), 0)
+  const grandPlanned = plannedTotal + (organizerFee > 0 ? organizerFee : 0) + cateringTotal
+  const grandActual  = actualTotal
+  const hasItems = budgetItems.length > 0 || cateringCosts.length > 0 || organizerFee > 0
+
+  return (
+    <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 22px', borderBottom: '1px solid var(--border)' }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Kostenübersicht (Brautpaar)</span>
+      </div>
+
+      {!hasItems ? (
+        <div style={{ padding: '20px 22px', fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+          Noch keine Kostenpositionen angelegt.
+        </div>
+      ) : (
+        <>
+          {/* Spaltenköpfe */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 12, padding: '8px 22px 6px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>Position</span>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', textAlign: 'right', minWidth: 90 }}>Geplant</span>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', textAlign: 'right', minWidth: 90 }}>Tatsächlich</span>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', textAlign: 'right', minWidth: 80 }}>Status</span>
+          </div>
+
+          {/* Veranstalter-Honorar */}
+          {organizerFee > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 12, padding: '11px 22px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)' }}>Veranstalter-Honorar</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>Honorar</div>
+              </div>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right', minWidth: 90 }}>{fmtMoney(organizerFee)}</span>
+              <span style={{ fontSize: 13.5, color: 'var(--text-tertiary)', textAlign: 'right', minWidth: 90 }}>—</span>
+              <span style={{ minWidth: 80 }} />
+            </div>
+          )}
+
+          {/* Catering */}
+          {cateringCosts.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 12, padding: '11px 22px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)' }}>Catering</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>
+                  {cateringCosts.length} Posten · {effectiveGuestCount} Gäste
+                </div>
+              </div>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right', minWidth: 90 }}>{fmtMoney(cateringTotal)}</span>
+              <span style={{ fontSize: 13.5, color: 'var(--text-tertiary)', textAlign: 'right', minWidth: 90 }}>—</span>
+              <span style={{ minWidth: 80 }} />
+            </div>
+          )}
+
+          {/* Budget-Positionen */}
+          {nonCateringItems.map(item => (
+            <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 12, padding: '11px 22px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)' }}>{item.description || '—'}</div>
+                {item.category && <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>{item.category}</div>}
+              </div>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right', minWidth: 90 }}>{fmtMoney(item.planned)}</span>
+              <span style={{ fontSize: 13.5, color: item.actual > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'right', minWidth: 90 }}>
+                {item.actual > 0 ? fmtMoney(item.actual) : '—'}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: STATUS_COLOR[item.payment_status as PaymentStatus] ?? 'var(--text-tertiary)', textAlign: 'right', minWidth: 80 }}>
+                {{ offen: 'Offen', angezahlt: 'Angezahlt', bezahlt: 'Bezahlt' }[item.payment_status] ?? item.payment_status}
+              </span>
+            </div>
+          ))}
+
+          {/* Summe */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 12, padding: '13px 22px', background: 'rgba(0,0,0,0.02)', borderTop: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Gesamt geplant</span>
+            <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.3px', color: 'var(--text-primary)', textAlign: 'right', minWidth: 90 }}>{fmtMoney(grandPlanned)}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: grandActual > 0 ? 'var(--text-primary)' : 'var(--text-tertiary)', textAlign: 'right', minWidth: 90 }}>
+              {grandActual > 0 ? fmtMoney(grandActual) : '—'}
+            </span>
+            <span style={{ minWidth: 80 }} />
+          </div>
+        </>
+      )}
     </div>
   )
 }
