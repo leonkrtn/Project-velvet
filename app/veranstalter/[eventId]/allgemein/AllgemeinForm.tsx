@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, ChevronDown, ChevronUp, ExternalLink, Clock } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
+import DateInput from '@/components/ui/DateInput'
 
 const FIXED_COST_CATEGORIES = [
   'Miete / Locationkosten',
@@ -378,7 +379,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
         <div style={{ ...row, gridTemplateColumns: '1fr 1fr' }}>
           <div>
             <label style={label}>Datum</label>
-            <input type="date" style={input} value={form.date ?? ''} onChange={e => update('date', e.target.value || null)} />
+            <DateInput style={input} value={form.date} onChange={v => update('date', v)} />
           </div>
           <div>
             <label style={label}>Uhrzeit Beginn</label>
@@ -747,10 +748,9 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
                   {galleryScheduled && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
                       <Clock size={12} color="var(--accent)" />
-                      <input
-                        type="date"
-                        value={galleryUnlockAt ?? ''}
-                        onChange={e => setGallerySchedule(e.target.value || null)}
+                      <DateInput
+                        value={galleryUnlockAt}
+                        onChange={v => setGallerySchedule(v)}
                         style={{ ...input, width: 'auto', padding: '4px 8px', fontSize: 13 }}
                       />
                     </div>
