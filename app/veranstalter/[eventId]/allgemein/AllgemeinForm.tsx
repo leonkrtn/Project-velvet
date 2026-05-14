@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, ChevronDown, ChevronUp, ExternalLink, Clock } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronUp, Clock } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
 import DateInput from '@/components/ui/DateInput'
 
@@ -97,7 +97,6 @@ interface Props {
   initialData: EventData
   bpMembers: BpMember[]
   initialCosts: OrganizerCost[]
-  cateringCosts: OrganizerCost[]
   initialToggles: Record<string, boolean>
   initialGalleryUnlockAt: string | null
 }
@@ -167,7 +166,7 @@ function Toggle({ checked, onChange, label: lbl }: { checked: boolean; onChange:
   )
 }
 
-export default function AllgemeinForm({ eventId, initialData, bpMembers, initialCosts, cateringCosts, initialToggles, initialGalleryUnlockAt }: Props) {
+export default function AllgemeinForm({ eventId, initialData, bpMembers, initialCosts, initialToggles, initialGalleryUnlockAt }: Props) {
   const [form, setForm] = useState(initialData)
   const [ceremonyTimeStr, setCeremonyTimeStr] = useState(initialData.ceremony_start?.slice(11, 16) ?? '')
   const [saving, setSaving] = useState(false)
@@ -455,47 +454,6 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
 
       {/* 4. Veranstalterkosten */}
       <SectionWrap title="Veranstalterkosten">
-        {/* Catering-Kosten (read-only, verwaltet auf Catering-Seite) */}
-        {cateringCosts.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
-              Catering-Kosten
-            </div>
-            {cateringCosts.map(cost => (
-              <Link
-                key={cost.id}
-                href={`/veranstalter/${eventId}/catering`}
-                style={{ textDecoration: 'none' }}
-              >
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 14px', marginBottom: 8,
-                  background: 'var(--accent-light)',
-                  border: '1px solid rgba(29,29,31,0.12)',
-                  borderRadius: 'var(--radius-sm)',
-                  cursor: 'pointer',
-                  transition: 'opacity 0.15s',
-                }}>
-                  <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>
-                    {cost.category}
-                  </span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {cost.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                  </span>
-                  <ExternalLink size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                </div>
-              </Link>
-            ))}
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4, paddingLeft: 2 }}>
-              Catering-Kosten werden auf der{' '}
-              <Link href={`/veranstalter/${eventId}/catering`} style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
-                Catering & Menü-Seite
-              </Link>{' '}
-              verwaltet.
-            </div>
-          </div>
-        )}
-
         {/* Aktive Kostenpositionen */}
         {costs.length > 0 && (
           <div style={{ marginBottom: 20 }}>
@@ -587,20 +545,12 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
         </div>
 
         {/* Summe */}
-        {(costs.length > 0 || cateringCosts.length > 0) && (
+        {costs.length > 0 && (
           <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-            {cateringCosts.length > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>davon Catering</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                  {cateringCosts.reduce((s, c) => s + (c.amount ?? 0), 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                </span>
-              </div>
-            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>Summe Veranstalterkosten</span>
               <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-                {([...costs, ...cateringCosts]).reduce((s, c) => s + (c.amount ?? 0), 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                {costs.reduce((s, c) => s + (c.amount ?? 0), 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
               </span>
             </div>
           </div>

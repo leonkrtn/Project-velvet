@@ -191,8 +191,6 @@ function AllgemeinFormWrapper({ eventId }: { eventId: string }) {
       bpMembers={formProps.bpMembers as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       initialCosts={formProps.initialCosts as any}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      cateringCosts={formProps.cateringCosts as any}
       initialToggles={formProps.initialToggles}
       initialGalleryUnlockAt={formProps.initialGalleryUnlockAt}
     />
