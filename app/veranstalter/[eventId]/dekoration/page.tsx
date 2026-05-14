@@ -61,11 +61,7 @@ async function DekoPageInner({ eventId, userId, userName, role }: { eventId: str
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.5px' }}>Dekoration</h1>
-      </div>
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <DekoPageClient
+      <DekoPageClient
           eventId={eventId}
           role={role}
           userId={userId}
@@ -78,7 +74,6 @@ async function DekoPageInner({ eventId, userId, userName, role }: { eventId: str
           allFrozen={allFrozen}
           isVeranstalter={role === 'veranstalter'}
         />
-      </div>
     </div>
   )
 }
