@@ -298,7 +298,7 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
   useEffect(() => {
     const supabase = createClient()
     Promise.all([
-      supabase.from('media_briefing').select('*').eq('event_id', eventId).single(),
+      supabase.from('media_briefing').select('*').eq('event_id', eventId).maybeSingle(),
       supabase.from('media_shot_items').select('*').eq('event_id', eventId).order('sort_order'),
       supabase.from('feature_toggles').select('enabled').eq('event_id', eventId).eq('key', 'gaeste-fotos').maybeSingle(),
     ]).then(([{ data: b }, { data: s }, { data: ft }]) => {
@@ -393,7 +393,7 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
           </div>
           )}
 
-          {galleryEnabled && <GuestPhotosSection eventId={eventId} />}
+          {galleryEnabled && <GuestPhotosSection eventId={eventId} mode={mode} />}
         </div>
       )}
     </div>

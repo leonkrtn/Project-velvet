@@ -23,16 +23,18 @@ async function resolveGuest(token: string) {
   return guest
 }
 
-async function isGalleryEnabled(eventId: string): Promise<boolean> {
+async function getToggles(eventId: string): Promise<{ enabled: boolean; isPublic: boolean }> {
   const admin = createAdminClient()
   const { data } = await admin
     .from('feature_toggles')
-    .select('enabled')
+    .select('key, enabled')
     .eq('event_id', eventId)
-    .eq('key', 'gaeste-fotos')
-    .maybeSingle()
-  // Default true when no row exists
-  return data?.enabled ?? true
+    .in('key', ['gaeste-fotos', 'gaeste-fotos-public'])
+  const map = Object.fromEntries((data ?? []).map(r => [r.key, r.enabled]))
+  return {
+    enabled:  map['gaeste-fotos']        ?? true,
+    isPublic: map['gaeste-fotos-public'] ?? true,
+  }
 }
 
 // ── GET ──────────────────────────────────────────────────────────────────────
@@ -44,17 +46,21 @@ export async function GET(
   const guest = await resolveGuest(token)
   if (!guest) return NextResponse.json({ error: 'Ungültiger Token' }, { status: 404 })
 
-  const enabled = await isGalleryEnabled(guest.event_id)
-  if (!enabled) return NextResponse.json({ photos: [], enabled: false })
+  const { enabled, isPublic } = await getToggles(guest.event_id)
+  if (!enabled) return NextResponse.json({ photos: [], enabled: false, isPublic })
 
   const admin = createAdminClient()
-  const { data: rows, error } = await admin
+  let query = admin
     .from('guest_photos')
     .select('id, uploader_name, uploaded_at, r2_key, guest_token')
     .eq('event_id', guest.event_id)
     .eq('status', 'active')
     .order('uploaded_at', { ascending: false })
 
+  // When not public: guests only see their own photos
+  if (!isPublic) query = query.eq('guest_token', token)
+
+  const { data: rows, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const photos = await Promise.all(
@@ -70,7 +76,7 @@ export async function GET(
     })
   )
 
-  return NextResponse.json({ photos, enabled: true })
+  return NextResponse.json({ photos, enabled: true, isPublic })
 }
 
 // ── POST ─────────────────────────────────────────────────────────────────────
@@ -82,7 +88,7 @@ export async function POST(
   const guest = await resolveGuest(token)
   if (!guest) return NextResponse.json({ error: 'Ungültiger Token' }, { status: 404 })
 
-  const enabled = await isGalleryEnabled(guest.event_id)
+  const { enabled } = await getToggles(guest.event_id)
   if (!enabled) return NextResponse.json({ error: 'Foto-Upload ist deaktiviert' }, { status: 403 })
 
   const body = await req.json() as { filename: string; contentType: string; sizeBytes?: number }

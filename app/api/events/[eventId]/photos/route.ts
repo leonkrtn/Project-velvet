@@ -38,15 +38,24 @@ export async function GET(
   if (!member) return NextResponse.json({ error: 'Nicht berechtigt' }, { status: 401 })
 
   const admin = createAdminClient()
-  const { data: rows, error } = await admin
-    .from('guest_photos')
-    .select('id, uploader_name, uploaded_at, r2_key, guest_token')
-    .eq('event_id', eventId)
-    .eq('status', 'active')
-    .order('uploaded_at', { ascending: false })
+  const [{ data: rows, error }, { data: toggleRow }] = await Promise.all([
+    admin
+      .from('guest_photos')
+      .select('id, uploader_name, uploaded_at, r2_key, guest_token')
+      .eq('event_id', eventId)
+      .eq('status', 'active')
+      .order('uploaded_at', { ascending: false }),
+    admin
+      .from('feature_toggles')
+      .select('enabled')
+      .eq('event_id', eventId)
+      .eq('key', 'gaeste-fotos-public')
+      .maybeSingle(),
+  ])
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  const isPublic = toggleRow?.enabled ?? true
   const canDeleteAll = member.role === 'veranstalter' || member.role === 'brautpaar'
   const photos = await Promise.all(
     (rows ?? []).map(async p => {
@@ -61,7 +70,28 @@ export async function GET(
     })
   )
 
-  return NextResponse.json({ photos })
+  return NextResponse.json({ photos, isPublic, isBrautpaar: member.role === 'brautpaar' })
+}
+
+// ── PATCH (toggle public visibility — brautpaar only) ─────────────────────────
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ eventId: string }> }
+) {
+  const { eventId } = await params
+  const member = await getAuthedMember(eventId)
+  if (!member) return NextResponse.json({ error: 'Nicht berechtigt' }, { status: 401 })
+  if (member.role !== 'brautpaar' && member.role !== 'veranstalter') {
+    return NextResponse.json({ error: 'Nur Brautpaar oder Veranstalter' }, { status: 403 })
+  }
+
+  const { isPublic } = await req.json() as { isPublic: boolean }
+  const admin = createAdminClient()
+  await admin.from('feature_toggles').upsert(
+    { event_id: eventId, key: 'gaeste-fotos-public', enabled: isPublic },
+    { onConflict: 'event_id,key' }
+  )
+  return NextResponse.json({ ok: true })
 }
 
 // ── POST ─────────────────────────────────────────────────────────────────────

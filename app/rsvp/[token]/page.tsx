@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { v4 as uuid } from 'uuid'
-import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink, Music } from 'lucide-react'
+import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink, Music, Camera } from 'lucide-react'
 import RsvpPhotos from '@/components/rsvp/RsvpPhotos'
 import type {
   Event, Guest, MealChoice, AllergyTag, TransportMode, AltersKategorie,
 } from '@/lib/store'
 import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle, Input } from '@/components/ui'
 
-type Step = 'intro'|'rsvp'|'details'|'hotel'|'musikwunsch'|'geschenke'|'confirmation'
+type Step = 'intro'|'rsvp'|'details'|'hotel'|'musikwunsch'|'geschenke'|'fotos'|'confirmation'
 
 interface WishlistItem {
   id: string
@@ -467,7 +467,7 @@ export default function RSVPPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {step !== 'intro' && (
               <button onClick={() => {
-                if (step === 'musikwunsch' || step === 'geschenke') {
+                if (step === 'musikwunsch' || step === 'geschenke' || step === 'fotos') {
                   setStep('confirmation')
                 } else {
                   const cur = progressSteps.indexOf(step)
@@ -1156,6 +1156,18 @@ export default function RSVPPage() {
                 >
                   <Gift size={15} /> Geschenkliste ansehen
                 </button>
+                <button
+                  onClick={() => setStep('fotos')}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                    padding: '14px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
+                    border: '1.5px solid var(--border)', background: 'var(--surface)',
+                    color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    width: '100%', transition: 'opacity 0.15s',
+                  }}
+                >
+                  <Camera size={15} /> Eventfotos ansehen & hochladen
+                </button>
               </div>
             )}
 
@@ -1169,9 +1181,9 @@ export default function RSVPPage() {
           </div>
         )}
 
-        {/* Gästefotos — immer sichtbar, wird ausgeblendet wenn Feature deaktiviert */}
-        {token && (
-          <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 24, margin: '24px -16px 0' }}>
+        {/* ──────────── FOTOS ──────────── */}
+        {step === 'fotos' && (
+          <div style={{ animation: 'fadeUp 0.4s ease' }}>
             <RsvpPhotos token={token} />
           </div>
         )}

@@ -97,7 +97,7 @@ export default function RsvpPhotos({ token }: Props) {
   if (!enabled) return null
 
   return (
-    <div style={{ padding: '0 20px 32px' }}>
+    <div style={{ paddingBottom: 32 }}>
       {/* Section header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
         <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(176,141,87,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
