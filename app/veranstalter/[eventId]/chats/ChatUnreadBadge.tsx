@@ -14,28 +14,34 @@ export default function ChatUnreadBadge({ eventId }: { eventId: string }) {
   useEffect(() => {
     if (!userId) return
 
+    // Initial total unread count via DB function
     supabase
-      .from('messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('event_id', eventId)
-      .neq('sender_id', userId)
-      .is('read_at', null)
-      .then(({ count: c }) => setCount(c ?? 0))
+      .rpc('get_chat_unread_count', { p_event_id: eventId, p_user_id: userId })
+      .then(({ data }) => setCount(data ?? 0))
 
-    const channel = supabase
+    // Increment when new messages arrive
+    const msgChannel = supabase
       .channel(`sidebar-unread:${eventId}:${userId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `event_id=eq.${eventId}` }, (payload) => {
         const p = payload.new as { sender_id: string | null }
         if (p.sender_id !== userId) setCount(prev => prev + 1)
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `event_id=eq.${eventId}` }, (payload) => {
-        const p = payload.new as { read_at: string | null; sender_id: string | null }
-        const old = payload.old as { read_at: string | null }
-        if (!old.read_at && p.read_at && p.sender_id !== userId) setCount(prev => Math.max(0, prev - 1))
+      .subscribe()
+
+    // Decrement (or recompute) when a conversation is marked read
+    const readChannel = supabase
+      .channel(`sidebar-read-state:${eventId}:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_read_state' }, () => {
+        supabase
+          .rpc('get_chat_unread_count', { p_event_id: eventId, p_user_id: userId })
+          .then(({ data }) => setCount(data ?? 0))
       })
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      supabase.removeChannel(msgChannel)
+      supabase.removeChannel(readChannel)
+    }
   }, [supabase, eventId, userId])
 
   if (count === 0) return null

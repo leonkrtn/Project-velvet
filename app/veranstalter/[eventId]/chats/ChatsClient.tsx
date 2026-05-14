@@ -77,16 +77,12 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   // ── Fetch initial unread counts ──────────────────────────────────────────
   useEffect(() => {
     supabase
-      .from('messages')
-      .select('conversation_id')
-      .eq('event_id', eventId)
-      .neq('sender_id', currentUserId)
-      .is('read_at', null)
+      .rpc('get_conversation_unread_counts', { p_event_id: eventId, p_user_id: currentUserId })
       .then(({ data }) => {
         if (!data) return
         const counts: UnreadMap = {}
-        for (const row of data) {
-          counts[row.conversation_id] = (counts[row.conversation_id] ?? 0) + 1
+        for (const row of data as { conversation_id: string; unread_count: number }[]) {
+          counts[row.conversation_id] = row.unread_count
         }
         setUnread(counts)
       })
@@ -139,13 +135,10 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
 
     loadMessages(activeConv.id)
 
-    // Mark all unread messages in this conversation as read
+    // Mark conversation as read by upserting last_read_at
     supabase
-      .from('messages')
-      .update({ read_at: new Date().toISOString() })
-      .eq('conversation_id', activeConv.id)
-      .neq('sender_id', currentUserId)
-      .is('read_at', null)
+      .from('conversation_read_state')
+      .upsert({ conversation_id: activeConv.id, user_id: currentUserId, last_read_at: new Date().toISOString() })
       .then(() => setUnread(prev => ({ ...prev, [activeConv.id]: 0 })))
 
     // Realtime: new messages in active conversation
@@ -161,7 +154,9 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
         setMessages(prev => prev.some(m => m.id === p.id) ? prev : [...prev, { ...p, sender: null }])
         // Auto-mark as read since user is viewing this conversation
         if (p.sender_id !== currentUserId) {
-          supabase.from('messages').update({ read_at: new Date().toISOString() }).eq('id', p.id)
+          supabase.from('conversation_read_state').upsert({
+            conversation_id: p.conversation_id, user_id: currentUserId, last_read_at: new Date().toISOString(),
+          })
         }
       })
       .subscribe()
