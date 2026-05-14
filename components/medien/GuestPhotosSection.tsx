@@ -98,7 +98,7 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
   return (
     <div style={{ marginTop: 32 }}>
       {/* Brautpaar visibility toggle */}
-      {isBrautpaar && (
+      {(isBrautpaar || mode === 'brautpaar') && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', marginBottom: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {isPublic
