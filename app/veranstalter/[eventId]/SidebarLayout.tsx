@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import ChatUnreadBadge from './chats/ChatUnreadBadge'
 import {
   LayoutDashboard, Settings, Users, MessageSquare,
-  Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
+  Calendar, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
   Music2, Cake, Flower2, Camera, FolderOpen,
 } from 'lucide-react'
 
@@ -29,7 +29,6 @@ const NAV_ITEMS = [
   { key: 'patisserie',      label: 'Patisserie',        icon: Cake },
   { key: 'dekoration',      label: 'Dekoration',        icon: Flower2 },
   { key: 'medien',          label: 'Foto & Videograf',   icon: Camera },
-  { key: 'berechtigungen',  label: 'Berechtigungen',    icon: Shield },
   { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
   { key: 'personalplanung', label: 'Personalplanung',   icon: UserCog },
   { key: 'dateien',        label: 'Dateien',            icon: FolderOpen },
