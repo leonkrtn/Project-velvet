@@ -49,10 +49,26 @@ export default function ChatTab({ eventId }: { eventId: string }) {
   const [showInfo, setShowInfo] = useState(false)
   const [addingMember, setAddingMember] = useState(false)
   const [members, setMembers] = useState<{ user_id: string; role: string; profiles: { id: string; name: string; email: string } | null }[]>([])
+  const [unread, setUnread] = useState<Record<string, number>>({})
+  const activeConvIdRef = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
+    supabase.auth.getUser().then(({ data }) => {
+      const uid = data.user?.id ?? null
+      setUserId(uid)
+      if (!uid) return
+      supabase
+        .rpc('get_conversation_unread_counts', { p_event_id: eventId, p_user_id: uid })
+        .then(({ data: rows }) => {
+          if (!rows) return
+          const counts: Record<string, number> = {}
+          for (const r of rows as { conversation_id: string; unread_count: number }[]) {
+            counts[r.conversation_id] = r.unread_count
+          }
+          setUnread(counts)
+        })
+    })
     supabase.from('event_members').select('user_id, role, profiles!user_id(id, name, email)').eq('event_id', eventId)
       .then(({ data }) => setMembers((data ?? []).map(m => ({ ...m, profiles: Array.isArray(m.profiles) ? (m.profiles[0] ?? null) : m.profiles }))))
   }, [supabase, eventId])
@@ -87,8 +103,17 @@ export default function ChatTab({ eventId }: { eventId: string }) {
   }, [supabase])
 
   useEffect(() => {
+    activeConvIdRef.current = activeConv?.id ?? null
     if (!activeConv) return
     loadMessages(activeConv.id)
+
+    // Mark conversation as read
+    if (userId) {
+      supabase
+        .from('conversation_read_state')
+        .upsert({ conversation_id: activeConv.id, user_id: userId, last_read_at: new Date().toISOString() })
+        .then(() => setUnread(prev => ({ ...prev, [activeConv.id]: 0 })))
+    }
 
     const channel = supabase
       .channel(`vendor-chat:${activeConv.id}`)
@@ -98,11 +123,17 @@ export default function ChatTab({ eventId }: { eventId: string }) {
       }, (payload) => {
         const p = payload.new as { id: string; conversation_id: string; sender_id: string | null; content: string; read_at: string | null; created_at: string }
         setMessages(prev => prev.some(m => m.id === p.id) ? prev : [...prev, { ...p, sender: null }])
+        // Auto-mark as read since user is viewing this conversation
+        if (p.sender_id !== userId && userId) {
+          supabase.from('conversation_read_state').upsert({
+            conversation_id: p.conversation_id, user_id: userId, last_read_at: new Date().toISOString(),
+          })
+        }
       })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [activeConv?.id, loadMessages, supabase])
+  }, [activeConv?.id, loadMessages, supabase, userId])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -126,6 +157,24 @@ export default function ChatTab({ eventId }: { eventId: string }) {
   }
 
   useEffect(() => { setShowInfo(false) }, [activeConv?.id])
+
+  // Realtime: increment unread for messages in non-active conversations
+  useEffect(() => {
+    if (!userId) return
+    const channel = supabase
+      .channel(`vendor-unread:${eventId}:${userId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `event_id=eq.${eventId}` }, (payload) => {
+        const p = payload.new as { conversation_id: string; sender_id: string | null }
+        if (p.sender_id === userId) return
+        if (p.conversation_id === activeConvIdRef.current) return
+        setUnread(prev => ({ ...prev, [p.conversation_id]: (prev[p.conversation_id] ?? 0) + 1 }))
+        setConversations(prev => prev.map(c =>
+          c.id === p.conversation_id ? { ...c, updated_at: new Date().toISOString() } : c
+        ).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [supabase, eventId, userId])
 
   async function addParticipant(uid: string) {
     if (!activeConv || addingMember) return
@@ -202,8 +251,15 @@ export default function ChatTab({ eventId }: { eventId: string }) {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                      <span style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>{fmtTime(conv.updated_at)}</span>
+                      <span style={{ fontWeight: (unread[conv.id] ?? 0) > 0 ? 700 : 600, fontSize: 13.5, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                        {(unread[conv.id] ?? 0) > 0 && (
+                          <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center', lineHeight: '16px' }}>
+                            {unread[conv.id]}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{fmtTime(conv.updated_at)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

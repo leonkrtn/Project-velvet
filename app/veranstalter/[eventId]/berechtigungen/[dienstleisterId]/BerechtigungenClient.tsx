@@ -102,7 +102,7 @@ const CONFIGURABLE_TABS: TabConfig[] = [
     ],
   },
   {
-    key: 'medien', label: 'Medien & Aufnahmen', icon: Camera,
+    key: 'medien', label: 'Foto & Videograf', icon: Camera,
     sections: [
       { key: 'briefing',  label: 'Briefing',   tooltip: 'Anweisungen und Wünsche für Foto und Video' },
       { key: 'shotliste', label: 'Shot-Liste',  tooltip: 'Gewünschte und obligatorische Aufnahmen' },

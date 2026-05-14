@@ -8,6 +8,7 @@ import {
   Palette, Music, Cake, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu,
 } from 'lucide-react'
+import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 
 interface NavItem {
   key: string
@@ -46,7 +47,7 @@ function buildNav(eventId: string): NavGroup[] {
         b('dekoration', 'Dekoration', <Palette size={16} />),
         b('musik', 'Musik', <Music size={16} />),
         b('patisserie', 'Patisserie', <Cake size={16} />),
-        b('medien', 'Medien', <Camera size={16} />),
+        b('medien', 'Foto & Videograf', <Camera size={16} />),
       ],
     },
     {
@@ -218,6 +219,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
                 >
                   <span className="bp-nav-item-icon">{item.icon}</span>
                   <span className="bp-nav-item-label">{item.label}</span>
+                  {item.key === 'nachrichten' && <ChatUnreadBadge eventId={eventId} />}
                 </Link>
               )
             ))}

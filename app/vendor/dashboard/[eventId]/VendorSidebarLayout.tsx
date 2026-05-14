@@ -8,6 +8,7 @@ import {
   Music2, Cake, Flower2, Camera, Users, FileText,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 
 interface Props {
   eventId: string
@@ -26,7 +27,7 @@ const ALL_NAV_ITEMS = [
   { key: 'musik',       label: 'Musik',              icon: Music2 },
   { key: 'patisserie',  label: 'Patisserie',         icon: Cake },
   { key: 'dekoration',  label: 'Dekoration',         icon: Flower2 },
-  { key: 'medien',      label: 'Medien & Aufnahmen', icon: Camera },
+  { key: 'medien',      label: 'Foto & Videograf',   icon: Camera },
   { key: 'sitzplan',    label: 'Sitzplan',           icon: Grid2X2 },
   { key: 'files',       label: 'Dokumente',          icon: FileText },
 ]
@@ -125,7 +126,8 @@ export default function VendorSidebarLayout({ eventId, eventTitle, eventDate, ch
               }}
             >
               <Icon size={16} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
-              <span>{label}</span>
+              <span style={{ flex: 1 }}>{label}</span>
+              {key === 'chats' && <ChatUnreadBadge eventId={eventId} />}
             </Link>
           )
         })}

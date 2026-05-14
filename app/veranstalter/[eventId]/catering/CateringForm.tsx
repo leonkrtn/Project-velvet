@@ -1,9 +1,8 @@
 'use client'
-import React, { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Save, Plus, X, ChevronDown, ChevronUp, Users, TrendingUp,
+  Plus, X, ChevronDown, ChevronUp, Users, TrendingUp,
   AlertTriangle, UtensilsCrossed,
 } from 'lucide-react'
 
@@ -261,7 +260,6 @@ export default function CateringForm({
   eventId, initialEvent, initialPlan, initialCosts,
   confirmedGuestCount, mealCounts, allergyCounts, hideCosts = false,
 }: Props) {
-  const router = useRouter()
   const [event, setEvent] = useState(initialEvent)
   const [plan, setPlan] = useState<CateringPlan>(() => parsePlan(initialPlan))
   const [costs, setCosts] = useState<OrganizerCost[]>(initialCosts)
@@ -272,10 +270,15 @@ export default function CateringForm({
   const [newKinderOption, setNewKinderOption] = useState('')
   const [newCourseName, setNewCourseName] = useState('')
   const [customCostLabel, setCustomCostLabel] = useState('')
-  const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+
+  const eventRef = useRef(event)
+  eventRef.current = event
+  const planRef = useRef(plan)
+  planRef.current = plan
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const handleSaveRef = useRef<() => Promise<void>>()
 
   const mealOptions = event.meal_options ?? DEFAULT_MEAL_OPTIONS
   const effectiveGuestCount = plan.plan_guest_count_enabled
@@ -284,58 +287,64 @@ export default function CateringForm({
 
   const updateEvent = useCallback(<K extends keyof EventData>(key: K, value: EventData[K]) => {
     setEvent(e => ({ ...e, [key]: value }))
-    setDirty(true); setSuccess(false)
+    setSuccess(false)
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => handleSaveRef.current?.(), 800)
   }, [])
 
   const updatePlan = useCallback((patch: Partial<CateringPlan>) => {
     setPlan(p => ({ ...p, ...patch }))
-    setDirty(true); setSuccess(false)
+    setSuccess(false)
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => handleSaveRef.current?.(), 800)
   }, [])
 
   async function handleSave() {
-    setSaving(true); setError(null)
+    const ev = eventRef.current
+    const pl = planRef.current
+    setSaving(true)
     const supabase = createClient()
 
     const [evErr, planErr] = await Promise.all([
       supabase.from('events').update({
-        meal_options: event.meal_options,
-        menu_type: event.menu_type,
-        collect_allergies: event.collect_allergies,
+        meal_options: ev.meal_options,
+        menu_type: ev.menu_type,
+        collect_allergies: ev.collect_allergies,
       }).eq('id', eventId).then(r => r.error),
 
       supabase.from('catering_plans').upsert({
         event_id: eventId,
-        service_style:              plan.service_style,
-        location_has_kitchen:       plan.location_has_kitchen,
-        midnight_snack:             plan.midnight_snack,
-        midnight_snack_note:        plan.midnight_snack_note,
-        drinks_billing:             plan.drinks_billing,
-        drinks_selection:           plan.drinks_selection,
-        champagne_finger_food:      plan.champagne_finger_food,
-        champagne_finger_food_note: plan.champagne_finger_food_note,
-        service_staff:              plan.service_staff,
-        equipment_needed:           plan.equipment_needed,
-        budget_per_person:          plan.budget_per_person,
-        budget_includes_drinks:     plan.budget_includes_drinks,
-        catering_notes:             plan.catering_notes,
-        sektempfang:                plan.sektempfang,
-        sektempfang_note:           plan.sektempfang_note,
-        weinbegleitung:             plan.weinbegleitung,
-        weinbegleitung_note:        plan.weinbegleitung_note,
-        kinder_meal_options:        plan.kinder_meal_options,
-        menu_courses:               plan.menu_courses,
-        plan_guest_count_enabled:   plan.plan_guest_count_enabled,
-        plan_guest_count:           plan.plan_guest_count,
+        service_style:              pl.service_style,
+        location_has_kitchen:       pl.location_has_kitchen,
+        midnight_snack:             pl.midnight_snack,
+        midnight_snack_note:        pl.midnight_snack_note,
+        drinks_billing:             pl.drinks_billing,
+        drinks_selection:           pl.drinks_selection,
+        champagne_finger_food:      pl.champagne_finger_food,
+        champagne_finger_food_note: pl.champagne_finger_food_note,
+        service_staff:              pl.service_staff,
+        equipment_needed:           pl.equipment_needed,
+        budget_per_person:          pl.budget_per_person,
+        budget_includes_drinks:     pl.budget_includes_drinks,
+        catering_notes:             pl.catering_notes,
+        sektempfang:                pl.sektempfang,
+        sektempfang_note:           pl.sektempfang_note,
+        weinbegleitung:             pl.weinbegleitung,
+        weinbegleitung_note:        pl.weinbegleitung_note,
+        kinder_meal_options:        pl.kinder_meal_options,
+        menu_courses:               pl.menu_courses,
+        plan_guest_count_enabled:   pl.plan_guest_count_enabled,
+        plan_guest_count:           pl.plan_guest_count,
       }, { onConflict: 'event_id' }).then(r => r.error),
     ])
 
     setSaving(false)
-    if (evErr || planErr) {
-      setError((evErr ?? planErr)!.message)
-    } else {
-      setDirty(false); setSuccess(true)
+    if (!evErr && !planErr) {
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 2500)
     }
   }
+  handleSaveRef.current = handleSave
 
   // ── Meal options ──────────────────────────────────────────────────────────
 
@@ -905,42 +914,18 @@ export default function CateringForm({
 
       </SectionWrap>}
 
-      {/* ── Save bar ──────────────────────────────────────────────────────── */}
-      {dirty && (
+      {(saving || success) && (
         <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'var(--surface)', borderTop: '1px solid var(--border)',
-          padding: '14px 36px', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', zIndex: 100,
-          boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
+          position: 'fixed', top: 24, right: 24, zIndex: 100,
+          background: success ? 'var(--green)' : 'var(--surface)',
+          color: success ? '#fff' : 'var(--text-secondary)',
+          padding: '8px 16px', borderRadius: 'var(--radius-sm)',
+          fontSize: 13, fontWeight: 500,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+          border: success ? 'none' : '1px solid var(--border)',
+          pointerEvents: 'none',
         }}>
-          <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Ungespeicherte Änderungen</span>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {error && <span style={{ fontSize: 13, color: 'var(--red)' }}>{error}</span>}
-            <button
-              onClick={() => { setPlan(parsePlan(initialPlan)); setEvent(initialEvent); setDirty(false) }}
-              style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}
-            >
-              Abbrechen
-            </button>
-            <button onClick={handleSave} disabled={saving}
-              style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: saving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Save size={14} />
-              {saving ? 'Speichern…' : 'Speichern'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {success && !dirty && (
-        <div style={{
-          position: 'fixed', bottom: 24, right: 24,
-          background: 'var(--green, #15803D)', color: '#fff',
-          padding: '12px 20px', borderRadius: 'var(--radius-sm)',
-          fontSize: 14, fontWeight: 500, zIndex: 100,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-        }}>
-          Änderungen gespeichert ✓
+          {saving ? 'Speichert…' : 'Gespeichert ✓'}
         </div>
       )}
     </div>

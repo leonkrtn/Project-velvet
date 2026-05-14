@@ -1,8 +1,8 @@
 'use client'
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Save, Plus, X, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
 
 const FIXED_COST_CATEGORIES = [
   'Miete / Locationkosten',
@@ -142,9 +142,7 @@ function Toggle({ checked, onChange, label: lbl }: { checked: boolean; onChange:
 
 export default function AllgemeinForm({ eventId, initialData, bpMembers, initialCosts, cateringCosts }: Props) {
   const [form, setForm] = useState(initialData)
-  const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [costs, setCosts] = useState<OrganizerCost[]>(initialCosts)
   const [customCostLabel, setCustomCostLabel] = useState('')
@@ -152,49 +150,53 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
     Object.fromEntries(initialCosts.map(c => [c.id, String(c.amount)]))
   )
 
+  const formRef = useRef(form)
+  formRef.current = form
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const handleSaveRef = useRef<() => Promise<void>>()
+
   const update = useCallback(<K extends keyof EventData>(key: K, value: EventData[K]) => {
     setForm(f => ({ ...f, [key]: value }))
-    setDirty(true)
     setSuccess(false)
+    clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => handleSaveRef.current?.(), 800)
   }, [])
 
   async function handleSave() {
+    const f = formRef.current
     setSaving(true)
-    setError(null)
     const supabase = createClient()
     const { error: err } = await supabase
       .from('events')
       .update({
-        title: form.title,
-        couple_name: form.couple_name,
-        date: form.date,
-        ceremony_start: form.ceremony_start,
-        description: form.description,
-        location_name: form.location_name,
-        location_street: form.location_street,
-        location_zip: form.location_zip,
-        location_city: form.location_city,
-        location_website: form.location_website,
-        max_begleitpersonen: form.max_begleitpersonen,
-        children_allowed: form.children_allowed,
-        children_note: form.children_note,
-        budget_total: form.budget_total,
-        organizer_fee: form.organizer_fee,
-        organizer_fee_type: form.organizer_fee_type,
-        internal_notes: form.internal_notes,
-        dresscode: form.dresscode,
-        projektphase: form.projektphase,
+        title: f.title,
+        couple_name: f.couple_name,
+        date: f.date,
+        ceremony_start: f.ceremony_start,
+        description: f.description,
+        location_name: f.location_name,
+        location_street: f.location_street,
+        location_zip: f.location_zip,
+        location_city: f.location_city,
+        location_website: f.location_website,
+        max_begleitpersonen: f.max_begleitpersonen,
+        children_allowed: f.children_allowed,
+        children_note: f.children_note,
+        budget_total: f.budget_total,
+        organizer_fee: f.organizer_fee,
+        organizer_fee_type: f.organizer_fee_type,
+        internal_notes: f.internal_notes,
+        dresscode: f.dresscode,
+        projektphase: f.projektphase,
       })
       .eq('id', eventId)
-
     setSaving(false)
-    if (err) {
-      setError(err.message)
-    } else {
-      setDirty(false)
+    if (!err) {
       setSuccess(true)
+      setTimeout(() => setSuccess(false), 2500)
     }
   }
+  handleSaveRef.current = handleSave
 
   async function addCost(category: string) {
     const supabase = createClient()
@@ -233,7 +235,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
   const availableFixed = FIXED_COST_CATEGORIES.filter(c => !activeCategoryNames.has(c))
 
   return (
-    <div style={{ paddingBottom: 80 }}>
+    <div style={{ paddingBottom: 40 }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>
         Allgemein
       </h1>
@@ -560,45 +562,18 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
         />
       </SectionWrap>
 
-      {/* Save bar */}
-      {dirty && (
+      {(saving || success) && (
         <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'var(--surface)', borderTop: '1px solid var(--border)',
-          padding: '14px 36px', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', zIndex: 100,
-          boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
+          position: 'fixed', top: 24, right: 24, zIndex: 100,
+          background: success ? 'var(--green)' : 'var(--surface)',
+          color: success ? '#fff' : 'var(--text-secondary)',
+          padding: '8px 16px', borderRadius: 'var(--radius-sm)',
+          fontSize: 13, fontWeight: 500,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+          border: success ? 'none' : '1px solid var(--border)',
+          pointerEvents: 'none',
         }}>
-          <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Ungespeicherte Änderungen</span>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            {error && <span style={{ fontSize: 13, color: 'var(--red)' }}>{error}</span>}
-            <button
-              onClick={() => { setForm(initialData); setDirty(false) }}
-              style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}
-            >
-              Abbrechen
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: saving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              <Save size={14} />
-              {saving ? 'Speichern…' : 'Speichern'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {success && !dirty && (
-        <div style={{
-          position: 'fixed', bottom: 24, right: 24,
-          background: 'var(--green)', color: '#fff',
-          padding: '12px 20px', borderRadius: 'var(--radius-sm)',
-          fontSize: 14, fontWeight: 500, zIndex: 100,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-        }}>
-          Änderungen gespeichert ✓
+          {saving ? 'Speichert…' : 'Gespeichert ✓'}
         </div>
       )}
     </div>

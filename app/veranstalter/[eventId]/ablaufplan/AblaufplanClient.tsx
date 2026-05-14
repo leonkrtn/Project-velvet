@@ -1,7 +1,7 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Pencil, Trash2, X, Check, MapPin, Clock, Save } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, MapPin, Clock } from 'lucide-react'
 
 type Category = 'Zeremonie' | 'Empfang' | 'Feier' | 'Logistik'
 
@@ -118,9 +118,12 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
     assigned_members: e.assigned_members ?? [],
   })))
   const [selected, setSelected] = useState<TimelineEntry | null>(null)
-  const [savedEntry, setSavedEntry] = useState<TimelineEntry | null>(null)
-  const [panelDirty, setPanelDirty] = useState(false)
   const [panelSaving, setPanelSaving] = useState(false)
+  const [panelSaved, setPanelSaved] = useState(false)
+
+  const selectedRef = useRef(selected)
+  selectedRef.current = selected
+  const panelSaveTimer = useRef<ReturnType<typeof setTimeout>>()
   const [filter, setFilter] = useState<Category | 'Alle'>('Alle')
   const [staff, setStaff] = useState<StaffRow[]>(initialStaff)
   const [showModal, setShowModal] = useState(false)
@@ -140,36 +143,28 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
   const filtered = filter === 'Alle' ? entries : entries.filter(e => e.category === filter)
 
   function selectEntry(entry: TimelineEntry | null) {
+    clearTimeout(panelSaveTimer.current)
     setSelected(entry)
-    setSavedEntry(entry)
-    setPanelDirty(false)
   }
 
   function updatePanel(updated: TimelineEntry) {
     setSelected(updated)
     setEntries(prev => prev.map(e => e.id === updated.id ? updated : e))
-    setPanelDirty(true)
-  }
-
-  async function handlePanelSave() {
-    if (!selected) return
-    setPanelSaving(true)
-    await supabase.from('timeline_entries').update({
-      checklist: selected.checklist,
-      assigned_staff: selected.assigned_staff,
-      assigned_vendors: selected.assigned_vendors,
-      assigned_members: selected.assigned_members,
-    }).eq('id', selected.id)
-    setSavedEntry(selected)
-    setPanelDirty(false)
-    setPanelSaving(false)
-  }
-
-  function handlePanelCancel() {
-    if (!savedEntry) return
-    setSelected(savedEntry)
-    setEntries(prev => prev.map(e => e.id === savedEntry.id ? savedEntry : e))
-    setPanelDirty(false)
+    clearTimeout(panelSaveTimer.current)
+    panelSaveTimer.current = setTimeout(async () => {
+      const s = selectedRef.current
+      if (!s) return
+      setPanelSaving(true)
+      await supabase.from('timeline_entries').update({
+        checklist: s.checklist,
+        assigned_staff: s.assigned_staff,
+        assigned_vendors: s.assigned_vendors,
+        assigned_members: s.assigned_members,
+      }).eq('id', s.id)
+      setPanelSaving(false)
+      setPanelSaved(true)
+      setTimeout(() => setPanelSaved(false), 2500)
+    }, 800)
   }
 
   function openAdd() {
@@ -207,7 +202,7 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
       if (data) {
         const updated = { ...editEntry, ...data }
         setEntries(prev => prev.map(e => e.id === editEntry.id ? updated : e).sort((a, b) => (a.start_minutes ?? 9999) - (b.start_minutes ?? 9999)))
-        if (selected?.id === editEntry.id) { setSelected(updated); setSavedEntry(updated) }
+        if (selected?.id === editEntry.id) { setSelected(updated) }
       }
     } else {
       const { data } = await supabase.from('timeline_entries').insert({ ...payload, checklist: [], responsibilities: [] }).select().single()
@@ -360,7 +355,7 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
         <div style={{ width: 320, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 22, overflowY: 'auto', height: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h3 style={{ fontSize: 16, fontWeight: 600 }}>{selected.title ?? 'Details'}</h3>
-            <button onClick={() => { handlePanelCancel(); selectEntry(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}>
+            <button onClick={() => selectEntry(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)' }}>
               <X size={16} />
             </button>
           </div>
@@ -637,29 +632,18 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
         </div>
       )}
 
-      {/* Save bar */}
-      {panelDirty && (
+      {(panelSaving || panelSaved) && (
         <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'var(--surface)', borderTop: '1px solid var(--border)',
-          padding: '14px 36px', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', zIndex: 100,
-          boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
+          position: 'fixed', top: 24, right: 24, zIndex: 100,
+          background: panelSaved ? 'var(--green)' : 'var(--surface)',
+          color: panelSaved ? '#fff' : 'var(--text-secondary)',
+          padding: '8px 16px', borderRadius: 'var(--radius-sm)',
+          fontSize: 13, fontWeight: 500,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
+          border: panelSaved ? 'none' : '1px solid var(--border)',
+          pointerEvents: 'none',
         }}>
-          <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Ungespeicherte Änderungen</span>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <button
-              onClick={handlePanelCancel}
-              style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}
-            >
-              Abbrechen
-            </button>
-            <button onClick={handlePanelSave} disabled={panelSaving}
-              style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: panelSaving ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Save size={14} />
-              {panelSaving ? 'Speichern…' : 'Speichern'}
-            </button>
-          </div>
+          {panelSaving ? 'Speichert…' : 'Gespeichert ✓'}
         </div>
       )}
     </div>

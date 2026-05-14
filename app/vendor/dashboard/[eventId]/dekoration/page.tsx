@@ -65,27 +65,19 @@ export default async function VendorDekorationPage({ params }: Props) {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.5px' }}>Dekoration</h1>
-        {tabAccess === 'read' && (
-          <span style={{ fontSize: 11, background: '#f2ede7', color: '#7a6535', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>Nur Lesen</span>
-        )}
-      </div>
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <DekoPageClient
-          eventId={eventId}
-          role={role as 'dienstleister' | 'trauzeuge'}
-          userId={user.id}
-          userName={profile?.display_name ?? 'Dienstleister'}
-          initialAreas={areas}
-          initialMoodboards={moodboards}
-          initialCatalog={(catalog ?? []) as DekoCatalogItem[]}
-          initialFlatRates={(flatRates ?? []) as DekoFlatRate[]}
-          initialItemsByCanvas={itemsByCanvas}
-          allFrozen={allFrozen}
-          isVeranstalter={false}
-        />
-      </div>
+      <DekoPageClient
+        eventId={eventId}
+        role={role as 'dienstleister' | 'trauzeuge'}
+        userId={user.id}
+        userName={profile?.display_name ?? 'Dienstleister'}
+        initialAreas={areas}
+        initialMoodboards={moodboards}
+        initialCatalog={(catalog ?? []) as DekoCatalogItem[]}
+        initialFlatRates={(flatRates ?? []) as DekoFlatRate[]}
+        initialItemsByCanvas={itemsByCanvas}
+        allFrozen={allFrozen}
+        isVeranstalter={false}
+      />
     </div>
   )
 }

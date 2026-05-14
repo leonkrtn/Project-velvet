@@ -130,6 +130,18 @@ export default function DekoPageClient({
   }
 
   return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+
+      {/* Page header */}
+      <div style={{ padding: '36px 40px 24px', flexShrink: 0, background: 'var(--bg)' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>Dekoration</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+          {role === 'brautpaar'
+            ? 'Gestaltet eure Wunschdekoration und reicht das Konzept ein.'
+            : 'Freies Canvas zur Dekoration – Bereiche, Varianten und Moodboards.'}
+        </p>
+      </div>
+
     <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
       {/* ── Left nav ── */}
       <DekoNavigationBar
@@ -265,6 +277,7 @@ export default function DekoPageClient({
           isFreezing={freezing}
         />
       )}
+    </div>
     </div>
   )
 }

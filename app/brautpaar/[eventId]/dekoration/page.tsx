@@ -50,24 +50,19 @@ export default async function BrautpaarDekorationPage({ params }: Props) {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.5px' }}>Dekoration</h1>
-      </div>
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <DekoPageClient
-          eventId={eventId}
-          role="brautpaar"
-          userId={user.id}
-          userName={profile?.display_name ?? 'Brautpaar'}
-          initialAreas={areas}
-          initialMoodboards={moodboards}
-          initialCatalog={(catalog ?? []) as DekoCatalogItem[]}
-          initialFlatRates={(flatRates ?? []) as DekoFlatRate[]}
-          initialItemsByCanvas={itemsByCanvas}
-          allFrozen={allFrozen}
-          isVeranstalter={false}
-        />
-      </div>
+      <DekoPageClient
+        eventId={eventId}
+        role="brautpaar"
+        userId={user.id}
+        userName={profile?.display_name ?? 'Brautpaar'}
+        initialAreas={areas}
+        initialMoodboards={moodboards}
+        initialCatalog={(catalog ?? []) as DekoCatalogItem[]}
+        initialFlatRates={(flatRates ?? []) as DekoFlatRate[]}
+        initialItemsByCanvas={itemsByCanvas}
+        allFrozen={allFrozen}
+        isVeranstalter={false}
+      />
     </div>
   )
 }

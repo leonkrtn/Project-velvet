@@ -43,7 +43,7 @@ export default function BrautpaarUebersicht({
     { key: 'dekoration',  label: 'Dekoration',     icon: <Palette size={18} /> },
     { key: 'musik',       label: 'Musik',          icon: <Music size={18} /> },
     { key: 'patisserie',  label: 'Patisserie',     icon: <Cake size={18} /> },
-    { key: 'medien',      label: 'Medien',         icon: <Camera size={18} /> },
+    { key: 'medien',      label: 'Foto & Videograf', icon: <Camera size={18} /> },
     { key: 'budget',      label: 'Budget',         icon: <Wallet size={18} /> },
     { key: 'aufgaben',    label: 'Aufgaben',       icon: <CheckSquare size={18} /> },
     { key: 'allgemein',   label: 'Allgemein',      icon: <Settings size={18} /> },
