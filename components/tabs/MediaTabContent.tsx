@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Edit2, Check, X, Star, MinusCircle, XCircle, Lightbulb } from 'lucide-react'
+import GuestPhotosSection from '@/components/medien/GuestPhotosSection'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -288,19 +289,22 @@ function AddShotForm({ eventId, count, onAdded }: { eventId: string; count: numb
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = true, tabAccess = 'write', sectionPerms, onPropose }: Props) {
-  const [briefing, setBriefing] = useState<Briefing | null>(null)
-  const [shots, setShots]       = useState<ShotItem[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [typeFilter, setFilter] = useState<string>('all')
+  const [briefing, setBriefing]           = useState<Briefing | null>(null)
+  const [shots, setShots]                 = useState<ShotItem[]>([])
+  const [loading, setLoading]             = useState(true)
+  const [typeFilter, setFilter]           = useState<string>('all')
+  const [galleryEnabled, setGalleryEnabled] = useState(true)
 
   useEffect(() => {
     const supabase = createClient()
     Promise.all([
       supabase.from('media_briefing').select('*').eq('event_id', eventId).single(),
       supabase.from('media_shot_items').select('*').eq('event_id', eventId).order('sort_order'),
-    ]).then(([{ data: b }, { data: s }]) => {
+      supabase.from('feature_toggles').select('enabled').eq('event_id', eventId).eq('key', 'gaeste-fotos').maybeSingle(),
+    ]).then(([{ data: b }, { data: s }, { data: ft }]) => {
       setBriefing(b ?? null)
       setShots(s ?? [])
+      setGalleryEnabled(ft?.enabled ?? true)
       setLoading(false)
     })
   }, [eventId])
@@ -388,6 +392,8 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
             )}
           </div>
           )}
+
+          {galleryEnabled && <GuestPhotosSection eventId={eventId} />}
         </div>
       )}
     </div>

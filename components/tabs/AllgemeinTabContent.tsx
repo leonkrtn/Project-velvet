@@ -137,6 +137,7 @@ function AllgemeinFormWrapper({ eventId }: { eventId: string }) {
     bpMembers: unknown[]
     initialCosts: unknown[]
     cateringCosts: unknown[]
+    initialGalleryEnabled: boolean
   } | null>(null)
 
   useEffect(() => {
@@ -146,13 +147,15 @@ function AllgemeinFormWrapper({ eventId }: { eventId: string }) {
       supabase.from('event_members').select('id, user_id, profiles!user_id(id, name, email)').eq('event_id', eventId).eq('role', 'brautpaar'),
       supabase.from('event_organizer_costs').select('id, category, amount, notes').eq('event_id', eventId).neq('source', 'catering').order('created_at', { ascending: true }),
       supabase.from('event_organizer_costs').select('id, category, amount, notes').eq('event_id', eventId).eq('source', 'catering').order('created_at', { ascending: true }),
-    ]).then(([eventRes, membersRes, costsRes, cateringCostsRes]) => {
+      supabase.from('feature_toggles').select('enabled').eq('event_id', eventId).eq('key', 'gaeste-fotos').maybeSingle(),
+    ]).then(([eventRes, membersRes, costsRes, cateringCostsRes, galleryToggle]) => {
       if (!eventRes.data) return
       setFormProps({
         initialData: eventRes.data as Record<string, unknown>,
         bpMembers: membersRes.data ?? [],
         initialCosts: costsRes.data ?? [],
         cateringCosts: cateringCostsRes.data ?? [],
+        initialGalleryEnabled: galleryToggle.data?.enabled ?? true,
       })
       setLoaded(true)
     })
@@ -171,6 +174,7 @@ function AllgemeinFormWrapper({ eventId }: { eventId: string }) {
       initialCosts={formProps.initialCosts as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       cateringCosts={formProps.cateringCosts as any}
+      initialGalleryEnabled={formProps.initialGalleryEnabled}
     />
   )
 }

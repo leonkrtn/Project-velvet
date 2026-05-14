@@ -151,6 +151,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `deko_organizer_templates` | Global organizer templates (copy-on-apply) |
 | `deko_organizer_flat_rates` | Flat rates attached to organizer templates |
 | `media_shot_items` / `media_uploads` | Media tab |
+| `guest_photos` | Post-event guest photo gallery (R2-backed; `r2_key`, `guest_token`, `status`) |
 | `patisserie_config` | Cake/patisserie tab |
 | `conversations` / `messages` | Chat system |
 | `budget_items` | Budget tracking |
@@ -286,6 +287,8 @@ supabase/migrations/
   0063_file_metadata.sql               R2 file_metadata table + file_access_log + RLS (SELECT only, writes via service role)
   0064_deko_system.sql                 Drops decor_setup_items + deko_wishes; creates full new deko system (13 tables,
                                        RLS for all roles, Realtime enabled on deko_items/canvases/comments/votes)
+  0065_conversation_read_state.sql     Read state for conversations
+  0066_guest_photos_r2.sql             Extends guest_photos: adds r2_key, guest_token, status; refreshes RLS policies
 
 workers/
   file-service/                 Cloudflare Worker — thin R2 presigned URL generator
@@ -308,6 +311,20 @@ app/api/files/
   [fileId]/confirm/route.ts     PATCH — mark pending upload as active
   [fileId]/download-url/route.ts  GET — validate auth+permission, return fresh presigned GET URL (1h TTL)
   [fileId]/route.ts             DELETE — soft-delete DB + hard-delete R2
+
+app/api/rsvp/[token]/photos/
+  route.ts                      GET photos list (with presigned URLs) + POST request upload URL — service role, token-auth
+  [photoId]/route.ts            PATCH confirm + DELETE own photo (validates guest_token column)
+
+app/api/events/[eventId]/photos/
+  route.ts                      GET list + POST request upload — requires event membership
+  [photoId]/route.ts            PATCH confirm + DELETE (veranstalter/brautpaar only)
+
+components/medien/
+  GuestPhotosSection.tsx        Masonry gallery + upload for authenticated member portals (Medien tab)
+
+components/rsvp/
+  RsvpPhotos.tsx                Mobile-first gallery + upload for RSVP page (token-auth, no login required)
 
 Env vars (Vercel):
   FILE_WORKER_URL               https://velvet-file-service.leon-s-account.workers.dev
