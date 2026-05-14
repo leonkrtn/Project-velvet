@@ -73,6 +73,7 @@ interface Props {
   bpMembers: BpMember[]
   initialCosts: OrganizerCost[]
   cateringCosts: OrganizerCost[]
+  initialGalleryEnabled: boolean
 }
 
 const input: React.CSSProperties = {
@@ -140,11 +141,12 @@ function Toggle({ checked, onChange, label: lbl }: { checked: boolean; onChange:
   )
 }
 
-export default function AllgemeinForm({ eventId, initialData, bpMembers, initialCosts, cateringCosts }: Props) {
+export default function AllgemeinForm({ eventId, initialData, bpMembers, initialCosts, cateringCosts, initialGalleryEnabled }: Props) {
   const [form, setForm] = useState(initialData)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [costs, setCosts] = useState<OrganizerCost[]>(initialCosts)
+  const [galleryEnabled, setGalleryEnabled] = useState(initialGalleryEnabled)
   const [customCostLabel, setCustomCostLabel] = useState('')
   const [costAmounts, setCostAmounts] = useState<Record<string, string>>(
     Object.fromEntries(initialCosts.map(c => [c.id, String(c.amount)]))
@@ -229,6 +231,15 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
     if (!label) return
     setCustomCostLabel('')
     await addCost(label)
+  }
+
+  async function toggleGallery(enabled: boolean) {
+    setGalleryEnabled(enabled)
+    const supabase = createClient()
+    await supabase.from('feature_toggles').upsert(
+      { event_id: eventId, key: 'gaeste-fotos', enabled },
+      { onConflict: 'event_id,key' }
+    )
   }
 
   const activeCategoryNames = new Set(costs.map(c => c.category))
@@ -552,7 +563,21 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
         )}
       </SectionWrap>
 
-      {/* 7. Interne Notizen */}
+      {/* 7. Funktionen */}
+      <SectionWrap title="Funktionen">
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
+          Aktiviere oder deaktiviere Features für dieses Event.
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>Gästefotos</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Gäste können über ihren RSVP-Link Fotos hochladen und die Galerie ansehen.</p>
+          </div>
+          <Toggle checked={galleryEnabled} onChange={toggleGallery} label="" />
+        </div>
+      </SectionWrap>
+
+      {/* 8. Interne Notizen */}
       <SectionWrap title="Interne Notizen">
         <textarea
           style={{ ...input, minHeight: 120, resize: 'vertical' }}

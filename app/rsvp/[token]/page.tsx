@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { v4 as uuid } from 'uuid'
 import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink, Music } from 'lucide-react'
+import RsvpPhotos from '@/components/rsvp/RsvpPhotos'
 import type {
   Event, Guest, MealChoice, AllergyTag, TransportMode, AltersKategorie,
 } from '@/lib/store'
@@ -1165,6 +1166,13 @@ export default function RSVPPage() {
                 </button>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Gästefotos — immer sichtbar, wird ausgeblendet wenn Feature deaktiviert */}
+        {token && (
+          <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 24, margin: '24px -16px 0' }}>
+            <RsvpPhotos token={token} />
           </div>
         )}
       </div>
