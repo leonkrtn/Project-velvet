@@ -116,13 +116,40 @@ export function Input({ label, value, onChange, placeholder, type='text', requir
   label?:string; value:string; onChange:(v:string)=>void
   placeholder?:string; type?:string; required?:boolean
 }) {
+  function handleTimeChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/[^0-9]/g, '')
+    if (digits.length > 4) return
+    let formatted = digits
+    if (digits.length >= 3) formatted = digits.slice(0, 2) + ':' + digits.slice(2)
+    onChange(formatted)
+  }
+  function handleTimeBlur(e: React.FocusEvent<HTMLInputElement>) {
+    if (value) {
+      const digits = value.replace(/[^0-9]/g, '')
+      if (digits.length >= 2) {
+        const h = parseInt(digits.slice(0, 2))
+        const m = digits.length >= 4 ? parseInt(digits.slice(2, 4)) : 0
+        if (h <= 23 && m <= 59) onChange(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`)
+        else onChange('')
+      } else { onChange('') }
+    }
+    e.target.style.borderColor = 'var(--border)'
+  }
+  const isTime = type === 'time'
   return (
     <div style={{ marginBottom:14 }}>
       {label && <FieldLabel required={required}>{label}</FieldLabel>}
-      <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} required={required}
+      <input
+        type={isTime ? 'text' : type}
+        inputMode={isTime ? 'numeric' : undefined}
+        maxLength={isTime ? 5 : undefined}
+        value={value}
+        onChange={isTime ? handleTimeChange : e=>onChange(e.target.value)}
+        placeholder={isTime ? 'HH:MM' : placeholder}
+        required={required}
         style={inputStyle}
         onFocus={e=>{e.target.style.borderColor='var(--gold)'}}
-        onBlur={e=>{e.target.style.borderColor='var(--border)'}}
+        onBlur={isTime ? handleTimeBlur : e=>{e.target.style.borderColor='var(--border)'}}
       />
     </div>
   )

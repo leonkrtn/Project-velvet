@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Save, Plus, X } from 'lucide-react'
+import TimeInput from '@/components/ui/TimeInput'
 
 interface EventData {
   id: string
@@ -151,7 +152,7 @@ export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
             <input className="bp-input" type="date" value={data.date ?? ''} onChange={e => set('date', e.target.value || null)} />
           </Field>
           <Field label="Beginn der Zeremonie">
-            <input className="bp-input" type="time" value={data.ceremony_start ?? ''} onChange={e => set('ceremony_start', e.target.value || null)} />
+            <TimeInput className="bp-input" value={data.ceremony_start ?? ''} onChange={v => set('ceremony_start', v || null)} />
           </Field>
           <div style={{ gridColumn: '1 / -1' }}>
             <Field label="Beschreibung">

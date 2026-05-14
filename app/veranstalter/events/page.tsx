@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Settings, Trash2, Plus, Search } from 'lucide-react'
+import TimeInput from '@/components/ui/TimeInput'
 
 
 type EventSummary = {
@@ -403,9 +404,9 @@ export default function VeranstalterEventsPage() {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>Uhrzeit Zeremonie (optional)</label>
-                <input
-                  type="time" value={wizardData.ceremonyStart}
-                  onChange={e => updateWizard({ ceremonyStart: e.target.value })}
+                <TimeInput
+                  value={wizardData.ceremonyStart}
+                  onChange={v => updateWizard({ ceremonyStart: v })}
                   style={inputStyle}
                   onFocus={e => { e.target.style.borderColor = 'var(--accent)' }}
                   onBlur={e => { e.target.style.borderColor = 'var(--border)' }}

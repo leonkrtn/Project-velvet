@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Pencil, Trash2, X, Check, MapPin, Clock } from 'lucide-react'
+import TimeInput from '@/components/ui/TimeInput'
 
 type Category = 'Zeremonie' | 'Empfang' | 'Feier' | 'Logistik'
 
@@ -543,7 +544,7 @@ export default function AblaufplanClient({ eventId, initialEntries, members, sta
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
               <div>
                 <label style={labelSt}>Startzeit</label>
-                <input type="time" style={inputSt} value={form.start_minutes} onChange={e => setForm(f => ({ ...f, start_minutes: e.target.value }))} />
+                <TimeInput style={inputSt} value={form.start_minutes} onChange={v => setForm(f => ({ ...f, start_minutes: v }))} />
               </div>
               <div>
                 <label style={labelSt}>Dauer (Minuten)</label>

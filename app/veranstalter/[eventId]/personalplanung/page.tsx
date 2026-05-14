@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Pencil, Trash2 } from 'lucide-react'
+import TimeInput from '@/components/ui/TimeInput'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const HOUR_START = 8
@@ -1056,11 +1057,11 @@ export default function PersonalplanungPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={labelS}>Von</label>
-                  <input type="time" value={shiftStart} onChange={e => setShiftStart(e.target.value)} style={inputS} />
+                  <TimeInput value={shiftStart} onChange={setShiftStart} style={inputS} />
                 </div>
                 <div>
                   <label style={labelS}>Bis</label>
-                  <input type="time" value={shiftEnd} onChange={e => setShiftEnd(e.target.value)} style={inputS} />
+                  <TimeInput value={shiftEnd} onChange={setShiftEnd} style={inputS} />
                 </div>
               </div>
               {shiftError && (

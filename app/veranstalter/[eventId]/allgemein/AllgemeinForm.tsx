@@ -3,6 +3,7 @@ import React, { useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, ChevronDown, ChevronUp, ExternalLink, Clock } from 'lucide-react'
+import TimeInput from '@/components/ui/TimeInput'
 
 const FIXED_COST_CATEGORIES = [
   'Miete / Locationkosten',
@@ -167,6 +168,7 @@ function Toggle({ checked, onChange, label: lbl }: { checked: boolean; onChange:
 
 export default function AllgemeinForm({ eventId, initialData, bpMembers, initialCosts, cateringCosts, initialToggles, initialGalleryUnlockAt }: Props) {
   const [form, setForm] = useState(initialData)
+  const [ceremonyTimeStr, setCeremonyTimeStr] = useState(initialData.ceremony_start?.slice(11, 16) ?? '')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [costs, setCosts] = useState<OrganizerCost[]>(initialCosts)
@@ -380,7 +382,17 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
           </div>
           <div>
             <label style={label}>Uhrzeit Beginn</label>
-            <input type="datetime-local" style={input} value={form.ceremony_start?.slice(0, 16) ?? ''} onChange={e => update('ceremony_start', e.target.value ? e.target.value + ':00+00:00' : null)} />
+            <TimeInput
+              style={input}
+              value={ceremonyTimeStr}
+              onChange={val => {
+                setCeremonyTimeStr(val)
+                if (val === '' || /^\d{2}:\d{2}$/.test(val)) {
+                  const baseDate = formRef.current.date ?? formRef.current.ceremony_start?.slice(0, 10) ?? new Date().toISOString().slice(0, 10)
+                  update('ceremony_start', val ? `${baseDate}T${val}:00+00:00` : null)
+                }
+              }}
+            />
           </div>
         </div>
         <div>
