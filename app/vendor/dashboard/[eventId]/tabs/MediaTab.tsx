@@ -33,7 +33,7 @@ export default function MediaTab({ eventId }: { eventId: string }) {
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Medien & Aufnahmen</h1>
+      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Foto & Videograf</h1>
 
       {loading ? <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div> : (
         <>

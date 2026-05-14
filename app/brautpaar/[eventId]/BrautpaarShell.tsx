@@ -46,7 +46,7 @@ function buildNav(eventId: string): NavGroup[] {
         b('dekoration', 'Dekoration', <Palette size={16} />),
         b('musik', 'Musik', <Music size={16} />),
         b('patisserie', 'Patisserie', <Cake size={16} />),
-        b('medien', 'Medien', <Camera size={16} />),
+        b('medien', 'Foto & Videograf', <Camera size={16} />),
       ],
     },
     {

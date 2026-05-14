@@ -2,6 +2,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import ChatUnreadBadge from './chats/ChatUnreadBadge'
 import {
   LayoutDashboard, Settings, Users, MessageSquare,
   Calendar, Shield, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
@@ -27,7 +28,7 @@ const NAV_ITEMS = [
   { key: 'musik',           label: 'Musik',             icon: Music2 },
   { key: 'patisserie',      label: 'Patisserie',        icon: Cake },
   { key: 'dekoration',      label: 'Dekoration',        icon: Flower2 },
-  { key: 'medien',          label: 'Medien & Aufnahmen', icon: Camera },
+  { key: 'medien',          label: 'Foto & Videograf',   icon: Camera },
   { key: 'berechtigungen',  label: 'Berechtigungen',    icon: Shield },
   { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
   { key: 'personalplanung', label: 'Personalplanung',   icon: UserCog },
@@ -128,7 +129,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
               }}
             >
               <Icon size={16} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
-              <span>{label}</span>
+              <span style={{ flex: 1 }}>{label}</span>
+              {key === 'chats' && <ChatUnreadBadge eventId={eventId} />}
             </Link>
           )
         })}

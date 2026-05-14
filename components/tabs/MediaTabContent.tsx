@@ -328,7 +328,7 @@ export default function MediaTabContent({ eventId, mode, hasFullModuleAccess = t
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px' }}>Medien & Aufnahmen</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px' }}>Foto & Videograf</h1>
         {mode === 'dienstleister' && onPropose && (
           <button onClick={onPropose} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
             <Lightbulb size={14} /> Vorschlag erstellen

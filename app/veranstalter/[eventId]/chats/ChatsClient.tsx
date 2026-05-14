@@ -3,6 +3,9 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Send, Plus, X, Trash2, MessageSquare } from 'lucide-react'
 
+// Tracks unread counts per conversation for the current user
+type UnreadMap = Record<string, number>
+
 interface Participant {
   user_id: string
   profiles: { id: string; name: string } | null
@@ -66,8 +69,58 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [showInfo, setShowInfo] = useState(false)
   const [addingMember, setAddingMember] = useState(false)
+  const [unread, setUnread] = useState<UnreadMap>({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const activeConvIdRef = useRef<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
+
+  // ── Fetch initial unread counts ──────────────────────────────────────────
+  useEffect(() => {
+    supabase
+      .from('messages')
+      .select('conversation_id')
+      .eq('event_id', eventId)
+      .neq('sender_id', currentUserId)
+      .is('read_at', null)
+      .then(({ data }) => {
+        if (!data) return
+        const counts: UnreadMap = {}
+        for (const row of data) {
+          counts[row.conversation_id] = (counts[row.conversation_id] ?? 0) + 1
+        }
+        setUnread(counts)
+      })
+  }, [supabase, eventId, currentUserId])
+
+  // ── Realtime: new conversations appear for all participants ───────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel(`conversations:${eventId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'conversations',
+        filter: `event_id=eq.${eventId}`,
+      }, async (payload) => {
+        const newConvId = (payload.new as { id: string }).id
+        const { data: conv } = await supabase
+          .from('conversations')
+          .select('id, name, created_by, created_at, updated_at, conversation_participants(user_id, profiles(id, name))')
+          .eq('id', newConvId)
+          .single()
+        if (!conv) return
+        const normalized = {
+          ...conv,
+          conversation_participants: (conv.conversation_participants ?? []).map((p: { user_id: string; profiles: { id: string; name: string }[] | { id: string; name: string } | null }) => ({
+            ...p,
+            profiles: Array.isArray(p.profiles) ? (p.profiles[0] ?? null) : p.profiles,
+          })),
+        }
+        setConversations(prev => prev.some(c => c.id === normalized.id) ? prev : [normalized, ...prev])
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [supabase, eventId])
 
   // Load messages when conversation changes
   const loadMessages = useCallback(async (convId: string) => {
@@ -81,10 +134,21 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   }, [supabase])
 
   useEffect(() => {
+    activeConvIdRef.current = activeConv?.id ?? null
     if (!activeConv) return
+
     loadMessages(activeConv.id)
 
-    // Realtime subscription — use payload data directly to avoid extra round-trip
+    // Mark all unread messages in this conversation as read
+    supabase
+      .from('messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('conversation_id', activeConv.id)
+      .neq('sender_id', currentUserId)
+      .is('read_at', null)
+      .then(() => setUnread(prev => ({ ...prev, [activeConv.id]: 0 })))
+
+    // Realtime: new messages in active conversation
     const channel = supabase
       .channel(`chat:${activeConv.id}`)
       .on('postgres_changes', {
@@ -95,11 +159,37 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
       }, (payload) => {
         const p = payload.new as { id: string; conversation_id: string; sender_id: string | null; content: string; read_at: string | null; created_at: string }
         setMessages(prev => prev.some(m => m.id === p.id) ? prev : [...prev, { ...p, sender: null }])
+        // Auto-mark as read since user is viewing this conversation
+        if (p.sender_id !== currentUserId) {
+          supabase.from('messages').update({ read_at: new Date().toISOString() }).eq('id', p.id)
+        }
       })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [activeConv?.id, loadMessages, supabase])
+  }, [activeConv?.id, loadMessages, supabase, currentUserId])
+
+  // ── Realtime: unread counter for all other conversations ─────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel(`unread:${eventId}:${currentUserId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `event_id=eq.${eventId}`,
+      }, (payload) => {
+        const p = payload.new as { id: string; conversation_id: string; sender_id: string | null }
+        if (p.sender_id === currentUserId) return
+        if (p.conversation_id === activeConvIdRef.current) return
+        setUnread(prev => ({ ...prev, [p.conversation_id]: (prev[p.conversation_id] ?? 0) + 1 }))
+        setConversations(prev => prev.map(c =>
+          c.id === p.conversation_id ? { ...c, updated_at: new Date().toISOString() } : c
+        ).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [supabase, eventId, currentUserId])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -260,8 +350,15 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flexShrink: 0 }}>{fmtTime(conv.updated_at)}</span>
+                    <span style={{ fontWeight: (unread[conv.id] ?? 0) > 0 ? 700 : 600, fontSize: 13.5, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                      {(unread[conv.id] ?? 0) > 0 && (
+                        <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center', lineHeight: '16px' }}>
+                          {unread[conv.id]}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{fmtTime(conv.updated_at)}</span>
+                    </div>
                   </div>
                 </div>
                 <button

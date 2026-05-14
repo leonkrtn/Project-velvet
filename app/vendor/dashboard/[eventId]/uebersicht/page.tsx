@@ -18,7 +18,7 @@ const ALL_MODULE_DEFS = [
   { key: 'musik',       label: 'Musik',              icon: Music2,          href: 'musik' },
   { key: 'patisserie',  label: 'Patisserie',         icon: Cake,            href: 'patisserie' },
   { key: 'dekoration',  label: 'Dekoration',         icon: Flower2,         href: 'dekoration' },
-  { key: 'medien',      label: 'Medien & Aufnahmen', icon: Camera,          href: 'medien' },
+  { key: 'medien',      label: 'Foto & Videograf',   icon: Camera,          href: 'medien' },
   { key: 'sitzplan',    label: 'Sitzplan',           icon: Grid2X2,         href: 'sitzplan' },
 ]
 
