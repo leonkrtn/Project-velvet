@@ -39,7 +39,7 @@ export default async function AllgemeinPage({ params }: Props) {
     if (!event.location_website) event.location_website = preset.location_website
   }
 
-  const [{ data: bpMembers }, { data: organizerCosts }, { data: cateringCosts }, { data: galleryToggle }] = await Promise.all([
+  const [{ data: bpMembers }, { data: organizerCosts }, { data: cateringCosts }, { data: toggleRows }] = await Promise.all([
     supabase
       .from('event_members')
       .select('id, user_id, profiles!user_id(id, name, email)')
@@ -59,16 +59,34 @@ export default async function AllgemeinPage({ params }: Props) {
       .order('created_at', { ascending: true }),
     supabase
       .from('feature_toggles')
-      .select('enabled')
-      .eq('event_id', eventId)
-      .eq('key', 'gaeste-fotos')
-      .maybeSingle(),
+      .select('key, enabled, value')
+      .eq('event_id', eventId),
   ])
 
   const bpNormalized = (bpMembers ?? []).map(m => ({
     ...m,
     profiles: Array.isArray(m.profiles) ? (m.profiles[0] ?? null) : m.profiles,
   }))
+
+  // Build toggle map with defaults
+  const initialToggles: Record<string, boolean> = {
+    'gaeste-fotos': true,
+    'messaging': false,
+    'bp-gaeste': true, 'bp-sitzplan': true, 'bp-ablaufplan': true,
+    'bp-catering': true, 'bp-dekoration': true, 'bp-musik': true,
+    'bp-patisserie': true, 'bp-medien': true, 'bp-budget': true,
+    'bp-aufgaben': true, 'bp-nachrichten': true, 'bp-dateien': true,
+    'rsvp-musikwunsch': true, 'rsvp-geschenke': true, 'rsvp-hotel': true,
+    'rsvp-begleitpersonen': true, 'rsvp-menu': true,
+  }
+  let initialGalleryUnlockAt: string | null = null
+  for (const row of toggleRows ?? []) {
+    if (row.key === 'gaeste-fotos-unlock-at') {
+      initialGalleryUnlockAt = (row as any).value ?? null
+    } else {
+      initialToggles[row.key] = row.enabled
+    }
+  }
 
   return (
     <AllgemeinForm
@@ -77,7 +95,8 @@ export default async function AllgemeinPage({ params }: Props) {
       bpMembers={bpNormalized}
       initialCosts={organizerCosts ?? []}
       cateringCosts={cateringCosts ?? []}
-      initialGalleryEnabled={galleryToggle?.enabled ?? true}
+      initialToggles={initialToggles}
+      initialGalleryUnlockAt={initialGalleryUnlockAt}
     />
   )
 }

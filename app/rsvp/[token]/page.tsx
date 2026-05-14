@@ -170,6 +170,13 @@ export default function RSVPPage() {
   const [phoneContact,   setPhoneContact]   = useState<string | null>(null)
   const [menuCourses,    setMenuCourses]    = useState<any[] | null>(null)
 
+  // feature toggles for RSVP steps
+  const [rsvpShowMusikwunsch,     setRsvpShowMusikwunsch]     = useState(true)
+  const [rsvpShowGeschenke,       setRsvpShowGeschenke]       = useState(true)
+  const [rsvpShowHotel,           setRsvpShowHotel]           = useState(true)
+  const [rsvpShowBegleitpersonen, setRsvpShowBegleitpersonen] = useState(true)
+  const [rsvpShowMenu,            setRsvpShowMenu]            = useState(true)
+
   // RSVP step state
   const [attending,    setAttending]    = useState<boolean | null>(null)
   const [trinkAlkohol, setTrinkAlkohol] = useState<boolean | undefined>()
@@ -237,6 +244,11 @@ export default function RSVPPage() {
         setInvitationText(ev.invitationText ?? '')
         setPhoneContact(ev.phoneContact ?? null)
         setMenuCourses(ev.menuCourses ?? null)
+        setRsvpShowMusikwunsch(ev.rsvpShowMusikwunsch ?? true)
+        setRsvpShowGeschenke(ev.rsvpShowGeschenke ?? true)
+        setRsvpShowHotel(ev.rsvpShowHotel ?? true)
+        setRsvpShowBegleitpersonen(ev.rsvpShowBegleitpersonen ?? true)
+        setRsvpShowMenu(ev.rsvpShowMenu ?? true)
         setGuest({
           id: g.id, name: g.name, email: g.email ?? '', token: g.token,
           status: g.status,
@@ -401,7 +413,7 @@ export default function RSVPPage() {
 
   const progressSteps: Step[] = attending === false
     ? ['intro', 'rsvp', 'confirmation']
-    : hasHotels
+    : (hasHotels && rsvpShowHotel)
       ? ['intro', 'rsvp', 'details', 'hotel', 'confirmation']
       : ['intro', 'rsvp', 'details', 'confirmation']
   const progress = progressSteps.indexOf(step) / (progressSteps.length - 1) * 100
@@ -424,8 +436,9 @@ export default function RSVPPage() {
 
   const maxComp = event.maxBegleitpersonen ?? 2
 
-  const detailsOk = (!showMealChoice || !!meal)
-    && companions.every(c => !showMealChoice || !!c.meal)
+  const mealRequired = showMealChoice && rsvpShowMenu
+  const detailsOk = (!mealRequired || !!meal)
+    && companions.every(c => !mealRequired || !!c.meal)
 
   const newSongOk = !!newSongTitle.trim() && !!newSongArtist.trim()
 
@@ -626,7 +639,7 @@ export default function RSVPPage() {
                   </div>
                 </Card>
 
-                {showPlusOne && (
+                {showPlusOne && rsvpShowBegleitpersonen && (
                   <Card style={{ marginBottom: 14 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 10 }}>
                       Wie viele Personen bringst du mit?
@@ -704,7 +717,7 @@ export default function RSVPPage() {
             <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Deine Details</h2>
             <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>Damit wir alles perfekt vorbereiten können.</p>
 
-            {showMealChoice && (
+            {showMealChoice && rsvpShowMenu && (
               <Card style={{ marginBottom: 10 }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 12 }}>Deine Menüwahl</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -722,7 +735,7 @@ export default function RSVPPage() {
               </Card>
             )}
 
-            {showMealChoice && companions.map((c, idx) => (
+            {showMealChoice && rsvpShowMenu && companions.map((c, idx) => (
               <Card key={c.id} style={{ marginBottom: 10 }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 12 }}>
                   Menüwahl: {c.name || `Begleitperson ${idx + 1}`}
@@ -1131,31 +1144,35 @@ export default function RSVPPage() {
             {/* Extra-Aktionen nur für Zusagen */}
             {attending && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-                <button
-                  onClick={() => setStep('musikwunsch')}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    padding: '14px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
-                    border: '1.5px solid var(--gold)', background: 'var(--gold)',
-                    color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                    width: '100%', transition: 'opacity 0.15s',
-                  }}
-                >
-                  <Music size={15} />
-                  {suggestedSongs.length > 0 ? `Musikwünsche (${suggestedSongs.length}) · Weitere hinzufügen` : 'Musikwünsche hinzufügen'}
-                </button>
-                <button
-                  onClick={() => setStep('geschenke')}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    padding: '14px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
-                    border: '1.5px solid var(--border)', background: 'var(--surface)',
-                    color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                    width: '100%', transition: 'opacity 0.15s',
-                  }}
-                >
-                  <Gift size={15} /> Geschenkliste ansehen
-                </button>
+                {rsvpShowMusikwunsch && (
+                  <button
+                    onClick={() => setStep('musikwunsch')}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                      padding: '14px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
+                      border: '1.5px solid var(--gold)', background: 'var(--gold)',
+                      color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      width: '100%', transition: 'opacity 0.15s',
+                    }}
+                  >
+                    <Music size={15} />
+                    {suggestedSongs.length > 0 ? `Musikwünsche (${suggestedSongs.length}) · Weitere hinzufügen` : 'Musikwünsche hinzufügen'}
+                  </button>
+                )}
+                {rsvpShowGeschenke && (
+                  <button
+                    onClick={() => setStep('geschenke')}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                      padding: '14px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
+                      border: '1.5px solid var(--border)', background: 'var(--surface)',
+                      color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      width: '100%', transition: 'opacity 0.15s',
+                    }}
+                  >
+                    <Gift size={15} /> Geschenkliste ansehen
+                  </button>
+                )}
                 <button
                   onClick={() => setStep('fotos')}
                   style={{

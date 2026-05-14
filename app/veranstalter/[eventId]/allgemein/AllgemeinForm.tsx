@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronUp, ExternalLink, Clock } from 'lucide-react'
 
 const FIXED_COST_CATEGORIES = [
   'Miete / Locationkosten',
@@ -67,13 +67,37 @@ interface BpMember {
   profiles: { id: string; name: string; email: string } | null
 }
 
+const BP_NAV_ITEMS = [
+  { key: 'bp-gaeste',      label: 'Gäste',           group: 'PLANUNG' },
+  { key: 'bp-sitzplan',    label: 'Sitzplan',         group: 'PLANUNG' },
+  { key: 'bp-ablaufplan',  label: 'Ablaufplan',        group: 'PLANUNG' },
+  { key: 'bp-catering',    label: 'Catering & Menü',   group: 'DETAILS' },
+  { key: 'bp-dekoration',  label: 'Dekoration',        group: 'DETAILS' },
+  { key: 'bp-musik',       label: 'Musik',             group: 'DETAILS' },
+  { key: 'bp-patisserie',  label: 'Patisserie',        group: 'DETAILS' },
+  { key: 'bp-medien',      label: 'Foto & Videograf',  group: 'DETAILS' },
+  { key: 'bp-budget',      label: 'Budget',            group: 'VERWALTUNG' },
+  { key: 'bp-aufgaben',    label: 'Aufgaben',          group: 'VERWALTUNG' },
+  { key: 'bp-nachrichten', label: 'Nachrichten',       group: 'KOMMUNIKATION' },
+  { key: 'bp-dateien',     label: 'Dateien',           group: 'KOMMUNIKATION' },
+] as const
+
+const RSVP_ITEMS = [
+  { key: 'rsvp-musikwunsch',    label: 'Musikwünsche',        desc: 'Schritt zum Hinzufügen von Musikwünschen' },
+  { key: 'rsvp-geschenke',      label: 'Geschenkliste',       desc: 'Geschenkliste im Bestätigungs-Schritt' },
+  { key: 'rsvp-hotel',          label: 'Hotel-Buchung',       desc: 'Hotel-Auswahl-Schritt während der Anmeldung' },
+  { key: 'rsvp-begleitpersonen',label: 'Begleitpersonen',     desc: 'Mitreisende Personen angeben' },
+  { key: 'rsvp-menu',           label: 'Menüauswahl',         desc: 'Essensauswahl im Detail-Schritt' },
+] as const
+
 interface Props {
   eventId: string
   initialData: EventData
   bpMembers: BpMember[]
   initialCosts: OrganizerCost[]
   cateringCosts: OrganizerCost[]
-  initialGalleryEnabled: boolean
+  initialToggles: Record<string, boolean>
+  initialGalleryUnlockAt: string | null
 }
 
 const input: React.CSSProperties = {
@@ -141,13 +165,19 @@ function Toggle({ checked, onChange, label: lbl }: { checked: boolean; onChange:
   )
 }
 
-export default function AllgemeinForm({ eventId, initialData, bpMembers, initialCosts, cateringCosts, initialGalleryEnabled }: Props) {
+export default function AllgemeinForm({ eventId, initialData, bpMembers, initialCosts, cateringCosts, initialToggles, initialGalleryUnlockAt }: Props) {
   const [form, setForm] = useState(initialData)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [costs, setCosts] = useState<OrganizerCost[]>(initialCosts)
-  const [galleryEnabled, setGalleryEnabled] = useState(initialGalleryEnabled)
+  const [toggles, setToggles] = useState<Record<string, boolean>>(initialToggles)
+  const [galleryUnlockAt, setGalleryUnlockAt] = useState<string | null>(initialGalleryUnlockAt)
+  const [seitenOpen, setSeitenOpen] = useState(false)
   const [customCostLabel, setCustomCostLabel] = useState('')
+
+  // derived gallery mode
+  const galleryEnabled = toggles['gaeste-fotos'] ?? true
+  const galleryScheduled = !!galleryUnlockAt
   const [costAmounts, setCostAmounts] = useState<Record<string, string>>(
     Object.fromEntries(initialCosts.map(c => [c.id, String(c.amount)]))
   )
@@ -233,13 +263,63 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
     await addCost(label)
   }
 
-  async function toggleGallery(enabled: boolean) {
-    setGalleryEnabled(enabled)
+  async function setFeatureToggle(key: string, enabled: boolean) {
+    setToggles(t => ({ ...t, [key]: enabled }))
     const supabase = createClient()
     await supabase.from('feature_toggles').upsert(
-      { event_id: eventId, key: 'gaeste-fotos', enabled },
+      { event_id: eventId, key, enabled },
       { onConflict: 'event_id,key' }
     )
+  }
+
+  async function setGallerySchedule(date: string | null) {
+    setGalleryUnlockAt(date)
+    const supabase = createClient()
+    if (date) {
+      // scheduled mode: save the date, mark gaeste-fotos as "false" (API checks date)
+      await Promise.all([
+        supabase.from('feature_toggles').upsert(
+          { event_id: eventId, key: 'gaeste-fotos-unlock-at', enabled: false, value: date },
+          { onConflict: 'event_id,key' }
+        ),
+        supabase.from('feature_toggles').upsert(
+          { event_id: eventId, key: 'gaeste-fotos', enabled: false },
+          { onConflict: 'event_id,key' }
+        ),
+      ])
+      setToggles(t => ({ ...t, 'gaeste-fotos': false }))
+    } else {
+      // immediate mode: delete unlock-at, enable gaeste-fotos now
+      await Promise.all([
+        supabase.from('feature_toggles').delete()
+          .eq('event_id', eventId).eq('key', 'gaeste-fotos-unlock-at'),
+        supabase.from('feature_toggles').upsert(
+          { event_id: eventId, key: 'gaeste-fotos', enabled: true },
+          { onConflict: 'event_id,key' }
+        ),
+      ])
+      setToggles(t => ({ ...t, 'gaeste-fotos': true }))
+    }
+  }
+
+  async function toggleGalleryEnabled(enabled: boolean) {
+    if (!enabled) {
+      // disable completely — clear schedule too
+      setGalleryUnlockAt(null)
+      const supabase = createClient()
+      await Promise.all([
+        supabase.from('feature_toggles').upsert(
+          { event_id: eventId, key: 'gaeste-fotos', enabled: false },
+          { onConflict: 'event_id,key' }
+        ),
+        supabase.from('feature_toggles').delete()
+          .eq('event_id', eventId).eq('key', 'gaeste-fotos-unlock-at'),
+      ])
+      setToggles(t => ({ ...t, 'gaeste-fotos': false }))
+    } else {
+      // enable immediately
+      await setFeatureToggle('gaeste-fotos', true)
+    }
   }
 
   const activeCategoryNames = new Set(costs.map(c => c.category))
@@ -568,12 +648,136 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
           Aktiviere oder deaktiviere Features für dieses Event.
         </p>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-          <div>
-            <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>Gästefotos</p>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Gäste können über ihren RSVP-Link Fotos hochladen und die Galerie ansehen.</p>
+
+        {/* ── Seiten (Brautpaar) ── */}
+        <div style={{ marginBottom: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
+          <button
+            type="button"
+            onClick={() => setSeitenOpen(o => !o)}
+            style={{
+              width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '12px 14px', background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 500, margin: 0, textAlign: 'left' }}>Seiten (Brautpaar-Portal)</p>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '2px 0 0', textAlign: 'left' }}>
+                Blende einzelne Menüpunkte im Brautpaar-Portal aus
+              </p>
+            </div>
+            {seitenOpen ? <ChevronUp size={16} color="var(--text-tertiary)" /> : <ChevronDown size={16} color="var(--text-tertiary)" />}
+          </button>
+          {seitenOpen && (
+            <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border)' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 10, marginBottom: 10 }}>
+                Nur für das Brautpaar-Portal — Berechtigungen für Dienstleister bleiben unverändert.
+              </p>
+              {(['PLANUNG', 'DETAILS', 'VERWALTUNG', 'KOMMUNIKATION'] as const).map(group => {
+                const items = BP_NAV_ITEMS.filter(i => i.group === group)
+                return (
+                  <div key={group} style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                      {group}
+                    </p>
+                    {items.map(item => (
+                      <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>{item.label}</span>
+                        <Toggle
+                          checked={toggles[item.key] ?? true}
+                          onChange={v => setFeatureToggle(item.key, v)}
+                          label=""
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── Gästefotos ── */}
+        <div style={{ padding: '12px 0', borderBottom: '1px solid var(--border)', marginBottom: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: galleryEnabled || galleryScheduled ? 12 : 0 }}>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>Gästefotos</p>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Gäste können über ihren RSVP-Link Fotos hochladen und ansehen.</p>
+            </div>
+            <Toggle checked={galleryEnabled || galleryScheduled} onChange={toggleGalleryEnabled} label="" />
           </div>
-          <Toggle checked={galleryEnabled} onChange={toggleGallery} label="" />
+          {(galleryEnabled || galleryScheduled) && (
+            <div style={{ background: 'var(--accent-light)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="galleryMode"
+                    checked={!galleryScheduled}
+                    onChange={() => setGallerySchedule(null)}
+                    style={{ accentColor: 'var(--accent)', width: 14, height: 14 }}
+                  />
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>Sofort aktiv</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="galleryMode"
+                    checked={galleryScheduled}
+                    onChange={() => {
+                      const tomorrow = new Date()
+                      tomorrow.setDate(tomorrow.getDate() + 1)
+                      setGallerySchedule(tomorrow.toISOString().slice(0, 10))
+                    }}
+                    style={{ accentColor: 'var(--accent)', width: 14, height: 14 }}
+                  />
+                  <span style={{ fontSize: 13, color: 'var(--text-primary)' }}>Ab Datum aktivieren</span>
+                  {galleryScheduled && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 4 }}>
+                      <Clock size={12} color="var(--accent)" />
+                      <input
+                        type="date"
+                        value={galleryUnlockAt ?? ''}
+                        onChange={e => setGallerySchedule(e.target.value || null)}
+                        style={{ ...input, width: 'auto', padding: '4px 8px', fontSize: 13 }}
+                      />
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Nachrichten / Chat ── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 2 }}>Nachrichten / Chat</p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Chat-Funktion für alle Beteiligten aktivieren.</p>
+          </div>
+          <Toggle checked={toggles['messaging'] ?? false} onChange={v => setFeatureToggle('messaging', v)} label="" />
+        </div>
+
+        {/* ── RSVP-Optionen ── */}
+        <div style={{ marginTop: 16 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>
+            RSVP-Optionen
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+            Blendet den jeweiligen Schritt im RSVP-Prozess für Gäste aus.
+          </p>
+          {RSVP_ITEMS.map((item, i) => (
+            <div
+              key={item.key}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: i < RSVP_ITEMS.length - 1 ? '1px solid var(--border)' : 'none' }}
+            >
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 500, marginBottom: 2 }}>{item.label}</p>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{item.desc}</p>
+              </div>
+              <Toggle checked={toggles[item.key] ?? true} onChange={v => setFeatureToggle(item.key, v)} label="" />
+            </div>
+          ))}
         </div>
       </SectionWrap>
 

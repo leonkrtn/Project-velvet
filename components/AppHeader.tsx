@@ -56,6 +56,13 @@ const FEATURE_ROUTES: Record<FeatureKey, string> = {
   deko:            '/brautpaar/deko',
   'gaeste-fotos':  '/brautpaar/gaeste-fotos',
   messaging:       '/brautpaar/nachrichten',
+  // Brautpaar portal sidebar toggles — no dedicated route
+  'bp-gaeste': '', 'bp-sitzplan': '', 'bp-ablaufplan': '', 'bp-catering': '',
+  'bp-dekoration': '', 'bp-musik': '', 'bp-patisserie': '', 'bp-medien': '',
+  'bp-budget': '', 'bp-aufgaben': '', 'bp-nachrichten': '', 'bp-dateien': '',
+  // RSVP step toggles — no dedicated route
+  'rsvp-musikwunsch': '', 'rsvp-geschenke': '', 'rsvp-hotel': '',
+  'rsvp-begleitpersonen': '', 'rsvp-menu': '',
 }
 
 const COLOR_PRESETS = [

@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
-import { Images, Upload, Trash2, X, Loader, Globe, Lock } from 'lucide-react'
+import { Images, Upload, Trash2, X, Loader, Globe, Lock, Download, BookImage } from 'lucide-react'
 
 interface Photo {
   id: string
@@ -23,6 +23,7 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
   const [error, setError]         = useState<string | null>(null)
   const [isPublic, setIsPublic]   = useState(true)
   const [isBrautpaar, setIsBrautpaar] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { load() }, [eventId])
@@ -91,6 +92,32 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
     if (res.ok) setPhotos(p => p.filter(x => x.id !== photo.id))
   }
 
+  async function downloadSinglePhoto(photo: Photo, filename?: string) {
+    if (!photo.url) return
+    try {
+      const res = await fetch(photo.url)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename ?? `foto-${photo.uploader_name ?? 'gast'}.jpg`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch { /* silent */ }
+  }
+
+  async function downloadAllPhotos() {
+    if (downloading || photos.length === 0) return
+    setDownloading(true)
+    for (let i = 0; i < photos.length; i++) {
+      await downloadSinglePhoto(photos[i], `velvet-foto-${String(i + 1).padStart(3, '0')}-${photos[i].uploader_name ?? 'gast'}.jpg`)
+      if (i < photos.length - 1) await new Promise(r => setTimeout(r, 300))
+    }
+    setDownloading(false)
+  }
+
   function fmt(dateStr: string) {
     return new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })
   }
@@ -128,21 +155,41 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
         <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)' }}>
           Gästefotos ({photos.length})
         </p>
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '7px 14px', borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--border)', background: 'var(--surface)',
-            fontSize: 12, cursor: uploading ? 'default' : 'pointer',
-            color: 'var(--text-secondary)', fontFamily: 'inherit',
-            opacity: uploading ? 0.6 : 1,
-          }}
-        >
-          {uploading ? <Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={13} />}
-          {uploading ? 'Wird hochgeladen…' : 'Foto hochladen'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {(isBrautpaar || mode === 'brautpaar') && photos.length > 0 && (
+            <button
+              onClick={downloadAllPhotos}
+              disabled={downloading}
+              title="Alle Fotos herunterladen"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                padding: '7px 12px', borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border)', background: 'var(--surface)',
+                fontSize: 12, cursor: downloading ? 'default' : 'pointer',
+                color: 'var(--text-secondary)', fontFamily: 'inherit',
+                opacity: downloading ? 0.6 : 1,
+              }}
+            >
+              {downloading ? <Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={13} />}
+              {downloading ? 'Lädt…' : 'Alle herunterladen'}
+            </button>
+          )}
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '7px 14px', borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border)', background: 'var(--surface)',
+              fontSize: 12, cursor: uploading ? 'default' : 'pointer',
+              color: 'var(--text-secondary)', fontFamily: 'inherit',
+              opacity: uploading ? 0.6 : 1,
+            }}
+          >
+            {uploading ? <Loader size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={13} />}
+            {uploading ? 'Wird hochgeladen…' : 'Foto hochladen'}
+          </button>
+        </div>
         <input
           ref={fileRef}
           type="file"
@@ -223,6 +270,20 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
         </div>
       )}
 
+      {/* Fotoalbum bestellen — Brautpaar only placeholder */}
+      {(isBrautpaar || mode === 'brautpaar') && (
+        <div style={{ marginTop: 20, padding: '14px 18px', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: 14, opacity: 0.65 }}>
+          <BookImage size={22} color="var(--text-tertiary)" />
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Fotoalbum bestellen</p>
+            <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '2px 0 0' }}>Gestalte ein gedrucktes Album aus euren Eventfotos.</p>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', background: 'var(--border)', borderRadius: 4, padding: '3px 8px', flexShrink: 0 }}>
+            Bald verfügbar
+          </span>
+        </div>
+      )}
+
       {/* Lightbox */}
       {lightbox && (
         <div
@@ -243,13 +304,21 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
             <img
               src={lightbox.url}
               alt=""
-              style={{ maxHeight: '85vh', maxWidth: '90vw', borderRadius: 8, objectFit: 'contain' }}
+              style={{ maxHeight: '82vh', maxWidth: '90vw', borderRadius: 8, objectFit: 'contain' }}
               onClick={e => e.stopPropagation()}
             />
           )}
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 12 }}>
-            {lightbox.uploader_name ?? '—'} · {fmt(lightbox.uploaded_at)}
-          </p>
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }} onClick={e => e.stopPropagation()}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: 0 }}>
+              {lightbox.uploader_name ?? '—'} · {fmt(lightbox.uploaded_at)}
+            </p>
+            <button
+              onClick={e => { e.stopPropagation(); downloadSinglePhoto(lightbox, `foto-${lightbox.uploader_name ?? 'gast'}.jpg`) }}
+              style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: '#fff', fontSize: 12, fontFamily: 'inherit' }}
+            >
+              <Download size={13} /> Download
+            </button>
+          </div>
         </div>
       )}
 

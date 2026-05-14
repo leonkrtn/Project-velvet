@@ -70,6 +70,7 @@ export async function GET(
     { data: beitraege },
     { data: rsvpSettings },
     { data: cateringPlan },
+    { data: featureRows },
   ] = await Promise.all([
     admin.from('events')
       .select('id, title, couple_name, date, venue, venue_address, dresscode, children_allowed, children_note, meal_options, max_begleitpersonen, data_freeze_at')
@@ -90,6 +91,10 @@ export async function GET(
       .select('menu_courses')
       .eq('event_id', guest.event_id)
       .maybeSingle(),
+    admin.from('feature_toggles')
+      .select('key, enabled')
+      .eq('event_id', guest.event_id)
+      .in('key', ['rsvp-musikwunsch', 'rsvp-geschenke', 'rsvp-hotel', 'rsvp-begleitpersonen', 'rsvp-menu']),
   ])
 
   if (evErr || !event) {
@@ -101,6 +106,8 @@ export async function GET(
   const isDeadlinePassed = rsvpSettings?.rsvp_deadline
     ? new Date(rsvpSettings.rsvp_deadline) < now
     : false
+
+  const rsvpToggleMap = Object.fromEntries((featureRows ?? []).map((r: any) => [r.key, r.enabled]))
 
   const coupleName = (event.couple_name && event.couple_name.trim())
     || (event.title && event.title.trim())
@@ -160,6 +167,12 @@ export async function GET(
       invitationText: rsvpSettings?.invitation_text ?? '',
       phoneContact: rsvpSettings?.phone_contact ?? null,
       menuCourses: (cateringPlan as any)?.menu_courses ?? null,
+      // feature toggles for RSVP steps
+      rsvpShowMusikwunsch:     rsvpToggleMap['rsvp-musikwunsch']     ?? true,
+      rsvpShowGeschenke:       rsvpToggleMap['rsvp-geschenke']       ?? true,
+      rsvpShowHotel:           rsvpToggleMap['rsvp-hotel']           ?? true,
+      rsvpShowBegleitpersonen: rsvpToggleMap['rsvp-begleitpersonen'] ?? true,
+      rsvpShowMenu:            rsvpToggleMap['rsvp-menu']            ?? true,
     },
     wishlist,
     guest: {

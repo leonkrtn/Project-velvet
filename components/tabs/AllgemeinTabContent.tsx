@@ -137,7 +137,8 @@ function AllgemeinFormWrapper({ eventId }: { eventId: string }) {
     bpMembers: unknown[]
     initialCosts: unknown[]
     cateringCosts: unknown[]
-    initialGalleryEnabled: boolean
+    initialToggles: Record<string, boolean>
+    initialGalleryUnlockAt: string | null
   } | null>(null)
 
   useEffect(() => {
@@ -147,15 +148,33 @@ function AllgemeinFormWrapper({ eventId }: { eventId: string }) {
       supabase.from('event_members').select('id, user_id, profiles!user_id(id, name, email)').eq('event_id', eventId).eq('role', 'brautpaar'),
       supabase.from('event_organizer_costs').select('id, category, amount, notes').eq('event_id', eventId).neq('source', 'catering').order('created_at', { ascending: true }),
       supabase.from('event_organizer_costs').select('id, category, amount, notes').eq('event_id', eventId).eq('source', 'catering').order('created_at', { ascending: true }),
-      supabase.from('feature_toggles').select('enabled').eq('event_id', eventId).eq('key', 'gaeste-fotos').maybeSingle(),
-    ]).then(([eventRes, membersRes, costsRes, cateringCostsRes, galleryToggle]) => {
+      supabase.from('feature_toggles').select('key, enabled, value').eq('event_id', eventId),
+    ]).then(([eventRes, membersRes, costsRes, cateringCostsRes, togglesRes]) => {
       if (!eventRes.data) return
+      const initialToggles: Record<string, boolean> = {
+        'gaeste-fotos': true, 'messaging': false,
+        'bp-gaeste': true, 'bp-sitzplan': true, 'bp-ablaufplan': true,
+        'bp-catering': true, 'bp-dekoration': true, 'bp-musik': true,
+        'bp-patisserie': true, 'bp-medien': true, 'bp-budget': true,
+        'bp-aufgaben': true, 'bp-nachrichten': true, 'bp-dateien': true,
+        'rsvp-musikwunsch': true, 'rsvp-geschenke': true, 'rsvp-hotel': true,
+        'rsvp-begleitpersonen': true, 'rsvp-menu': true,
+      }
+      let initialGalleryUnlockAt: string | null = null
+      for (const row of togglesRes.data ?? []) {
+        if (row.key === 'gaeste-fotos-unlock-at') {
+          initialGalleryUnlockAt = (row as any).value ?? null
+        } else {
+          initialToggles[row.key] = row.enabled
+        }
+      }
       setFormProps({
         initialData: eventRes.data as Record<string, unknown>,
         bpMembers: membersRes.data ?? [],
         initialCosts: costsRes.data ?? [],
         cateringCosts: cateringCostsRes.data ?? [],
-        initialGalleryEnabled: galleryToggle.data?.enabled ?? true,
+        initialToggles,
+        initialGalleryUnlockAt,
       })
       setLoaded(true)
     })
@@ -174,7 +193,8 @@ function AllgemeinFormWrapper({ eventId }: { eventId: string }) {
       initialCosts={formProps.initialCosts as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       cateringCosts={formProps.cateringCosts as any}
-      initialGalleryEnabled={formProps.initialGalleryEnabled}
+      initialToggles={formProps.initialToggles}
+      initialGalleryUnlockAt={formProps.initialGalleryUnlockAt}
     />
   )
 }

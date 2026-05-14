@@ -27,13 +27,18 @@ async function getToggles(eventId: string): Promise<{ enabled: boolean; isPublic
   const admin = createAdminClient()
   const { data } = await admin
     .from('feature_toggles')
-    .select('key, enabled')
+    .select('key, enabled, value')
     .eq('event_id', eventId)
-    .in('key', ['gaeste-fotos', 'gaeste-fotos-public'])
-  const map = Object.fromEntries((data ?? []).map(r => [r.key, r.enabled]))
+    .in('key', ['gaeste-fotos', 'gaeste-fotos-public', 'gaeste-fotos-unlock-at'])
+  const map = Object.fromEntries((data ?? []).map(r => [r.key, r]))
+
+  const directEnabled = map['gaeste-fotos']?.enabled ?? true
+  const unlockAt: string | null = (map['gaeste-fotos-unlock-at'] as any)?.value ?? null
+  const timedEnabled = unlockAt ? new Date(unlockAt) <= new Date() : false
+
   return {
-    enabled:  map['gaeste-fotos']        ?? true,
-    isPublic: map['gaeste-fotos-public'] ?? true,
+    enabled:  directEnabled || timedEnabled,
+    isPublic: map['gaeste-fotos-public']?.enabled ?? true,
   }
 }
 

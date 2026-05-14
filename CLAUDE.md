@@ -168,7 +168,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `organizer_todos` | Organizer task list |
 | `organizer_staff` | Organizer's team members |
 | `event_organizer_costs` | Organizer's own cost items |
-| `feature_toggles` | Per-event feature flags |
+| `feature_toggles` | Per-event feature flags — columns: `event_id`, `key`, `enabled`, `value TEXT` (optional text metadata, e.g. ISO date for `gaeste-fotos-unlock-at`) |
 
 ---
 
@@ -289,6 +289,7 @@ supabase/migrations/
                                        RLS for all roles, Realtime enabled on deko_items/canvases/comments/votes)
   0065_conversation_read_state.sql     Read state for conversations
   0066_guest_photos_r2.sql             Extends guest_photos: adds r2_key, guest_token, status; refreshes RLS policies
+  0067_feature_toggles_value.sql       Adds value TEXT column to feature_toggles (used for gaeste-fotos-unlock-at date)
 
 workers/
   file-service/                 Cloudflare Worker — thin R2 presigned URL generator
@@ -322,6 +323,7 @@ app/api/events/[eventId]/photos/
 
 components/medien/
   GuestPhotosSection.tsx        Masonry gallery + upload for authenticated member portals (Medien tab)
+                                Brautpaar-only: download all button, download per photo in lightbox, "Fotoalbum bestellen" placeholder
 
 components/rsvp/
   RsvpPhotos.tsx                Mobile-first gallery + upload for RSVP page (token-auth, no login required)

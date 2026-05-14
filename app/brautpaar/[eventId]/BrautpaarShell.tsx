@@ -9,6 +9,7 @@ import {
   MessageSquare, File, ChevronRight, X, Menu,
 } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
+import { createClient } from '@/lib/supabase/client'
 
 interface NavItem {
   key: string
@@ -143,8 +144,34 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   const [expanded, setExpanded] = useState(true)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [welcomeVisible, setWelcomeVisible] = useState(showWelcome)
+  const [bpToggles, setBpToggles] = useState<Record<string, boolean>>({})
 
-  const nav = buildNav(eventId)
+  // Load bp-* feature toggles to filter nav items
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.from('feature_toggles')
+      .select('key, enabled')
+      .eq('event_id', eventId)
+      .like('key', 'bp-%')
+      .then(({ data }) => {
+        if (data) {
+          const map: Record<string, boolean> = {}
+          for (const row of data) map[row.key] = row.enabled
+          setBpToggles(map)
+        }
+      })
+  }, [eventId])
+
+  // Filter nav: uebersicht and allgemein always shown; others follow bp-* toggles
+  const fullNav = buildNav(eventId)
+  const nav = fullNav.map(group => ({
+    ...group,
+    items: group.items.filter(item =>
+      item.key === 'uebersicht' || item.key === 'allgemein'
+        ? true
+        : (bpToggles[`bp-${item.key}`] ?? true)
+    ),
+  })).filter(g => g.items.length > 0)
 
   // Close mobile drawer on route change
   useEffect(() => { setMobileOpen(false) }, [pathname])
