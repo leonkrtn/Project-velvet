@@ -54,7 +54,6 @@ export async function GET(request: Request) {
       switch (nonVendor.role) {
         case 'veranstalter': return NextResponse.redirect(`${origin}/veranstalter/events`)
         case 'brautpaar':    return NextResponse.redirect(`${origin}/brautpaar`)
-        case 'trauzeuge':    return NextResponse.redirect(`${origin}/trauzeuge/${nonVendor.event_id}`)
         default:             return NextResponse.redirect(`${origin}/brautpaar`)
       }
     }

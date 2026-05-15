@@ -1,12 +1,13 @@
 'use client'
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import ChatUnreadBadge from './chats/ChatUnreadBadge'
+import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Settings, Users, MessageSquare,
   Calendar, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
-  Music2, Cake, Flower2, Camera, FolderOpen,
+  Music2, Cake, Flower2, Camera, FolderOpen, LogOut,
 } from 'lucide-react'
 
 interface Props {
@@ -36,7 +37,14 @@ const NAV_ITEMS = [
 
 export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCode, children }: Props) {
   const pathname = usePathname()
+  const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   const base = `/veranstalter/${eventId}`
 
@@ -147,6 +155,21 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
             </div>
           </div>
         )}
+        <div style={{ borderTop: '1px solid var(--border)', padding: '8px 8px 12px', marginTop: 4 }}>
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 9,
+              padding: '8px 10px', borderRadius: 8, width: '100%',
+              fontSize: 14, color: 'var(--text-secondary)',
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: 'inherit', textAlign: 'left',
+            }}
+          >
+            <LogOut size={16} style={{ opacity: 0.5, flexShrink: 0 }} />
+            <span>Abmelden</span>
+          </button>
+        </div>
       </div>
     </nav>
   )

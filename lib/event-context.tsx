@@ -98,11 +98,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       const { fetchUserRole, fetchTrauzeugePermissions, fetchBrautpaarPermissions } = await getDB()
       const role = await fetchUserRole(eventId, userId)
       setCurrentRole(role)
-      if (role === 'trauzeuge') {
-        const perms = await fetchTrauzeugePermissions(eventId, userId)
-        setTrauzeugePerm(perms)
-        setBrautpaarPerm(null)
-      } else if (role === 'brautpaar') {
+      if (role === 'brautpaar') {
         const perms = await fetchBrautpaarPermissions(eventId)
         setBrautpaarPerm(perms)
         setTrauzeugePerm(null)

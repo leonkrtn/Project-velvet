@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Settings, Trash2, Plus, Search } from 'lucide-react'
+import { Settings, Trash2, Plus, Search, LogOut } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
 
 
@@ -320,6 +320,19 @@ export default function VeranstalterEventsPage() {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <button
+            onClick={async () => { const { createClient: cc } = await import('@/lib/supabase/client'); await cc().auth.signOut(); router.push('/login') }}
+            title="Abmelden"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px',
+              border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+              background: 'none', cursor: 'pointer', color: 'var(--text-secondary)',
+              fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
+            }}
+          >
+            <LogOut size={14} /> Abmelden
+          </button>
           <button
             onClick={() => router.push('/veranstalter/konfiguration')}
             title="Konfiguration"

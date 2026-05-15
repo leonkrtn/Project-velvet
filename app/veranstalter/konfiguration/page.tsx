@@ -3,11 +3,21 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
-import { ChevronLeft, Check, Plus, Trash2, Pencil, X, ChevronDown, ChevronRight, Edit2 } from 'lucide-react'
-import type { RaumPoint, RaumElement } from '@/components/room/RaumKonfigurator'
+import { ChevronLeft, Check, Plus, Trash2, Pencil, X, ChevronDown, ChevronRight, Edit2, ArrowLeft } from 'lucide-react'
+import type { RaumPoint, RaumElement, RaumTablePool } from '@/components/room/RaumKonfigurator'
 import type { DekoOrganizerTemplate, DekoOrganizerFlatRate } from '@/lib/deko/types'
 
 const RaumKonfigurator = dynamic(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
+
+type SeatingConcept = {
+  id: string
+  organizer_id: string
+  name: string
+  points: RaumPoint[]
+  elements: RaumElement[]
+  table_pool: RaumTablePool
+  sort_order: number
+}
 
 /* ── Staff types ── */
 const ROLE_OPTIONS = [
@@ -36,9 +46,11 @@ type StaffMember = {
   id: string; organizer_id: string; name: string; email: string | null
   phone: string | null; role_category: string | null; available_days: string[]
   hourly_rate: number | null; notes: string | null
+  auth_user_id: string | null; must_change_password: boolean
 }
 const EMPTY_STAFF: Omit<StaffMember,'id'|'organizer_id'> = {
   name:'', email:'', phone:'', role_category:'', available_days:[], hourly_rate:0, notes:'',
+  auth_user_id: null, must_change_password: true,
 }
 
 /* ── Settings types ── */
@@ -55,7 +67,7 @@ const EMPTY_SETTINGS: Settings = {
 const ALL_MEALS = ['fleisch','fisch','vegetarisch','vegan']
 const MEAL_LABELS: Record<string,string> = { fleisch:'Fleisch', fisch:'Fisch', vegetarisch:'Vegetarisch', vegan:'Vegan' }
 
-type Tab = 'raum' | 'mitarbeiter' | 'einstellungen' | 'dekoration'
+type Tab = 'raum' | 'mitarbeiter' | 'einstellungen' | 'dekoration' | 'sitzplan'
 
 // ── Deko template card ────────────────────────────────────────────────────────
 
@@ -184,6 +196,7 @@ export default function KonfigurationPage() {
   /* ── Room config ── */
   const [roomPoints, setRoomPoints] = useState<RaumPoint[]>([])
   const [roomElements, setRoomElements] = useState<RaumElement[]>([])
+  const [roomTablePool, setRoomTablePool] = useState<RaumTablePool>({ types: [] })
   const [roomSaving, setRoomSaving] = useState(false)
   const [roomSaved, setRoomSaved] = useState(false)
 
@@ -208,6 +221,23 @@ export default function KonfigurationPage() {
   const [addingTemplate, setAddingTemplate] = useState(false)
   const [newTemplateName, setNewTemplateName] = useState('')
 
+  /* ── Staff auth setup ── */
+  const [setupAuthStaffId, setSetupAuthStaffId] = useState<string | null>(null)
+  const [setupAuthPassword, setSetupAuthPassword] = useState('')
+  const [setupAuthSubmitting, setSetupAuthSubmitting] = useState(false)
+  const [setupAuthError, setSetupAuthError] = useState('')
+  const [setupAuthSuccess, setSetupAuthSuccess] = useState(false)
+
+  /* ── Seating concepts ── */
+  const [concepts, setConcepts] = useState<SeatingConcept[]>([])
+  const [editingConceptId, setEditingConceptId] = useState<string | null>(null)
+  const [conceptSaving, setConceptSaving] = useState(false)
+  const [conceptSaved, setConceptSaved] = useState(false)
+  const [addingConcept, setAddingConcept] = useState(false)
+  const [newConceptName, setNewConceptName] = useState('')
+  const [renamingConceptId, setRenamingConceptId] = useState<string | null>(null)
+  const [renameConceptDraft, setRenameConceptDraft] = useState('')
+
   /* ── Load ── */
   useEffect(() => { load() }, []) // eslint-disable-line
 
@@ -218,21 +248,24 @@ export default function KonfigurationPage() {
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
 
-      const [{ data: roomRow }, { data: staffRows }, { data: presetRow }, { data: tmplRows }, { data: frRows }] = await Promise.all([
+      const [{ data: roomRow }, { data: staffRows }, { data: presetRow }, { data: tmplRows }, { data: frRows }, { data: conceptRows }] = await Promise.all([
         supabase.from('organizer_room_configs').select('*').eq('user_id', user.id).single(),
-        supabase.from('organizer_staff').select('*').eq('organizer_id', user.id).order('created_at', { ascending: true }),
+        supabase.from('organizer_staff').select('id,organizer_id,name,email,phone,role_category,available_days,hourly_rate,notes,auth_user_id,must_change_password').eq('organizer_id', user.id).order('created_at', { ascending: true }),
         supabase.from('organizer_presets').select('*').eq('user_id', user.id).single(),
         supabase.from('deko_organizer_templates').select('*').eq('organizer_id', user.id).order('sort_order'),
         supabase.from('deko_organizer_flat_rates').select('*').eq('organizer_id', user.id),
+        supabase.from('organizer_seating_concepts').select('*').eq('organizer_id', user.id).order('sort_order'),
       ])
 
       if (roomRow) {
         setRoomPoints(roomRow.points ?? [])
         setRoomElements(roomRow.elements ?? [])
+        setRoomTablePool(roomRow.table_pool ?? { types: [] })
       }
       setStaff((staffRows ?? []) as StaffMember[])
       setDekoTemplates((tmplRows ?? []) as DekoOrganizerTemplate[])
       setDekoFlatRates((frRows ?? []) as DekoOrganizerFlatRate[])
+      setConcepts((conceptRows ?? []) as SeatingConcept[])
       if (presetRow) {
         setSettings({
           venue:               presetRow.venue               ?? '',
@@ -274,7 +307,7 @@ export default function KonfigurationPage() {
   function openAddStaff() { setEditingStaff(null); setStaffForm(EMPTY_STAFF); setStaffError(''); setShowStaffModal(true) }
   function openEditStaff(m: StaffMember) {
     setEditingStaff(m)
-    setStaffForm({ name:m.name, email:m.email??'', phone:m.phone??'', role_category:m.role_category??'', available_days:m.available_days??[], hourly_rate:m.hourly_rate??0, notes:m.notes??'' })
+    setStaffForm({ name:m.name, email:m.email??'', phone:m.phone??'', role_category:m.role_category??'', available_days:m.available_days??[], hourly_rate:m.hourly_rate??0, notes:m.notes??'', auth_user_id:m.auth_user_id, must_change_password:m.must_change_password })
     setStaffError(''); setShowStaffModal(true)
   }
   function closeStaffModal() { setShowStaffModal(false); setStaffError('') }
@@ -318,6 +351,28 @@ export default function KonfigurationPage() {
     }
   }
 
+  async function handleSetupAuth() {
+    if (!setupAuthStaffId || setupAuthPassword.length < 8) { setSetupAuthError('Passwort muss mindestens 8 Zeichen haben.'); return }
+    setSetupAuthSubmitting(true); setSetupAuthError(''); setSetupAuthSuccess(false)
+    try {
+      const res = await fetch(`/api/staff/${setupAuthStaffId}/setup-auth`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: setupAuthPassword }),
+      })
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: 'Fehler' }))
+        setSetupAuthError(error); return
+      }
+      setSetupAuthSuccess(true)
+      setSetupAuthPassword('')
+      // Refresh staff to reflect auth_user_id change
+      const { data } = await supabase.from('organizer_staff').select('id,organizer_id,name,email,phone,role_category,available_days,hourly_rate,notes,auth_user_id,must_change_password').eq('id', setupAuthStaffId).maybeSingle()
+      if (data) setStaff(prev => prev.map(s => s.id === setupAuthStaffId ? data as StaffMember : s))
+    } finally {
+      setSetupAuthSubmitting(false)
+    }
+  }
+
   function toggleDay(day: string) {
     setStaffForm(f => ({
       ...f,
@@ -350,6 +405,44 @@ export default function KonfigurationPage() {
     await supabase.from('deko_organizer_flat_rates').delete().eq('id', id)
     setDekoFlatRates(prev => prev.filter(f => f.id !== id))
   }
+
+  /* ── Seating concept CRUD ── */
+  async function createConcept() {
+    if (!newConceptName.trim() || !userId) return
+    const { data } = await supabase.from('organizer_seating_concepts').insert({
+      organizer_id: userId, name: newConceptName.trim(),
+      points: roomPoints, elements: roomElements, table_pool: roomTablePool, sort_order: concepts.length,
+    }).select().single()
+    if (data) {
+      setConcepts(prev => [...prev, data as SeatingConcept])
+      setNewConceptName(''); setAddingConcept(false)
+      setEditingConceptId(data.id)
+    }
+  }
+  async function renameConcept(id: string, name: string) {
+    await supabase.from('organizer_seating_concepts').update({ name }).eq('id', id)
+    setConcepts(prev => prev.map(c => c.id === id ? { ...c, name } : c))
+    setRenamingConceptId(null)
+  }
+  async function deleteConcept(id: string) {
+    if (!confirm('Tischkonzept wirklich löschen?')) return
+    await supabase.from('organizer_seating_concepts').delete().eq('id', id)
+    setConcepts(prev => prev.filter(c => c.id !== id))
+    if (editingConceptId === id) setEditingConceptId(null)
+  }
+  const handleSaveConcept = useCallback(async (points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool) => {
+    if (!editingConceptId) return
+    setConceptSaving(true)
+    try {
+      await supabase.from('organizer_seating_concepts').update({
+        points, elements, table_pool: tablePool, updated_at: new Date().toISOString(),
+      }).eq('id', editingConceptId)
+      setConcepts(prev => prev.map(c => c.id === editingConceptId ? { ...c, points, elements, table_pool: tablePool } : c))
+      setConceptSaved(true); setTimeout(() => setConceptSaved(false), 3000)
+    } finally {
+      setConceptSaving(false)
+    }
+  }, [editingConceptId, supabase])
 
   /* ── Settings save ── */
   async function saveSettings() {
@@ -388,13 +481,16 @@ export default function KonfigurationPage() {
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'raum',          label: 'Raum' },
+    { key: 'sitzplan',      label: 'Sitzplan' },
     { key: 'mitarbeiter',   label: 'Mitarbeiter' },
     { key: 'einstellungen', label: 'Einstellungen' },
     { key: 'dekoration',    label: 'Dekoration' },
   ]
 
+  const editingConcept = concepts.find(c => c.id === editingConceptId) ?? null
+
   return (
-    <div style={{ maxWidth: tab === 'raum' ? 1100 : 700, margin: '0 auto', padding: '28px 20px 80px', transition: 'max-width 0.3s' }}>
+    <div style={{ maxWidth: (tab === 'raum' || (tab === 'sitzplan' && editingConceptId)) ? 1100 : 700, margin: '0 auto', padding: '28px 20px 80px', transition: 'max-width 0.3s' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
@@ -428,6 +524,95 @@ export default function KonfigurationPage() {
             saving={roomSaving}
             saved={roomSaved}
           />
+        </div>
+      )}
+
+      {/* ── Sitzplan ── */}
+      {tab === 'sitzplan' && (
+        <div>
+          {/* Concept editor view */}
+          {editingConcept ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <button onClick={() => { setEditingConceptId(null); setConceptSaved(false) }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'none', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+                  <ArrowLeft size={14} /> Zurück
+                </button>
+                <div>
+                  <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 1px' }}>{editingConcept.name}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>Raumkonfiguration und Tischpool für dieses Konzept.</p>
+                </div>
+              </div>
+              <RaumKonfigurator
+                initialPoints={editingConcept.points}
+                initialElements={editingConcept.elements}
+                initialTablePool={editingConcept.table_pool}
+                onSave={handleSaveConcept}
+                saving={conceptSaving}
+                saved={conceptSaved}
+              />
+            </div>
+          ) : (
+            /* Concept list view */
+            <div style={card}>
+              <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>Tischkonzepte</p>
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '0 0 20px', lineHeight: 1.6 }}>
+                Globale Vorlagen mit Raumform und Tischpool. Im Sitzplan-Editor eines Events können sie per Dropdown geladen werden.
+              </p>
+
+              {concepts.length === 0 && !addingConcept && (
+                <div style={{ padding: '28px 20px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 10, color: 'var(--text-tertiary)', marginBottom: 16, fontSize: 13 }}>
+                  Noch keine Tischkonzepte erstellt.
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                {concepts.map(c => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8 }}>
+                    {renamingConceptId === c.id ? (
+                      <input
+                        autoFocus
+                        value={renameConceptDraft}
+                        onChange={e => setRenameConceptDraft(e.target.value)}
+                        onBlur={() => renameConcept(c.id, renameConceptDraft)}
+                        onKeyDown={e => { if (e.key === 'Enter') renameConcept(c.id, renameConceptDraft); if (e.key === 'Escape') setRenamingConceptId(null) }}
+                        style={{ flex: 1, padding: '5px 8px', border: '1px solid var(--accent)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                      />
+                    ) : (
+                      <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{c.name}</span>
+                    )}
+                    <button onClick={() => setEditingConceptId(c.id)} style={{ padding: '5px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }}>
+                      Konfigurieren
+                    </button>
+                    <button onClick={() => { setRenamingConceptId(c.id); setRenameConceptDraft(c.name) }} style={{ ...dekoIconBtn }}><Edit2 size={13} /></button>
+                    <button onClick={() => deleteConcept(c.id)} style={{ ...dekoIconBtn, color: '#E06C75' }}><Trash2 size={13} /></button>
+                  </div>
+                ))}
+              </div>
+
+              {addingConcept ? (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    autoFocus
+                    value={newConceptName}
+                    onChange={e => setNewConceptName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') createConcept(); if (e.key === 'Escape') setAddingConcept(false) }}
+                    placeholder="Konzept benennen…"
+                    style={{ ...dekoInp, flex: 1 }}
+                  />
+                  <button onClick={createConcept} style={{ padding: '8px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
+                    Erstellen
+                  </button>
+                  <button onClick={() => setAddingConcept(false)} style={{ padding: '8px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setAddingConcept(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', border: '1px dashed var(--border)', borderRadius: 8, background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+                  <Plus size={15} /> Neues Konzept erstellen
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -488,6 +673,12 @@ export default function KonfigurationPage() {
                     {m.notes && <p style={{ fontSize:12, color:'var(--text-secondary)', margin:'4px 0 0' }}>{m.notes}</p>}
                   </div>
                   <div style={{ display:'flex', gap:6, marginLeft:12 }}>
+                    <button
+                      onClick={() => { setSetupAuthStaffId(m.id); setSetupAuthPassword(''); setSetupAuthError(''); setSetupAuthSuccess(false) }}
+                      title={m.auth_user_id ? 'Passwort zurücksetzen' : 'Portal-Konto erstellen'}
+                      style={{ padding:'6px 10px', background: m.auth_user_id ? '#EFF6FF' : 'none', border:`1px solid ${m.auth_user_id ? '#BFDBFE' : 'var(--border)'}`, borderRadius:7, cursor:'pointer', color: m.auth_user_id ? '#1D4ED8' : 'var(--text-tertiary)', display:'flex', alignItems:'center', gap:4, fontSize:11, fontFamily:'inherit', fontWeight: m.auth_user_id ? 600 : 400 }}>
+                      {m.auth_user_id ? '🔑 Konto' : '+ Konto'}
+                    </button>
                     <button onClick={() => openEditStaff(m)} style={{ padding:6, background:'none', border:'1px solid var(--border)', borderRadius:7, cursor:'pointer', color:'var(--text-tertiary)', display:'flex' }}>
                       <Pencil size={13} />
                     </button>
@@ -552,6 +743,52 @@ export default function KonfigurationPage() {
               </div>
             </div>
           )}
+        {/* Setup auth modal */}
+        {setupAuthStaffId && (() => {
+          const m = staff.find(s => s.id === setupAuthStaffId)
+          if (!m) return null
+          return (
+            <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={() => setSetupAuthStaffId(null)}>
+              <div style={{ background:'var(--surface)', borderRadius:'var(--radius)', padding:28, width:380, maxWidth:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.15)' }} onClick={e=>e.stopPropagation()}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                  <div>
+                    <h3 style={{ fontSize:16, fontWeight:700, margin:'0 0 2px' }}>{m.auth_user_id ? 'Passwort zurücksetzen' : 'Portal-Konto erstellen'}</h3>
+                    <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:0 }}>{m.name} · {m.email ?? 'Keine E-Mail'}</p>
+                  </div>
+                  <button onClick={() => setSetupAuthStaffId(null)} style={{ background:'none', border:'none', cursor:'pointer', padding:4, display:'flex', color:'var(--text-tertiary)' }}><X size={16}/></button>
+                </div>
+                {!m.email && (
+                  <p style={{ fontSize:13, color:'#EF4444', marginBottom:12 }}>Dieser Mitarbeiter hat keine E-Mail-Adresse hinterlegt. Bitte zuerst bearbeiten.</p>
+                )}
+                {m.email && (
+                  <>
+                    <div style={{ marginBottom:14 }}>
+                      <label style={label12}>Initiales Passwort</label>
+                      <input
+                        type="password"
+                        value={setupAuthPassword}
+                        onChange={e => setSetupAuthPassword(e.target.value)}
+                        placeholder="Mindestens 8 Zeichen"
+                        style={inp}
+                      />
+                      <p style={{ fontSize:11, color:'var(--text-tertiary)', margin:'4px 0 0' }}>
+                        Der Mitarbeiter muss das Passwort beim ersten Login ändern.
+                      </p>
+                    </div>
+                    {setupAuthError && <p style={{ fontSize:12, color:'#EF4444', marginBottom:10 }}>{setupAuthError}</p>}
+                    {setupAuthSuccess && <p style={{ fontSize:12, color:'#059669', marginBottom:10 }}>✓ Konto erfolgreich {m.auth_user_id ? 'aktualisiert' : 'erstellt'}!</p>}
+                    <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+                      <button onClick={() => setSetupAuthStaffId(null)} style={{ padding:'9px 16px', background:'none', border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', cursor:'pointer', fontSize:13, fontFamily:'inherit' }}>Schließen</button>
+                      <button onClick={handleSetupAuth} disabled={setupAuthSubmitting} style={{ padding:'9px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:'var(--radius-sm)', cursor:setupAuthSubmitting?'not-allowed':'pointer', fontSize:13, fontWeight:500, fontFamily:'inherit', opacity:setupAuthSubmitting?0.6:1 }}>
+                        {setupAuthSubmitting ? 'Wird erstellt…' : m.auth_user_id ? 'Passwort ändern' : 'Konto erstellen'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )
+        })()}
         </div>
       )}
 

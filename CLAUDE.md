@@ -55,6 +55,11 @@
     berechtigungen/[id]/   → Vendor permission editor
     budget/                → Budget tracker
 
+/mitarbeiter/             → Staff portal (requires app_metadata.role='mitarbeiter')
+  change-password/        → Forced password change on first login
+  [eventId]/
+    schichtplan/          → Mobile shift view: shifts by day, break warnings, swap requests, backup person
+
 /brautpaar/[eventId]/     → Couple portal
   dateien/                → File management (R2-backed)
 ⛔ /trauzeuge/            → Role exists in DB but no frontend portal implemented
@@ -164,9 +169,11 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `invite_codes` | Guest RSVP invite links |
 | `event_invitations` | Vendor invite links |
 | `organizer_room_configs` | Global room polygon (per organizer) |
+| `organizer_seating_concepts` | Global seating templates per organizer (name, points, elements, table_pool JSONB). Applied per-event via Sitzplan dropdown (replace or merge). Managed in Konfiguration → Sitzplan tab. |
 | `event_room_configs` | Per-event room polygon |
 | `organizer_todos` | Organizer task list |
-| `organizer_staff` | Organizer's team members |
+| `organizer_staff` | Organizer's team members (auth_user_id, must_change_password for staff login) |
+| `personalplanung_shift_swaps` | Shift swap requests: from_staff_id → to_staff_id, status (pending/accepted/approved/rejected/cancelled) |
 | `event_organizer_costs` | Organizer's own cost items |
 | `feature_toggles` | Per-event feature flags — columns: `event_id`, `key`, `enabled`, `value TEXT` (optional text metadata, e.g. ISO date for `gaeste-fotos-unlock-at`) |
 
@@ -217,7 +224,7 @@ middleware.ts           Auth guard (has approval-check bug)
 app/veranstalter/[eventId]/
   allgemein/AllgemeinForm.tsx          Event settings form
   berechtigungen/[id]/BerechtigungenClient.tsx  Vendor permission editor (writes NEW system)
-  sitzplan/page.tsx                    Seating plan — room config (3-step) + SitzplanEditor
+  sitzplan/page.tsx                    Seating plan — room config (3-step) + SitzplanEditor; "Konzept laden" button applies organizer_seating_concepts
   mitglieder/                          Route folder — UI label is "Beteiligte" (renamed from Mitglieder)
 
 app/brautpaar/seating/page.tsx        Brautpaar seating — SitzplanEditor (reads room config from DB, no edit)
@@ -290,6 +297,12 @@ supabase/migrations/
   0065_conversation_read_state.sql     Read state for conversations
   0066_guest_photos_r2.sql             Extends guest_photos: adds r2_key, guest_token, status; refreshes RLS policies
   0067_feature_toggles_value.sql       Adds value TEXT column to feature_toggles (used for gaeste-fotos-unlock-at date)
+  0069_file_visible_to_roles.sql       Adds visible_to_roles TEXT[] to file_metadata (NULL = all roles, set = restrict)
+  0070_seating_concepts.sql            Creates organizer_seating_concepts (global room+pool templates per organizer)
+  0071_mitarbeiter_auth.sql            Adds auth_user_id + must_change_password to organizer_staff;
+                                       backup_staff_id to personalplanung_shifts;
+                                       personalplanung_shift_swaps table; is_own_staff_member() SECURITY DEFINER;
+                                       RLS for staff self-access on pp_days/assignments/shifts/swaps
 
 workers/
   file-service/                 Cloudflare Worker — thin R2 presigned URL generator
@@ -312,6 +325,21 @@ app/api/files/
   [fileId]/confirm/route.ts     PATCH — mark pending upload as active
   [fileId]/download-url/route.ts  GET — validate auth+permission, return fresh presigned GET URL (1h TTL)
   [fileId]/route.ts             DELETE — soft-delete DB + hard-delete R2
+
+app/mitarbeiter/
+  page.tsx                      Staff portal entry — finds events via assignments, redirects or shows picker
+  change-password/page.tsx      Forced password change (calls supabase.auth.updateUser + /api/mitarbeiter/change-password)
+  [eventId]/schichtplan/
+    page.tsx                    Server component: loads staff record, days, shifts, allStaff, mySwaps
+    SchichtplanClient.tsx       Mobile-first view: shifts by day, break warnings (>6h), backup person, swap bottom-sheet
+
+app/api/staff/
+  [staffId]/setup-auth/route.ts POST — creates/resets Supabase auth account for staff; sets app_metadata.role='mitarbeiter'
+  swaps/route.ts                POST — creates swap request (shift must belong to requester)
+  swaps/[swapId]/route.ts       PATCH — approve/reject (organizer) | accept (to_staff) | cancel (from_staff)
+
+app/api/mitarbeiter/
+  change-password/route.ts      POST — clears must_change_password flag on organizer_staff
 
 app/api/rsvp/[token]/photos/
   route.ts                      GET photos list (with presigned URLs) + POST request upload URL — service role, token-auth

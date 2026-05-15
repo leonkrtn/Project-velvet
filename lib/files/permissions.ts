@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { FileModule } from './types'
 
-export type EventRole = 'veranstalter' | 'brautpaar' | 'trauzeuge' | 'dienstleister'
+export type EventRole = 'veranstalter' | 'brautpaar' | 'dienstleister'
 
 export async function getEventRole(
   supabase: SupabaseClient,
@@ -42,7 +42,7 @@ export async function canReadFiles(
 ): Promise<boolean> {
   const role = await getEventRole(supabase, userId, eventId)
   if (!role) return false
-  if (role === 'veranstalter' || role === 'brautpaar' || role === 'trauzeuge') return true
+  if (role === 'veranstalter' || role === 'brautpaar') return true
   if (role === 'dienstleister') {
     const access = await getDlAccess(supabase, userId, eventId, module)
     return access === 'read' || access === 'write'
@@ -60,8 +60,6 @@ export async function canUploadFiles(
   if (!role) return false
   // Veranstalter + Brautpaar: full upload rights
   if (role === 'veranstalter' || role === 'brautpaar') return true
-  // Trauzeuge: read-only
-  if (role === 'trauzeuge') return false
   // Dienstleister: write permission on the target module required
   if (role === 'dienstleister') {
     const access = await getDlAccess(supabase, userId, eventId, module)

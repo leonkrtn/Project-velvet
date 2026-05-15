@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Palette, Music, Cake, Camera, Wallet, CheckSquare, Settings,
-  MessageSquare, File, ChevronRight, X, Menu,
+  MessageSquare, File, ChevronRight, X, Menu, LogOut,
 } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 import { createClient } from '@/lib/supabase/client'
@@ -259,6 +259,18 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
         <a href="#" className="bp-sidebar-footer-link"><span>Support</span></a>
         <a href="#" className="bp-sidebar-footer-link"><span>AGB</span></a>
         <a href="#" className="bp-sidebar-footer-link"><span>Datenschutz</span></a>
+        <button
+          onClick={async () => {
+            const supabase = createClient()
+            await supabase.auth.signOut()
+            window.location.href = '/login'
+          }}
+          className="bp-sidebar-footer-link"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, color: 'inherit' }}
+        >
+          <LogOut size={13} />
+          <span>Abmelden</span>
+        </button>
       </div>
     </>
   )

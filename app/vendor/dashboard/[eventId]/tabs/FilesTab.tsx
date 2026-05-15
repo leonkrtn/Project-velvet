@@ -14,6 +14,7 @@ export default function FilesTab({ eventId, userId, canUpload }: Props) {
       module="files"
       canUpload={canUpload}
       userId={userId}
+      userRole="dienstleister"
     />
   )
 }

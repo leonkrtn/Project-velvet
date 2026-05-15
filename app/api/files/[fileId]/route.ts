@@ -6,6 +6,37 @@ import { deleteR2Object } from '@/lib/files/worker-client'
 
 interface Params { params: Promise<{ fileId: string }> }
 
+export async function PATCH(request: NextRequest, { params }: Params) {
+  try {
+    const { fileId } = await params
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })
+
+    const body = await request.json()
+    const { visible_to_roles } = body as { visible_to_roles: string[] | null }
+
+    const admin = createAdminClient()
+    const { data: file } = await admin
+      .from('file_metadata')
+      .select('event_id')
+      .eq('id', fileId)
+      .maybeSingle()
+
+    if (!file) return NextResponse.json({ error: 'Datei nicht gefunden' }, { status: 404 })
+
+    const role = await getEventRole(supabase, user.id, file.event_id)
+    if (role !== 'veranstalter') return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+
+    await admin.from('file_metadata').update({ visible_to_roles }).eq('id', fileId)
+
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    console.error('[files/patch]', err)
+    return NextResponse.json({ error: 'Interner Fehler' }, { status: 500 })
+  }
+}
+
 export async function DELETE(_request: NextRequest, { params }: Params) {
   try {
     const { fileId } = await params

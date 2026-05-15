@@ -25,6 +25,7 @@ export function useFileUpload() {
     eventId: string,
     module: FileModule,
     category = 'sonstiges',
+    visibleToRoles?: string[] | null,
   ): Promise<UploadedFile | null> => {
     setState({ uploading: true, progress: 0, error: null })
 
@@ -40,6 +41,7 @@ export function useFileUpload() {
           contentType: file.type || 'application/octet-stream',
           sizeBytes: file.size,
           category,
+          visible_to_roles: visibleToRoles !== undefined ? visibleToRoles : null,
         }),
       })
 

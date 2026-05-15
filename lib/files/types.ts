@@ -27,6 +27,8 @@ export interface FileMetadata {
   expires_at: string | null
   created_at: string
   updated_at: string
+  /** NULL = visible to all; array = only listed roles (e.g. ['brautpaar','dienstleister']). Veranstalter always sees all. */
+  visible_to_roles: string[] | null
 }
 
 /** Legacy row from event_files (pre-R2, direct public URLs). Read-only in the new UI. */

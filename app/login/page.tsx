@@ -37,6 +37,8 @@ function LoginForm() {
           router.push(nextUrl)
         } else if (isOrganizer) {
           router.push('/veranstalter/events')
+        } else if (session?.user?.app_metadata?.role === 'mitarbeiter') {
+          router.push('/mitarbeiter')
         } else {
           const { data: memberships } = await supabase
             .from('event_members')
@@ -52,15 +54,26 @@ function LoginForm() {
           } else if (nonVendor) {
             router.push('/brautpaar?event=' + nonVendor.event_id)
           } else {
-            const { data: vsc } = await supabase
-              .from('vendor_signup_codes')
+            // Fallback: check organizer_staff table directly (covers cases where
+            // app_metadata.role was not yet set, e.g. after a password reset)
+            const { data: staffRow } = await supabase
+              .from('organizer_staff')
               .select('id')
-              .eq('used_by', session!.user.id)
-              .limit(1)
-            if (vsc && vsc.length > 0) {
-              router.push('/vendor/dashboard')
+              .eq('auth_user_id', session!.user.id)
+              .maybeSingle()
+            if (staffRow) {
+              router.push('/mitarbeiter')
             } else {
-              router.push('/signup')
+              const { data: vsc } = await supabase
+                .from('vendor_signup_codes')
+                .select('id')
+                .eq('used_by', session!.user.id)
+                .limit(1)
+              if (vsc && vsc.length > 0) {
+                router.push('/vendor/dashboard')
+              } else {
+                router.push('/signup')
+              }
             }
           }
         }

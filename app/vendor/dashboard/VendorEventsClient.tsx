@@ -1,12 +1,21 @@
 'use client'
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { CalendarDays, Search } from 'lucide-react'
+import { CalendarDays, Search, LogOut } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 type EventRow = { id: string; title: string; date: string | null; venue: string | null; event_code: string | null }
 
 export default function VendorEventsClient({ events }: { events: EventRow[] }) {
   const [search, setSearch] = useState('')
+  const router = useRouter()
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   const filtered = search.trim()
     ? events.filter(ev => {
@@ -84,6 +93,14 @@ export default function VendorEventsClient({ events }: { events: EventRow[] }) {
           ))}
         </div>
       )}
+      <div style={{ marginTop: 32, textAlign: 'center' }}>
+        <button
+          onClick={handleLogout}
+          style={{ background: 'none', border: 'none', fontSize: 13, color: 'var(--text-dim)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <LogOut size={13} /> Abmelden
+        </button>
+      </div>
     </>
   )
 }

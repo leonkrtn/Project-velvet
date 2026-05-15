@@ -30,14 +30,6 @@ export default async function VendorOverviewPage() {
         </div>
 
         <VendorEventsClient events={events} />
-
-        <div style={{ marginTop: 32, textAlign: 'center' }}>
-          <form action="/auth/signout" method="post">
-            <button type="submit" style={{ background: 'none', border: 'none', fontSize: 13, color: 'var(--text-dim)', cursor: 'pointer', textDecoration: 'underline' }}>
-              Abmelden
-            </button>
-          </form>
-        </div>
       </div>
     </div>
   )
