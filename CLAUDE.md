@@ -358,6 +358,57 @@ Migration `0064_deko_system.sql` replaces the old `decor_setup_items`/`deko_wish
 
 ---
 
+## Veranstalter manuell per SQL anlegen
+
+Beim manuellen Anlegen eines Veranstalters über den Supabase SQL Editor müssen folgende Punkte beachtet werden:
+
+1. **Token-Felder dürfen nicht NULL sein** — Supabase's Go-Auth-Layer kann NULL-Strings nicht scannen → Login schlägt mit `500: Database error querying schema` fehl
+2. **`auth.identities` muss manuell befüllt werden** — ohne Eintrag dort ist kein E-Mail-Login möglich
+3. **`profiles` wird per Trigger automatisch angelegt** — kein manuelles INSERT nötig, sonst Duplicate-Key-Error
+4. **E-Mail immer lowercase** — Supabase normalisiert E-Mails beim Login zu Kleinbuchstaben
+
+```sql
+DO $$
+DECLARE
+  new_id uuid := gen_random_uuid();
+BEGIN
+  INSERT INTO auth.users (
+    id, instance_id, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, aud, role,
+    confirmation_token, recovery_token, email_change_token_new,
+    email_change, email_change_token_current, reauthentication_token,
+    created_at, updated_at
+  ) VALUES (
+    new_id,
+    '00000000-0000-0000-0000-000000000000',
+    'email@beispiel.de',                          -- lowercase!
+    crypt('Passwort123', gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"],"is_approved_organizer":true}'::jsonb,
+    '{"name":"Vorname Nachname"}'::jsonb,
+    'authenticated', 'authenticated',
+    '', '', '', '', '', '',                        -- Token-Felder: leer, nicht NULL
+    now(), now()
+  );
+
+  INSERT INTO auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+  VALUES (
+    gen_random_uuid(), new_id,
+    'email@beispiel.de',                          -- provider_id = E-Mail
+    jsonb_build_object('sub', new_id::text, 'email', 'email@beispiel.de'),
+    'email', now(), now(), now()
+  );
+
+  -- profiles wird automatisch per Trigger erstellt;
+  -- ON CONFLICT als Fallback falls Trigger den Namen nicht setzt:
+  INSERT INTO public.profiles (id, name, email)
+  VALUES (new_id, 'Vorname Nachname', 'email@beispiel.de')
+  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email;
+END $$;
+```
+
+---
+
 ## ⚠️ Cloudflare R2 — EU-Jurisdiction (Kritisch)
 
 Der Bucket `velvet-files` wurde mit **EU-Jurisdiction** (WEUR) erstellt. Das hat folgende Konsequenzen:
