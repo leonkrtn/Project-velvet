@@ -43,6 +43,7 @@ export default async function CateringPage({ params }: Props) {
 
   const attending = (guestStats ?? []).filter(g => g.status === 'zugesagt')
   const attendingIds = new Set(attending.map(g => g.id))
+  const attendingBegleit = (begleitStats ?? []).filter(b => attendingIds.has(b.guest_id))
   const mealCounts: Record<string, number> = {}
   const allergyCounts: Record<string, number> = {}
   for (const g of attending) {
@@ -51,8 +52,7 @@ export default async function CateringPage({ params }: Props) {
       allergyCounts[tag] = (allergyCounts[tag] ?? 0) + 1
     }
   }
-  // Include companion (Begleitperson) meal choices for confirmed guests
-  for (const b of (begleitStats ?? []).filter(b => attendingIds.has(b.guest_id))) {
+  for (const b of attendingBegleit) {
     if (b.meal_choice) mealCounts[b.meal_choice] = (mealCounts[b.meal_choice] ?? 0) + 1
     for (const tag of (b.allergy_tags ?? [])) {
       allergyCounts[tag] = (allergyCounts[tag] ?? 0) + 1
@@ -65,7 +65,7 @@ export default async function CateringPage({ params }: Props) {
       initialEvent={event}
       initialPlan={cateringPlan ?? null}
       initialCosts={cateringCosts ?? []}
-      confirmedGuestCount={attending.length}
+      confirmedGuestCount={attending.length + attendingBegleit.length}
       mealCounts={mealCounts}
       allergyCounts={allergyCounts}
     />

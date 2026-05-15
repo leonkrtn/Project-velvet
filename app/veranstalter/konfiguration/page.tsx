@@ -196,6 +196,7 @@ export default function KonfigurationPage() {
   /* ── Room config ── */
   const [roomPoints, setRoomPoints] = useState<RaumPoint[]>([])
   const [roomElements, setRoomElements] = useState<RaumElement[]>([])
+  const [roomTablePool, setRoomTablePool] = useState<RaumTablePool>({ types: [] })
   const [roomSaving, setRoomSaving] = useState(false)
   const [roomSaved, setRoomSaved] = useState(false)
 
@@ -259,6 +260,7 @@ export default function KonfigurationPage() {
       if (roomRow) {
         setRoomPoints(roomRow.points ?? [])
         setRoomElements(roomRow.elements ?? [])
+        setRoomTablePool(roomRow.table_pool ?? { types: [] })
       }
       setStaff((staffRows ?? []) as StaffMember[])
       setDekoTemplates((tmplRows ?? []) as DekoOrganizerTemplate[])
@@ -409,7 +411,7 @@ export default function KonfigurationPage() {
     if (!newConceptName.trim() || !userId) return
     const { data } = await supabase.from('organizer_seating_concepts').insert({
       organizer_id: userId, name: newConceptName.trim(),
-      points: [], elements: [], table_pool: { types: [] }, sort_order: concepts.length,
+      points: roomPoints, elements: roomElements, table_pool: roomTablePool, sort_order: concepts.length,
     }).select().single()
     if (data) {
       setConcepts(prev => [...prev, data as SeatingConcept])

@@ -37,6 +37,8 @@ function LoginForm() {
           router.push(nextUrl)
         } else if (isOrganizer) {
           router.push('/veranstalter/events')
+        } else if (session?.user?.app_metadata?.role === 'mitarbeiter') {
+          router.push('/mitarbeiter')
         } else {
           const { data: memberships } = await supabase
             .from('event_members')

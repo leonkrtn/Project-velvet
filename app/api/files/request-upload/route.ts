@@ -18,6 +18,7 @@ interface RequestBody {
   contentType: string
   sizeBytes?: number
   category?: string
+  visible_to_roles?: string[] | null
 }
 
 export async function POST(request: NextRequest) {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })
 
     const body = await request.json() as RequestBody
-    const { eventId, module, filename, contentType, sizeBytes, category = 'sonstiges' } = body
+    const { eventId, module, filename, contentType, sizeBytes, category = 'sonstiges', visible_to_roles } = body
 
     if (!eventId || !module || !filename || !contentType) {
       return NextResponse.json({ error: 'Pflichtfelder fehlen' }, { status: 400 })
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
       category,
       uploaded_by: user.id,
       status: 'pending',
+      visible_to_roles: visible_to_roles ?? null,
     })
 
     if (dbErr) {

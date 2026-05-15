@@ -265,6 +265,8 @@ function UploadPanel({
   const [module, setModule] = useState<FileModule>(uploadModule)
   const [category, setCategory] = useState('sonstiges')
   const [dragOver, setDragOver] = useState(false)
+  const [visibleBp, setVisibleBp] = useState(true)
+  const [visibleDl, setVisibleDl] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
 
   function handleFiles(files: FileList | null) {
@@ -284,7 +286,8 @@ function UploadPanel({
 
   async function handleUpload() {
     if (!selectedFile) return
-    const result = await upload(selectedFile, eventId, module, category)
+    const visibleToRoles = visibleBp && visibleDl ? null : visibleBp ? ['brautpaar'] : visibleDl ? ['dienstleister'] : []
+    const result = await upload(selectedFile, eventId, module, category, visibleToRoles)
     if (result) {
       onSuccess()
       onClose()
@@ -390,6 +393,34 @@ function UploadPanel({
             </select>
           </div>
         </div>
+
+        {/* Visibility checkboxes — Veranstalter only */}
+        {isVeranstalter && (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
+              Sichtbar für
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              {([
+                { key: 'bp', label: 'Brautpaar', checked: visibleBp, toggle: () => setVisibleBp(v => !v) },
+                { key: 'dl', label: 'Dienstleister', checked: visibleDl, toggle: () => setVisibleDl(v => !v) },
+              ] as const).map(({ key, label, checked, toggle }) => (
+                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)', userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={toggle}
+                    style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--accent, #6366f1)' }}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            {!visibleBp && !visibleDl && (
+              <p style={{ fontSize: 11, color: '#D97706', marginTop: 6 }}>Datei ist nur für dich als Veranstalter sichtbar.</p>
+            )}
+          </div>
+        )}
 
         {/* Progress */}
         {uploading && (
