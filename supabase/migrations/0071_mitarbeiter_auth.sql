@@ -35,17 +35,14 @@ $$;
 
 -- Update personalplanung RLS to allow staff members to read their own data
 
+-- pp_days_select: nur organizer-check — staff nutzt admin client, braucht kein RLS
+-- (kein subquery auf personalplanung_assignments, verhindert zirkuläre RLS-Abhängigkeit)
 DROP POLICY IF EXISTS "pp_days_select"   ON personalplanung_days;
 CREATE POLICY "pp_days_select" ON personalplanung_days FOR SELECT
-  USING (
-    is_event_member(event_id)
-    OR id IN (
-      SELECT a.day_id FROM personalplanung_assignments a
-      JOIN organizer_staff s ON s.id = a.staff_id
-      WHERE s.auth_user_id = auth.uid()
-    )
-  );
+  USING (is_event_member(event_id));
 
+-- pp_assign_select: organizer via days (kein circular ref da pp_days_select simpel ist),
+-- oder der Mitarbeiter selbst
 DROP POLICY IF EXISTS "pp_assign_select" ON personalplanung_assignments;
 CREATE POLICY "pp_assign_select" ON personalplanung_assignments FOR SELECT
   USING (
