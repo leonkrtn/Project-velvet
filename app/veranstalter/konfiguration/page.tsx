@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, Check, Plus, Trash2, Pencil, X, ChevronDown, ChevronRight, Edit2, ArrowLeft } from 'lucide-react'
-import type { RaumPoint, RaumElement, RaumTablePool } from '@/components/room/RaumKonfigurator'
+import type { RaumPoint, RaumElement, RaumTablePool, ConceptPlacedTable } from '@/components/room/RaumKonfigurator'
 import type { DekoOrganizerTemplate, DekoOrganizerFlatRate } from '@/lib/deko/types'
 
 const RaumKonfigurator = dynamic(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
@@ -16,6 +16,7 @@ type SeatingConcept = {
   points: RaumPoint[]
   elements: RaumElement[]
   table_pool: RaumTablePool
+  placed_tables: ConceptPlacedTable[]
   sort_order: number
 }
 
@@ -411,7 +412,8 @@ export default function KonfigurationPage() {
     if (!newConceptName.trim() || !userId) return
     const { data } = await supabase.from('organizer_seating_concepts').insert({
       organizer_id: userId, name: newConceptName.trim(),
-      points: roomPoints, elements: roomElements, table_pool: roomTablePool, sort_order: concepts.length,
+      points: roomPoints, elements: roomElements, table_pool: roomTablePool,
+      placed_tables: [], sort_order: concepts.length,
     }).select().single()
     if (data) {
       setConcepts(prev => [...prev, data as SeatingConcept])
@@ -430,14 +432,14 @@ export default function KonfigurationPage() {
     setConcepts(prev => prev.filter(c => c.id !== id))
     if (editingConceptId === id) setEditingConceptId(null)
   }
-  const handleSaveConcept = useCallback(async (points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool) => {
+  const handleSaveConcept = useCallback(async (points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool, placedTables: ConceptPlacedTable[]) => {
     if (!editingConceptId) return
     setConceptSaving(true)
     try {
       await supabase.from('organizer_seating_concepts').update({
-        points, elements, table_pool: tablePool, updated_at: new Date().toISOString(),
+        points, elements, table_pool: tablePool, placed_tables: placedTables, updated_at: new Date().toISOString(),
       }).eq('id', editingConceptId)
-      setConcepts(prev => prev.map(c => c.id === editingConceptId ? { ...c, points, elements, table_pool: tablePool } : c))
+      setConcepts(prev => prev.map(c => c.id === editingConceptId ? { ...c, points, elements, table_pool: tablePool, placed_tables: placedTables } : c))
       setConceptSaved(true); setTimeout(() => setConceptSaved(false), 3000)
     } finally {
       setConceptSaving(false)
@@ -546,6 +548,7 @@ export default function KonfigurationPage() {
                 initialPoints={editingConcept.points}
                 initialElements={editingConcept.elements}
                 initialTablePool={editingConcept.table_pool}
+                initialPlacedConceptTables={editingConcept.placed_tables ?? []}
                 onSave={handleSaveConcept}
                 saving={conceptSaving}
                 saved={conceptSaved}
