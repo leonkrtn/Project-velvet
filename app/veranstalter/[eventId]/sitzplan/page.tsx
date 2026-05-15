@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { X } from 'lucide-react'
-import type { RaumPoint, RaumElement, RaumTablePool, PlacedTablePreview } from '@/components/room/RaumKonfigurator'
+import type { RaumPoint, RaumElement, RaumTablePool, PlacedTablePreview, ConceptPlacedTable } from '@/components/room/RaumKonfigurator'
 
 const RaumKonfigurator = dynamic(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
 const SitzplanEditor   = dynamic(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
@@ -12,6 +12,7 @@ const SitzplanEditor   = dynamic(() => import('@/components/sitzplan/SitzplanEdi
 type SeatingConcept = {
   id: string; name: string
   points: RaumPoint[]; elements: RaumElement[]; table_pool: RaumTablePool
+  placed_tables: ConceptPlacedTable[]
 }
 
 const EMPTY_POOL: RaumTablePool = { types: [] }
@@ -75,7 +76,7 @@ export default function SitzplanPage() {
         supabase.from('event_room_configs').select('*').eq('event_id', eventId).single(),
         supabase.from('events').select('couple_name').eq('id', eventId).single(),
         supabase.from('seating_tables').select('pos_x,pos_y,rotation,shape,table_length,table_width,name').eq('event_id', eventId),
-        supabase.from('organizer_seating_concepts').select('id,name,points,elements,table_pool').eq('organizer_id', user.id).order('sort_order'),
+        supabase.from('organizer_seating_concepts').select('id,name,points,elements,table_pool,placed_tables').eq('organizer_id', user.id).order('sort_order'),
       ])
 
       if (globalRow)  { setGlobalPoints(globalRow.points ?? []); setGlobalElements(globalRow.elements ?? []) }
@@ -98,7 +99,7 @@ export default function SitzplanPage() {
   const displayPool: RaumTablePool = eventTablePool ?? EMPTY_POOL
 
   const handleSaveEventConfig = useCallback(async (
-    points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool
+    points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool, _placedConceptTables: ConceptPlacedTable[]
   ) => {
     if (!userId) return
     setConfigSaving(true)
@@ -133,6 +134,26 @@ export default function SitzplanPage() {
           { onConflict: 'event_id' }
         )
         setEventPoints(concept.points); setEventElements(concept.elements); setEventTablePool(concept.table_pool); setHasEventConfig(true)
+        // Import placed tables from concept into seating_tables
+        if ((concept.placed_tables ?? []).length > 0) {
+          await supabase.from('seating_tables').delete().eq('event_id', eventId)
+          const rows = concept.placed_tables.map((t, i) => ({
+            event_id: eventId,
+            name: `Tisch ${i + 1}`,
+            shape: t.shape,
+            capacity: t.shape === 'round'
+              ? Math.max(1, Math.floor(Math.PI * t.tableLength / 0.6))
+              : Math.max(1, Math.floor((t.tableLength * 2 + t.tableWidth * 2) / 0.6)),
+            pos_x: t.posX,
+            pos_y: t.posY,
+            rotation: t.rotation,
+            table_length: t.tableLength,
+            table_width: t.tableWidth,
+            pool_type_id: t.poolTypeId,
+          }))
+          const { data: newTables } = await supabase.from('seating_tables').insert(rows).select('pos_x,pos_y,rotation,shape,table_length,table_width,name')
+          setPlacedTables((newTables ?? []) as PlacedTablePreview[])
+        }
       } else {
         // Merge: add table pool types from concept that don't already exist (by shape/dimensions)
         const current = eventTablePool ?? { types: [] }

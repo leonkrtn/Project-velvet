@@ -19,6 +19,17 @@ export interface RaumTablePool {
   types: RaumTableType[]
 }
 
+export interface ConceptPlacedTable {
+  id: string
+  poolTypeId: string
+  shape: 'round' | 'rectangular'
+  posX: number
+  posY: number
+  rotation: number
+  tableLength: number
+  tableWidth: number
+}
+
 const DEFAULT_TABLE_POOL: RaumTablePool = { types: [] }
 
 function makeTypeId() { return Math.random().toString(36).slice(2, 9) }
@@ -36,8 +47,9 @@ export interface RaumKonfiguratorProps {
   initialPoints?: RaumPoint[]
   initialElements?: RaumElement[]
   initialTablePool?: RaumTablePool
+  initialPlacedConceptTables?: ConceptPlacedTable[]
   placedTables?: PlacedTablePreview[]
-  onSave?: (points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool) => Promise<void> | void
+  onSave?: (points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool, placedConceptTables: ConceptPlacedTable[]) => Promise<void> | void
   saving?: boolean
   saved?: boolean
 }
@@ -292,6 +304,7 @@ export default function RaumKonfigurator({
   initialPoints,
   initialElements = [],
   initialTablePool,
+  initialPlacedConceptTables = [],
   placedTables = [],
   onSave,
   saving,
@@ -327,6 +340,14 @@ export default function RaumKonfigurator({
     elemIdCounter:    initialElements.length > 0
       ? Math.max(...initialElements.map(e => e.id)) + 1
       : 1,
+    isPlacementStep:  false,
+    placedConceptTables: [...initialPlacedConceptTables] as ConceptPlacedTable[],
+    selectedConceptTableId: null as string | null,
+    selectedPoolTypeIdForPlacement: null as string | null,
+    draggedConceptTableId: null as string | null,
+    dragConceptTableStart: null as { x: number; y: number } | null,
+    dragConceptTableMouse: null as { x: number; y: number } | null,
+    currentTablePool: initialTablePool ?? DEFAULT_TABLE_POOL,
   })
 
   /* ── React state for panel / UI ── */
@@ -343,6 +364,10 @@ export default function RaumKonfigurator({
   const [showPlacedTables, setShowPlacedTables] = useState(false)
   const placedTablesRef = useRef<PlacedTablePreview[]>(placedTables)
   useEffect(() => { placedTablesRef.current = placedTables }, [placedTables])
+
+  // Step 4 placement state (synced to stateRef so canvas handlers can read them)
+  const [selectedPlacementTypeId, setSelectedPlacementTypeId] = useState<string | null>(null)
+  const [selectedConceptTableId, setSelectedConceptTableId] = useState<string | null>(null)
 
   /* ── Canvas helpers ── */
   const m2c = useCallback((x: number, y: number) => {
@@ -540,6 +565,36 @@ export default function RaumKonfigurator({
       }
     }
 
+    // Placed concept tables (step 4)
+    if (s.isPlacementStep) {
+      for (const t of s.placedConceptTables) {
+        const cp = m2c(t.posX, t.posY)
+        const isSelected = t.id === s.selectedConceptTableId
+        const lenPx = t.tableLength * s.meterToPx
+        const widPx = t.tableWidth * s.meterToPx
+        ctx.save()
+        ctx.translate(cp.x, cp.y)
+        ctx.rotate((t.rotation * Math.PI) / 180)
+        ctx.strokeStyle = isSelected ? '#6366F1' : '#1D1D1F'
+        ctx.lineWidth = isSelected ? 2.5 : 1.5
+        ctx.fillStyle = isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(29,29,31,0.07)'
+        if (t.shape === 'round') {
+          ctx.beginPath(); ctx.arc(0, 0, lenPx / 2, 0, Math.PI * 2)
+          ctx.fill(); ctx.stroke()
+        } else {
+          ctx.beginPath(); ctx.roundRect(-lenPx / 2, -widPx / 2, lenPx, widPx, 3)
+          ctx.fill(); ctx.stroke()
+        }
+        if (isSelected) {
+          ctx.strokeStyle = '#6366F1'; ctx.lineWidth = 1; ctx.setLineDash([4, 3])
+          const r = (t.shape === 'round' ? lenPx / 2 : Math.max(lenPx, widPx) / 2) + 8
+          ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke()
+          ctx.setLineDash([])
+        }
+        ctx.restore()
+      }
+    }
+
     // Update info labels
     if (points.length >= 2) {
       let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity
@@ -595,6 +650,16 @@ export default function RaumKonfigurator({
       return null
     }
 
+    function getConceptTableAtPx(px: number, py: number): ConceptPlacedTable | null {
+      for (let i = s.placedConceptTables.length - 1; i >= 0; i--) {
+        const t = s.placedConceptTables[i]
+        const cp = m2c(t.posX, t.posY)
+        const r = Math.max(t.tableLength, t.tableWidth) * s.meterToPx / 2 + 4
+        if (Math.hypot(cp.x - px, cp.y - py) < r) return t
+      }
+      return null
+    }
+
     function onMouseDown(e: MouseEvent) {
       e.preventDefault()
       const {x:mx,y:my}=mousePos(e)
@@ -611,6 +676,17 @@ export default function RaumKonfigurator({
             s.dragStartPoints=s.points.map(p=>({...p}));s.dragStartMM=meter
             canvas.style.cursor='grabbing'
           } else {s.mouseDownTarget='canvas'}
+        } else if(s.isPlacementStep){
+          const hit=getConceptTableAtPx(mx,my)
+          if(hit){
+            s.mouseDownTarget='conceptTable';s.draggedConceptTableId=hit.id
+            s.dragConceptTableStart={x:hit.posX,y:hit.posY};s.dragConceptTableMouse=meter
+            s.selectedConceptTableId=hit.id;setSelectedConceptTableId(hit.id)
+            canvas.style.cursor='grabbing'
+          } else {
+            s.mouseDownTarget='canvas4'
+            s.selectedConceptTableId=null;setSelectedConceptTableId(null)
+          }
         } else {
           const el=getElemAtPx(mx,my)
           if(el){
@@ -644,6 +720,18 @@ export default function RaumKonfigurator({
         } else if(s.mouseDownTarget!=='pan'){
           canvas.style.cursor=getPointAtPx(mx,my)!==null?'grab':'crosshair'
         }
+      } else if(s.isPlacementStep){
+        if(s.mouseDownTarget==='conceptTable'&&s.draggedConceptTableId&&s.dragConceptTableStart&&s.dragConceptTableMouse){
+          const meter=c2m(mx,my)
+          const t=s.placedConceptTables.find(t=>t.id===s.draggedConceptTableId)
+          if(t){
+            t.posX=s.dragConceptTableStart.x+(meter.x-s.dragConceptTableMouse.x)
+            t.posY=s.dragConceptTableStart.y+(meter.y-s.dragConceptTableMouse.y)
+            draw()
+          }
+        } else if(s.mouseDownTarget!=='pan'){
+          canvas.style.cursor=getConceptTableAtPx(mx,my)?'grab':(s.selectedPoolTypeIdForPlacement?'crosshair':'default')
+        }
       } else {
         if(s.mouseDownTarget==='elem'&&s.draggedElemId!==null&&s.dragElemStart&&s.dragElemMouse){
           const meter=c2m(mx,my); const el=s.elements.find(e=>e.id===s.draggedElemId)
@@ -664,6 +752,27 @@ export default function RaumKonfigurator({
           const {x:mx,y:my}=mousePos(e); addOnEdge(c2m(mx,my))
         }
         s.draggedPtIdx=null;s.dragStartPoints=null
+      } else if(s.isPlacementStep){
+        if(s.mouseDownTarget==='canvas4'&&!s.isPanning&&s.selectedPoolTypeIdForPlacement){
+          const {x:mx,y:my}=mousePos(e)
+          const meter=c2m(mx,my)
+          const poolType=s.currentTablePool.types.find(t=>t.id===s.selectedPoolTypeIdForPlacement)
+          if(poolType){
+            const newT: ConceptPlacedTable={
+              id: Math.random().toString(36).slice(2,10),
+              poolTypeId: poolType.id,
+              shape: poolType.shape,
+              posX: Math.round(meter.x*10)/10,
+              posY: Math.round(meter.y*10)/10,
+              rotation: 0,
+              tableLength: poolType.shape==='round'?poolType.diameter:poolType.length,
+              tableWidth: poolType.shape==='round'?poolType.diameter:poolType.width,
+            }
+            s.placedConceptTables.push(newT)
+          }
+        }
+        s.draggedConceptTableId=null;s.dragConceptTableStart=null;s.dragConceptTableMouse=null
+        draw()
       } else {
         if(s.mouseDownTarget==='canvas2'&&!s.isPanning&&s.selectedElemType){
           const {x:mx,y:my}=mousePos(e)
@@ -677,7 +786,7 @@ export default function RaumKonfigurator({
         draw()
       }
       s.isPanning=false;s.mouseDownTarget=null
-      canvas.style.cursor=s.step===1?'crosshair':(s.selectedElemType?'cell':'default')
+      canvas.style.cursor=s.step===1?'crosshair':s.isPlacementStep?(s.selectedPoolTypeIdForPlacement?'crosshair':'default'):(s.selectedElemType?'cell':'default')
     }
 
     function onDblClick(e: MouseEvent) {
@@ -685,6 +794,13 @@ export default function RaumKonfigurator({
       if(s.step===1){
         const idx=getPointAtPx(mx,my)
         if(idx!==null&&s.points.length>3){s.points=s.points.filter((_,i)=>i!==idx);draw()}
+      } else if(s.isPlacementStep){
+        const hit=getConceptTableAtPx(mx,my)
+        if(hit){
+          s.placedConceptTables=s.placedConceptTables.filter(t=>t.id!==hit.id)
+          if(s.selectedConceptTableId===hit.id){s.selectedConceptTableId=null;setSelectedConceptTableId(null)}
+          draw()
+        }
       } else {
         const el=getElemAtPx(mx,my)
         if(el){
@@ -701,12 +817,20 @@ export default function RaumKonfigurator({
       draw()
     }
 
+    function onKeyDown(e: KeyboardEvent) {
+      if(s.isPlacementStep && (e.key==='r'||e.key==='R') && s.selectedConceptTableId){
+        const t=s.placedConceptTables.find(t=>t.id===s.selectedConceptTableId)
+        if(t){t.rotation=(t.rotation+45)%360;draw()}
+      }
+    }
+
     canvas.addEventListener('mousedown', onMouseDown)
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onMouseUp)
     canvas.addEventListener('dblclick', onDblClick)
     canvas.addEventListener('wheel', onWheel, {passive:false})
     canvas.addEventListener('contextmenu', e=>e.preventDefault())
+    window.addEventListener('keydown', onKeyDown)
 
     return () => {
       canvas.removeEventListener('mousedown', onMouseDown)
@@ -714,13 +838,16 @@ export default function RaumKonfigurator({
       window.removeEventListener('mouseup', onMouseUp)
       canvas.removeEventListener('dblclick', onDblClick)
       canvas.removeEventListener('wheel', onWheel)
+      window.removeEventListener('keydown', onKeyDown)
     }
   }, [draw, m2c, c2m, mousePos]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Sync React state ↔ stateRef ── */
   useEffect(() => { stateRef.current.showDimensions = showDimensions; draw() }, [showDimensions, draw])
   useEffect(() => { stateRef.current.showCorners = showCorners; draw() }, [showCorners, draw])
-  useEffect(() => { stateRef.current.step = Math.min(step, 2) as 1 | 2; draw() }, [step, draw])
+  useEffect(() => { stateRef.current.step = Math.min(step, 2) as 1 | 2; stateRef.current.isPlacementStep = step === 4; draw() }, [step, draw])
+  useEffect(() => { stateRef.current.currentTablePool = tablePool }, [tablePool])
+  useEffect(() => { stateRef.current.selectedPoolTypeIdForPlacement = selectedPlacementTypeId }, [selectedPlacementTypeId])
   useEffect(() => { stateRef.current.showPlacedTables = showPlacedTables; draw() }, [showPlacedTables, draw])
   useEffect(() => { stateRef.current.selectedElemType = selectedElemType }, [selectedElemType])
   useEffect(() => { stateRef.current.selectedElemId = selectedElemId; draw() }, [selectedElemId, draw])
@@ -763,7 +890,7 @@ export default function RaumKonfigurator({
   function handleGoToStep3() { setStep(3) }
   function handleGoToStep4() { setStep(4) }
   function handleSave() {
-    onSave?.(stateRef.current.points, stateRef.current.elements, tablePool)
+    onSave?.(stateRef.current.points, stateRef.current.elements, tablePool, stateRef.current.placedConceptTables)
   }
 
   const selectedElem = stateRef.current.elements.find(e => e.id === selectedElemId)
@@ -887,36 +1014,82 @@ export default function RaumKonfigurator({
               </div>
             </div>
           )}
-          {/* Step 4: placement summary */}
+          {/* Step 4: table placement panel */}
           {step===4 && (
-            <div style={{ padding:'16px' }}>
-              <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.09em', color:'#AEAEB2', marginBottom:12 }}>Zusammenfassung</p>
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                <div style={{ padding:'10px 12px', background:'#F5F5F7', borderRadius:8 }}>
-                  <p style={{ fontSize:11, color:'#AEAEB2', marginBottom:3 }}>Raumgröße</p>
-                  <p style={{ fontSize:13, fontWeight:600 }}>{dimLabel}</p>
-                </div>
-                <div style={{ padding:'10px 12px', background:'#F5F5F7', borderRadius:8 }}>
-                  <p style={{ fontSize:11, color:'#AEAEB2', marginBottom:3 }}>Elemente</p>
-                  <p style={{ fontSize:13, fontWeight:600 }}>{elemCount} platziert</p>
-                </div>
-                <div style={{ padding:'10px 12px', background:'#F5F5F7', borderRadius:8 }}>
-                  <p style={{ fontSize:11, color:'#AEAEB2', marginBottom:6 }}>Tischtypen</p>
-                  {tablePool.types.length === 0
-                    ? <p style={{ fontSize:12, color:'#AEAEB2' }}>Keine Tische definiert</p>
-                    : tablePool.types.map((t, i) => (
-                      <p key={t.id} style={{ fontSize:12, fontWeight:500, marginBottom:2 }}>
-                        {t.shape==='round' ? '○' : '▭'} {t.shape==='round' ? 'Rund' : 'Eckig'} #{i+1} — {t.count}× {t.shape==='round' ? `⌀${t.diameter}m` : `${t.length}×${t.width}m`}
-                      </p>
-                    ))
-                  }
-                </div>
-                <div style={{ padding:'10px 12px', background:'#EFF6FF', borderRadius:8, border:'1px solid #BFDBFE' }}>
-                  <p style={{ fontSize:12, color:'#1D4ED8', lineHeight:1.5 }}>
-                    Nach dem Speichern kannst du die Tische im Sitzplan-Editor exakt platzieren und Gästen zuweisen.
+            <div style={{ overflowY:'auto', maxHeight:'calc(100vh - 260px)' }}>
+              {tablePool.types.length === 0 ? (
+                <div style={{ padding:'16px' }}>
+                  <p style={{ fontSize:12, color:'#AEAEB2', lineHeight:1.6 }}>
+                    Kein Tischpool definiert. Gehe zu Schritt 3 um Tischtypen hinzuzufügen.
                   </p>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div style={{ padding:'12px 14px', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
+                    <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.09em', color:'#AEAEB2', marginBottom:8 }}>Tischtyp wählen</p>
+                    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                      {tablePool.types.map((t, i) => {
+                        const isActive = selectedPlacementTypeId === t.id
+                        return (
+                          <button key={t.id}
+                            onClick={() => {
+                              const newId = isActive ? null : t.id
+                              setSelectedPlacementTypeId(newId)
+                              stateRef.current.selectedPoolTypeIdForPlacement = newId
+                            }}
+                            style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderRadius:8,
+                              border: isActive ? '1.5px solid #6366F1' : '1.5px solid rgba(0,0,0,0.1)',
+                              background: isActive ? 'rgba(99,102,241,0.07)' : '#F5F5F7',
+                              cursor:'pointer', textAlign:'left', fontFamily:'inherit',
+                            }}>
+                            <div style={{ width:20, height:20, flexShrink:0 }}>
+                              {t.shape==='round'
+                                ? <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="#EEF2FF" stroke={isActive?'#6366F1':'#6366F1'} strokeWidth="1.5"/></svg>
+                                : <svg viewBox="0 0 20 20"><rect x="2" y="5" width="16" height="10" rx="2" fill="#F0FDF4" stroke="#22C55E" strokeWidth="1.5"/></svg>
+                              }
+                            </div>
+                            <span style={{ fontSize:12, fontWeight:500, color: isActive?'#4338CA':'#1D1D1F' }}>
+                              {t.shape==='round'?'Rund':'Eckig'} #{i+1}
+                              <span style={{ marginLeft:6, fontSize:11, color:'#AEAEB2', fontWeight:400 }}>
+                                {t.shape==='round'?`⌀${t.diameter}m`:`${t.length}×${t.width}m`}
+                              </span>
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {selectedConceptTableId && (
+                    <div style={{ padding:'12px 14px', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
+                      <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.09em', color:'#AEAEB2', marginBottom:8 }}>Ausgewählter Tisch</p>
+                      <button
+                        onClick={() => {
+                          const t = stateRef.current.placedConceptTables.find(t => t.id === selectedConceptTableId)
+                          if (t) { t.rotation = (t.rotation + 45) % 360; draw() }
+                        }}
+                        style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:8, border:'1px solid rgba(0,0,0,0.14)', background:'#fff', cursor:'pointer', fontSize:12, fontFamily:'inherit' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.07"/></svg>
+                        45° drehen
+                      </button>
+                      <button
+                        onClick={() => {
+                          stateRef.current.placedConceptTables = stateRef.current.placedConceptTables.filter(t => t.id !== selectedConceptTableId)
+                          stateRef.current.selectedConceptTableId = null
+                          setSelectedConceptTableId(null); draw()
+                        }}
+                        style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 10px', borderRadius:8, border:'1px solid rgba(255,59,48,0.3)', background:'rgba(255,59,48,0.06)', cursor:'pointer', fontSize:12, color:'#FF3B30', fontFamily:'inherit', marginTop:6 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                        Tisch entfernen
+                      </button>
+                    </div>
+                  )}
+                  <div style={{ padding:'12px 14px' }}>
+                    <p style={{ fontSize:11, color:'#AEAEB2', lineHeight:1.6 }}>
+                      Typ wählen → Klick = platzieren · Ziehen = verschieben · Doppelklick = löschen · R = 45° drehen
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -1071,7 +1244,7 @@ export default function RaumKonfigurator({
               ) : step===3 ? (
                 <span>Anzahl und Größe der verfügbaren Tische festlegen</span>
               ) : (
-                <span>Konfiguration prüfen und speichern — dann Tische im Sitzplan-Editor platzieren</span>
+                <span>Tischtyp links wählen → Canvas klicken = platzieren · Ziehen = verschieben · R = 45° drehen</span>
               )}
             </div>
             {onSave && (

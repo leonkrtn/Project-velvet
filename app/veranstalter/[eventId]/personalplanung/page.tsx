@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, Pencil, Trash2, AlertTriangle, Check, ArrowLeftRight } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, AlertTriangle, Check, ArrowLeftRight, MessageSquare, Send, Clock } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -36,6 +36,22 @@ type StaffMember = {
   available_days: string[] | null
   phone: string | null
   hourly_rate: number | null
+  auth_user_id: string | null
+}
+
+type ShiftTimeLog = {
+  staff_id: string
+  actual_start: string
+  actual_end: string | null
+}
+
+type ChatMessage = {
+  id: string
+  conversation_id: string
+  sender_id: string | null
+  content: string
+  created_at: string
+  sender?: { name: string } | null
 }
 
 type EventInfo = {
@@ -254,6 +270,19 @@ export default function PersonalplanungPage() {
   const [swaps, setSwaps] = useState<Swap[]>([])
   const [showSwapsPanel, setShowSwapsPanel] = useState(false)
 
+  // Monthly time logs
+  const [timeLogs, setTimeLogs] = useState<ShiftTimeLog[]>([])
+
+  // Staff chat panel
+  const [activeChatStaff, setActiveChatStaff] = useState<StaffMember | null>(null)
+  const [chatConvId, setChatConvId] = useState<string | null>(null)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatSending, setChatSending] = useState(false)
+  const [chatLoading, setChatLoading] = useState(false)
+  const chatEndRef = React.useRef<HTMLDivElement>(null)
+  const chatConvIdRef = React.useRef<string | null>(null)
+
   const [hoveredShiftId, setHoveredShiftId] = useState<string | null>(null)
   const [showAblaufplan, setShowAblaufplan] = useState(true)
 
@@ -332,7 +361,7 @@ export default function PersonalplanungPage() {
       if (!user) return
 
       const [{ data: staffRows }, { data: dayRows }, { data: eventRow }, { data: tlRows }] = await Promise.all([
-        supabase.from('organizer_staff').select('id,name,role_category,available_days,phone,hourly_rate').eq('organizer_id', user.id).order('name'),
+        supabase.from('organizer_staff').select('id,name,role_category,available_days,phone,hourly_rate,auth_user_id').eq('organizer_id', user.id).order('name'),
         supabase.from('personalplanung_days').select('*').eq('event_id', eventId).order('sort_order'),
         supabase.from('events').select('title,date').eq('id', eventId).single(),
         supabase.from('timeline_entries').select('*').eq('event_id', eventId).order('start_minutes'),
@@ -347,14 +376,19 @@ export default function PersonalplanungPage() {
 
       if (dayList.length > 0) {
         const dayIds = dayList.map(d => d.id)
-        const [{ data: aRows }, { data: sRows }, { data: swapRows }] = await Promise.all([
+        const now = new Date()
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString()
+        const [{ data: aRows }, { data: sRows }, { data: swapRows }, { data: logRows }] = await Promise.all([
           supabase.from('personalplanung_assignments').select('*').in('day_id', dayIds),
           supabase.from('personalplanung_shifts').select('*').in('day_id', dayIds).order('start_hour'),
           supabase.from('personalplanung_shift_swaps').select('*').eq('event_id', eventId).in('status', ['pending', 'accepted']),
+          supabase.from('shift_time_logs').select('staff_id,actual_start,actual_end').eq('event_id', eventId).not('actual_end', 'is', null).gte('actual_start', monthStart).lt('actual_start', monthEnd),
         ])
         setAssignments((aRows ?? []) as Assignment[])
         setShifts((sRows ?? []) as Shift[])
         setSwaps((swapRows ?? []) as typeof swaps)
+        setTimeLogs((logRows ?? []) as ShiftTimeLog[])
         setActiveDayId(prev => prev ?? dayList[0].id)
       }
     } catch (err) {
@@ -385,6 +419,20 @@ export default function PersonalplanungPage() {
   const maxCoverage = Math.max(1, ...coverageCounts)
   const usedRoles = new Set(workingStaff.map(s => s.role_category).filter(Boolean) as string[])
   const deleteDayItem = days.find(d => d.id === deleteDayId)
+
+  // Monthly hours per staff member (from actual time logs)
+  const monthlyHoursMap = React.useMemo(() => {
+    const map = new Map<string, number>()
+    for (const log of timeLogs) {
+      if (!log.actual_end) continue
+      const h = (new Date(log.actual_end).getTime() - new Date(log.actual_start).getTime()) / 3600000
+      map.set(log.staff_id, (map.get(log.staff_id) ?? 0) + h)
+    }
+    return map
+  }, [timeLogs])
+
+  const currentMonthLabel = new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
+  const acceptedSwaps = swaps.filter(s => s.status === 'accepted')
 
   // ── Day CRUD ─────────────────────────────────────────────────────────────
   function openAddDay() {
@@ -531,6 +579,65 @@ export default function PersonalplanungPage() {
       body: JSON.stringify({ action: 'reject' }),
     })
     if (res.ok) setSwaps(prev => prev.filter(s => s.id !== swapId))
+  }
+
+  // ── Staff chat ────────────────────────────────────────────────────────────
+  async function openStaffChat(member: StaffMember) {
+    if (!member.auth_user_id) return
+    setActiveChatStaff(member)
+    setChatConvId(null)
+    setChatMessages([])
+    setChatLoading(true)
+    try {
+      const res = await fetch('/api/staff/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, staffId: member.id }),
+      })
+      if (!res.ok) { setChatLoading(false); return }
+      const { conversationId } = await res.json()
+      chatConvIdRef.current = conversationId
+      setChatConvId(conversationId)
+
+      const { data: msgs } = await supabase
+        .from('messages')
+        .select('id, conversation_id, sender_id, content, created_at, sender:profiles(name)')
+        .eq('conversation_id', conversationId)
+        .order('created_at')
+      setChatMessages((msgs ?? []) as unknown as ChatMessage[])
+
+      // Realtime subscription
+      supabase.channel(`chat-${conversationId}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
+          async payload => {
+            const newMsg = payload.new as ChatMessage
+            const { data: profile } = await supabase.from('profiles').select('name').eq('id', newMsg.sender_id).maybeSingle()
+            setChatMessages(prev => [...prev, { ...newMsg, sender: profile }])
+            setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+          })
+        .subscribe()
+    } finally {
+      setChatLoading(false)
+      setTimeout(() => chatEndRef.current?.scrollIntoView(), 100)
+    }
+  }
+
+  async function sendChatMessage() {
+    if (!chatInput.trim() || !chatConvId || chatSending) return
+    const content = chatInput.trim()
+    setChatInput('')
+    setChatSending(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      await supabase.from('messages').insert({
+        conversation_id: chatConvId,
+        event_id: eventId,
+        sender_id: user?.id,
+        content,
+      })
+    } finally {
+      setChatSending(false)
+    }
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -1027,6 +1134,145 @@ export default function PersonalplanungPage() {
 
             </div>
           </div>
+
+          {/* ── Monatsübersicht ── */}
+          <div style={{ marginTop: 24, background: '#fff', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <Clock size={14} style={{ color: 'var(--text-secondary)' }} /> Monatsübersicht · {currentMonthLabel}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>Tatsächlich geleistete Stunden (via Einstempeln)</div>
+              </div>
+            </div>
+            <div>
+              {staff.map(member => {
+                const hours = monthlyHoursMap.get(member.id) ?? 0
+                const cost = hours * (member.hourly_rate ?? 0)
+                const color = colorFor(member.role_category)
+                return (
+                  <div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                      {initials(member.name)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{member.name}</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{ROLES[member.role_category ?? '']?.label ?? '—'}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: hours > 0 ? 'var(--text)' : 'var(--text-tertiary)' }}>
+                        {hours > 0 ? hours.toFixed(1).replace('.0', '') + ' h' : '—'}
+                      </div>
+                      {member.hourly_rate && hours > 0 && (
+                        <div style={{ fontSize: 11.5, color: '#16A34A', fontWeight: 600 }}>{cost.toFixed(2)} €</div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => member.auth_user_id ? openStaffChat(member) : undefined}
+                      disabled={!member.auth_user_id}
+                      title={member.auth_user_id ? `Chat mit ${member.name}` : 'Mitarbeiter hat noch kein Login'}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', background: activeChatStaff?.id === member.id ? 'var(--accent)' : 'none', color: activeChatStaff?.id === member.id ? '#fff' : 'var(--text-secondary)', border: '1px solid', borderColor: activeChatStaff?.id === member.id ? 'var(--accent)' : 'rgba(0,0,0,0.13)', borderRadius: 7, cursor: member.auth_user_id ? 'pointer' : 'not-allowed', fontSize: 12, fontFamily: 'inherit', flexShrink: 0, opacity: member.auth_user_id ? 1 : 0.4, transition: 'all 0.15s' }}
+                    >
+                      <MessageSquare size={12} /> Chat
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* ── Tausch-Anfragen (accepted = beide einig, Veranstalter muss genehmigen) ── */}
+          {acceptedSwaps.length > 0 && (
+            <div style={{ marginTop: 16, background: '#FFFBEB', borderRadius: 14, border: '1px solid #FCD34D', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 18px', borderBottom: '1px solid #FDE68A', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ArrowLeftRight size={14} style={{ color: '#D97706' }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#92400E' }}>Tausch-Anfragen · Genehmigung erforderlich</span>
+                <span style={{ fontSize: 12, color: '#D97706', marginLeft: 2 }}>({acceptedSwaps.length})</span>
+              </div>
+              {acceptedSwaps.map(swap => {
+                const shift = shifts.find(s => s.id === swap.shift_id)
+                const fromStaff = staff.find(s => s.id === swap.from_staff_id)
+                const toStaff = swap.to_staff_id ? staff.find(s => s.id === swap.to_staff_id) : null
+                return (
+                  <div key={swap.id} style={{ padding: '12px 18px', borderBottom: '1px solid #FDE68A', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>
+                        {fromStaff?.name ?? '—'} → {toStaff?.name ?? '?'}
+                      </div>
+                      {shift && (
+                        <div style={{ fontSize: 12, color: '#92400E', marginTop: 2 }}>
+                          {shift.task} · {fmtHour(shift.start_hour)}–{fmtHour(shift.end_hour)}
+                        </div>
+                      )}
+                      {swap.notes && <div style={{ fontSize: 11.5, color: '#A16207', marginTop: 2, fontStyle: 'italic' }}>{swap.notes}</div>}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => approveSwap(swap.id)} style={{ ...btnGhostSm, color: '#16A34A', borderColor: 'rgba(22,163,74,0.3)', background: '#F0FDF4', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        <Check size={12} /> Genehmigen
+                      </button>
+                      <button onClick={() => rejectSwap(swap.id)} style={{ ...btnGhostSm, color: '#D94848', borderColor: 'rgba(217,72,72,0.3)', background: '#FEF2F2' }}>
+                        Ablehnen
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* ── Staff Chat Panel ── */}
+          {activeChatStaff && (
+            <div style={{ marginTop: 16, background: '#fff', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 460 }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: colorFor(activeChatStaff.role_category), color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                  {initials(activeChatStaff.name)}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>Chat · {activeChatStaff.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ROLES[activeChatStaff.role_category ?? '']?.label ?? '—'}</div>
+                </div>
+                <button onClick={() => { setActiveChatStaff(null); setChatConvId(null); setChatMessages([]) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 7, background: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                  <X size={14} />
+                </button>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10, minHeight: 320, background: '#FAFAFA' }}>
+                {chatLoading ? (
+                  <p style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 40 }}>Lade Chat …</p>
+                ) : chatMessages.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center', marginTop: 40 }}>Noch keine Nachrichten. Sende eine Nachricht an {activeChatStaff.name}.</p>
+                ) : chatMessages.map(msg => {
+                  const isMine = msg.sender_id !== activeChatStaff.auth_user_id
+                  return (
+                    <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', gap: 2 }}>
+                      <div style={{ maxWidth: '72%', padding: '9px 13px', borderRadius: isMine ? '12px 12px 4px 12px' : '12px 12px 12px 4px', background: isMine ? 'var(--text)' : '#fff', color: isMine ? '#fff' : 'var(--text)', fontSize: 13.5, lineHeight: 1.4, boxShadow: '0 1px 2px rgba(0,0,0,0.08)' }}>
+                        {msg.content}
+                      </div>
+                      <span style={{ fontSize: 10.5, color: 'var(--text-tertiary)' }}>
+                        {msg.sender?.name ?? '—'} · {new Date(msg.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  )
+                })}
+                <div ref={chatEndRef} />
+              </div>
+              <div style={{ padding: '12px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
+                <input
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
+                  placeholder={`Nachricht an ${activeChatStaff.name} …`}
+                  style={{ flex: 1, padding: '9px 12px', fontSize: 13.5, border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'inherit', outline: 'none', background: '#fff', color: 'var(--text)' }}
+                />
+                <button
+                  onClick={sendChatMessage}
+                  disabled={!chatInput.trim() || chatSending || !chatConvId}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 9, border: 'none', background: chatInput.trim() && chatConvId ? 'var(--text)' : '#D1D5DB', color: '#fff', cursor: chatInput.trim() && chatConvId ? 'pointer' : 'not-allowed', flexShrink: 0, transition: 'background 0.15s' }}
+                >
+                  <Send size={15} />
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 

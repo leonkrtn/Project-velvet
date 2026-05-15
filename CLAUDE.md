@@ -174,6 +174,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `organizer_todos` | Organizer task list |
 | `organizer_staff` | Organizer's team members (auth_user_id, must_change_password for staff login) |
 | `personalplanung_shift_swaps` | Shift swap requests: from_staff_id → to_staff_id, status (pending/accepted/approved/rejected/cancelled) |
+| `shift_time_logs` | Actual check-in/out times per shift (shift_id, staff_id, event_id, actual_start, actual_end, notes). RLS: organizer reads all for their staff; staff reads own. Written via `/api/staff/checkin`. |
 | `event_organizer_costs` | Organizer's own cost items |
 | `feature_toggles` | Per-event feature flags — columns: `event_id`, `key`, `enabled`, `value TEXT` (optional text metadata, e.g. ISO date for `gaeste-fotos-unlock-at`) |
 
@@ -303,6 +304,9 @@ supabase/migrations/
                                        backup_staff_id to personalplanung_shifts;
                                        personalplanung_shift_swaps table; is_own_staff_member() SECURITY DEFINER;
                                        RLS for staff self-access on pp_days/assignments/shifts/swaps
+  0073_shift_time_tracking.sql         Creates shift_time_logs (actual check-in/out per shift).
+                                       Extends conversations/messages RLS to allow organizer_staff users
+                                       who are conversation participants (enables staff ↔ organizer 1:1 chat).
 
 workers/
   file-service/                 Cloudflare Worker — thin R2 presigned URL generator
@@ -330,8 +334,12 @@ app/mitarbeiter/
   page.tsx                      Staff portal entry — finds events via assignments, redirects or shows picker
   change-password/page.tsx      Forced password change (calls supabase.auth.updateUser + /api/mitarbeiter/change-password)
   [eventId]/schichtplan/
-    page.tsx                    Server component: loads staff record, days, shifts, allStaff, mySwaps
-    SchichtplanClient.tsx       Mobile-first view: shifts by day, break warnings (>6h), backup person, swap bottom-sheet
+    page.tsx                    Server component: loads staff record, all days, allShifts, myShifts, allStaff,
+                                mySwaps, myTimeLogs, staffAuthUserId, organizerAuthUserId
+    SchichtplanClient.tsx       Mobile-first 3-tab UI:
+                                  Schicht: own shifts + Einstempeln/Ausstempeln CTA per shift + swap requests
+                                  Team: all colleagues' shifts by day selector
+                                  Chat: 1:1 realtime chat with organizer (via /api/staff/chat find-or-create)
 
 app/api/staff/
   [staffId]/setup-auth/route.ts POST — creates/resets Supabase auth account for staff; sets app_metadata.role='mitarbeiter'
@@ -340,6 +348,14 @@ app/api/staff/
 
 app/api/mitarbeiter/
   change-password/route.ts      POST — clears must_change_password flag on organizer_staff
+
+app/api/staff/
+  checkin/route.ts              POST {shiftId, action:'checkin'|'checkout'} — creates/updates shift_time_logs row
+  chat/route.ts                 POST {eventId, staffId} — finds or creates 1:1 organizer↔staff conversation;
+                                      returns conversationId. Uses admin client; accessible to organizer or own staff.
+  [staffId]/setup-auth/route.ts POST — creates/resets Supabase auth account for staff
+  swaps/route.ts                POST — creates swap request
+  swaps/[swapId]/route.ts       PATCH — approve/reject (organizer) | accept/cancel (staff)
 
 app/api/rsvp/[token]/photos/
   route.ts                      GET photos list (with presigned URLs) + POST request upload URL — service role, token-auth
