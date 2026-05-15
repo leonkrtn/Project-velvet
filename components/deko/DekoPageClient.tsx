@@ -28,6 +28,7 @@ interface Props {
   initialItemsByCanvas: Record<string, DekoItem[]>
   allFrozen: boolean
   isVeranstalter: boolean
+  dlReadOnly?: boolean
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -35,9 +36,9 @@ interface Props {
 export default function DekoPageClient({
   eventId, role, userId, userName,
   initialAreas, initialMoodboards, initialCatalog, initialFlatRates,
-  initialItemsByCanvas, allFrozen, isVeranstalter,
+  initialItemsByCanvas, allFrozen, isVeranstalter, dlReadOnly = false,
 }: Props) {
-  const canEdit = role !== 'trauzeuge'
+  const canEdit = !dlReadOnly
   const [areas, setAreas] = useState<DekoArea[]>(initialAreas)
   const [moodboards, setMoodboards] = useState<DekoCanvasType[]>(initialMoodboards)
   const [catalog, setCatalog] = useState<DekoCatalogItem[]>(initialCatalog)

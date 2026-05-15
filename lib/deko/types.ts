@@ -16,7 +16,7 @@ export type DekoItemType =
 
 export type CanvasType = 'main' | 'variant' | 'moodboard'
 export type Availability = 'available' | 'limited' | 'unavailable'
-export type DekoRole = 'veranstalter' | 'brautpaar' | 'dienstleister' | 'trauzeuge'
+export type DekoRole = 'veranstalter' | 'brautpaar' | 'dienstleister'
 
 // ── Per-type data shapes ──────────────────────────────────────────────────────
 

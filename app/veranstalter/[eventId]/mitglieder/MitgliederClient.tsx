@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, ChevronDown, ChevronUp, Trash2, Copy, Check, MessageSquare, Phone, Mail, Euro, Tag, FileText, Edit2, X, Info, Pencil, BookUser } from 'lucide-react'
 
-type MemberRole = 'veranstalter' | 'brautpaar' | 'trauzeuge' | 'dienstleister'
+type MemberRole = 'veranstalter' | 'brautpaar' | 'dienstleister'
 
 interface Profile {
   id: string
@@ -48,7 +48,6 @@ interface Props {
 const ROLE_LABELS: Record<MemberRole, string> = {
   veranstalter: 'Veranstalter',
   brautpaar:    'Brautpaar',
-  trauzeuge:    'Trauzeuge',
   dienstleister:'Dienstleister',
 }
 
@@ -71,7 +70,6 @@ const DL_CATEGORIES = [
   'Konditorei', 'Hairstylist / Make-up', 'Trauungsredner', 'Location', 'Andere',
 ]
 
-type InviteRole = 'brautpaar' | 'trauzeuge' | 'dienstleister'
 type ModalStep  = 'basis' | 'bestaetigung' | 'code'
 
 function initials(name: string) {
@@ -128,16 +126,20 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const [members, setMembers] = useState(initialMembers)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
-  // Invite modal
+  // Dienstleister invite modal
   const [showInviteModal, setShowInviteModal]   = useState(false)
   const [modalStep, setModalStep]               = useState<ModalStep>('basis')
-  const [inviteRole, setInviteRole]             = useState<InviteRole>('trauzeuge')
   const [inviteDLCategory, setInviteDLCategory] = useState(DL_CATEGORIES[0])
   const [inviting, setInviting]                 = useState(false)
   const [inviteCode, setInviteCode]             = useState<string | null>(null)
   const [copied, setCopied]                     = useState(false)
   const [removeConfirm, setRemoveConfirm]       = useState<string | null>(null)
   const [removing, setRemoving]                 = useState(false)
+
+  // Brautpaar inline invite
+  const [bpCode, setBpCode]                     = useState<string | null>(null)
+  const [bpCodeCopied, setBpCodeCopied]         = useState(false)
+  const [creatingBpCode, setCreatingBpCode]     = useState(false)
 
   // Signup-Code
   const [signupCode, setSignupCode]               = useState<string | null>(null)
@@ -153,7 +155,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   // Info lightbox
   const [infoMemberId, setInfoMemberId] = useState<string | null>(null)
 
-  const bpTz     = members.filter(m => m.role === 'brautpaar' || m.role === 'trauzeuge')
+  const bpMembers = members.filter(m => m.role === 'brautpaar')
   const dlMembers = members.filter(m => m.role === 'dienstleister')
 
   function vendorForMember(m: Member): Vendor | undefined {
@@ -212,7 +214,6 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   function openModal() {
     setShowInviteModal(true)
     setModalStep('basis')
-    setInviteRole('trauzeuge')
     setInviteDLCategory(DL_CATEGORIES[0])
     setInviteCode(null)
     setCopied(false)
@@ -220,16 +221,23 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
 
   function closeModal() { setShowInviteModal(false) }
 
-  async function handleInviteSimple() {
-    setInviting(true)
+  async function createBpCode() {
+    setCreatingBpCode(true)
     const res = await fetch('/api/invite/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId, targetRole: inviteRole }),
+      body: JSON.stringify({ eventId, targetRole: 'brautpaar' }),
     })
     const data = await res.json()
-    setInviting(false)
-    if (data.code) { setInviteCode(data.code); setModalStep('code') }
+    setCreatingBpCode(false)
+    if (data.code) { setBpCode(data.code); setBpCodeCopied(false) }
+  }
+
+  async function copyBpCode() {
+    if (!bpCode) return
+    await navigator.clipboard.writeText(bpCode)
+    setBpCodeCopied(true)
+    setTimeout(() => setBpCodeCopied(false), 2000)
   }
 
   async function handleInviteVendor() {
@@ -245,7 +253,6 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   }
 
   function handleBasisWeiter() {
-    if (inviteRole !== 'dienstleister') { handleInviteSimple(); return }
     handleInviteVendor()
   }
 
@@ -288,34 +295,15 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const stepBasis = (
     <>
       <div style={{ marginBottom: 16 }}>
-        <Label>Rolle</Label>
-        <select
-          value={inviteRole}
-          onChange={e => setInviteRole(e.target.value as InviteRole)}
-          style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 14, fontFamily: 'inherit', background: '#fff', outline: 'none' }}
-        >
-          <option value="brautpaar">Brautpaar</option>
-          <option value="trauzeuge">Trauzeuge</option>
-          <option value="dienstleister">Dienstleister</option>
+        <Label>Kategorie</Label>
+        <select value={inviteDLCategory} onChange={e => setInviteDLCategory(e.target.value)} style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 14, fontFamily: 'inherit', background: '#fff', outline: 'none' }}>
+          {DL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
-      {inviteRole === 'dienstleister' && (
-        <div style={{ marginBottom: 16 }}>
-          <Label>Kategorie</Label>
-          <select value={inviteDLCategory} onChange={e => setInviteDLCategory(e.target.value)} style={{ width: '100%', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 14, fontFamily: 'inherit', background: '#fff', outline: 'none' }}>
-            {DL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-      )}
-      {inviteRole !== 'dienstleister' && (
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
-          Ein Einladungslink wird erstellt und ist 7 Tage gültig.
-        </p>
-      )}
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
         <button onClick={closeModal} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
         <button onClick={handleBasisWeiter} disabled={inviting} style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: inviting ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500 }}>
-          {inviting ? 'Erstellen…' : inviteRole === 'dienstleister' ? 'Weiter' : 'Link erstellen'}
+          {inviting ? 'Erstellen…' : 'Weiter'}
         </button>
       </div>
     </>
@@ -342,7 +330,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const stepCode = (
     <>
       <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 14 }}>
-        Einladungslink für <strong>{inviteRole === 'brautpaar' ? 'Brautpaar' : inviteRole === 'trauzeuge' ? 'Trauzeuge' : inviteDLCategory}</strong>:
+        Einladungslink für <strong>{inviteDLCategory}</strong>:
       </p>
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         <input readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/vendor/join?code=${inviteCode}`} style={{ flex: 1, padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, background: '#F5F5F7', outline: 'none' }} />
@@ -355,8 +343,8 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     </>
   )
 
-  const STEP_TITLES: Record<ModalStep, string> = { basis: 'Mitglied einladen', bestaetigung: 'Einladung bestätigen', code: 'Einladungslink' }
-  const showStepIndicator = inviteRole === 'dienstleister' && modalStep !== 'code'
+  const STEP_TITLES: Record<ModalStep, string> = { basis: 'Dienstleister einladen', bestaetigung: 'Einladung bestätigen', code: 'Einladungslink' }
+  const showStepIndicator = modalStep !== 'code'
   const DL_STEPS: ModalStep[] = ['basis', 'bestaetigung']
   const currentStepIdx = DL_STEPS.indexOf(modalStep)
 
@@ -541,33 +529,66 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>Beteiligte</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
-            {bpTz.length} Brautpaar/Trauzeugen · {dlMembers.length} Dienstleister
+            {bpMembers.length} Brautpaar · {dlMembers.length} Dienstleister
           </p>
         </div>
-        <button onClick={openModal} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>
-          <Plus size={15} /> Einladen
-        </button>
       </div>
 
-      {/* Brautpaar & Trauzeugen */}
+      {/* Brautpaar */}
       <div style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 12, color: 'var(--text-primary)' }}>Brautpaar & Trauzeugen</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 12, color: 'var(--text-primary)' }}>Brautpaar</h2>
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 40px', gap: 0, padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)' }}>
             {['', 'Name', ''].map((h, i) => (
               <span key={i} style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)' }}>{h}</span>
             ))}
           </div>
-          {bpTz.length === 0
-            ? <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14, fontStyle: 'italic' }}>Noch keine Beteiligten in dieser Gruppe</div>
-            : bpTz.map(renderBpTzRow)
+          {bpMembers.length === 0
+            ? <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14, fontStyle: 'italic' }}>Noch kein Brautpaar registriert</div>
+            : bpMembers.map(renderBpTzRow)
           }
+        </div>
+
+        {/* Brautpaar Inline-Einladung */}
+        <div style={{ marginTop: 16, background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: 24, boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ marginBottom: 16 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 4 }}>Brautpaar einladen</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              Generiere einen Einladungscode für das Brautpaar – 7 Tage gültig, einmalig verwendbar.
+            </p>
+          </div>
+          {bpCode ? (
+            <div>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Teile diesen Code mit dem Brautpaar. Er kann auf <strong>project-velvet.vercel.app/join</strong> eingelöst werden.</p>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <input readOnly value={bpCode} style={{ flex: 1, padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 15, fontFamily: 'monospace', fontWeight: 600, background: '#F5F5F7', outline: 'none', letterSpacing: '0.05em' }} />
+                <button onClick={copyBpCode} style={{ padding: '10px 14px', background: bpCodeCopied ? '#34C759' : 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, whiteSpace: 'nowrap' }}>
+                  {bpCodeCopied ? <Check size={14} /> : <Copy size={14} />}
+                  {bpCodeCopied ? 'Kopiert' : 'Kopieren'}
+                </button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>7 Tage gültig · Einmalig verwendbar</p>
+                <button onClick={() => setBpCode(null)} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--text-tertiary)', cursor: 'pointer', textDecoration: 'underline' }}>Neuen Code erstellen</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={createBpCode} disabled={creatingBpCode} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: creatingBpCode ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, opacity: creatingBpCode ? 0.7 : 1 }}>
+              <Plus size={15} />
+              {creatingBpCode ? 'Erstellen…' : 'Einladungscode erstellen'}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Dienstleister */}
       <div style={{ marginBottom: 32 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 12, color: 'var(--text-primary)' }}>Dienstleister</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.3px', color: 'var(--text-primary)', margin: 0 }}>Dienstleister</h2>
+          <button onClick={openModal} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+            <Plus size={13} /> Einladen
+          </button>
+        </div>
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 40px', gap: 0, padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)' }}>
             {['', 'Name & Kategorie', ''].map((h, i) => (

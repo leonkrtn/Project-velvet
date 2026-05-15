@@ -12,7 +12,6 @@ function resolvePortal(user: { app_metadata?: Record<string, unknown> }, members
     switch (nonVendor.role) {
       case 'veranstalter': return '/veranstalter/events'
       case 'brautpaar':    return '/brautpaar'
-      case 'trauzeuge':    return `/trauzeuge/${nonVendor.event_id}`
     }
   }
   if (memberships.some(m => m.role === 'dienstleister')) return '/vendor/dashboard'

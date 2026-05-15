@@ -28,6 +28,7 @@ export default async function BrautpaarDateienPage({ params }: Props) {
       canUpload={member.role === 'brautpaar' || member.role === 'veranstalter'}
       userId={user.id}
       isVeranstalter={member.role === 'veranstalter'}
+      userRole={member.role}
     />
   )
 }

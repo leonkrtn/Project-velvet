@@ -22,7 +22,7 @@ export default async function DekorationPage({ params }: Props) {
   return <DekoPageInner eventId={eventId} userId={user.id} userName={profile?.display_name ?? 'Veranstalter'} role="veranstalter" />
 }
 
-async function DekoPageInner({ eventId, userId, userName, role }: { eventId: string; userId: string; userName: string; role: 'veranstalter' | 'brautpaar' | 'dienstleister' | 'trauzeuge' }) {
+async function DekoPageInner({ eventId, userId, userName, role }: { eventId: string; userId: string; userName: string; role: 'veranstalter' | 'brautpaar' | 'dienstleister' }) {
   const supabase = await createClient()
 
   const [

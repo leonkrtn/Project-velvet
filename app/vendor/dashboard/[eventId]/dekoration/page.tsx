@@ -25,7 +25,8 @@ export default async function VendorDekorationPage({ params }: Props) {
   const tabAccess = (tabPerm?.access ?? 'none') as 'none' | 'read' | 'write'
   if (tabAccess === 'none') redirect(`/vendor/dashboard/${eventId}/uebersicht`)
 
-  const role = tabAccess === 'write' ? 'dienstleister' : 'trauzeuge' // trauzeuge = read-only
+  const role = 'dienstleister'
+  const dlReadOnly = tabAccess !== 'write'
 
   const { data: profile } = await supabase
     .from('profiles').select('display_name').eq('id', user.id).single()
@@ -67,7 +68,8 @@ export default async function VendorDekorationPage({ params }: Props) {
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <DekoPageClient
         eventId={eventId}
-        role={role as 'dienstleister' | 'trauzeuge'}
+        role={role}
+        dlReadOnly={dlReadOnly}
         userId={user.id}
         userName={profile?.display_name ?? 'Dienstleister'}
         initialAreas={areas}

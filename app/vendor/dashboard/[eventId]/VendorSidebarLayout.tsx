@@ -1,11 +1,11 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, MessageSquare,
   Calendar, Grid2X2, ChevronLeft, Menu, UtensilsCrossed,
-  Music2, Cake, Flower2, Camera, Users, FileText,
+  Music2, Cake, Flower2, Camera, Users, FileText, LogOut,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
@@ -34,8 +34,15 @@ const ALL_NAV_ITEMS = [
 
 export default function VendorSidebarLayout({ eventId, eventTitle, eventDate, children, initialTabPerms }: Props) {
   const pathname = usePathname()
+  const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [tabPerms, setTabPerms] = useState(initialTabPerms)
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   // Re-sync permissions on focus (so changes by Veranstalter are reflected quickly)
   useEffect(() => {
@@ -106,31 +113,48 @@ export default function VendorSidebarLayout({ eventId, eventTitle, eventDate, ch
         )}
       </div>
 
-      <div style={{ padding: '4px 8px', flex: 1 }}>
-        {visibleItems.map(({ key, label, icon: Icon }) => {
-          const active = isActive(key)
-          return (
-            <Link
-              key={key}
-              href={`${base}/${key}`}
-              onClick={() => setMobileOpen(false)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 9,
-                padding: '8px 10px', borderRadius: 8,
-                fontSize: 14, fontWeight: active ? 500 : 450,
-                color: 'var(--text-primary)',
-                textDecoration: 'none', marginBottom: 1,
-                background: active ? 'var(--surface)' : 'transparent',
-                boxShadow: active ? 'var(--shadow-sm)' : 'none',
-                transition: 'background 0.12s',
-              }}
-            >
-              <Icon size={16} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>{label}</span>
-              {key === 'chats' && <ChatUnreadBadge eventId={eventId} />}
-            </Link>
-          )
-        })}
+      <div style={{ padding: '4px 8px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1 }}>
+          {visibleItems.map(({ key, label, icon: Icon }) => {
+            const active = isActive(key)
+            return (
+              <Link
+                key={key}
+                href={`${base}/${key}`}
+                onClick={() => setMobileOpen(false)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 9,
+                  padding: '8px 10px', borderRadius: 8,
+                  fontSize: 14, fontWeight: active ? 500 : 450,
+                  color: 'var(--text-primary)',
+                  textDecoration: 'none', marginBottom: 1,
+                  background: active ? 'var(--surface)' : 'transparent',
+                  boxShadow: active ? 'var(--shadow-sm)' : 'none',
+                  transition: 'background 0.12s',
+                }}
+              >
+                <Icon size={16} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
+                <span style={{ flex: 1 }}>{label}</span>
+                {key === 'chats' && <ChatUnreadBadge eventId={eventId} />}
+              </Link>
+            )
+          })}
+        </div>
+        <div style={{ borderTop: '1px solid var(--border)', padding: '8px 0 4px', marginTop: 4 }}>
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 9,
+              padding: '8px 10px', borderRadius: 8, width: '100%',
+              fontSize: 14, color: 'var(--text-secondary)',
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: 'inherit', textAlign: 'left',
+            }}
+          >
+            <LogOut size={16} style={{ opacity: 0.5, flexShrink: 0 }} />
+            <span>Abmelden</span>
+          </button>
+        </div>
       </div>
     </nav>
   )

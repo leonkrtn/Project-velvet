@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   FileText, Image, Video, Music, FileSpreadsheet, Download,
-  Trash2, Upload, X, Loader2, File, AlertCircle,
+  Trash2, Upload, X, Loader2, File, AlertCircle, Eye, EyeOff,
 } from 'lucide-react'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import {
@@ -61,6 +61,8 @@ interface Props {
   /** userId needed to show delete button on own files */
   userId: string
   isVeranstalter?: boolean
+  /** Role of the current user — used to filter files by visible_to_roles */
+  userRole?: string
 }
 
 // ─── Row component ───────────────────────────────────────────────────────────
@@ -76,6 +78,9 @@ function FileRow({
   onDelete,
   isLegacy = false,
   legacyUrl,
+  visibleToRoles,
+  isVeranstalter,
+  onVisibilityChange,
 }: {
   name: string
   mime: string
@@ -87,10 +92,29 @@ function FileRow({
   onDelete?: () => Promise<void>
   isLegacy?: boolean
   legacyUrl?: string
+  visibleToRoles?: string[] | null
+  isVeranstalter?: boolean
+  onVisibilityChange?: (roles: string[] | null) => void
 }) {
   const [downloading, setDownloading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [dlError, setDlError] = useState<string | null>(null)
+  const [savingVisibility, setSavingVisibility] = useState(false)
+
+  const isBpVisible = visibleToRoles === null || visibleToRoles === undefined || visibleToRoles.includes('brautpaar')
+  const isDlVisible = visibleToRoles === null || visibleToRoles === undefined || visibleToRoles.includes('dienstleister')
+
+  async function toggleRole(role: 'brautpaar' | 'dienstleister') {
+    if (!onVisibilityChange) return
+    setSavingVisibility(true)
+    const currentBp = isBpVisible
+    const currentDl = isDlVisible
+    const newBp = role === 'brautpaar' ? !currentBp : currentBp
+    const newDl = role === 'dienstleister' ? !currentDl : currentDl
+    const newRoles = newBp && newDl ? null : newBp ? ['brautpaar'] : newDl ? ['dienstleister'] : []
+    onVisibilityChange(newRoles)
+    setSavingVisibility(false)
+  }
 
   async function handleDownload() {
     setDlError(null)
@@ -147,6 +171,44 @@ function FileRow({
           {module ? ` · ${MODULE_LABELS[module as FileModule] ?? module}` : ''}
           {isLegacy && ' · Altdatei'}
         </p>
+        {/* Visibility toggles — only Veranstalter sees these */}
+        {isVeranstalter && !isLegacy && onVisibilityChange && (
+          <div style={{ display: 'flex', gap: 4, marginTop: 5, alignItems: 'center' }}>
+            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginRight: 2 }}>Sichtbar für:</span>
+            <button
+              onClick={() => toggleRole('brautpaar')}
+              disabled={savingVisibility}
+              title={isBpVisible ? 'Brautpaar: sichtbar (klicken zum Ausblenden)' : 'Brautpaar: ausgeblendet (klicken zum Einblenden)'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 3,
+                padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 500,
+                border: `1px solid ${isBpVisible ? '#C9B99A' : 'var(--border)'}`,
+                background: isBpVisible ? '#FDF8F2' : 'transparent',
+                color: isBpVisible ? '#8B6940' : 'var(--text-tertiary)',
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+              }}
+            >
+              {isBpVisible ? <Eye size={9} /> : <EyeOff size={9} />}
+              Brautpaar
+            </button>
+            <button
+              onClick={() => toggleRole('dienstleister')}
+              disabled={savingVisibility}
+              title={isDlVisible ? 'Dienstleister: sichtbar (klicken zum Ausblenden)' : 'Dienstleister: ausgeblendet (klicken zum Einblenden)'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 3,
+                padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 500,
+                border: `1px solid ${isDlVisible ? '#A0B4C8' : 'var(--border)'}`,
+                background: isDlVisible ? '#F0F6FB' : 'transparent',
+                color: isDlVisible ? '#3A6080' : 'var(--text-tertiary)',
+                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+              }}
+            >
+              {isDlVisible ? <Eye size={9} /> : <EyeOff size={9} />}
+              Dienstleister
+            </button>
+          </div>
+        )}
         {dlError && <p style={{ fontSize: 11, color: '#ef4444', margin: 0, marginTop: 2 }}>{dlError}</p>}
       </div>
 
@@ -383,6 +445,7 @@ export default function FilesSection({
   canUpload,
   userId,
   isVeranstalter = false,
+  userRole,
 }: Props) {
   const [files, setFiles] = useState<FileMetadata[]>([])
   const [legacyFiles, setLegacyFiles] = useState<LegacyEventFile[]>([])
@@ -403,6 +466,11 @@ export default function FilesSection({
       .order('created_at', { ascending: false })
 
     if (module) q = q.eq('module', module)
+
+    // Non-Veranstalter users only see files where visible_to_roles is NULL or contains their role
+    if (!isVeranstalter && userRole) {
+      q = q.or(`visible_to_roles.is.null,visible_to_roles.cs.{${userRole}}`)
+    }
 
     const { data: newFiles } = await q
     setFiles((newFiles as FileMetadata[]) ?? [])
@@ -446,6 +514,16 @@ export default function FilesSection({
       return
     }
     setFiles(prev => prev.filter(f => f.id !== fileId))
+  }
+
+  async function handleVisibilityChange(fileId: string, roles: string[] | null) {
+    const res = await fetch(`/api/files/${fileId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visible_to_roles: roles }),
+    })
+    if (!res.ok) return
+    setFiles(prev => prev.map(f => f.id === fileId ? { ...f, visible_to_roles: roles } : f))
   }
 
   // Group new files by module when showing all
@@ -531,6 +609,9 @@ export default function FilesSection({
                         canDelete={isVeranstalter || f.uploaded_by === userId}
                         onDownload={() => handleDownload(f.id)}
                         onDelete={() => handleDelete(f.id)}
+                        visibleToRoles={f.visible_to_roles}
+                        isVeranstalter={isVeranstalter}
+                        onVisibilityChange={isVeranstalter ? (roles) => handleVisibilityChange(f.id, roles) : undefined}
                       />
                     </div>
                   ))}

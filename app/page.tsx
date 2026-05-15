@@ -43,7 +43,6 @@ export default function LandingPage() {
       case 'veranstalter':  return '/veranstalter/events'
       case 'brautpaar':     return '/brautpaar'
       case 'dienstleister': return `/vendor/dashboard/${event_id}/uebersicht`
-      case 'trauzeuge':     return `/trauzeuge/${event_id}`
       default:              return '/brautpaar'
     }
   }, [])

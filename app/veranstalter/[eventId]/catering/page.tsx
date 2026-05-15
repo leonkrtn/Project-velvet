@@ -24,7 +24,7 @@ export default async function CateringPage({ params }: Props) {
     .eq('event_id', eventId)
     .single()
 
-  const [{ data: cateringCosts }, { data: guestStats }] = await Promise.all([
+  const [{ data: cateringCosts }, { data: guestStats }, { data: begleitStats }] = await Promise.all([
     supabase
       .from('event_organizer_costs')
       .select('id, category, price_per_person, notes')
@@ -33,16 +33,28 @@ export default async function CateringPage({ params }: Props) {
       .order('created_at', { ascending: true }),
     supabase
       .from('guests')
-      .select('status, meal_choice, allergy_tags')
+      .select('id, status, meal_choice, allergy_tags')
       .eq('event_id', eventId),
+    supabase
+      .from('begleitpersonen')
+      .select('guest_id, meal_choice, allergy_tags')
+      .in('guest_id', (await supabase.from('guests').select('id').eq('event_id', eventId).then(r => (r.data ?? []).map(g => g.id)))),
   ])
 
   const attending = (guestStats ?? []).filter(g => g.status === 'zugesagt')
+  const attendingIds = new Set(attending.map(g => g.id))
   const mealCounts: Record<string, number> = {}
   const allergyCounts: Record<string, number> = {}
   for (const g of attending) {
     if (g.meal_choice) mealCounts[g.meal_choice] = (mealCounts[g.meal_choice] ?? 0) + 1
     for (const tag of (g.allergy_tags ?? [])) {
+      allergyCounts[tag] = (allergyCounts[tag] ?? 0) + 1
+    }
+  }
+  // Include companion (Begleitperson) meal choices for confirmed guests
+  for (const b of (begleitStats ?? []).filter(b => attendingIds.has(b.guest_id))) {
+    if (b.meal_choice) mealCounts[b.meal_choice] = (mealCounts[b.meal_choice] ?? 0) + 1
+    for (const tag of (b.allergy_tags ?? [])) {
       allergyCounts[tag] = (allergyCounts[tag] ?? 0) + 1
     }
   }

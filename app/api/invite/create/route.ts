@@ -1,11 +1,9 @@
 // app/api/invite/create/route.ts
-// Erstellt Invite-Codes für Brautpaar, Trauzeuge
-// Veranstalter → kann Brautpaar + Trauzeuge einladen
-// Brautpaar → kann Trauzeuge einladen
+// Erstellt Invite-Codes für Brautpaar
+// Nur Veranstalter kann Brautpaar einladen
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import type { TrauzeugePermissions } from '@/lib/types/roles'
 
 function getServiceClient() {
   return createServiceClient(
@@ -20,15 +18,13 @@ export async function POST(request: Request) {
   if (error || !user) return NextResponse.json({ error: 'Nicht authentifiziert' }, { status: 401 })
 
   const body = await request.json()
-  const { eventId, targetRole, permissions } = body as {
+  const { eventId, targetRole } = body as {
     eventId: string
-    targetRole: 'brautpaar' | 'trauzeuge'
-    permissions?: Partial<TrauzeugePermissions>
+    targetRole: 'brautpaar'
   }
 
-  const ALLOWED_ROLES = ['brautpaar', 'trauzeuge']
-  if (!eventId || !targetRole || !ALLOWED_ROLES.includes(targetRole)) {
-    return NextResponse.json({ error: 'eventId und targetRole erforderlich' }, { status: 400 })
+  if (!eventId || targetRole !== 'brautpaar') {
+    return NextResponse.json({ error: 'eventId und targetRole="brautpaar" erforderlich' }, { status: 400 })
   }
 
   const admin = getServiceClient()
@@ -44,24 +40,19 @@ export async function POST(request: Request) {
   if (!member) return NextResponse.json({ error: 'Kein Zugriff auf dieses Event' }, { status: 403 })
 
   const callerRole = member.role as string
-  if (targetRole === 'brautpaar' && callerRole !== 'veranstalter') {
+  if (callerRole !== 'veranstalter') {
     return NextResponse.json({ error: 'Nur Veranstalter kann Brautpaar einladen' }, { status: 403 })
-  }
-  if (targetRole === 'trauzeuge' && !['veranstalter', 'brautpaar'].includes(callerRole)) {
-    return NextResponse.json({ error: 'Nur Veranstalter oder Brautpaar kann Trauzeugen einladen' }, { status: 403 })
   }
 
   const code = crypto.randomUUID()
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-
-  const metadata = targetRole === 'trauzeuge' && permissions ? { permissions } : null
 
   const { data: invite, error: invErr } = await admin.from('invite_codes').insert({
     event_id: eventId,
     code,
     role: targetRole,
     expires_at: expiresAt,
-    metadata,
+    metadata: null,
     created_by: user.id,
   }).select('code').single()
 

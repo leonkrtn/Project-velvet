@@ -121,7 +121,7 @@ export default async function UebersichtPage({ params }: Props) {
   ] = await Promise.all([
     supabase.from('events').select('id, title, date, budget_total, projektphase, organizer_fee').eq('id', eventId).single(),
     supabase.from('event_members').select('id, role').eq('event_id', eventId),
-    supabase.from('event_members').select('id, role, profiles!user_id(id, name, email, phone)').eq('event_id', eventId).in('role', ['brautpaar', 'trauzeuge']),
+    supabase.from('event_members').select('id, role, profiles!user_id(id, name, email, phone)').eq('event_id', eventId).eq('role', 'brautpaar'),
     supabase.from('event_members').select('id, user_id, role, profiles!user_id(id, name, email, phone)').eq('event_id', eventId).eq('role', 'dienstleister').eq('show_in_contacts', true),
     supabase.from('invite_codes').select('id, status').eq('event_id', eventId).eq('status', 'offen'),
     supabase.from('guests').select('id, status').eq('event_id', eventId),
@@ -151,7 +151,6 @@ export default async function UebersichtPage({ params }: Props) {
     profiles: Array.isArray(m.profiles) ? (m.profiles[0] ?? null) : m.profiles,
   }))
   const brautpaar = contactMembers.filter(m => m.role === 'brautpaar')
-  const trauzeugen = contactMembers.filter(m => m.role === 'trauzeuge')
   const dlContacts = (dlContactMembersRes.data ?? []).map(m => ({
     ...m,
     profiles: Array.isArray(m.profiles) ? (m.profiles[0] ?? null) : m.profiles,
@@ -207,7 +206,7 @@ export default async function UebersichtPage({ params }: Props) {
 
       {/* KPI Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
-        <KpiCard icon={<Users size={20} color="var(--text-primary)" />} label="Beteiligte" value={members.length.toString()} sub={`${members.filter(m => m.role === 'brautpaar').length} BP · ${members.filter(m => m.role === 'trauzeuge').length} TZ · ${members.filter(m => m.role === 'dienstleister').length} DL`} href={`/veranstalter/${eventId}/mitglieder`} />
+        <KpiCard icon={<Users size={20} color="var(--text-primary)" />} label="Beteiligte" value={members.length.toString()} sub={`${members.filter(m => m.role === 'brautpaar').length} BP · ${members.filter(m => m.role === 'dienstleister').length} DL`} href={`/veranstalter/${eventId}/mitglieder`} />
         <KpiCard icon={<Mail size={20} color="var(--text-primary)" />} label="Offene Einladungen" value={openInvites.toString()} sub="Noch nicht eingelöst" href={`/veranstalter/${eventId}/mitglieder`} />
         <KpiCard icon={<Calendar size={20} color="var(--text-primary)" />} label="Tage bis Event" value={daysLeft != null ? daysLeft.toString() : '—'} sub={event.date ? new Date(event.date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Kein Datum gesetzt'} href={`/veranstalter/${eventId}/allgemein`} />
       </div>
@@ -244,24 +243,16 @@ export default async function UebersichtPage({ params }: Props) {
         </div>
 
         {/* Kontakt-Schnellzugriff */}
-        {(brautpaar.length > 0 || trauzeugen.length > 0 || dlContacts.length > 0) && (
+        {(brautpaar.length > 0 || dlContacts.length > 0) && (
           <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
             <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid var(--border)' }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Wichtige Kontakte</span>
             </div>
             {brautpaar.length > 0 && (
-              <div style={{ padding: '14px 22px', borderBottom: (trauzeugen.length > 0 || dlContacts.length > 0) ? '1px solid var(--border)' : undefined }}>
+              <div style={{ padding: '14px 22px', borderBottom: dlContacts.length > 0 ? '1px solid var(--border)' : undefined }}>
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Brautpaar</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {brautpaar.map(m => <ContactRow key={m.id} profile={m.profiles} />)}
-                </div>
-              </div>
-            )}
-            {trauzeugen.length > 0 && (
-              <div style={{ padding: '14px 22px', borderBottom: dlContacts.length > 0 ? '1px solid var(--border)' : undefined }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Trauzeugen</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {trauzeugen.map(m => <ContactRow key={m.id} profile={m.profiles} />)}
                 </div>
               </div>
             )}
