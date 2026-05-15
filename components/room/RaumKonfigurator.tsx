@@ -330,7 +330,7 @@ export default function RaumKonfigurator({
   })
 
   /* ── React state for panel / UI ── */
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [showDimensions, setShowDimensions] = useState(true)
   const [showCorners, setShowCorners] = useState(true)
   const [selectedElemType, setSelectedElemType] = useState<string | null>(null)
@@ -761,6 +761,7 @@ export default function RaumKonfigurator({
     draw()
   }
   function handleGoToStep3() { setStep(3) }
+  function handleGoToStep4() { setStep(4) }
   function handleSave() {
     onSave?.(stateRef.current.points, stateRef.current.elements, tablePool)
   }
@@ -785,11 +786,11 @@ export default function RaumKonfigurator({
 
       {/* Step bar */}
       <div style={{ display:'flex', alignItems:'center', background:'#fff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:10, padding:4, width:'fit-content', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
-        {[{n:1,label:'Grundriss'},{n:2,label:'Raumdetails'},{n:3,label:'Tische'}].map((s,i) => (
+        {[{n:1,label:'Grundriss'},{n:2,label:'Raumdetails'},{n:3,label:'Tische'},{n:4,label:'Platzieren'}].map((s,i) => (
           <React.Fragment key={s.n}>
             {i>0 && <div style={{width:1,height:20,background:'rgba(0,0,0,0.08)',margin:'0 2px'}}/>}
             <button
-              onClick={s.n===1?handleGoToStep1:s.n===2?handleGoToStep2:handleGoToStep3}
+              onClick={s.n===1?handleGoToStep1:s.n===2?handleGoToStep2:s.n===3?handleGoToStep3:handleGoToStep4}
               style={{
                 display:'flex', alignItems:'center', gap:7, padding:'6px 14px',
                 borderRadius:7, fontSize:13, fontWeight:500, cursor:'pointer',
@@ -886,6 +887,39 @@ export default function RaumKonfigurator({
               </div>
             </div>
           )}
+          {/* Step 4: placement summary */}
+          {step===4 && (
+            <div style={{ padding:'16px' }}>
+              <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.09em', color:'#AEAEB2', marginBottom:12 }}>Zusammenfassung</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                <div style={{ padding:'10px 12px', background:'#F5F5F7', borderRadius:8 }}>
+                  <p style={{ fontSize:11, color:'#AEAEB2', marginBottom:3 }}>Raumgröße</p>
+                  <p style={{ fontSize:13, fontWeight:600 }}>{dimLabel}</p>
+                </div>
+                <div style={{ padding:'10px 12px', background:'#F5F5F7', borderRadius:8 }}>
+                  <p style={{ fontSize:11, color:'#AEAEB2', marginBottom:3 }}>Elemente</p>
+                  <p style={{ fontSize:13, fontWeight:600 }}>{elemCount} platziert</p>
+                </div>
+                <div style={{ padding:'10px 12px', background:'#F5F5F7', borderRadius:8 }}>
+                  <p style={{ fontSize:11, color:'#AEAEB2', marginBottom:6 }}>Tischtypen</p>
+                  {tablePool.types.length === 0
+                    ? <p style={{ fontSize:12, color:'#AEAEB2' }}>Keine Tische definiert</p>
+                    : tablePool.types.map((t, i) => (
+                      <p key={t.id} style={{ fontSize:12, fontWeight:500, marginBottom:2 }}>
+                        {t.shape==='round' ? '○' : '▭'} {t.shape==='round' ? 'Rund' : 'Eckig'} #{i+1} — {t.count}× {t.shape==='round' ? `⌀${t.diameter}m` : `${t.length}×${t.width}m`}
+                      </p>
+                    ))
+                  }
+                </div>
+                <div style={{ padding:'10px 12px', background:'#EFF6FF', borderRadius:8, border:'1px solid #BFDBFE' }}>
+                  <p style={{ fontSize:12, color:'#1D4ED8', lineHeight:1.5 }}>
+                    Nach dem Speichern kannst du die Tische im Sitzplan-Editor exakt platzieren und Gästen zuweisen.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Step 3: table pool config — multi-type */}
           {step===3 && (
             <div style={{ overflowY:'auto', maxHeight:'calc(100vh - 260px)' }}>
@@ -1034,8 +1068,10 @@ export default function RaumKonfigurator({
                   <span>Ziehen = verschieben</span><span>·</span>
                   <span>Doppelklick = löschen</span>
                 </>
-              ) : (
+              ) : step===3 ? (
                 <span>Anzahl und Größe der verfügbaren Tische festlegen</span>
+              ) : (
+                <span>Konfiguration prüfen und speichern — dann Tische im Sitzplan-Editor platzieren</span>
               )}
             </div>
             {onSave && (
@@ -1079,10 +1115,22 @@ export default function RaumKonfigurator({
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
               Zurück zu Schritt 2
             </button>
+            <button onClick={handleGoToStep4} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 20px', borderRadius:10, fontSize:14, fontWeight:500, cursor:'pointer', border:'none', background:'#1D1D1F', color:'#fff', fontFamily:'inherit' }}>
+              Weiter zu Schritt 4
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </>
+        )}
+        {step===4 && (
+          <>
+            <button onClick={handleGoToStep3} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 18px', borderRadius:10, fontSize:14, fontWeight:500, cursor:'pointer', border:'1px solid rgba(0,0,0,0.14)', background:'#fff', color:'#1D1D1F', fontFamily:'inherit' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+              Zurück zu Schritt 3
+            </button>
             {onSave && (
               <button onClick={handleSave} disabled={saving} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'9px 20px', borderRadius:10, fontSize:14, fontWeight:500, cursor: saving ? 'not-allowed' : 'pointer', border:'none', background:'#34C759', color:'#fff', fontFamily:'inherit', opacity: saving ? 0.7 : 1 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                {saving ? 'Wird gespeichert…' : 'Raum fertigstellen'}
+                {saving ? 'Wird gespeichert…' : 'Raum speichern & Tische platzieren'}
               </button>
             )}
           </>

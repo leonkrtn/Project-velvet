@@ -839,14 +839,16 @@ function RoomInfoRenderer({ eventId }: RendererProps) {
   const [info, setInfo] = useState<{ area_sqm?: number; name?: string } | null>(null)
   useEffect(() => {
     const supabase = createClient()
-    supabase.from('event_room_configs').select('config').eq('event_id', eventId).maybeSingle()
+    supabase.from('event_room_configs').select('points').eq('event_id', eventId).maybeSingle()
       .then(({ data }) => {
-        if (data?.config && typeof data.config === 'object') {
-          const c = data.config as Record<string, unknown>
-          setInfo({
-            area_sqm: typeof c.area_sqm === 'number' ? c.area_sqm : undefined,
-            name: typeof c.name === 'string' ? c.name : undefined,
-          })
+        if (data?.points && Array.isArray(data.points) && data.points.length >= 3) {
+          const pts = data.points as { x: number; y: number }[]
+          let area = 0
+          for (let i = 0; i < pts.length; i++) {
+            const j = (i + 1) % pts.length
+            area += pts[i].x * pts[j].y - pts[j].x * pts[i].y
+          }
+          setInfo({ area_sqm: Math.round(Math.abs(area / 2) * 10) / 10 })
         }
       }, () => {})
   }, [eventId])
@@ -876,7 +878,7 @@ function GuestCountRenderer({ eventId }: RendererProps) {
     const supabase = createClient()
     Promise.all([
       supabase.from('guests').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
-      supabase.from('guests').select('id', { count: 'exact', head: true }).eq('event_id', eventId).eq('rsvp_status', 'confirmed'),
+      supabase.from('guests').select('id', { count: 'exact', head: true }).eq('event_id', eventId).eq('status', 'zugesagt'),
     ]).then(([all, conf]) => {
       setTotal(all.count ?? null)
       setConfirmed(conf.count ?? null)

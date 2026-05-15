@@ -33,8 +33,11 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     if (staffRow.auth_user_id) {
-      // Update password for existing auth user
-      const { error } = await admin.auth.admin.updateUserById(staffRow.auth_user_id, { password })
+      // Update password + ensure app_metadata has role=mitarbeiter
+      const { error } = await admin.auth.admin.updateUserById(staffRow.auth_user_id, {
+        password,
+        app_metadata: { role: 'mitarbeiter', organizer_id: user.id },
+      })
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       await admin.from('organizer_staff').update({ must_change_password: true }).eq('id', staffId)
     } else {
