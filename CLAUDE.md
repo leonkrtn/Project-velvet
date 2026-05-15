@@ -405,6 +405,12 @@ BEGIN
   VALUES (new_id, 'Vorname Nachname', 'email@beispiel.de')
   ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email;
 END $$;
+
+-- Danach: Veranstalter-Rechte in profiles setzen (PFLICHT, sonst kein Zugriff)
+UPDATE public.profiles SET is_approved_organizer = true WHERE email = 'email@beispiel.de';
+```
+
+> **Wichtig:** Die eigentliche Zugriffskontrolle läuft über `profiles.is_approved_organizer` (boolean), **nicht** über `raw_app_meta_data`. Das Feld `is_approved_organizer` in `app_metadata` hat aktuell keine Wirkung (Middleware-Bug, siehe oben).
 ```
 
 ---
