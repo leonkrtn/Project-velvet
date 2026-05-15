@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, Pencil, Trash2 } from 'lucide-react'
+import { Plus, X, Pencil, Trash2, AlertTriangle, Check, ArrowLeftRight } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -74,6 +74,16 @@ type Shift = {
   task: string
   start_hour: number
   end_hour: number
+  backup_staff_id: string | null
+}
+
+type Swap = {
+  id: string
+  shift_id: string
+  from_staff_id: string
+  to_staff_id: string | null
+  status: string
+  notes: string | null
 }
 
 type DragState = {
@@ -236,8 +246,13 @@ export default function PersonalplanungPage() {
   const [shiftTask, setShiftTask] = useState('')
   const [shiftStart, setShiftStart] = useState('14:00')
   const [shiftEnd, setShiftEnd] = useState('18:00')
+  const [shiftBackupId, setShiftBackupId] = useState('')
   const [shiftSubmitting, setShiftSubmitting] = useState(false)
   const [shiftError, setShiftError] = useState('')
+
+  // Swap requests
+  const [swaps, setSwaps] = useState<Swap[]>([])
+  const [showSwapsPanel, setShowSwapsPanel] = useState(false)
 
   const [hoveredShiftId, setHoveredShiftId] = useState<string | null>(null)
   const [showAblaufplan, setShowAblaufplan] = useState(true)
@@ -332,12 +347,14 @@ export default function PersonalplanungPage() {
 
       if (dayList.length > 0) {
         const dayIds = dayList.map(d => d.id)
-        const [{ data: aRows }, { data: sRows }] = await Promise.all([
+        const [{ data: aRows }, { data: sRows }, { data: swapRows }] = await Promise.all([
           supabase.from('personalplanung_assignments').select('*').in('day_id', dayIds),
           supabase.from('personalplanung_shifts').select('*').in('day_id', dayIds).order('start_hour'),
+          supabase.from('personalplanung_shift_swaps').select('*').eq('event_id', eventId).in('status', ['pending', 'accepted']),
         ])
         setAssignments((aRows ?? []) as Assignment[])
         setShifts((sRows ?? []) as Shift[])
+        setSwaps((swapRows ?? []) as typeof swaps)
         setActiveDayId(prev => prev ?? dayList[0].id)
       }
     } catch (err) {
@@ -445,6 +462,7 @@ export default function PersonalplanungPage() {
     setShiftTask('')
     setShiftStart('14:00')
     setShiftEnd('18:00')
+    setShiftBackupId('')
     setShiftError('')
     setShowShiftModal(true)
   }
@@ -455,6 +473,7 @@ export default function PersonalplanungPage() {
     setShiftTask(shift.task)
     setShiftStart(fmtHour(shift.start_hour))
     setShiftEnd(fmtHour(shift.end_hour))
+    setShiftBackupId(shift.backup_staff_id ?? '')
     setShiftError('')
     setShowShiftModal(true)
   }
@@ -466,7 +485,7 @@ export default function PersonalplanungPage() {
     if (end <= start) { setShiftError('Endzeit muss nach Startzeit liegen.'); return }
     setShiftSubmitting(true); setShiftError('')
     try {
-      const payload = { day_id: activeDayId!, staff_id: shiftStaffId, task: shiftTask.trim() || 'Schicht', start_hour: start, end_hour: end }
+      const payload = { day_id: activeDayId!, staff_id: shiftStaffId, task: shiftTask.trim() || 'Schicht', start_hour: start, end_hour: end, backup_staff_id: shiftBackupId || null }
       if (editingShiftId) {
         const { data, error } = await supabase.from('personalplanung_shifts').update(payload).eq('id', editingShiftId).select().single()
         if (error) throw error
@@ -487,6 +506,31 @@ export default function PersonalplanungPage() {
   async function deleteShift(shiftId: string) {
     setShifts(prev => prev.filter(s => s.id !== shiftId))
     await supabase.from('personalplanung_shifts').delete().eq('id', shiftId)
+  }
+
+  async function approveSwap(swapId: string) {
+    const swap = swaps.find(s => s.id === swapId)
+    const res = await fetch(`/api/staff/swaps/${swapId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'approve' }),
+    })
+    if (res.ok) {
+      setSwaps(prev => prev.filter(s => s.id !== swapId))
+      // Reflect staff change in shift state without full reload
+      if (swap?.to_staff_id) {
+        setShifts(prev => prev.map(s => s.id === swap.shift_id ? { ...s, staff_id: swap.to_staff_id! } : s))
+      }
+    }
+  }
+
+  async function rejectSwap(swapId: string) {
+    const res = await fetch(`/api/staff/swaps/${swapId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reject' }),
+    })
+    if (res.ok) setSwaps(prev => prev.filter(s => s.id !== swapId))
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -510,6 +554,20 @@ export default function PersonalplanungPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {swaps.length > 0 && (
+            <button
+              onClick={() => setShowSwapsPanel(true)}
+              style={{
+                ...btnGhost,
+                color: swaps.some(s => s.status === 'accepted') ? '#D97706' : 'var(--text)',
+                borderColor: swaps.some(s => s.status === 'accepted') ? '#FCD34D' : 'rgba(0,0,0,0.13)',
+                background: swaps.some(s => s.status === 'accepted') ? '#FFFBEB' : '#fff',
+              }}
+            >
+              <ArrowLeftRight size={13} />
+              {swaps.length} Tausch{swaps.length > 1 ? 'anfragen' : 'anfrage'}
+            </button>
+          )}
           <button onClick={openAddDay} style={btnGhost}>
             <Plus size={13} /> Tag
           </button>
@@ -767,7 +825,14 @@ export default function PersonalplanungPage() {
                                   {/* Content */}
                                   <div style={{ padding: '0 10px', overflow: 'hidden' }}>
                                     <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{shift.task}</div>
-                                    <div style={{ fontSize: 10.5, opacity: 0.9 }}>{fmtHour(shift.start_hour)} – {fmtHour(shift.end_hour)}</div>
+                                    <div style={{ fontSize: 10.5, opacity: 0.9, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      {fmtHour(shift.start_hour)} – {fmtHour(shift.end_hour)}
+                                      {(shift.end_hour - shift.start_hour) > 6 && (
+                                        <span title="Über 6 h – Pause planen!">
+                                          <AlertTriangle size={9} style={{ color: '#FCD34D', flexShrink: 0 }} />
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                   {/* Right resize handle */}
                                   <div
@@ -1025,6 +1090,70 @@ export default function PersonalplanungPage() {
         </ModalOverlay>
       )}
 
+      {/* ── Swap requests panel ── */}
+      {showSwapsPanel && (
+        <ModalOverlay onClose={() => setShowSwapsPanel(false)}>
+          <Modal>
+            <ModalHead title="Tausch-Anfragen" sub="Offene Anfragen deiner Mitarbeiter" onClose={() => setShowSwapsPanel(false)} />
+            <div style={{ overflowY: 'auto', maxHeight: '60vh' }}>
+              {swaps.length === 0 ? (
+                <p style={{ fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center', padding: '32px 24px' }}>
+                  Keine offenen Anfragen.
+                </p>
+              ) : swaps.map(swap => {
+                const shift = shifts.find(s => s.id === swap.shift_id)
+                const fromStaff = staff.find(s => s.id === swap.from_staff_id)
+                const toStaff = swap.to_staff_id ? staff.find(s => s.id === swap.to_staff_id) : null
+                const canApprove = swap.status === 'accepted'
+                return (
+                  <div key={swap.id} style={{ padding: '14px 22px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>
+                          {fromStaff?.name ?? '—'}
+                          {toStaff && <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}> → {toStaff.name}</span>}
+                        </div>
+                        {shift && (
+                          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                            {shift.task} · {fmtHour(shift.start_hour)}–{fmtHour(shift.end_hour)}
+                          </div>
+                        )}
+                        {swap.notes && (
+                          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 3, fontStyle: 'italic' }}>{swap.notes}</div>
+                        )}
+                      </div>
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6, flexShrink: 0,
+                        background: swap.status === 'accepted' ? '#D97706' : '#6B7280',
+                        color: '#fff',
+                      }}>
+                        {swap.status === 'accepted' ? 'Beide einig' : toStaff ? 'Wartet auf Zustimmung' : 'Offen'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      {canApprove && (
+                        <button
+                          onClick={() => approveSwap(swap.id)}
+                          style={{ ...btnGhostSm, color: '#16A34A', borderColor: 'rgba(22,163,74,0.3)', background: '#F0FDF4', display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                        >
+                          <Check size={12} /> Genehmigen
+                        </button>
+                      )}
+                      <button
+                        onClick={() => rejectSwap(swap.id)}
+                        style={{ ...btnGhostSm, color: '#D94848', borderColor: 'rgba(217,72,72,0.3)', background: '#FEF2F2' }}
+                      >
+                        Ablehnen
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </Modal>
+        </ModalOverlay>
+      )}
+
       {/* ── Shift modal ── */}
       {showShiftModal && (
         <ModalOverlay onClose={() => !shiftSubmitting && setShowShiftModal(false)}>
@@ -1063,6 +1192,15 @@ export default function PersonalplanungPage() {
                   <label style={labelS}>Bis</label>
                   <TimeInput value={shiftEnd} onChange={setShiftEnd} style={inputS} />
                 </div>
+              </div>
+              <div>
+                <label style={labelS}>Vertreter (optional)</label>
+                <select value={shiftBackupId} onChange={e => setShiftBackupId(e.target.value)} style={{ ...inputS, appearance: 'auto' }}>
+                  <option value="">— Kein Vertreter —</option>
+                  {workingStaff.filter(m => m.id !== shiftStaffId).map(m => (
+                    <option key={m.id} value={m.id}>{m.name} · {ROLES[m.role_category ?? '']?.label ?? '—'}</option>
+                  ))}
+                </select>
               </div>
               {shiftError && (
                 <p style={{ fontSize: 13, color: '#D94848', background: 'rgba(217,72,72,0.08)', padding: '8px 12px', borderRadius: 8, margin: 0 }}>

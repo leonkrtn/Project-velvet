@@ -46,9 +46,11 @@ type StaffMember = {
   id: string; organizer_id: string; name: string; email: string | null
   phone: string | null; role_category: string | null; available_days: string[]
   hourly_rate: number | null; notes: string | null
+  auth_user_id: string | null; must_change_password: boolean
 }
 const EMPTY_STAFF: Omit<StaffMember,'id'|'organizer_id'> = {
   name:'', email:'', phone:'', role_category:'', available_days:[], hourly_rate:0, notes:'',
+  auth_user_id: null, must_change_password: true,
 }
 
 /* ── Settings types ── */
@@ -218,6 +220,13 @@ export default function KonfigurationPage() {
   const [addingTemplate, setAddingTemplate] = useState(false)
   const [newTemplateName, setNewTemplateName] = useState('')
 
+  /* ── Staff auth setup ── */
+  const [setupAuthStaffId, setSetupAuthStaffId] = useState<string | null>(null)
+  const [setupAuthPassword, setSetupAuthPassword] = useState('')
+  const [setupAuthSubmitting, setSetupAuthSubmitting] = useState(false)
+  const [setupAuthError, setSetupAuthError] = useState('')
+  const [setupAuthSuccess, setSetupAuthSuccess] = useState(false)
+
   /* ── Seating concepts ── */
   const [concepts, setConcepts] = useState<SeatingConcept[]>([])
   const [editingConceptId, setEditingConceptId] = useState<string | null>(null)
@@ -240,7 +249,7 @@ export default function KonfigurationPage() {
 
       const [{ data: roomRow }, { data: staffRows }, { data: presetRow }, { data: tmplRows }, { data: frRows }, { data: conceptRows }] = await Promise.all([
         supabase.from('organizer_room_configs').select('*').eq('user_id', user.id).single(),
-        supabase.from('organizer_staff').select('*').eq('organizer_id', user.id).order('created_at', { ascending: true }),
+        supabase.from('organizer_staff').select('id,organizer_id,name,email,phone,role_category,available_days,hourly_rate,notes,auth_user_id,must_change_password').eq('organizer_id', user.id).order('created_at', { ascending: true }),
         supabase.from('organizer_presets').select('*').eq('user_id', user.id).single(),
         supabase.from('deko_organizer_templates').select('*').eq('organizer_id', user.id).order('sort_order'),
         supabase.from('deko_organizer_flat_rates').select('*').eq('organizer_id', user.id),
@@ -296,7 +305,7 @@ export default function KonfigurationPage() {
   function openAddStaff() { setEditingStaff(null); setStaffForm(EMPTY_STAFF); setStaffError(''); setShowStaffModal(true) }
   function openEditStaff(m: StaffMember) {
     setEditingStaff(m)
-    setStaffForm({ name:m.name, email:m.email??'', phone:m.phone??'', role_category:m.role_category??'', available_days:m.available_days??[], hourly_rate:m.hourly_rate??0, notes:m.notes??'' })
+    setStaffForm({ name:m.name, email:m.email??'', phone:m.phone??'', role_category:m.role_category??'', available_days:m.available_days??[], hourly_rate:m.hourly_rate??0, notes:m.notes??'', auth_user_id:m.auth_user_id, must_change_password:m.must_change_password })
     setStaffError(''); setShowStaffModal(true)
   }
   function closeStaffModal() { setShowStaffModal(false); setStaffError('') }
@@ -337,6 +346,28 @@ export default function KonfigurationPage() {
       setStaff(prev => prev.filter(s => s.id !== deleteStaffId))
     } finally {
       setDeletingStaff(false); setDeleteStaffId(null)
+    }
+  }
+
+  async function handleSetupAuth() {
+    if (!setupAuthStaffId || setupAuthPassword.length < 8) { setSetupAuthError('Passwort muss mindestens 8 Zeichen haben.'); return }
+    setSetupAuthSubmitting(true); setSetupAuthError(''); setSetupAuthSuccess(false)
+    try {
+      const res = await fetch(`/api/staff/${setupAuthStaffId}/setup-auth`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: setupAuthPassword }),
+      })
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({ error: 'Fehler' }))
+        setSetupAuthError(error); return
+      }
+      setSetupAuthSuccess(true)
+      setSetupAuthPassword('')
+      // Refresh staff to reflect auth_user_id change
+      const { data } = await supabase.from('organizer_staff').select('id,organizer_id,name,email,phone,role_category,available_days,hourly_rate,notes,auth_user_id,must_change_password').eq('id', setupAuthStaffId).maybeSingle()
+      if (data) setStaff(prev => prev.map(s => s.id === setupAuthStaffId ? data as StaffMember : s))
+    } finally {
+      setSetupAuthSubmitting(false)
     }
   }
 
@@ -640,6 +671,12 @@ export default function KonfigurationPage() {
                     {m.notes && <p style={{ fontSize:12, color:'var(--text-secondary)', margin:'4px 0 0' }}>{m.notes}</p>}
                   </div>
                   <div style={{ display:'flex', gap:6, marginLeft:12 }}>
+                    <button
+                      onClick={() => { setSetupAuthStaffId(m.id); setSetupAuthPassword(''); setSetupAuthError(''); setSetupAuthSuccess(false) }}
+                      title={m.auth_user_id ? 'Passwort zurücksetzen' : 'Portal-Konto erstellen'}
+                      style={{ padding:'6px 10px', background: m.auth_user_id ? '#EFF6FF' : 'none', border:`1px solid ${m.auth_user_id ? '#BFDBFE' : 'var(--border)'}`, borderRadius:7, cursor:'pointer', color: m.auth_user_id ? '#1D4ED8' : 'var(--text-tertiary)', display:'flex', alignItems:'center', gap:4, fontSize:11, fontFamily:'inherit', fontWeight: m.auth_user_id ? 600 : 400 }}>
+                      {m.auth_user_id ? '🔑 Konto' : '+ Konto'}
+                    </button>
                     <button onClick={() => openEditStaff(m)} style={{ padding:6, background:'none', border:'1px solid var(--border)', borderRadius:7, cursor:'pointer', color:'var(--text-tertiary)', display:'flex' }}>
                       <Pencil size={13} />
                     </button>
@@ -704,6 +741,52 @@ export default function KonfigurationPage() {
               </div>
             </div>
           )}
+        {/* Setup auth modal */}
+        {setupAuthStaffId && (() => {
+          const m = staff.find(s => s.id === setupAuthStaffId)
+          if (!m) return null
+          return (
+            <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={() => setSetupAuthStaffId(null)}>
+              <div style={{ background:'var(--surface)', borderRadius:'var(--radius)', padding:28, width:380, maxWidth:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.15)' }} onClick={e=>e.stopPropagation()}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+                  <div>
+                    <h3 style={{ fontSize:16, fontWeight:700, margin:'0 0 2px' }}>{m.auth_user_id ? 'Passwort zurücksetzen' : 'Portal-Konto erstellen'}</h3>
+                    <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:0 }}>{m.name} · {m.email ?? 'Keine E-Mail'}</p>
+                  </div>
+                  <button onClick={() => setSetupAuthStaffId(null)} style={{ background:'none', border:'none', cursor:'pointer', padding:4, display:'flex', color:'var(--text-tertiary)' }}><X size={16}/></button>
+                </div>
+                {!m.email && (
+                  <p style={{ fontSize:13, color:'#EF4444', marginBottom:12 }}>Dieser Mitarbeiter hat keine E-Mail-Adresse hinterlegt. Bitte zuerst bearbeiten.</p>
+                )}
+                {m.email && (
+                  <>
+                    <div style={{ marginBottom:14 }}>
+                      <label style={label12}>Initiales Passwort</label>
+                      <input
+                        type="password"
+                        value={setupAuthPassword}
+                        onChange={e => setSetupAuthPassword(e.target.value)}
+                        placeholder="Mindestens 8 Zeichen"
+                        style={inp}
+                      />
+                      <p style={{ fontSize:11, color:'var(--text-tertiary)', margin:'4px 0 0' }}>
+                        Der Mitarbeiter muss das Passwort beim ersten Login ändern.
+                      </p>
+                    </div>
+                    {setupAuthError && <p style={{ fontSize:12, color:'#EF4444', marginBottom:10 }}>{setupAuthError}</p>}
+                    {setupAuthSuccess && <p style={{ fontSize:12, color:'#059669', marginBottom:10 }}>✓ Konto erfolgreich {m.auth_user_id ? 'aktualisiert' : 'erstellt'}!</p>}
+                    <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+                      <button onClick={() => setSetupAuthStaffId(null)} style={{ padding:'9px 16px', background:'none', border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', cursor:'pointer', fontSize:13, fontFamily:'inherit' }}>Schließen</button>
+                      <button onClick={handleSetupAuth} disabled={setupAuthSubmitting} style={{ padding:'9px 18px', background:'var(--accent)', color:'#fff', border:'none', borderRadius:'var(--radius-sm)', cursor:setupAuthSubmitting?'not-allowed':'pointer', fontSize:13, fontWeight:500, fontFamily:'inherit', opacity:setupAuthSubmitting?0.6:1 }}>
+                        {setupAuthSubmitting ? 'Wird erstellt…' : m.auth_user_id ? 'Passwort ändern' : 'Konto erstellen'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )
+        })()}
         </div>
       )}
 

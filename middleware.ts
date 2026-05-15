@@ -7,6 +7,7 @@ type Membership = { event_id: string; role: string }
 
 function resolvePortal(user: { app_metadata?: Record<string, unknown> }, memberships: Membership[]): string {
   if (user.app_metadata?.is_approved_organizer === true) return '/veranstalter/events'
+  if (user.app_metadata?.role === 'mitarbeiter') return '/mitarbeiter'
   const nonVendor = memberships.find(m => m.role !== 'dienstleister')
   if (nonVendor) {
     switch (nonVendor.role) {
@@ -74,11 +75,22 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Layer 4: role guards for brautpaar + vendor portals
+  // Layer 4: role guards for brautpaar, vendor, and mitarbeiter portals
   const isBrautpaarRoute = pathname.startsWith('/brautpaar')
   const isVendorRoute = pathname.startsWith('/vendor/dashboard')
+  const isMitarbeiterRoute = pathname.startsWith('/mitarbeiter')
 
-  if (isBrautpaarRoute || isVendorRoute) {
+  if (isBrautpaarRoute || isVendorRoute || isMitarbeiterRoute) {
+    const isMitarbeiter = user.app_metadata?.role === 'mitarbeiter'
+
+    if (isMitarbeiterRoute) {
+      if (!isMitarbeiter) {
+        const { data: memberships } = await supabase.from('event_members').select('event_id, role').eq('user_id', user.id)
+        return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? []), request.url))
+      }
+      return supabaseResponse
+    }
+
     const { data: memberships } = await supabase
       .from('event_members')
       .select('event_id, role')
