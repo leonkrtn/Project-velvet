@@ -3,11 +3,21 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
-import { ChevronLeft, Check, Plus, Trash2, Pencil, X, ChevronDown, ChevronRight, Edit2 } from 'lucide-react'
-import type { RaumPoint, RaumElement } from '@/components/room/RaumKonfigurator'
+import { ChevronLeft, Check, Plus, Trash2, Pencil, X, ChevronDown, ChevronRight, Edit2, ArrowLeft } from 'lucide-react'
+import type { RaumPoint, RaumElement, RaumTablePool } from '@/components/room/RaumKonfigurator'
 import type { DekoOrganizerTemplate, DekoOrganizerFlatRate } from '@/lib/deko/types'
 
 const RaumKonfigurator = dynamic(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
+
+type SeatingConcept = {
+  id: string
+  organizer_id: string
+  name: string
+  points: RaumPoint[]
+  elements: RaumElement[]
+  table_pool: RaumTablePool
+  sort_order: number
+}
 
 /* ── Staff types ── */
 const ROLE_OPTIONS = [
@@ -55,7 +65,7 @@ const EMPTY_SETTINGS: Settings = {
 const ALL_MEALS = ['fleisch','fisch','vegetarisch','vegan']
 const MEAL_LABELS: Record<string,string> = { fleisch:'Fleisch', fisch:'Fisch', vegetarisch:'Vegetarisch', vegan:'Vegan' }
 
-type Tab = 'raum' | 'mitarbeiter' | 'einstellungen' | 'dekoration'
+type Tab = 'raum' | 'mitarbeiter' | 'einstellungen' | 'dekoration' | 'sitzplan'
 
 // ── Deko template card ────────────────────────────────────────────────────────
 
@@ -208,6 +218,16 @@ export default function KonfigurationPage() {
   const [addingTemplate, setAddingTemplate] = useState(false)
   const [newTemplateName, setNewTemplateName] = useState('')
 
+  /* ── Seating concepts ── */
+  const [concepts, setConcepts] = useState<SeatingConcept[]>([])
+  const [editingConceptId, setEditingConceptId] = useState<string | null>(null)
+  const [conceptSaving, setConceptSaving] = useState(false)
+  const [conceptSaved, setConceptSaved] = useState(false)
+  const [addingConcept, setAddingConcept] = useState(false)
+  const [newConceptName, setNewConceptName] = useState('')
+  const [renamingConceptId, setRenamingConceptId] = useState<string | null>(null)
+  const [renameConceptDraft, setRenameConceptDraft] = useState('')
+
   /* ── Load ── */
   useEffect(() => { load() }, []) // eslint-disable-line
 
@@ -218,12 +238,13 @@ export default function KonfigurationPage() {
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
 
-      const [{ data: roomRow }, { data: staffRows }, { data: presetRow }, { data: tmplRows }, { data: frRows }] = await Promise.all([
+      const [{ data: roomRow }, { data: staffRows }, { data: presetRow }, { data: tmplRows }, { data: frRows }, { data: conceptRows }] = await Promise.all([
         supabase.from('organizer_room_configs').select('*').eq('user_id', user.id).single(),
         supabase.from('organizer_staff').select('*').eq('organizer_id', user.id).order('created_at', { ascending: true }),
         supabase.from('organizer_presets').select('*').eq('user_id', user.id).single(),
         supabase.from('deko_organizer_templates').select('*').eq('organizer_id', user.id).order('sort_order'),
         supabase.from('deko_organizer_flat_rates').select('*').eq('organizer_id', user.id),
+        supabase.from('organizer_seating_concepts').select('*').eq('organizer_id', user.id).order('sort_order'),
       ])
 
       if (roomRow) {
@@ -233,6 +254,7 @@ export default function KonfigurationPage() {
       setStaff((staffRows ?? []) as StaffMember[])
       setDekoTemplates((tmplRows ?? []) as DekoOrganizerTemplate[])
       setDekoFlatRates((frRows ?? []) as DekoOrganizerFlatRate[])
+      setConcepts((conceptRows ?? []) as SeatingConcept[])
       if (presetRow) {
         setSettings({
           venue:               presetRow.venue               ?? '',
@@ -351,6 +373,44 @@ export default function KonfigurationPage() {
     setDekoFlatRates(prev => prev.filter(f => f.id !== id))
   }
 
+  /* ── Seating concept CRUD ── */
+  async function createConcept() {
+    if (!newConceptName.trim() || !userId) return
+    const { data } = await supabase.from('organizer_seating_concepts').insert({
+      organizer_id: userId, name: newConceptName.trim(),
+      points: [], elements: [], table_pool: { types: [] }, sort_order: concepts.length,
+    }).select().single()
+    if (data) {
+      setConcepts(prev => [...prev, data as SeatingConcept])
+      setNewConceptName(''); setAddingConcept(false)
+      setEditingConceptId(data.id)
+    }
+  }
+  async function renameConcept(id: string, name: string) {
+    await supabase.from('organizer_seating_concepts').update({ name }).eq('id', id)
+    setConcepts(prev => prev.map(c => c.id === id ? { ...c, name } : c))
+    setRenamingConceptId(null)
+  }
+  async function deleteConcept(id: string) {
+    if (!confirm('Tischkonzept wirklich löschen?')) return
+    await supabase.from('organizer_seating_concepts').delete().eq('id', id)
+    setConcepts(prev => prev.filter(c => c.id !== id))
+    if (editingConceptId === id) setEditingConceptId(null)
+  }
+  const handleSaveConcept = useCallback(async (points: RaumPoint[], elements: RaumElement[], tablePool: RaumTablePool) => {
+    if (!editingConceptId) return
+    setConceptSaving(true)
+    try {
+      await supabase.from('organizer_seating_concepts').update({
+        points, elements, table_pool: tablePool, updated_at: new Date().toISOString(),
+      }).eq('id', editingConceptId)
+      setConcepts(prev => prev.map(c => c.id === editingConceptId ? { ...c, points, elements, table_pool: tablePool } : c))
+      setConceptSaved(true); setTimeout(() => setConceptSaved(false), 3000)
+    } finally {
+      setConceptSaving(false)
+    }
+  }, [editingConceptId, supabase])
+
   /* ── Settings save ── */
   async function saveSettings() {
     if (!userId) return
@@ -388,13 +448,16 @@ export default function KonfigurationPage() {
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'raum',          label: 'Raum' },
+    { key: 'sitzplan',      label: 'Sitzplan' },
     { key: 'mitarbeiter',   label: 'Mitarbeiter' },
     { key: 'einstellungen', label: 'Einstellungen' },
     { key: 'dekoration',    label: 'Dekoration' },
   ]
 
+  const editingConcept = concepts.find(c => c.id === editingConceptId) ?? null
+
   return (
-    <div style={{ maxWidth: tab === 'raum' ? 1100 : 700, margin: '0 auto', padding: '28px 20px 80px', transition: 'max-width 0.3s' }}>
+    <div style={{ maxWidth: (tab === 'raum' || (tab === 'sitzplan' && editingConceptId)) ? 1100 : 700, margin: '0 auto', padding: '28px 20px 80px', transition: 'max-width 0.3s' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
@@ -428,6 +491,95 @@ export default function KonfigurationPage() {
             saving={roomSaving}
             saved={roomSaved}
           />
+        </div>
+      )}
+
+      {/* ── Sitzplan ── */}
+      {tab === 'sitzplan' && (
+        <div>
+          {/* Concept editor view */}
+          {editingConcept ? (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <button onClick={() => { setEditingConceptId(null); setConceptSaved(false) }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: 'none', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+                  <ArrowLeft size={14} /> Zurück
+                </button>
+                <div>
+                  <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 1px' }}>{editingConcept.name}</p>
+                  <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>Raumkonfiguration und Tischpool für dieses Konzept.</p>
+                </div>
+              </div>
+              <RaumKonfigurator
+                initialPoints={editingConcept.points}
+                initialElements={editingConcept.elements}
+                initialTablePool={editingConcept.table_pool}
+                onSave={handleSaveConcept}
+                saving={conceptSaving}
+                saved={conceptSaved}
+              />
+            </div>
+          ) : (
+            /* Concept list view */
+            <div style={card}>
+              <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>Tischkonzepte</p>
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '0 0 20px', lineHeight: 1.6 }}>
+                Globale Vorlagen mit Raumform und Tischpool. Im Sitzplan-Editor eines Events können sie per Dropdown geladen werden.
+              </p>
+
+              {concepts.length === 0 && !addingConcept && (
+                <div style={{ padding: '28px 20px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 10, color: 'var(--text-tertiary)', marginBottom: 16, fontSize: 13 }}>
+                  Noch keine Tischkonzepte erstellt.
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                {concepts.map(c => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8 }}>
+                    {renamingConceptId === c.id ? (
+                      <input
+                        autoFocus
+                        value={renameConceptDraft}
+                        onChange={e => setRenameConceptDraft(e.target.value)}
+                        onBlur={() => renameConcept(c.id, renameConceptDraft)}
+                        onKeyDown={e => { if (e.key === 'Enter') renameConcept(c.id, renameConceptDraft); if (e.key === 'Escape') setRenamingConceptId(null) }}
+                        style={{ flex: 1, padding: '5px 8px', border: '1px solid var(--accent)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                      />
+                    ) : (
+                      <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{c.name}</span>
+                    )}
+                    <button onClick={() => setEditingConceptId(c.id)} style={{ padding: '5px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }}>
+                      Konfigurieren
+                    </button>
+                    <button onClick={() => { setRenamingConceptId(c.id); setRenameConceptDraft(c.name) }} style={{ ...dekoIconBtn }}><Edit2 size={13} /></button>
+                    <button onClick={() => deleteConcept(c.id)} style={{ ...dekoIconBtn, color: '#E06C75' }}><Trash2 size={13} /></button>
+                  </div>
+                ))}
+              </div>
+
+              {addingConcept ? (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    autoFocus
+                    value={newConceptName}
+                    onChange={e => setNewConceptName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') createConcept(); if (e.key === 'Escape') setAddingConcept(false) }}
+                    placeholder="Konzept benennen…"
+                    style={{ ...dekoInp, flex: 1 }}
+                  />
+                  <button onClick={createConcept} style={{ padding: '8px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
+                    Erstellen
+                  </button>
+                  <button onClick={() => setAddingConcept(false)} style={{ padding: '8px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setAddingConcept(true)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', border: '1px dashed var(--border)', borderRadius: 8, background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+                  <Plus size={15} /> Neues Konzept erstellen
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

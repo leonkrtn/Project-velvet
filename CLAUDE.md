@@ -164,6 +164,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `invite_codes` | Guest RSVP invite links |
 | `event_invitations` | Vendor invite links |
 | `organizer_room_configs` | Global room polygon (per organizer) |
+| `organizer_seating_concepts` | Global seating templates per organizer (name, points, elements, table_pool JSONB). Applied per-event via Sitzplan dropdown (replace or merge). Managed in Konfiguration → Sitzplan tab. |
 | `event_room_configs` | Per-event room polygon |
 | `organizer_todos` | Organizer task list |
 | `organizer_staff` | Organizer's team members |
@@ -217,7 +218,7 @@ middleware.ts           Auth guard (has approval-check bug)
 app/veranstalter/[eventId]/
   allgemein/AllgemeinForm.tsx          Event settings form
   berechtigungen/[id]/BerechtigungenClient.tsx  Vendor permission editor (writes NEW system)
-  sitzplan/page.tsx                    Seating plan — room config (3-step) + SitzplanEditor
+  sitzplan/page.tsx                    Seating plan — room config (3-step) + SitzplanEditor; "Konzept laden" button applies organizer_seating_concepts
   mitglieder/                          Route folder — UI label is "Beteiligte" (renamed from Mitglieder)
 
 app/brautpaar/seating/page.tsx        Brautpaar seating — SitzplanEditor (reads room config from DB, no edit)
