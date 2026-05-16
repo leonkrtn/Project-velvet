@@ -1,7 +1,6 @@
 'use client'
 import React, { useState, useRef } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Camera, User, Mail, Lock, Check, AlertCircle, Loader2 } from 'lucide-react'
 
 interface Props {
@@ -15,6 +14,8 @@ type Section = 'name' | 'email' | 'password' | 'avatar'
 
 export default function ProfilClient({ userId: _userId, initialName, initialEmail, initialAvatarUrl }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get('from') ?? '/veranstalter'
   const [name, setName] = useState(initialName)
   const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
@@ -140,13 +141,13 @@ export default function ProfilClient({ userId: _userId, initialName, initialEmai
         padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12,
         position: 'sticky', top: 0, zIndex: 10,
       }}>
-        <Link
-          href="/veranstalter"
-          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', padding: '4px 8px', borderRadius: 6 }}
+        <button
+          onClick={() => router.push(returnTo)}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, fontFamily: 'inherit' }}
         >
           <ChevronLeft size={15} />
           Zurück
-        </Link>
+        </button>
         <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', color: 'var(--text-primary)' }}>
           Profil verwalten
         </span>

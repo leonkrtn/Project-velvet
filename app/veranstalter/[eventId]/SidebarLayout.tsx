@@ -173,7 +173,7 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
         }}>
           {/* Profile avatar / icon */}
           <Link
-            href="/veranstalter/profil"
+            href={`/veranstalter/profil?from=${encodeURIComponent(pathname)}`}
             title={userName ? `Profil: ${userName}` : 'Profil verwalten'}
             style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',

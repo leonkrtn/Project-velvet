@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requestDownloadUrl } from '@/lib/files/worker-client'
@@ -27,11 +28,13 @@ export default async function ProfilPage() {
   }
 
   return (
-    <ProfilClient
-      userId={user.id}
-      initialName={p?.name ?? ''}
-      initialEmail={user.email ?? ''}
-      initialAvatarUrl={avatarPresignedUrl}
-    />
+    <Suspense>
+      <ProfilClient
+        userId={user.id}
+        initialName={p?.name ?? ''}
+        initialEmail={user.email ?? ''}
+        initialAvatarUrl={avatarPresignedUrl}
+      />
+    </Suspense>
   )
 }
