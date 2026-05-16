@@ -56,6 +56,7 @@ export default function ChatTab({ eventId }: { eventId: string }) {
   const [showArchived, setShowArchived] = useState(false)
   const [archivedLoaded, setArchivedLoaded] = useState(false)
   const [loadingArchived, setLoadingArchived] = useState(false)
+  const [hoveredConvId, setHoveredConvId] = useState<string | null>(null)
 
   const activeConvIdRef = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -262,14 +263,17 @@ export default function ChatTab({ eventId }: { eventId: string }) {
 
   function ConvItem({ conv, archived = false }: { conv: Conversation; archived?: boolean }) {
     const isActive = activeConv?.id === conv.id
+    const isHovered = hoveredConvId === conv.id
     const displayName = convDisplayName(conv)
     const initList = conv.conversation_participants.slice(0, 2)
     return (
       <div
         onClick={() => setActiveConv(conv)}
+        onMouseEnter={() => setHoveredConvId(conv.id)}
+        onMouseLeave={() => setHoveredConvId(null)}
         style={{
           padding: '11px 16px', cursor: 'pointer',
-          background: isActive ? '#EDEDEF' : 'transparent',
+          background: isActive ? '#EDEDEF' : isHovered ? '#F5F5F7' : 'transparent',
           borderLeft: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
           display: 'flex', alignItems: 'center', gap: 11,
         }}
@@ -301,14 +305,14 @@ export default function ChatTab({ eventId }: { eventId: string }) {
             </div>
           </div>
         </div>
-        <div onClick={e => e.stopPropagation()}>
+        <div style={{ opacity: isHovered ? 1 : 0, transition: 'opacity 0.15s' }} onClick={e => e.stopPropagation()}>
           {archived ? (
             <button
               onClick={() => unarchiveConversation(conv.id)}
               title="Aus Archiv wiederherstellen"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', opacity: 0, transition: 'opacity 0.15s', display: 'flex', alignItems: 'center' }}
-              onMouseEnter={e => { (e.currentTarget.style.opacity = '1'); (e.currentTarget.style.color = 'var(--accent)') }}
-              onMouseLeave={e => { (e.currentTarget.style.opacity = '0'); (e.currentTarget.style.color = 'var(--text-tertiary)') }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', borderRadius: 4 }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
             >
               <ArchiveRestore size={13} />
             </button>
@@ -316,9 +320,9 @@ export default function ChatTab({ eventId }: { eventId: string }) {
             <button
               onClick={() => archiveConversation(conv.id)}
               title="Archivieren"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', opacity: 0, transition: 'opacity 0.15s', display: 'flex', alignItems: 'center' }}
-              onMouseEnter={e => { (e.currentTarget.style.opacity = '1') }}
-              onMouseLeave={e => { (e.currentTarget.style.opacity = '0') }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', borderRadius: 4 }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
             >
               <Archive size={13} />
             </button>

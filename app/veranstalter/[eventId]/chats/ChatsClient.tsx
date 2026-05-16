@@ -71,6 +71,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const [showInfo, setShowInfo] = useState(false)
   const [addingMember, setAddingMember] = useState(false)
   const [unread, setUnread] = useState<UnreadMap>({})
+  const [hoveredConvId, setHoveredConvId] = useState<string | null>(null)
 
   // Archive state
   const [archivedConvs, setArchivedConvs] = useState<Conversation[]>([])
@@ -347,14 +348,17 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
 
   function ConvListItem({ conv, archived = false }: { conv: Conversation; archived?: boolean }) {
     const isActive = activeConv?.id === conv.id
+    const isHovered = hoveredConvId === conv.id
     const displayName = convDisplayName(conv)
     const initList = conv.conversation_participants.slice(0, 2)
     return (
       <div
         onClick={() => setActiveConv(conv)}
+        onMouseEnter={() => setHoveredConvId(conv.id)}
+        onMouseLeave={() => setHoveredConvId(null)}
         style={{
           padding: '11px 16px', cursor: 'pointer',
-          background: isActive ? '#EDEDEF' : 'transparent',
+          background: isActive ? '#EDEDEF' : isHovered ? '#F5F5F7' : 'transparent',
           borderLeft: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
           display: 'flex', alignItems: 'center', gap: 11,
           position: 'relative',
@@ -390,15 +394,15 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+        {/* Action buttons — visible when row is hovered */}
+        <div style={{ display: 'flex', gap: 2, flexShrink: 0, opacity: isHovered ? 1 : 0, transition: 'opacity 0.15s' }} onClick={e => e.stopPropagation()}>
           {archived ? (
             <button
               onClick={() => unarchiveConversation(conv.id)}
               title="Aus Archiv wiederherstellen"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', opacity: 0, transition: 'opacity 0.15s', display: 'flex', alignItems: 'center' }}
-              onMouseEnter={e => { (e.currentTarget.style.opacity = '1'); (e.currentTarget.style.color = 'var(--accent)') }}
-              onMouseLeave={e => { (e.currentTarget.style.opacity = '0'); (e.currentTarget.style.color = 'var(--text-tertiary)') }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', borderRadius: 4 }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
             >
               <ArchiveRestore size={13} />
             </button>
@@ -407,18 +411,18 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
               <button
                 onClick={() => archiveConversation(conv.id)}
                 title="Archivieren"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', opacity: 0, transition: 'opacity 0.15s', display: 'flex', alignItems: 'center' }}
-                onMouseEnter={e => { (e.currentTarget.style.opacity = '1') }}
-                onMouseLeave={e => { (e.currentTarget.style.opacity = '0') }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', borderRadius: 4 }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
               >
                 <Archive size={13} />
               </button>
               <button
                 onClick={() => setDeleteConfirm(conv.id)}
                 title="Löschen"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', opacity: 0, transition: 'opacity 0.15s', display: 'flex', alignItems: 'center' }}
-                onMouseEnter={e => { (e.currentTarget.style.opacity = '1') }}
-                onMouseLeave={e => { (e.currentTarget.style.opacity = '0') }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', borderRadius: 4 }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#FF3B30')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-tertiary)')}
               >
                 <Trash2 size={13} />
               </button>
