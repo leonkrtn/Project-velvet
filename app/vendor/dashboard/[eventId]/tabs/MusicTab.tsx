@@ -50,11 +50,44 @@ export default function MusicTab({ eventId }: { eventId: string }) {
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Musik</h1>
 
       {loading ? (
-        <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="skeleton" style={{ height: 140, borderRadius: 'var(--radius)' }} />
-          {[1,2,3,4].map(i => (
-            <div key={i} className="skeleton" style={{ height: 56, borderRadius: 'var(--radius-sm)' }} />
-          ))}
+        <div style={{ maxWidth: 720, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          {/* Tech requirements sidebar — flex: 0 0 300px */}
+          <div style={{ flex: '0 0 300px', background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '18px 20px' }}>
+            <div className="skeleton" style={{ height: 9, width: 160, marginBottom: 16, borderRadius: 4 }} />
+            {[130, 100, 80, 110, 90].map((w, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                <div className="skeleton" style={{ height: 12, width: 90 }} />
+                <div className="skeleton" style={{ height: 12, width: w * 0.6 }} />
+              </div>
+            ))}
+          </div>
+          {/* Song list — flex: 1 */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Filter pills */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+              {[80, 110, 80, 70].map((w, i) => (
+                <div key={i} className="skeleton" style={{ height: 32, width: w, borderRadius: 'var(--radius-sm)' }} />
+              ))}
+            </div>
+            {/* Two moment groups */}
+            {['Einzug', 'Feier'].map(moment => (
+              <div key={moment} style={{ marginBottom: 16 }}>
+                <div className="skeleton" style={{ height: 9, width: 80, marginBottom: 10, borderRadius: 4 }} />
+                <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  {[55, 75, 65, 45].map((w, i, arr) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      {/* Type icon placeholder */}
+                      <div className="skeleton" style={{ width: 13, height: 13, borderRadius: '50%', flexShrink: 0 }} />
+                      <div style={{ flex: 1, display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <div className="skeleton" style={{ height: 13, width: `${w}%` }} />
+                        <div className="skeleton" style={{ height: 12, width: '20%' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div style={{ maxWidth: 720, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>

@@ -36,8 +36,23 @@ export default function SeatingTab({ eventId }: { eventId: string }) {
 
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
-          {[1,2,3,4,5,6].map(i => (
-            <div key={i} className="skeleton" style={{ height: 120, borderRadius: 'var(--radius)' }} />
+          {/* Each card mirrors: header row (name + capacity badge) + 4–5 guest rows */}
+          {[4, 5, 3, 6, 4, 5].map((guestCount, i) => (
+            <div key={i} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '16px 18px' }}>
+              {/* Table name + capacity badge */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div className="skeleton" style={{ height: 14, width: `${40 + (i * 11) % 25}%` }} />
+                <div className="skeleton" style={{ height: 20, width: 44, borderRadius: 4 }} />
+              </div>
+              {/* Guest name rows */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {Array.from({ length: guestCount }).map((_, j) => (
+                  <div key={j} style={{ padding: '4px 0', borderBottom: j < guestCount - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <div className="skeleton" style={{ height: 12, width: `${45 + (j * 17 + i * 9) % 35}%` }} />
+                  </div>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       ) : tables.length === 0 ? (

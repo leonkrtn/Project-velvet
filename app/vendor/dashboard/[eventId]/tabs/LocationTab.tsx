@@ -54,10 +54,38 @@ export default function LocationTab({ eventId }: { eventId: string }) {
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Veranstaltungsort</h1>
 
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 640 }}>
-          {[1,2,3].map(i => (
-            <div key={i} className="skeleton" style={{ height: 80, borderRadius: 'var(--radius)' }} />
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 640 }}>
+          {/* Address card — icon + 3 lines of address text */}
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '18px 20px' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <div className="skeleton" style={{ width: 16, height: 16, borderRadius: '50%', flexShrink: 0, marginTop: 2 }} />
+              <div style={{ flex: 1 }}>
+                <div className="skeleton" style={{ height: 9, width: 60, marginBottom: 10, borderRadius: 4 }} />
+                <div className="skeleton" style={{ height: 14, width: '70%', marginBottom: 5 }} />
+                <div className="skeleton" style={{ height: 14, width: '55%', marginBottom: 5 }} />
+                <div className="skeleton" style={{ height: 14, width: '45%' }} />
+              </div>
+            </div>
+          </div>
+          {/* Contact details card — 6 InfoRows each: icon + label + value */}
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '4px 20px 4px' }}>
+            {[['Ansprechpartner', '60%'], ['E-Mail', '50%'], ['Zugangscode', '30%'], ['Aufbau / Abbau', '55%'], ['Stromanschlüsse', '40%'], ['Parkplatz', '65%']].map(([label, w], i, arr) => (
+              <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <div className="skeleton" style={{ width: 14, height: 14, borderRadius: '50%', flexShrink: 0, marginTop: 2 }} />
+                <div style={{ flex: 1 }}>
+                  <div className="skeleton" style={{ height: 9, width: 80, marginBottom: 5, borderRadius: 4 }} />
+                  <div className="skeleton" style={{ height: 13, width: w }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Notes card */}
+          <div style={{ background: '#F5F5F7', borderRadius: 'var(--radius)', padding: '16px 20px', border: '1px solid var(--border)' }}>
+            <div className="skeleton" style={{ height: 9, width: 60, marginBottom: 10, borderRadius: 4 }} />
+            <div className="skeleton" style={{ height: 13, width: '90%', marginBottom: 5 }} />
+            <div className="skeleton" style={{ height: 13, width: '75%', marginBottom: 5 }} />
+            <div className="skeleton" style={{ height: 13, width: '60%' }} />
+          </div>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 640 }}>

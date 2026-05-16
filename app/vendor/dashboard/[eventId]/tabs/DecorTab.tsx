@@ -26,11 +26,46 @@ export default function DecorTab({ eventId }: { eventId: string }) {
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Dekoration</h1>
 
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {[1,2,3].map(i => (
-            <div key={i} className="skeleton" style={{ height: 72, borderRadius: 'var(--radius-sm)' }} />
-          ))}
-        </div>
+        <>
+          {/* Aufbau-Aufgaben section */}
+          <div style={{ marginBottom: 28 }}>
+            <div className="skeleton" style={{ height: 9, width: 110, marginBottom: 14, borderRadius: 4 }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {[1, 2, 3].map(i => (
+                <div key={i} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', padding: '14px 16px', display: 'flex', gap: 14 }}>
+                  {/* Numbered circle */}
+                  <div className="skeleton" style={{ width: 24, height: 24, borderRadius: '50%', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div className="skeleton" style={{ height: 13, width: `${50 + i * 10}%`, marginBottom: 6 }} />
+                    <div className="skeleton" style={{ height: 12, width: `${35 + i * 8}%`, marginBottom: 8 }} />
+                    {/* Metadata tags: MapPin + Clock */}
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <div className="skeleton" style={{ height: 11, width: 80, borderRadius: 4 }} />
+                      <div className="skeleton" style={{ height: 11, width: 65, borderRadius: 4 }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Dekor-Wünsche section */}
+          <div>
+            <div className="skeleton" style={{ height: 9, width: 100, marginBottom: 14, borderRadius: 4 }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+              {[1, 2, 3].map(i => (
+                <div key={i} style={{ background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                  {/* Image area */}
+                  <div className="skeleton" style={{ width: '100%', height: 140, borderRadius: 0 }} />
+                  <div style={{ padding: '12px 14px' }}>
+                    <div className="skeleton" style={{ height: 13, width: '70%', marginBottom: 6 }} />
+                    <div className="skeleton" style={{ height: 12, width: '90%', marginBottom: 4 }} />
+                    <div className="skeleton" style={{ height: 12, width: '60%' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       ) : (
         <>
           {/* Aufbau-Checkliste */}
