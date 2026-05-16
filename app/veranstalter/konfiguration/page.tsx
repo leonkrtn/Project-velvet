@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, Check, Plus, Trash2, Pencil, X, ChevronDown, ChevronRight, Edit2, ArrowLeft } from 'lucide-react'
@@ -188,6 +188,8 @@ const card: React.CSSProperties = {
 /* ════════════════════════════════════════════════════════════════════════════ */
 export default function KonfigurationPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get('from') ?? '/veranstalter'
   const supabase = createClient()
 
   const [loading, setLoading] = useState(true)
@@ -496,8 +498,8 @@ export default function KonfigurationPage() {
 
       {/* Header */}
       <div style={{ marginBottom: 28 }}>
-        <button onClick={() => router.push('/veranstalter/events')} style={{ display:'flex', alignItems:'center', gap:4, fontSize:13, color:'var(--text-tertiary)', background:'none', border:'none', cursor:'pointer', padding:'4px 0', marginBottom:16, fontFamily:'inherit' }}>
-          <ChevronLeft size={15} /> Meine Events
+        <button onClick={() => router.push(returnTo)} style={{ display:'flex', alignItems:'center', gap:4, fontSize:13, color:'var(--text-tertiary)', background:'none', border:'none', cursor:'pointer', padding:'4px 0', marginBottom:16, fontFamily:'inherit' }}>
+          <ChevronLeft size={15} /> Zurück
         </button>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing:'-0.5px', color:'var(--text)', margin:'0 0 4px' }}>Konfiguration</h1>
         <p style={{ fontSize: 13, color:'var(--text-tertiary)', margin:0 }}>Globale Einstellungen für alle deine Events.</p>

@@ -205,7 +205,7 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
 
           {/* Settings */}
           <Link
-            href="/veranstalter/konfiguration"
+            href={`/veranstalter/konfiguration?from=${encodeURIComponent(pathname)}`}
             title="Einstellungen"
             style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
