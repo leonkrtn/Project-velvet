@@ -141,7 +141,8 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `guests` | Wedding guests |
 | `begleitpersonen` | Guest companions |
 | `hotels` / `hotel_rooms` | Hotel logistics |
-| `timeline_entries` | Schedule items |
+| `timeline_entries` | Schedule items (has `day_index INT` for multi-day support) |
+| `ablaufplan_days` | Per-event day config (day_index, name, start_hour, end_hour) |
 | `seating_tables` / `seating_assignments` | Seating plan (v2 — supports guests, begleitpersonen, brautpaar slots) |
 | `catering_plans` | Catering configuration |
 | `music_songs` / `music_requirements` | Music tab |
@@ -223,6 +224,10 @@ lib/
 middleware.ts           Auth guard (has approval-check bug)
 
 app/veranstalter/[eventId]/
+  ablaufplan/AblaufplanClient.tsx      Orchestrator for calendar redesign. Manages days, entries, modal, drag callbacks.
+                                       DaySettingsPopover: gear-icon popover per tab (name, start_hour, end_hour, delete).
+                                       Passes role prop → DayCalendar readOnly for dienstleister.
+  ablaufplan/page.tsx                  Server component — loads timeline_entries + ablaufplan_days
   allgemein/AllgemeinForm.tsx          Event settings form
   berechtigungen/[id]/BerechtigungenClient.tsx  Vendor permission editor (writes NEW system)
   sitzplan/page.tsx                    Seating plan — room config (3-step) + SitzplanEditor; "Konzept laden" button applies organizer_seating_concepts
@@ -258,6 +263,14 @@ app/brautpaar/[eventId]/
 
 app/veranstalter/konfiguration/
   dekoration/page.tsx           Organizer global deko templates (create/rename/delete templates + flat rates per template)
+
+components/ablaufplan/
+  DayCalendar.tsx               Apple Calendar-style day view. HOUR_HEIGHT=80px/hr. Drag-to-create + drag-to-move.
+                                CalendarEntry interface (shared). Overlap layout (greedy column assignment).
+                                readOnly prop disables all interactions. NowLine shows current time.
+  EventModal.tsx                Create/edit modal. Handles checklist (auto-save on toggle), assignments (auto-save).
+                                Edit-mode toggle shows X buttons for checklist delete (Veranstalter/Brautpaar only).
+                                Exports: TimelineEntry, AblaufplanDay, Member, StaffRow, VendorRow types.
 
 components/deko/
   DekoPageClient.tsx            Orchestrator: areas, activeCanvas, pendingType, freeze state
@@ -305,6 +318,7 @@ supabase/migrations/
                                        personalplanung_shift_swaps table; is_own_staff_member() SECURITY DEFINER;
                                        RLS for staff self-access on pp_days/assignments/shifts/swaps
   0073_shift_time_tracking.sql         Creates shift_time_logs (actual check-in/out per shift).
+  0075_ablaufplan_multiday.sql         Adds ablaufplan_days (day_index, name, start_hour, end_hour) + day_index to timeline_entries; RLS for veranstalter/brautpaar/dl
                                        Extends conversations/messages RLS to allow organizer_staff users
                                        who are conversation participants (enables staff ↔ organizer 1:1 chat).
 

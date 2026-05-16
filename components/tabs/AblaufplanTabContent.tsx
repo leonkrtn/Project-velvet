@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import TimelineTab from '@/app/vendor/dashboard/[eventId]/tabs/TimelineTab'
+import type { AblaufplanDay, TimelineEntry } from '@/components/ablaufplan/EventModal'
 
 interface TabContentProps {
   eventId: string
@@ -12,25 +13,23 @@ interface TabContentProps {
 
 type AblaufplanClientType = React.ComponentType<{
   eventId: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  initialEntries: any[]
+  initialEntries: TimelineEntry[]
+  initialDays: AblaufplanDay[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   members: any[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  staff: any[]
+  staff: never[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   vendors: any[]
+  role: 'veranstalter' | 'brautpaar' | 'dienstleister'
 }>
 
-// AblaufplanClient requires: eventId, initialEntries, members, staff, vendors
-// We fetch these client-side and render AblaufplanClient for write access.
-function AblaufplanClientWrapper({ eventId }: { eventId: string }) {
+function AblaufplanClientWrapper({ eventId, role }: { eventId: string; role: 'veranstalter' | 'brautpaar' }) {
   const componentRef = useRef<AblaufplanClientType | null>(null)
   const [componentReady, setComponentReady] = useState(false)
   const [props, setProps] = useState<{
-    initialEntries: unknown[]
+    initialEntries: TimelineEntry[]
+    initialDays: AblaufplanDay[]
     members: unknown[]
-    staff: unknown[]
     vendors: unknown[]
   } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -47,15 +46,24 @@ function AblaufplanClientWrapper({ eventId }: { eventId: string }) {
         .from('timeline_entries')
         .select('*')
         .eq('event_id', eventId)
+        .order('day_index',     { ascending: true })
         .order('start_minutes', { ascending: true, nullsFirst: false })
-        .order('sort_order', { ascending: true }),
+        .order('sort_order',    { ascending: true }),
       supabase
         .from('event_members')
         .select('id, user_id, role, profiles!user_id(id, name)')
         .eq('event_id', eventId),
-      supabase.from('vendors').select('id, name, category').eq('event_id', eventId).order('name'),
-      supabase.from('organizer_staff').select('id, name, role').eq('event_id', eventId),
-    ]).then(([entriesRes, membersRes, vendorsRes, staffRes]) => {
+      supabase
+        .from('vendors')
+        .select('id, name, category')
+        .eq('event_id', eventId)
+        .order('name'),
+      supabase
+        .from('ablaufplan_days')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('day_index', { ascending: true }),
+    ]).then(([entriesRes, membersRes, vendorsRes, daysRes]) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const members = (membersRes.data ?? []).map((m: any) => ({
         ...m,
@@ -66,12 +74,13 @@ function AblaufplanClientWrapper({ eventId }: { eventId: string }) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         initialEntries: (entriesRes.data ?? []).map((e: any) => ({
           ...e,
-          assigned_staff: e.assigned_staff ?? [],
+          assigned_staff:   e.assigned_staff   ?? [],
           assigned_vendors: e.assigned_vendors ?? [],
           assigned_members: e.assigned_members ?? [],
-        })),
+          checklist:        e.checklist        ?? [],
+        })) as TimelineEntry[],
+        initialDays:  (daysRes.data ?? []) as AblaufplanDay[],
         members,
-        staff: staffRes.data ?? [],
         vendors: vendorsRes.data ?? [],
       })
       setLoading(false)
@@ -88,16 +97,20 @@ function AblaufplanClientWrapper({ eventId }: { eventId: string }) {
     <AblaufplanClientComponent
       eventId={eventId}
       initialEntries={props.initialEntries}
-      members={props.members}
-      staff={props.staff}
-      vendors={props.vendors}
+      initialDays={props.initialDays}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      members={props.members as any[]}
+      staff={[]}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vendors={props.vendors as any[]}
+      role={role}
     />
   )
 }
 
 export default function AblaufplanTabContent({ eventId, mode, tabAccess, itemPermissions }: TabContentProps) {
-  if (mode !== 'dienstleister') {
-    return <AblaufplanClientWrapper eventId={eventId} />
+  if (mode === 'dienstleister') {
+    return <TimelineTab eventId={eventId} tabAccess={tabAccess} sectionPerms={itemPermissions} />
   }
-  return <TimelineTab eventId={eventId} tabAccess={tabAccess} sectionPerms={itemPermissions} />
+  return <AblaufplanClientWrapper eventId={eventId} role={mode as 'veranstalter' | 'brautpaar'} />
 }

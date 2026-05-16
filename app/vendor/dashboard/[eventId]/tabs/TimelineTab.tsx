@@ -1,106 +1,140 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Clock } from 'lucide-react'
-
-interface Entry {
-  id: string; time: string | null; title: string | null; location: string | null
-  category: string | null; duration_minutes: number | null; start_minutes: number | null
-  sort_order: number
-}
-
-const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
-  'Zeremonie': { bg: 'rgba(196,113,122,0.1)',  color: '#C4717A' },
-  'Empfang':   { bg: 'rgba(155,127,168,0.1)',  color: '#9B7FA8' },
-  'Feier':     { bg: 'rgba(29,29,31,0.07)',     color: 'var(--text-primary)' },
-  'Logistik':  { bg: 'rgba(122,158,126,0.1)',   color: '#7A9E7E' },
-}
-
-function fmt(min: number | null) {
-  if (min == null) return null
-  const h = Math.floor(min / 60).toString().padStart(2, '0')
-  const m = (min % 60).toString().padStart(2, '0')
-  return `${h}:${m}`
-}
+import DayCalendar, { type CalendarEntry } from '@/components/ablaufplan/DayCalendar'
+import { type AblaufplanDay } from '@/components/ablaufplan/EventModal'
+import EventModal, { type TimelineEntry } from '@/components/ablaufplan/EventModal'
 
 type Access = 'none' | 'read' | 'write'
 
-function secVis(sectionPerms: Record<string, Access> | undefined, tabAccess: Access, key: string): boolean {
-  return (sectionPerms?.[key] ?? tabAccess) !== 'none'
+function defaultDay(): AblaufplanDay {
+  return { id: '', event_id: '', day_index: 0, name: 'Tag 1', start_hour: 7, end_hour: 25 }
 }
 
-export default function TimelineTab({ eventId, tabAccess = 'read', sectionPerms }: { eventId: string; tabAccess?: Access; sectionPerms?: Record<string, Access> }) {
-  const [entries, setEntries] = useState<Entry[]>([])
+export default function TimelineTab({
+  eventId,
+  tabAccess = 'read',
+}: {
+  eventId: string
+  tabAccess?: Access
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sectionPerms?: Record<string, any>
+}) {
+  const [entries, setEntries] = useState<TimelineEntry[]>([])
+  const [days,    setDays]    = useState<AblaufplanDay[]>([defaultDay()])
   const [loading, setLoading] = useState(true)
+  const [activeDay, setActiveDay] = useState(0)
+  const [modal, setModal] = useState<TimelineEntry | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.from('timeline_entries').select('*').eq('event_id', eventId).order('sort_order')
-      .then(({ data }) => { setEntries(data ?? []); setLoading(false) })
+    Promise.all([
+      supabase
+        .from('timeline_entries')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('day_index',     { ascending: true })
+        .order('start_minutes', { ascending: true, nullsFirst: false }),
+      supabase
+        .from('ablaufplan_days')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('day_index', { ascending: true }),
+    ]).then(([entriesRes, daysRes]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setEntries((entriesRes.data ?? []).map((e: any) => ({
+        ...e,
+        checklist:        e.checklist        ?? [],
+        assigned_staff:   e.assigned_staff   ?? [],
+        assigned_vendors: e.assigned_vendors ?? [],
+        assigned_members: e.assigned_members ?? [],
+      })))
+      setDays(daysRes.data?.length ? daysRes.data as AblaufplanDay[] : [defaultDay()])
+      setLoading(false)
+    })
   }, [eventId])
 
-  const showZeitplan = secVis(sectionPerms, tabAccess, 'zeitplan')
-  const showDetails = secVis(sectionPerms, tabAccess, 'details')
+  if (tabAccess === 'none') {
+    return (
+      <div style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14, background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+        Kein Zugriff auf den Ablaufplan.
+      </div>
+    )
+  }
+
+  if (loading) {
+    return <div style={{ color: 'var(--text-secondary)', fontSize: 14, padding: '24px 0' }}>Wird geladen…</div>
+  }
+
+  const currentDay  = days.find(d => d.day_index === activeDay) ?? days[0]
+  const dayEntries  = entries.filter(e => e.day_index === activeDay) as CalendarEntry[]
 
   return (
-    <div>
-      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Regieplan</h1>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
+      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 16, flexShrink: 0 }}>Ablaufplan</h1>
 
-      {!showZeitplan ? (
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px 24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
-          Kein Zugriff auf den Zeitplan.
+      {/* Day tabs */}
+      {days.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexShrink: 0, flexWrap: 'wrap' }}>
+          {days.map(day => (
+            <button
+              key={day.day_index}
+              onClick={() => setActiveDay(day.day_index)}
+              style={{
+                padding: '6px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13,
+                border: `1.5px solid ${activeDay === day.day_index ? 'var(--accent)' : 'var(--border)'}`,
+                background: activeDay === day.day_index ? 'var(--accent-light)' : 'transparent',
+                color: activeDay === day.day_index ? 'var(--accent)' : 'var(--text)',
+                fontWeight: activeDay === day.day_index ? 700 : 400,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              {day.name}
+              <span style={{ fontSize: 10, color: 'var(--text-tertiary)', marginLeft: 5 }}>
+                ({entries.filter(e => e.day_index === day.day_index).length})
+              </span>
+            </button>
+          ))}
         </div>
-      ) : loading ? (
-        <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
-      ) : entries.length === 0 ? (
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px 24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
-          Noch kein Ablaufplan hinterlegt.
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {entries.map((e, idx) => {
-            const cat    = e.category ?? 'Feier'
-            const colors = CATEGORY_COLORS[cat] ?? CATEGORY_COLORS['Feier']
-            const time   = fmt(e.start_minutes) ?? e.time
-            return (
-              <div key={e.id} style={{ display: 'flex', gap: 0 }}>
-                {/* Zeitlinie */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 60, flexShrink: 0 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: colors.color, marginTop: 20, flexShrink: 0, border: '2px solid var(--surface)', boxShadow: '0 0 0 2px ' + colors.color }} />
-                  {idx < entries.length - 1 && (
-                    <div style={{ width: 2, flex: 1, background: 'var(--border)', minHeight: 24 }} />
-                  )}
-                </div>
+      )}
 
-                {/* Karte */}
-                <div style={{ flex: 1, background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', padding: '14px 16px', marginBottom: 10, marginLeft: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        {time && (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                            <Clock size={11} />
-                            {time}
-                            {e.duration_minutes != null && ` – ${fmt((e.start_minutes ?? 0) + e.duration_minutes)}`}
-                          </span>
-                        )}
-                        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '2px 7px', borderRadius: 4, background: colors.bg, color: colors.color }}>
-                          {cat}
-                        </span>
-                      </div>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: (showDetails && e.location) ? 2 : 0 }}>
-                        {e.title ?? '—'}
-                      </p>
-                      {showDetails && e.location && (
-                        <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{e.location}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+      {/* Calendar — read-only for vendors */}
+      <div style={{ flex: 1, overflowY: 'auto', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
+        {dayEntries.length === 0 ? (
+          <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
+            Noch keine Einträge für diesen Tag.
+          </div>
+        ) : (
+          <div style={{ paddingBottom: 24 }}>
+            <DayCalendar
+              entries={dayEntries}
+              startHour={currentDay.start_hour}
+              endHour={currentDay.end_hour}
+              readOnly={true}
+              onEventClick={e => setModal(e as TimelineEntry)}
+              onEmptyClick={() => {}}
+              onDragCreate={() => {}}
+              onEventMove={() => {}}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Read-only detail modal */}
+      {modal && (
+        <EventModal
+          entry={modal}
+          activeDay={activeDay}
+          days={days}
+          eventId={eventId}
+          members={[]}
+          staff={[]}
+          vendors={[]}
+          role="dienstleister"
+          readOnly={true}
+          onSave={async () => {}}
+          onClose={() => setModal(null)}
+        />
       )}
     </div>
   )
