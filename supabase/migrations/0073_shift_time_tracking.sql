@@ -41,16 +41,19 @@ CREATE POLICY "stl_staff_own_select" ON shift_time_logs
 
 -- ── 2. Extend conversations/messages RLS for organizer_staff users ────────────
 -- Staff are added as participants via admin API. Once a participant, they must
--- be able to SELECT conversations/messages and INSERT messages. The existing
--- is_own_staff_member() SECURITY DEFINER function (from 0071) serves as the
--- staff identity check so no new helper is needed.
+-- be able to SELECT conversations/messages and INSERT messages.
+-- is_own_staff_member(UUID) from 0071 takes a staff_id, not the current user.
+-- Use an inline EXISTS check instead.
 
 -- conversations: allow participants who are staff (not event_members)
 DROP POLICY IF EXISTS "conversations_select" ON conversations;
 CREATE POLICY "conversations_select" ON conversations
   FOR SELECT USING (
     auth_user_in_conversation(id)
-    AND (is_event_member(event_id) OR is_own_staff_member())
+    AND (
+      is_event_member(event_id)
+      OR EXISTS (SELECT 1 FROM organizer_staff WHERE auth_user_id = auth.uid())
+    )
   );
 
 -- messages SELECT
@@ -58,7 +61,10 @@ DROP POLICY IF EXISTS "messages_select" ON messages;
 CREATE POLICY "messages_select" ON messages
   FOR SELECT USING (
     auth_user_in_conversation(conversation_id)
-    AND (is_event_member(event_id) OR is_own_staff_member())
+    AND (
+      is_event_member(event_id)
+      OR EXISTS (SELECT 1 FROM organizer_staff WHERE auth_user_id = auth.uid())
+    )
   );
 
 -- messages INSERT
@@ -67,5 +73,8 @@ CREATE POLICY "messages_insert" ON messages
   FOR INSERT WITH CHECK (
     sender_id = auth.uid()
     AND auth_user_in_conversation(conversation_id)
-    AND (is_event_member(event_id) OR is_own_staff_member())
+    AND (
+      is_event_member(event_id)
+      OR EXISTS (SELECT 1 FROM organizer_staff WHERE auth_user_id = auth.uid())
+    )
   );
