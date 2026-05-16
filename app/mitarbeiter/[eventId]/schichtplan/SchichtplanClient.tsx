@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { LogOut, AlertTriangle, X, ArrowLeftRight, Send, Clock, Users, MessageSquare, CheckCircle, Circle } from 'lucide-react'
+import { LogOut, AlertTriangle, X, ArrowLeftRight, Send, Clock, Users, MessageSquare, CheckCircle, Circle, ArrowLeft } from 'lucide-react'
 
 type Day = { id: string; label: string; date: string; sort_order: number }
 type Shift = { id: string; day_id: string; staff_id: string; task: string; start_hour: number; end_hour: number; backup_staff_id: string | null }
@@ -207,9 +207,23 @@ export default function SchichtplanClient({
       {/* ── Header ── */}
       <div style={{ background: '#fff', borderBottom: '1px solid #E5E7EB', padding: '14px 20px', position: 'sticky', top: 0, zIndex: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <p style={{ fontSize: 11, color: '#9CA3AF', margin: '0 0 1px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{eventTitle}</p>
-            <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, letterSpacing: '-0.3px' }}>Hallo, {staffName} 👋</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <a
+              href="/mitarbeiter"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 32, height: 32, borderRadius: 8,
+                border: '1px solid #E5E7EB', color: '#6B7280', textDecoration: 'none',
+                flexShrink: 0,
+              }}
+              title="Zurück zur Übersicht"
+            >
+              <ArrowLeft size={15} />
+            </a>
+            <div>
+              <p style={{ fontSize: 11, color: '#9CA3AF', margin: '0 0 1px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{eventTitle}</p>
+              <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, letterSpacing: '-0.3px' }}>Hallo, {staffName} 👋</h1>
+            </div>
           </div>
           <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: 'none', border: '1px solid #E5E7EB', borderRadius: 8, cursor: 'pointer', fontSize: 12, color: '#6B7280', fontFamily: 'inherit' }}>
             <LogOut size={13} /> Abmelden

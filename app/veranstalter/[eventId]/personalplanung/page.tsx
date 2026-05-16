@@ -91,6 +91,7 @@ type Shift = {
   start_hour: number
   end_hour: number
   backup_staff_id: string | null
+  hourly_rate: number | null
 }
 
 type Swap = {
@@ -263,6 +264,7 @@ export default function PersonalplanungPage() {
   const [shiftStart, setShiftStart] = useState('14:00')
   const [shiftEnd, setShiftEnd] = useState('18:00')
   const [shiftBackupId, setShiftBackupId] = useState('')
+  const [shiftHourlyRate, setShiftHourlyRate] = useState('')
   const [shiftSubmitting, setShiftSubmitting] = useState(false)
   const [shiftError, setShiftError] = useState('')
 
@@ -511,6 +513,8 @@ export default function PersonalplanungPage() {
     setShiftStart('14:00')
     setShiftEnd('18:00')
     setShiftBackupId('')
+    const defaultMember = workingStaff.find(m => m.id === (preselectId ?? workingStaff[0]?.id))
+    setShiftHourlyRate(defaultMember?.hourly_rate != null ? String(defaultMember.hourly_rate) : '')
     setShiftError('')
     setShowShiftModal(true)
   }
@@ -522,6 +526,8 @@ export default function PersonalplanungPage() {
     setShiftStart(fmtHour(shift.start_hour))
     setShiftEnd(fmtHour(shift.end_hour))
     setShiftBackupId(shift.backup_staff_id ?? '')
+    const member = workingStaff.find(m => m.id === shift.staff_id)
+    setShiftHourlyRate(shift.hourly_rate != null ? String(shift.hourly_rate) : (member?.hourly_rate != null ? String(member.hourly_rate) : ''))
     setShiftError('')
     setShowShiftModal(true)
   }
@@ -533,7 +539,9 @@ export default function PersonalplanungPage() {
     if (end <= start) { setShiftError('Endzeit muss nach Startzeit liegen.'); return }
     setShiftSubmitting(true); setShiftError('')
     try {
-      const payload = { day_id: activeDayId!, staff_id: shiftStaffId, task: shiftTask.trim() || 'Schicht', start_hour: start, end_hour: end, backup_staff_id: shiftBackupId || null }
+      const parsedRate = shiftHourlyRate.replace(',', '.').trim()
+      const hourly_rate = parsedRate ? parseFloat(parsedRate) : null
+      const payload = { day_id: activeDayId!, staff_id: shiftStaffId, task: shiftTask.trim() || 'Schicht', start_hour: start, end_hour: end, backup_staff_id: shiftBackupId || null, hourly_rate: isNaN(hourly_rate!) ? null : hourly_rate }
       if (editingShiftId) {
         const { data, error } = await supabase.from('personalplanung_shifts').update(payload).eq('id', editingShiftId).select().single()
         if (error) throw error
@@ -1447,6 +1455,19 @@ export default function PersonalplanungPage() {
                     <option key={m.id} value={m.id}>{m.name} · {ROLES[m.role_category ?? '']?.label ?? '—'}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label style={labelS}>Stundenlohn für diese Schicht (€, optional)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={shiftHourlyRate}
+                  onChange={e => setShiftHourlyRate(e.target.value)}
+                  placeholder={(() => { const m = workingStaff.find(x => x.id === shiftStaffId); return m?.hourly_rate != null ? `Standard: ${m.hourly_rate} €/h` : 'z.B. 18.50' })()}
+                  style={{ ...inputS, maxWidth: 160 }}
+                  onFocus={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-light)' }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(0,0,0,0.13)'; e.target.style.boxShadow = 'none' }}
+                />
               </div>
               {shiftError && (
                 <p style={{ fontSize: 13, color: '#D94848', background: 'rgba(217,72,72,0.08)', padding: '8px 12px', borderRadius: 8, margin: 0 }}>

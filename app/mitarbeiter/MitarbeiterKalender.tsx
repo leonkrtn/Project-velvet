@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import type { ShiftDay } from './page'
 
 type EventInfo = { id: string; title: string; color: string; shiftCount: number }
@@ -26,10 +26,10 @@ const navBtnStyle: React.CSSProperties = {
 
 export default function MitarbeiterKalender({
   shiftDays,
-  staffName,
+  onClose,
 }: {
   shiftDays: ShiftDay[]
-  staffName: string
+  onClose: () => void
 }) {
   const router = useRouter()
   const today = new Date()
@@ -51,7 +51,6 @@ export default function MitarbeiterKalender({
     }
     eventMap.get(sd.eventId)!.shiftCount++
   }
-  const events = Array.from(eventMap.values())
 
   // Build date → shifts map
   const byDate = new Map<string, ShiftDay[]>()
@@ -72,11 +71,10 @@ export default function MitarbeiterKalender({
     else setMonth(m => m + 1)
   }
 
-  // Build calendar grid cells
   const firstDay = new Date(year, month, 1)
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  let startDow = firstDay.getDay() // 0=Sun
-  startDow = startDow === 0 ? 6 : startDow - 1 // Mon=0
+  let startDow = firstDay.getDay()
+  startDow = startDow === 0 ? 6 : startDow - 1
 
   const cells: (number | null)[] = []
   for (let i = 0; i < startDow; i++) cells.push(null)
@@ -88,150 +86,114 @@ export default function MitarbeiterKalender({
   }
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 16px 64px', fontFamily: 'inherit' }}>
-
-      {/* Welcome */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.5px', margin: '0 0 4px', color: '#111827' }}>
-          Mein Schichtplan
-        </h1>
-        <p style={{ fontSize: 14, color: '#6B7280', margin: 0 }}>
-          Willkommen, {staffName}.
-        </p>
-      </div>
-
-      {events.length === 0 ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', border: '2px dashed #E5E7EB', borderRadius: 12 }}>
-          <p style={{ fontSize: 14, color: '#9CA3AF', margin: 0 }}>Du bist noch keinem Event zugeteilt.</p>
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+        zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#fff', borderRadius: 16, width: '100%', maxWidth: 720,
+          maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.22)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px 18px', borderBottom: '1px solid #F3F4F6', flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={prevMonth} style={navBtnStyle}><ChevronLeft size={16} /></button>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#111827', minWidth: 160, textAlign: 'center' }}>
+              {MONTHS[month]} {year}
+            </span>
+            <button onClick={nextMonth} style={navBtnStyle}><ChevronRight size={16} /></button>
+          </div>
+          <button onClick={onClose} style={{ ...navBtnStyle, color: '#9CA3AF' }}><X size={16} /></button>
         </div>
-      ) : (
-        <>
-          {/* Event legend */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
-            {events.map(ev => (
-              <div
-                key={ev.id}
-                onClick={() => router.push(`/mitarbeiter/${ev.id}/schichtplan`)}
-                title="Zum Schichtplan"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '6px 12px', borderRadius: 20,
-                  background: ev.color + '18', border: `1.5px solid ${ev.color}40`,
-                  cursor: 'pointer', userSelect: 'none',
-                }}
-              >
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: ev.color, flexShrink: 0 }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{ev.title}</span>
-                <span style={{ fontSize: 12, color: '#9CA3AF' }}>
-                  {ev.shiftCount} Tag{ev.shiftCount !== 1 ? 'e' : ''}
-                </span>
+
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {/* Weekday labels */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)',
+            background: '#FAFAFA', borderBottom: '1px solid #F3F4F6',
+          }}>
+            {WEEKDAYS.map(d => (
+              <div key={d} style={{
+                padding: '8px 0', textAlign: 'center',
+                fontSize: 11, fontWeight: 700, color: '#9CA3AF',
+                letterSpacing: '0.06em', textTransform: 'uppercase',
+              }}>
+                {d}
               </div>
             ))}
           </div>
 
-          {/* Calendar card */}
-          <div style={{ border: '1px solid #E5E7EB', borderRadius: 12, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
-
-            {/* Month navigation */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '14px 18px', borderBottom: '1px solid #F3F4F6',
-            }}>
-              <button onClick={prevMonth} style={navBtnStyle}>
-                <ChevronLeft size={16} />
-              </button>
-              <span style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>
-                {MONTHS[month]} {year}
-              </span>
-              <button onClick={nextMonth} style={navBtnStyle}>
-                <ChevronRight size={16} />
-              </button>
-            </div>
-
-            {/* Weekday headers */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: '#FAFAFA', borderBottom: '1px solid #F3F4F6' }}>
-              {WEEKDAYS.map(d => (
-                <div key={d} style={{
-                  padding: '8px 0', textAlign: 'center',
-                  fontSize: 11, fontWeight: 700, color: '#9CA3AF',
-                  letterSpacing: '0.06em', textTransform: 'uppercase',
-                }}>
-                  {d}
-                </div>
-              ))}
-            </div>
-
-            {/* Day cells */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-              {cells.map((day, idx) => {
-                const isLastRow = idx >= cells.length - 7
-                const isLastCol = (idx + 1) % 7 === 0
-
-                if (!day) {
-                  return (
-                    <div key={`e${idx}`} style={{
-                      minHeight: 88,
-                      borderRight: !isLastCol ? '1px solid #F3F4F6' : 'none',
-                      borderBottom: !isLastRow ? '1px solid #F3F4F6' : 'none',
-                      background: '#FAFAFA',
-                    }} />
-                  )
-                }
-
-                const iso = isoDate(day)
-                const dayShifts = byDate.get(iso) ?? []
-                const isT = iso === todayIso
-
+          {/* Day cells */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+            {cells.map((day, idx) => {
+              const isLastRow = idx >= cells.length - 7
+              const isLastCol = (idx + 1) % 7 === 0
+              if (!day) {
                 return (
-                  <div key={day} style={{
-                    minHeight: 88, padding: '6px 6px 4px',
+                  <div key={`e${idx}`} style={{
+                    minHeight: 88,
                     borderRight: !isLastCol ? '1px solid #F3F4F6' : 'none',
                     borderBottom: !isLastRow ? '1px solid #F3F4F6' : 'none',
-                    background: isT ? '#FAFBFF' : '#fff',
-                  }}>
-                    {/* Day number */}
-                    <div style={{
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      width: 24, height: 24, borderRadius: '50%', marginBottom: 3,
-                      background: isT ? 'var(--accent, #6366F1)' : 'transparent',
-                      fontSize: 12, fontWeight: isT ? 700 : 400,
-                      color: isT ? '#fff' : '#374151',
-                    }}>
-                      {day}
-                    </div>
-
-                    {/* Event pills */}
-                    {dayShifts.map(sd => {
-                      const evInfo = eventMap.get(sd.eventId)
-                      if (!evInfo) return null
-                      return (
-                        <div
-                          key={sd.eventId}
-                          onClick={() => router.push(`/mitarbeiter/${sd.eventId}/schichtplan`)}
-                          title={sd.eventTitle}
-                          style={{
-                            background: evInfo.color,
-                            color: '#fff',
-                            fontSize: 10, fontWeight: 600,
-                            padding: '2px 5px',
-                            borderRadius: 3,
-                            marginBottom: 2,
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            cursor: 'pointer',
-                            lineHeight: 1.4,
-                          }}
-                        >
-                          {sd.eventTitle}
-                        </div>
-                      )
-                    })}
-                  </div>
+                    background: '#FAFAFA',
+                  }} />
                 )
-              })}
-            </div>
+              }
+              const iso = isoDate(day)
+              const dayShifts = byDate.get(iso) ?? []
+              const isT = iso === todayIso
+              return (
+                <div key={day} style={{
+                  minHeight: 88, padding: '6px 6px 4px',
+                  borderRight: !isLastCol ? '1px solid #F3F4F6' : 'none',
+                  borderBottom: !isLastRow ? '1px solid #F3F4F6' : 'none',
+                  background: isT ? '#FAFBFF' : '#fff',
+                }}>
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 24, height: 24, borderRadius: '50%', marginBottom: 3,
+                    background: isT ? 'var(--accent, #6366F1)' : 'transparent',
+                    fontSize: 12, fontWeight: isT ? 700 : 400,
+                    color: isT ? '#fff' : '#374151',
+                  }}>
+                    {day}
+                  </div>
+                  {dayShifts.map(sd => {
+                    const evInfo = eventMap.get(sd.eventId)
+                    if (!evInfo) return null
+                    return (
+                      <div
+                        key={sd.eventId}
+                        onClick={() => { onClose(); router.push(`/mitarbeiter/${sd.eventId}/schichtplan`) }}
+                        title={sd.eventTitle}
+                        style={{
+                          background: evInfo.color, color: '#fff',
+                          fontSize: 10, fontWeight: 600,
+                          padding: '2px 5px', borderRadius: 3, marginBottom: 2,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          cursor: 'pointer', lineHeight: 1.4,
+                        }}
+                      >
+                        {sd.eventTitle}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
           </div>
-        </>
-      )}
+        </div>
+      </div>
     </div>
   )
 }
