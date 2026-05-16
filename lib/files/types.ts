@@ -5,7 +5,6 @@ export type FileModule =
   | 'ablaufplan'
   | 'dekoration'
   | 'medien'
-  | 'patisserie'
   | 'sitzplan'
   | 'gaesteliste'
   | 'chats'
@@ -48,7 +47,6 @@ export const MODULE_LABELS: Record<FileModule, string> = {
   ablaufplan:  'Ablaufplan',
   dekoration:  'Dekoration',
   medien:      'Medien',
-  patisserie:  'Patisserie',
   sitzplan:    'Sitzplan',
   gaesteliste: 'Gästeliste',
   chats:       'Chats',
@@ -57,7 +55,7 @@ export const MODULE_LABELS: Record<FileModule, string> = {
 
 export const ALL_MODULES: FileModule[] = [
   'files', 'catering', 'musik', 'ablaufplan', 'dekoration',
-  'medien', 'patisserie', 'sitzplan', 'gaesteliste', 'chats', 'allgemein',
+  'medien', 'sitzplan', 'gaesteliste', 'chats', 'allgemein',
 ]
 
 export const ALLOWED_MIME_TYPES = new Set([

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
-  Palette, Music, Cake, Camera, Wallet, CheckSquare, Settings,
+  Palette, Music, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu, LogOut,
 } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
@@ -47,7 +47,6 @@ function buildNav(eventId: string): NavGroup[] {
         b('catering', 'Catering & Menü', <UtensilsCrossed size={16} />),
         b('dekoration', 'Dekoration', <Palette size={16} />),
         b('musik', 'Musik', <Music size={16} />),
-        b('patisserie', 'Patisserie', <Cake size={16} />),
         b('medien', 'Foto & Videograf', <Camera size={16} />),
       ],
     },

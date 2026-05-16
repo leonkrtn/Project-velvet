@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Settings, Users, MessageSquare,
   Calendar, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
-  Music2, Cake, Flower2, Camera, FolderOpen, LogOut,
+  Music2, Flower2, Camera, FolderOpen, LogOut, UserCircle, SlidersHorizontal,
 } from 'lucide-react'
 
 interface Props {
@@ -15,6 +15,8 @@ interface Props {
   eventTitle: string
   eventDate: string | null
   eventCode?: string | null
+  userName?: string | null
+  userAvatarUrl?: string | null
   children: React.ReactNode
 }
 
@@ -27,15 +29,18 @@ const NAV_ITEMS = [
   { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
   { key: 'gaesteliste',     label: 'Gästeliste',        icon: Users },
   { key: 'musik',           label: 'Musik',             icon: Music2 },
-  { key: 'patisserie',      label: 'Patisserie',        icon: Cake },
   { key: 'dekoration',      label: 'Dekoration',        icon: Flower2 },
-  { key: 'medien',          label: 'Foto & Videograf',   icon: Camera },
+  { key: 'medien',          label: 'Foto & Videograf',  icon: Camera },
   { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
   { key: 'personalplanung', label: 'Personalplanung',   icon: UserCog },
-  { key: 'dateien',        label: 'Dateien',            icon: FolderOpen },
+  { key: 'dateien',         label: 'Dateien',           icon: FolderOpen },
 ]
 
-export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCode, children }: Props) {
+function initials(name: string) {
+  return name.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2)
+}
+
+export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCode, userName, userAvatarUrl, children }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -96,51 +101,50 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
 
       <div style={{ padding: '4px 8px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1 }}>
-        {NAV_ITEMS.map(({ key, label, icon: Icon, ...rest }) => {
-          const active = isActive(key)
-          const disabled = 'disabled' in rest ? (rest as { disabled?: boolean }).disabled : false
-          if (disabled) {
+          {NAV_ITEMS.map(({ key, label, icon: Icon, ...rest }) => {
+            const active = isActive(key)
+            const disabled = 'disabled' in rest ? (rest as { disabled?: boolean }).disabled : false
+            if (disabled) {
+              return (
+                <div key={key} style={{
+                  display: 'flex', alignItems: 'center', gap: 9,
+                  padding: '8px 10px', borderRadius: 8,
+                  fontSize: 14, color: 'var(--text-tertiary)',
+                  cursor: 'not-allowed', marginBottom: 1,
+                }}>
+                  <Icon size={16} style={{ opacity: 0.4, flexShrink: 0 }} />
+                  <span>{label}</span>
+                  <span style={{
+                    marginLeft: 'auto', fontSize: 9, fontWeight: 700,
+                    textTransform: 'uppercase', letterSpacing: '0.08em',
+                    background: 'rgba(0,0,0,0.06)', color: 'var(--text-tertiary)',
+                    padding: '2px 6px', borderRadius: 4,
+                  }}>Bald</span>
+                </div>
+              )
+            }
             return (
-              <div key={key} style={{
-                display: 'flex', alignItems: 'center', gap: 9,
-                padding: '8px 10px', borderRadius: 8,
-                fontSize: 14, color: 'var(--text-tertiary)',
-                cursor: 'not-allowed', marginBottom: 1,
-              }}>
-                <Icon size={16} style={{ opacity: 0.4, flexShrink: 0 }} />
-                <span>{label}</span>
-                <span style={{
-                  marginLeft: 'auto', fontSize: 9, fontWeight: 700,
-                  textTransform: 'uppercase', letterSpacing: '0.08em',
-                  background: 'rgba(0,0,0,0.06)', color: 'var(--text-tertiary)',
-                  padding: '2px 6px', borderRadius: 4,
-                }}>Bald</span>
-              </div>
+              <Link
+                key={key}
+                href={`${base}/${key}`}
+                onClick={() => setMobileOpen(false)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 9,
+                  padding: '8px 10px', borderRadius: 8,
+                  fontSize: 14, fontWeight: active ? 500 : 450,
+                  color: 'var(--text-primary)',
+                  textDecoration: 'none', marginBottom: 1,
+                  background: active ? 'var(--surface)' : 'transparent',
+                  boxShadow: active ? 'var(--shadow-sm)' : 'none',
+                  transition: 'background 0.12s',
+                }}
+              >
+                <Icon size={16} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
+                <span style={{ flex: 1 }}>{label}</span>
+                {key === 'chats' && <ChatUnreadBadge eventId={eventId} />}
+              </Link>
             )
-          }
-          return (
-            <Link
-              key={key}
-              href={`${base}/${key}`}
-              onClick={() => setMobileOpen(false)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 9,
-                padding: '8px 10px', borderRadius: 8,
-                paddingLeft: 10,
-                fontSize: 14, fontWeight: active ? 500 : 450,
-                color: 'var(--text-primary)',
-                textDecoration: 'none', marginBottom: 1,
-                background: active ? 'var(--surface)' : 'transparent',
-                boxShadow: active ? 'var(--shadow-sm)' : 'none',
-                transition: 'background 0.12s',
-              }}
-            >
-              <Icon size={16} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
-              <span style={{ flex: 1 }}>{label}</span>
-              {key === 'chats' && <ChatUnreadBadge eventId={eventId} />}
-            </Link>
-          )
-        })}
+          })}
         </div>
 
         {eventCode && (
@@ -155,19 +159,78 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
             </div>
           </div>
         )}
-        <div style={{ borderTop: '1px solid var(--border)', padding: '8px 8px 12px', marginTop: 4 }}>
+
+        {/* Bottom icon bar: Profile · Settings · Logout */}
+        <div style={{
+          borderTop: '1px solid var(--border)',
+          padding: '8px 6px 10px',
+          marginTop: 4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 4,
+        }}>
+          {/* Profile avatar / icon */}
+          <Link
+            href={`/veranstalter/profil?from=${encodeURIComponent(pathname)}`}
+            title={userName ? `Profil: ${userName}` : 'Profil verwalten'}
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '7px 0', borderRadius: 8, textDecoration: 'none',
+              color: 'var(--text-secondary)', transition: 'background 0.12s, color 0.12s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.06)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+          >
+            {userAvatarUrl ? (
+              <img
+                src={userAvatarUrl}
+                alt={userName ?? 'Profil'}
+                style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }}
+              />
+            ) : userName ? (
+              <div style={{
+                width: 24, height: 24, borderRadius: '50%',
+                background: 'var(--accent)', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 700,
+              }}>
+                {initials(userName)}
+              </div>
+            ) : (
+              <UserCircle size={20} style={{ opacity: 0.6 }} />
+            )}
+          </Link>
+
+          {/* Settings */}
+          <Link
+            href={`/veranstalter/konfiguration?from=${encodeURIComponent(pathname)}`}
+            title="Einstellungen"
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '7px 0', borderRadius: 8, textDecoration: 'none',
+              color: 'var(--text-secondary)', transition: 'background 0.12s, color 0.12s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.06)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
+          >
+            <SlidersHorizontal size={18} style={{ opacity: 0.6 }} />
+          </Link>
+
+          {/* Logout */}
           <button
             onClick={handleLogout}
+            title="Abmelden"
             style={{
-              display: 'flex', alignItems: 'center', gap: 9,
-              padding: '8px 10px', borderRadius: 8, width: '100%',
-              fontSize: 14, color: 'var(--text-secondary)',
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontFamily: 'inherit', textAlign: 'left',
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '7px 0', borderRadius: 8, border: 'none',
+              background: 'none', cursor: 'pointer', color: 'var(--text-secondary)',
+              transition: 'background 0.12s, color 0.12s',
             }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.06)'; (e.currentTarget as HTMLElement).style.color = '#FF3B30' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
           >
-            <LogOut size={16} style={{ opacity: 0.5, flexShrink: 0 }} />
-            <span>Abmelden</span>
+            <LogOut size={18} style={{ opacity: 0.6 }} />
           </button>
         </div>
       </div>

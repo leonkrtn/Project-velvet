@@ -350,7 +350,7 @@ export default function LandingPage() {
               <path d="M13 26h8M13 32h14"/>
             </svg>
             <h3 className="lp-feature-title">Dienstleister-Verwaltung</h3>
-            <p className="lp-feature-desc">Alle eure Dienstleister — Fotograf, Florist, Caterer, DJ, Patisserie, Dekoration — an einem Ort mit Status (bestätigt / in Verhandlung / abgesagt), Kontaktdaten und Notizen. Das Dashboard zeigt euch live, wie viele bereits bestätigt sind. Keine doppelten E-Mails, keine vergessenen Rückrufe mehr.</p>
+            <p className="lp-feature-desc">Alle eure Dienstleister — Fotograf, Florist, Caterer, DJ, Dekoration — an einem Ort mit Status (bestätigt / in Verhandlung / abgesagt), Kontaktdaten und Notizen. Das Dashboard zeigt euch live, wie viele bereits bestätigt sind. Keine doppelten E-Mails, keine vergessenen Rückrufe mehr.</p>
             <div className="lp-feature-bullets">
               <span className="lp-feature-bullet">Status für jeden Dienstleister</span>
               <span className="lp-feature-bullet">Kontaktdaten &amp; Notizen zentral</span>
