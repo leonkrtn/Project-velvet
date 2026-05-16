@@ -137,7 +137,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 |---|---|
 | `events` | Core event record |
 | `event_members` | User ↔ Event role assignments |
-| `profiles` | Extended user profile |
+| `profiles` | Extended user profile (name, email, is_approved_organizer, avatar_url TEXT — added by 0077) |
 | `guests` | Wedding guests |
 | `begleitpersonen` | Guest companions |
 | `hotels` / `hotel_rooms` | Hotel logistics |
@@ -254,6 +254,8 @@ app/vendor/dashboard/[eventId]/
   tabs/                         Tab components (CateringTab, SeatingTab, ChatTab, …) — shared, not routes
 
 app/veranstalter/[eventId]/
+  SidebarLayout.tsx             Bottom icon bar: Profile avatar → /veranstalter/profil, Settings → /veranstalter/konfiguration, Logout.
+                                Accepts userName + userAvatarUrl props (passed from layout.tsx; shows initials avatar if no picture).
   berechtigungen/[dienstleisterId]/BerechtigungenClient.tsx
                                 Vendor permission editor — allgemein removed from tab list
   dekoration/page.tsx           Deko page (server component) — loads areas/canvases/catalog/items → DekoPageClient
@@ -321,6 +323,15 @@ supabase/migrations/
   0075_ablaufplan_multiday.sql         Adds ablaufplan_days (day_index, name, start_hour, end_hour) + day_index to timeline_entries; RLS for veranstalter/brautpaar/dl
                                        Extends conversations/messages RLS to allow organizer_staff users
                                        who are conversation participants (enables staff ↔ organizer 1:1 chat).
+  0077_profile_avatar.sql              Adds avatar_url TEXT to profiles (for Veranstalter profile pictures via Supabase Storage).
+                                       Requires an "avatars" bucket in Supabase Storage (public, with RLS allowing authenticated uploads).
+
+app/veranstalter/profil/
+  page.tsx                             Server component — loads user profile (name, email, avatar_url)
+  ProfilClient.tsx                     Edit form: name, email, password, profile picture (Supabase Storage "avatars" bucket)
+
+app/api/veranstalter/profile/
+  route.ts                             PATCH — updates name/avatar_url in profiles table; email/password via supabase.auth.updateUser
 
 workers/
   file-service/                 Cloudflare Worker — thin R2 presigned URL generator

@@ -24,17 +24,33 @@ export default async function EventLayout({ children, params }: Props) {
 
   if (!member || member.role !== 'veranstalter') redirect('/veranstalter')
 
-  // Load event name for sidebar header
-  const { data: event } = await supabase
-    .from('events')
-    .select('id, title, date, event_code')
-    .eq('id', eventId)
-    .single()
+  // Load event + user profile in parallel
+  const [eventRes, profileRes] = await Promise.all([
+    supabase
+      .from('events')
+      .select('id, title, date, event_code')
+      .eq('id', eventId)
+      .single(),
+    supabase
+      .from('profiles')
+      .select('name, avatar_url')
+      .eq('id', user.id)
+      .single(),
+  ])
 
-  if (!event) redirect('/veranstalter')
+  if (!eventRes.data) redirect('/veranstalter')
+
+  const profile = profileRes.data as { name: string | null; avatar_url?: string | null } | null
 
   return (
-    <SidebarLayout eventId={eventId} eventTitle={event.title} eventDate={event.date} eventCode={event.event_code ?? null}>
+    <SidebarLayout
+      eventId={eventId}
+      eventTitle={eventRes.data.title}
+      eventDate={eventRes.data.date}
+      eventCode={eventRes.data.event_code ?? null}
+      userName={profile?.name ?? null}
+      userAvatarUrl={profile?.avatar_url ?? null}
+    >
       {children}
     </SidebarLayout>
   )
