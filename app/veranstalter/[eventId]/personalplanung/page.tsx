@@ -651,8 +651,41 @@ export default function PersonalplanungPage() {
   // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
-        <p style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>Lade Personalplanung …</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+          <div>
+            <div className="skeleton" style={{ height: 28, width: 200, marginBottom: 8 }} />
+            <div className="skeleton" style={{ height: 16, width: 320 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div className="skeleton" style={{ height: 34, width: 80, borderRadius: 8 }} />
+            <div className="skeleton" style={{ height: 34, width: 90, borderRadius: 8 }} />
+          </div>
+        </div>
+        {/* Day tabs pill bar */}
+        <div style={{ display: 'flex', gap: 6, background: '#fff', padding: 6, borderRadius: 10, border: '1px solid var(--border)', width: 'fit-content' }}>
+          {[100, 110, 90].map((w, i) => (
+            <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 7 }} />
+          ))}
+        </div>
+        {/* Stats grid: 4 cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {['Im Einsatz', 'Bereiche', 'Geplante Stunden', 'Gesamtkosten'].map((_, i) => (
+            <div key={i} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+              <div className="skeleton" style={{ height: 12, width: '55%', marginBottom: 10 }} />
+              <div className="skeleton" style={{ height: 24, width: '40%' }} />
+            </div>
+          ))}
+        </div>
+        {/* Content area: timeline + staff panel */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16 }}>
+          <div className="skeleton" style={{ height: 440, borderRadius: 14 }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="skeleton" style={{ height: 200, borderRadius: 14 }} />
+            <div className="skeleton" style={{ height: 220, borderRadius: 14 }} />
+          </div>
+        </div>
       </div>
     )
   }
