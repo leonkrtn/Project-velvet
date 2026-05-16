@@ -131,9 +131,66 @@ export default function VoreinstellungenPage() {
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }
 
 if (loading) return (
-    <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px 16px' }}>
-      <div style={{ height: 200, borderRadius: 'var(--radius)', background: 'var(--surface)', border: '1px solid var(--border)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
+    <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px 16px 80px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Back link + Header */}
+      <div style={{ marginBottom: 12 }}>
+        <div className="skeleton" style={{ height: 14, width: 90, marginBottom: 16, borderRadius: 6 }} />
+        <div className="skeleton" style={{ height: 28, width: 200, marginBottom: 8 }} />
+        <div className="skeleton" style={{ height: 14, width: 340 }} />
+      </div>
+      {/* Card 1: Location & Adresse */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '20px 22px' }}>
+        <div className="skeleton" style={{ height: 13, width: 150, marginBottom: 18 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
+          <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
+            <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
+            <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
+          </div>
+        </div>
+      </div>
+      {/* Card 2: Raum */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '20px 22px', opacity: 0.55 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div className="skeleton" style={{ height: 13, width: 60 }} />
+          <div className="skeleton" style={{ height: 22, width: 90, borderRadius: 6 }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
+          <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
+        </div>
+      </div>
+      {/* Card 3: Menüoptionen */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '20px 22px' }}>
+        <div className="skeleton" style={{ height: 13, width: 120, marginBottom: 14 }} />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {[70, 80, 90, 65, 75].map((w, i) => (
+            <div key={i} className="skeleton" style={{ height: 36, width: w, borderRadius: 100 }} />
+          ))}
+        </div>
+      </div>
+      {/* Card 4: Standard-Einstellungen */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '20px 22px' }}>
+        <div className="skeleton" style={{ height: 13, width: 170, marginBottom: 18 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
+          <div>
+            <div className="skeleton" style={{ height: 13, width: 130, marginBottom: 10 }} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div className="skeleton" style={{ height: 36, width: 60, borderRadius: 8 }} />
+              <div className="skeleton" style={{ height: 36, width: 60, borderRadius: 8 }} />
+            </div>
+          </div>
+          <div className="skeleton" style={{ height: 38, width: 130, borderRadius: 8 }} />
+        </div>
+      </div>
+      {/* Save button */}
+      <div className="skeleton" style={{ height: 44, width: 120, borderRadius: 8 }} />
     </div>
   )
 

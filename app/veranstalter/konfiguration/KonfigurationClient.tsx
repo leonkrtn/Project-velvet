@@ -477,10 +477,21 @@ export default function KonfigurationClient() {
 
   /* ── Loading ── */
   if (loading) return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div className="skeleton" style={{ height: 32, width: 200 }} />
-      <div className="skeleton" style={{ height: 44 }} />
-      <div className="skeleton" style={{ height: 320 }} />
+    <div style={{ maxWidth: 700, margin: '0 auto', padding: '28px 20px 80px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+      {/* Back link + header */}
+      <div style={{ marginBottom: 28 }}>
+        <div className="skeleton" style={{ height: 14, width: 70, marginBottom: 16, borderRadius: 6 }} />
+        <div className="skeleton" style={{ height: 28, width: 180, marginBottom: 8 }} />
+        <div className="skeleton" style={{ height: 14, width: 280 }} />
+      </div>
+      {/* Tab bar: 5 tabs */}
+      <div style={{ display: 'inline-flex', background: '#EBEBEC', borderRadius: 10, padding: 3, marginBottom: 28, gap: 2 }}>
+        {[55, 70, 100, 110, 90].map((w, i) => (
+          <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 8 }} />
+        ))}
+      </div>
+      {/* Tab content area */}
+      <div className="skeleton" style={{ height: 400, borderRadius: 12 }} />
     </div>
   )
 
