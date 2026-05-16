@@ -169,11 +169,11 @@ export default function AblaufplanClient({
   // ── Day management ─────────────────────────────────────────────────────────
   async function persistDay(day: AblaufplanDay): Promise<AblaufplanDay> {
     if (!day.id) {
-      // New day — insert
-      const { data, error } = await supabase.from('ablaufplan_days').insert({
+      // Upsert to avoid 409 if row already exists (unique constraint event_id+day_index)
+      const { data, error } = await supabase.from('ablaufplan_days').upsert({
         event_id: eventId, day_index: day.day_index,
         name: day.name, start_hour: day.start_hour, end_hour: day.end_hour,
-      }).select().single()
+      }, { onConflict: 'event_id,day_index' }).select().single()
       if (error) throw error
       return data as AblaufplanDay
     } else {
@@ -310,6 +310,20 @@ export default function AblaufplanClient({
     )
   }
 
+  async function handleEventResize(entryId: string, newStartMinutes: number, newDurationMinutes: number) {
+    await supabase.from('timeline_entries').update({
+      start_minutes:    newStartMinutes,
+      duration_minutes: newDurationMinutes,
+      sort_order:       newStartMinutes,
+    }).eq('id', entryId)
+    setEntries(prev =>
+      prev.map(e => e.id === entryId
+        ? { ...e, start_minutes: newStartMinutes, duration_minutes: newDurationMinutes, sort_order: newStartMinutes }
+        : e
+      ).sort(sortFn)
+    )
+  }
+
   function sortFn(a: TimelineEntry, b: TimelineEntry) {
     return (a.start_minutes ?? 9999) - (b.start_minutes ?? 9999)
   }
@@ -406,7 +420,7 @@ export default function AblaufplanClient({
 
       {/* ── Calendar ── */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
-        <div style={{ paddingBottom: 24 }}>
+        <div style={{ paddingTop: 14, paddingBottom: 24 }}>
           {dayEntries.length === 0 && !readOnly && (
             <div
               style={{
@@ -426,6 +440,7 @@ export default function AblaufplanClient({
             onEmptyClick={handleEmptyClick}
             onDragCreate={handleDragCreate}
             onEventMove={handleEventMove}
+            onEventResize={handleEventResize}
           />
         </div>
       </div>
