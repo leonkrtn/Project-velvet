@@ -20,7 +20,7 @@ function DashboardRedirect() {
 
 export default function DashboardPage() {
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <DashboardRedirect />
     </Suspense>
   )

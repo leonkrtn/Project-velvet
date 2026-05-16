@@ -35,7 +35,17 @@ export default function MediaTab({ eventId }: { eventId: string }) {
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Foto & Videograf</h1>
 
-      {loading ? <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div> : (
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="skeleton" style={{ height: 100, borderRadius: 'var(--radius)' }} />
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            {[1,2,3].map(i => <div key={i} className="skeleton" style={{ height: 32, width: 100 }} />)}
+          </div>
+          {[1,2,3,4].map(i => (
+            <div key={i} className="skeleton" style={{ height: 64, borderRadius: 'var(--radius-sm)' }} />
+          ))}
+        </div>
+      ) : (
         <>
           {/* Briefing */}
           {briefing && (briefing.photo_briefing || briefing.video_briefing) && (

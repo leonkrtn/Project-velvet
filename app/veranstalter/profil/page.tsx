@@ -28,7 +28,7 @@ export default async function ProfilPage() {
   }
 
   return (
-    <Suspense>
+    <Suspense fallback={<div style={{ maxWidth: 560, margin: '0 auto', padding: '28px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}><div className="skeleton" style={{ height: 80, borderRadius: 14 }} /><div className="skeleton" style={{ height: 200, borderRadius: 14 }} /></div>}>
       <ProfilClient
         userId={user.id}
         initialName={p?.name ?? ''}

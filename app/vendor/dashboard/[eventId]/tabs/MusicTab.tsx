@@ -49,7 +49,14 @@ export default function MusicTab({ eventId }: { eventId: string }) {
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Musik</h1>
 
-      {loading ? <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div> : (
+      {loading ? (
+        <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="skeleton" style={{ height: 140, borderRadius: 'var(--radius)' }} />
+          {[1,2,3,4].map(i => (
+            <div key={i} className="skeleton" style={{ height: 56, borderRadius: 'var(--radius-sm)' }} />
+          ))}
+        </div>
+      ) : (
         <div style={{ maxWidth: 720, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-start' }}>
 
           {/* Technische Anforderungen */}

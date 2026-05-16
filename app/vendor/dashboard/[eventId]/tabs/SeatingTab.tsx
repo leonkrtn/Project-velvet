@@ -35,7 +35,11 @@ export default function SeatingTab({ eventId }: { eventId: string }) {
       </div>
 
       {loading ? (
-        <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="skeleton" style={{ height: 120, borderRadius: 'var(--radius)' }} />
+          ))}
+        </div>
       ) : tables.length === 0 ? (
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '32px 24px', textAlign: 'center', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: 14 }}>
           Noch keine Tischordnung hinterlegt.

@@ -214,7 +214,14 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms,
     ? plan.plan_guest_count
     : guests.length
 
-  if (loading) return <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
+  if (loading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="skeleton" style={{ height: 36, width: 220 }} />
+      {[1,2,3].map(i => (
+        <div key={i} className="skeleton" style={{ height: 120, borderRadius: 'var(--radius)' }} />
+      ))}
+    </div>
+  )
 
   return (
     <div>

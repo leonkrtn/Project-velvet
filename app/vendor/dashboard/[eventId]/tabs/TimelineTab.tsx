@@ -63,7 +63,12 @@ export default function TimelineTab({
   }
 
   if (loading) {
-    return <div style={{ color: 'var(--text-secondary)', fontSize: 14, padding: '24px 0' }}>Wird geladen…</div>
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="skeleton" style={{ height: 44, borderRadius: 'var(--radius-sm)' }} />
+        <div className="skeleton" style={{ height: 400, borderRadius: 'var(--radius)' }} />
+      </div>
+    )
   }
 
   const currentDay  = days.find(d => d.day_index === activeDay) ?? days[0]

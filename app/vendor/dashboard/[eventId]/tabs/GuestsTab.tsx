@@ -97,7 +97,16 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
       )}
 
       {loading ? (
-        <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+          <div className="skeleton" style={{ height: 40, borderRadius: 0, borderBottom: '1px solid var(--border)' }} />
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} style={{ display: 'flex', gap: 12, padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+              <div className="skeleton" style={{ flex: 1, height: 16 }} />
+              <div className="skeleton" style={{ width: 80, height: 16 }} />
+              <div className="skeleton" style={{ width: 100, height: 16 }} />
+            </div>
+          ))}
+        </div>
       ) : (
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
           {visibleCols.length > 0 && (

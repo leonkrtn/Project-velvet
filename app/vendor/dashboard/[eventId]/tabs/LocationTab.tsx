@@ -54,7 +54,11 @@ export default function LocationTab({ eventId }: { eventId: string }) {
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Veranstaltungsort</h1>
 
       {loading ? (
-        <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 640 }}>
+          {[1,2,3].map(i => (
+            <div key={i} className="skeleton" style={{ height: 80, borderRadius: 'var(--radius)' }} />
+          ))}
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 640 }}>
           {address && (

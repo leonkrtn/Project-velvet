@@ -25,7 +25,13 @@ export default function DecorTab({ eventId }: { eventId: string }) {
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Dekoration</h1>
 
-      {loading ? <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div> : (
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {[1,2,3].map(i => (
+            <div key={i} className="skeleton" style={{ height: 72, borderRadius: 'var(--radius-sm)' }} />
+          ))}
+        </div>
+      ) : (
         <>
           {/* Aufbau-Checkliste */}
           {items.length > 0 && (
