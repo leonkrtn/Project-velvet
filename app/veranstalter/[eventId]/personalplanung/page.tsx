@@ -753,6 +753,9 @@ export default function PersonalplanungPage() {
           {/* Content grid */}
           <div className="pp-content-grid">
 
+            {/* Left column: Timeline + Monatsübersicht */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
             {/* Timeline panel */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -1012,6 +1015,54 @@ export default function PersonalplanungPage() {
               )}
             </div>
 
+            {/* ── Monatsübersicht ── */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <Clock size={14} style={{ color: 'var(--text-secondary)' }} /> Monatsübersicht · {currentMonthLabel}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>Tatsächlich geleistete Stunden (via Einstempeln)</div>
+                </div>
+              </div>
+              <div>
+                {staff.map(member => {
+                  const hours = monthlyHoursMap.get(member.id) ?? 0
+                  const cost = hours * (member.hourly_rate ?? 0)
+                  const color = colorFor(member.role_category)
+                  return (
+                    <div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                        {initials(member.name)}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{member.name}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{ROLES[member.role_category ?? '']?.label ?? '—'}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: hours > 0 ? 'var(--text)' : 'var(--text-tertiary)' }}>
+                          {hours > 0 ? hours.toFixed(1).replace('.0', '') + ' h' : '—'}
+                        </div>
+                        {member.hourly_rate && hours > 0 && (
+                          <div style={{ fontSize: 11.5, color: '#16A34A', fontWeight: 600 }}>{cost.toFixed(2)} €</div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => member.auth_user_id ? openStaffChat(member) : undefined}
+                        disabled={!member.auth_user_id}
+                        title={member.auth_user_id ? `Chat mit ${member.name}` : 'Mitarbeiter hat noch kein Login'}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', background: activeChatStaff?.id === member.id ? 'var(--accent)' : 'none', color: activeChatStaff?.id === member.id ? '#fff' : 'var(--text-secondary)', border: '1px solid', borderColor: activeChatStaff?.id === member.id ? 'var(--accent)' : 'rgba(0,0,0,0.13)', borderRadius: 7, cursor: member.auth_user_id ? 'pointer' : 'not-allowed', fontSize: 12, fontFamily: 'inherit', flexShrink: 0, opacity: member.auth_user_id ? 1 : 0.4, transition: 'all 0.15s' }}
+                      >
+                        <MessageSquare size={12} /> Chat
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            </div>{/* end left column */}
+
             {/* Side panel */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -1140,52 +1191,6 @@ export default function PersonalplanungPage() {
                 </div>
               )}
 
-            </div>
-          </div>
-
-          {/* ── Monatsübersicht ── */}
-          <div style={{ marginTop: 24, background: '#fff', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <Clock size={14} style={{ color: 'var(--text-secondary)' }} /> Monatsübersicht · {currentMonthLabel}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>Tatsächlich geleistete Stunden (via Einstempeln)</div>
-              </div>
-            </div>
-            <div>
-              {staff.map(member => {
-                const hours = monthlyHoursMap.get(member.id) ?? 0
-                const cost = hours * (member.hourly_rate ?? 0)
-                const color = colorFor(member.role_category)
-                return (
-                  <div key={member.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
-                      {initials(member.name)}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{member.name}</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>{ROLES[member.role_category ?? '']?.label ?? '—'}</div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: hours > 0 ? 'var(--text)' : 'var(--text-tertiary)' }}>
-                        {hours > 0 ? hours.toFixed(1).replace('.0', '') + ' h' : '—'}
-                      </div>
-                      {member.hourly_rate && hours > 0 && (
-                        <div style={{ fontSize: 11.5, color: '#16A34A', fontWeight: 600 }}>{cost.toFixed(2)} €</div>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => member.auth_user_id ? openStaffChat(member) : undefined}
-                      disabled={!member.auth_user_id}
-                      title={member.auth_user_id ? `Chat mit ${member.name}` : 'Mitarbeiter hat noch kein Login'}
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', background: activeChatStaff?.id === member.id ? 'var(--accent)' : 'none', color: activeChatStaff?.id === member.id ? '#fff' : 'var(--text-secondary)', border: '1px solid', borderColor: activeChatStaff?.id === member.id ? 'var(--accent)' : 'rgba(0,0,0,0.13)', borderRadius: 7, cursor: member.auth_user_id ? 'pointer' : 'not-allowed', fontSize: 12, fontFamily: 'inherit', flexShrink: 0, opacity: member.auth_user_id ? 1 : 0.4, transition: 'all 0.15s' }}
-                    >
-                      <MessageSquare size={12} /> Chat
-                    </button>
-                  </div>
-                )
-              })}
             </div>
           </div>
 
