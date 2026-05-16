@@ -85,6 +85,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const [addingMember, setAddingMember] = useState(false)
   const [unread, setUnread] = useState<UnreadMap>({})
   const [hoveredConvId, setHoveredConvId] = useState<string | null>(null)
+  const [hoveredTypeCard, setHoveredTypeCard] = useState<'single' | 'group' | null>(null)
   const [lastMessages, setLastMessages] = useState<Record<string, LastMsg>>({})
 
   // Search
@@ -921,44 +922,40 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
             {/* Step 1: Choose type */}
             {chatCreationType === null && (
               <div style={{ padding: 20, display: 'flex', gap: 12 }}>
-                <button
-                  onClick={() => setChatCreationType('single')}
-                  style={{
-                    flex: 1, padding: '20px 16px', borderRadius: 12, border: '1.5px solid var(--border)',
-                    background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-                    transition: 'border-color 0.15s, background 0.15s',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = '#F5F5F7' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--surface)' }}
-                >
-                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F0F0F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <User size={22} color="#636366" />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Einzelchat</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Direktnachricht an eine Person</div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setChatCreationType('group')}
-                  style={{
-                    flex: 1, padding: '20px 16px', borderRadius: 12, border: '1.5px solid var(--border)',
-                    background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-                    transition: 'border-color 0.15s, background 0.15s',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = '#F5F5F7' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--surface)' }}
-                >
-                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#F0F0F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Users size={22} color="#636366" />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Gruppe</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Mehrere Personen gleichzeitig</div>
-                  </div>
-                </button>
+                {(['single', 'group'] as const).map(type => {
+                  const hovered = hoveredTypeCard === type
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => setChatCreationType(type)}
+                      onMouseEnter={() => setHoveredTypeCard(type)}
+                      onMouseLeave={() => setHoveredTypeCard(null)}
+                      style={{
+                        flex: 1, padding: '20px 16px', borderRadius: 12,
+                        border: `1.5px solid ${hovered ? 'var(--accent)' : 'var(--border)'}`,
+                        background: hovered ? 'var(--accent)' : 'var(--surface)',
+                        cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+                        transition: 'border-color 0.15s, background 0.15s',
+                      }}
+                    >
+                      <div style={{ width: 48, height: 48, borderRadius: '50%', background: hovered ? 'rgba(255,255,255,0.2)' : '#F0F0F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {type === 'single'
+                          ? <User size={22} color={hovered ? '#fff' : '#636366'} />
+                          : <Users size={22} color={hovered ? '#fff' : '#636366'} />
+                        }
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: hovered ? '#fff' : 'var(--text-primary)', marginBottom: 2 }}>
+                          {type === 'single' ? 'Einzelchat' : 'Gruppe'}
+                        </div>
+                        <div style={{ fontSize: 12, color: hovered ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)' }}>
+                          {type === 'single' ? 'Direktnachricht an eine Person' : 'Mehrere Personen gleichzeitig'}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             )}
 
