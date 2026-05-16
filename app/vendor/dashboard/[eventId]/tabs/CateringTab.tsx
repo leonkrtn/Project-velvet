@@ -214,7 +214,61 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms,
     ? plan.plan_guest_count
     : guests.length
 
-  if (loading) return <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
+  if (loading) {
+    // Section card that mirrors the real <Section> component
+    const SectionSkeleton = ({ rows, chips }: { rows: number; chips?: boolean }) => (
+      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '18px 20px', marginBottom: 16 }}>
+        {/* Section label */}
+        <div className="skeleton" style={{ height: 9, width: 120, marginBottom: 18, borderRadius: 4 }} />
+        {/* Row items */}
+        {Array.from({ length: rows }).map((_, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--border)' }}>
+            <div className="skeleton" style={{ height: 13, width: `${28 + (i * 11) % 20}%` }} />
+            <div className="skeleton" style={{ height: 13, width: `${18 + (i * 7) % 15}%` }} />
+          </div>
+        ))}
+        {chips && (
+          <div style={{ display: 'flex', gap: 6, paddingTop: 10, flexWrap: 'wrap' }}>
+            {[55, 70, 48, 62].map((w, i) => (
+              <div key={i} className="skeleton" style={{ height: 26, width: w, borderRadius: 20 }} />
+            ))}
+          </div>
+        )}
+      </div>
+    )
+    return (
+      <div>
+        <div className="skeleton" style={{ height: 34, width: 160, marginBottom: 24 }} />
+        <div style={{ maxWidth: 700 }}>
+          <SectionSkeleton rows={3} chips />
+          <SectionSkeleton rows={4} />
+          <SectionSkeleton rows={5} />
+          <SectionSkeleton rows={2} chips />
+          {/* Kosten-Section with cost rows */}
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '18px 20px', marginBottom: 16 }}>
+            <div className="skeleton" style={{ height: 9, width: 130, marginBottom: 18, borderRadius: 4 }} />
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', marginBottom: 8, background: '#F5F5F7', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+                <div className="skeleton" style={{ flex: 1, height: 13 }} />
+                <div className="skeleton" style={{ width: 60, height: 13 }} />
+                <div className="skeleton" style={{ width: 70, height: 13 }} />
+              </div>
+            ))}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div className="skeleton" style={{ height: 13, width: 120 }} />
+                <div className="skeleton" style={{ height: 13, width: 70 }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div className="skeleton" style={{ height: 15, width: 140 }} />
+                <div className="skeleton" style={{ height: 15, width: 80 }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>

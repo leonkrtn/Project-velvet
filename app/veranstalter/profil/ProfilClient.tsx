@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Camera, User, Mail, Lock, Check, AlertCircle, Loader2 } from 'lucide-react'
 
@@ -158,9 +159,9 @@ export default function ProfilClient({ userId: _userId, initialName, initialEmai
         {/* Avatar card */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '24px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
-            <div style={{ width: 80, height: 80, borderRadius: '50%', background: avatarUrl ? 'transparent' : 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', width: 80, height: 80, borderRadius: '50%', background: avatarUrl ? 'transparent' : 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
               {avatarUrl
-                ? <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ? <Image src={avatarUrl} alt="Avatar" fill style={{ objectFit: 'cover' }} unoptimized />
                 : <span style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>{name ? initials(name) : <User size={32} color="#fff" />}</span>
               }
             </div>

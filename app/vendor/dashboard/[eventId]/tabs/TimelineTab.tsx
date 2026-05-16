@@ -63,7 +63,50 @@ export default function TimelineTab({
   }
 
   if (loading) {
-    return <div style={{ color: 'var(--text-secondary)', fontSize: 14, padding: '24px 0' }}>Wird geladen…</div>
+    const HOUR_H = 80
+    const hours = Array.from({ length: 16 }, (_, i) => i + 8) // 08:00–23:00
+    // Fake events at representative positions
+    const fakeEvents = [
+      { top: 1 * HOUR_H,  height: 1.5 * HOUR_H, left: '60px', width: '55%', label: true },
+      { top: 3 * HOUR_H,  height: 1 * HOUR_H,   left: '60px', width: '40%', label: false },
+      { top: 5 * HOUR_H,  height: 2 * HOUR_H,   left: '60px', width: '60%', label: true },
+      { top: 8.5 * HOUR_H, height: 1 * HOUR_H,  left: '60px', width: '45%', label: false },
+      { top: 10 * HOUR_H, height: 1.5 * HOUR_H, left: '60px', width: '50%', label: true },
+    ]
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
+        {/* h1 */}
+        <div className="skeleton" style={{ height: 32, width: 180, marginBottom: 16, flexShrink: 0 }} />
+        {/* Day tabs row */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexShrink: 0 }}>
+          {[80, 80, 80].map((w, i) => (
+            <div key={i} className="skeleton" style={{ height: 32, width: w, borderRadius: 'var(--radius-sm)' }} />
+          ))}
+        </div>
+        {/* Calendar shell */}
+        <div style={{ flex: 1, overflowY: 'auto', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)', position: 'relative' }}>
+          <div style={{ position: 'relative', height: hours.length * HOUR_H }}>
+            {/* Hour grid lines + time labels */}
+            {hours.map((h, i) => (
+              <div key={h} style={{ position: 'absolute', top: i * HOUR_H, left: 0, right: 0, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', paddingTop: 6 }}>
+                <div className="skeleton" style={{ height: 10, width: 36, marginLeft: 12, borderRadius: 4, flexShrink: 0 }} />
+              </div>
+            ))}
+            {/* Fake event blocks */}
+            {fakeEvents.map((ev, i) => (
+              <div key={i} style={{ position: 'absolute', top: ev.top + 2, left: ev.left, width: ev.width, height: ev.height - 4, borderRadius: 6, background: 'linear-gradient(90deg, #DCDCDE 25%, #E8E8EA 50%, #DCDCDE 75%)', backgroundSize: '1200px 100%', animation: 'skeletonShimmer 1.6s ease-in-out infinite', overflow: 'hidden', padding: '8px 10px' }}>
+                {ev.label && (
+                  <>
+                    <div className="skeleton" style={{ height: 11, width: '60%', marginBottom: 5, background: 'rgba(255,255,255,0.5)', borderRadius: 4 }} />
+                    <div className="skeleton" style={{ height: 9, width: '40%', background: 'rgba(255,255,255,0.4)', borderRadius: 4 }} />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const currentDay  = days.find(d => d.day_index === activeDay) ?? days[0]

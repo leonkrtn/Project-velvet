@@ -163,3 +163,45 @@ button[style*="background: none"]:hover:not([data-sel]) {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.4; }
 }
+@keyframes skeletonShimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+@keyframes modalOverlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modalSheetIn {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+@keyframes slideInFromBottom {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Skeleton utility ── */
+.skeleton {
+  background: linear-gradient(90deg, #EBEBEC 25%, #F5F5F7 50%, #EBEBEC 75%);
+  background-size: 1200px 100%;
+  animation: skeletonShimmer 1.6s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ── Page content fade-in ── */
+.page-enter {
+  animation: fadeIn 0.25s ease both;
+}
+
+/* ── Modal animations ── */
+.modal-overlay-animated {
+  animation: modalOverlayIn 0.18s ease both;
+}
+.modal-sheet-animated {
+  animation: modalSheetIn 0.22s cubic-bezier(0.34, 1.1, 0.64, 1) both;
+}
+
+/* ── List item stagger helper ── */
+.list-item-enter {
+  animation: slideInFromBottom 0.2s ease both;
+}

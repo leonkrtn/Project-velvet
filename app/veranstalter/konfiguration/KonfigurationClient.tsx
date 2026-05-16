@@ -477,9 +477,10 @@ export default function KonfigurationClient() {
 
   /* ── Loading ── */
   if (loading) return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 20px' }}>
-      <div style={{ height: 300, borderRadius: 'var(--radius)', background: 'var(--surface)', border: '1px solid var(--border)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}`}</style>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="skeleton" style={{ height: 32, width: 200 }} />
+      <div className="skeleton" style={{ height: 44 }} />
+      <div className="skeleton" style={{ height: 320 }} />
     </div>
   )
 

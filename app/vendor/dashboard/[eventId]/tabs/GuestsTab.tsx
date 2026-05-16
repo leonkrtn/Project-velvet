@@ -97,7 +97,27 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
       )}
 
       {loading ? (
-        <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          {/* Header row — matches gridCols 1fr 100px 120px 160px 100px */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px 100px', padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)', gap: 12, alignItems: 'center' }}>
+            {[70, 40, 50, 60, 40].map((w, i) => (
+              <div key={i} className="skeleton" style={{ height: 9, width: w, borderRadius: 4 }} />
+            ))}
+          </div>
+          {/* Guest rows */}
+          {[62, 78, 55, 90, 68, 45, 82, 58].map((nameW, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px 100px', padding: '12px 20px', borderBottom: i < 7 ? '1px solid var(--border)' : 'none', alignItems: 'center', gap: 12 }}>
+              <div>
+                <div className="skeleton" style={{ height: 13, width: `${nameW}%`, marginBottom: 5 }} />
+                <div className="skeleton" style={{ height: 10, width: 52, borderRadius: 4 }} />
+              </div>
+              <div className="skeleton" style={{ height: 12, width: 50 }} />
+              <div className="skeleton" style={{ height: 12, width: 70 }} />
+              <div className="skeleton" style={{ height: 12, width: 55 }} />
+              <div className="skeleton" style={{ height: 12, width: 65 }} />
+            </div>
+          ))}
+        </div>
       ) : (
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
           {visibleCols.length > 0 && (

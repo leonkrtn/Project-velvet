@@ -305,7 +305,7 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<div style={{ minHeight: '100dvh', background: 'var(--bg)' }} />}>
       <SignupForm />
     </Suspense>
   )
