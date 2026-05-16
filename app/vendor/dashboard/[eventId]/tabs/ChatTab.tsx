@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Send, MessageSquare, X } from 'lucide-react'
+import { Send, MessageSquare, X, Archive, ArchiveRestore, ChevronDown, ChevronRight } from 'lucide-react'
 
 interface Participant {
   user_id: string
@@ -50,6 +50,13 @@ export default function ChatTab({ eventId }: { eventId: string }) {
   const [addingMember, setAddingMember] = useState(false)
   const [members, setMembers] = useState<{ user_id: string; role: string; profiles: { id: string; name: string; email: string } | null }[]>([])
   const [unread, setUnread] = useState<Record<string, number>>({})
+
+  // Archive state
+  const [archivedConvs, setArchivedConvs] = useState<Conversation[]>([])
+  const [showArchived, setShowArchived] = useState(false)
+  const [archivedLoaded, setArchivedLoaded] = useState(false)
+  const [loadingArchived, setLoadingArchived] = useState(false)
+
   const activeConvIdRef = useRef<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -78,6 +85,7 @@ export default function ChatTab({ eventId }: { eventId: string }) {
       .from('conversations')
       .select('id, name, created_by, created_at, updated_at, conversation_participants(user_id, profiles(id, name))')
       .eq('event_id', eventId)
+      .eq('is_archived', false)
       .order('updated_at', { ascending: false })
       .then(({ data }) => {
         const normalized = (data ?? []).map(conv => ({
@@ -123,7 +131,6 @@ export default function ChatTab({ eventId }: { eventId: string }) {
       }, (payload) => {
         const p = payload.new as { id: string; conversation_id: string; sender_id: string | null; content: string; read_at: string | null; created_at: string }
         setMessages(prev => prev.some(m => m.id === p.id) ? prev : [...prev, { ...p, sender: null }])
-        // Auto-mark as read since user is viewing this conversation
         if (p.sender_id !== userId && userId) {
           supabase.from('conversation_read_state').upsert({
             conversation_id: p.conversation_id, user_id: userId, last_read_at: new Date().toISOString(),
@@ -196,12 +203,129 @@ export default function ChatTab({ eventId }: { eventId: string }) {
     setConversations(prev => prev.map(c => c.id === activeConv.id ? updatedConv : c))
   }
 
+  // ── Archive / unarchive ─────────────────────────────────────────────────
+  async function archiveConversation(convId: string) {
+    await supabase.from('conversations').update({ is_archived: true }).eq('id', convId)
+    const conv = conversations.find(c => c.id === convId)
+    setConversations(prev => prev.filter(c => c.id !== convId))
+    if (conv) setArchivedConvs(prev => [conv, ...prev])
+    if (activeConv?.id === convId) {
+      setActiveConv(conversations.find(c => c.id !== convId) ?? null)
+      setMessages([])
+    }
+  }
+
+  async function unarchiveConversation(convId: string) {
+    await supabase.from('conversations').update({ is_archived: false }).eq('id', convId)
+    const conv = archivedConvs.find(c => c.id === convId)
+    setArchivedConvs(prev => prev.filter(c => c.id !== convId))
+    if (conv) setConversations(prev => [conv, ...prev])
+  }
+
+  async function loadArchivedConversations() {
+    if (archivedLoaded || loadingArchived) return
+    setLoadingArchived(true)
+    const { data } = await supabase
+      .from('conversations')
+      .select('id, name, created_by, created_at, updated_at, conversation_participants(user_id, profiles(id, name))')
+      .eq('event_id', eventId)
+      .eq('is_archived', true)
+      .order('updated_at', { ascending: false })
+    const normalized = (data ?? []).map(conv => ({
+      ...conv,
+      conversation_participants: (conv.conversation_participants ?? []).map((p: { user_id: string; profiles: { id: string; name: string }[] | { id: string; name: string } | null }) => ({
+        ...p,
+        profiles: Array.isArray(p.profiles) ? (p.profiles[0] ?? null) : p.profiles,
+      })),
+    }))
+    setArchivedConvs(prev => {
+      const existingIds = new Set(prev.map(c => c.id))
+      return [...prev, ...normalized.filter(c => !existingIds.has(c.id))]
+    })
+    setArchivedLoaded(true)
+    setLoadingArchived(false)
+  }
+
+  function toggleArchived() {
+    const next = !showArchived
+    setShowArchived(next)
+    if (next) loadArchivedConversations()
+  }
+
   function convDisplayName(conv: Conversation): string {
     if (conv.name) return conv.name
     const others = conv.conversation_participants
       .filter(p => p.user_id !== userId)
       .map(p => p.profiles?.name?.split(' ')[0] ?? '?')
     return others.join(', ') || 'Chat'
+  }
+
+  function ConvItem({ conv, archived = false }: { conv: Conversation; archived?: boolean }) {
+    const isActive = activeConv?.id === conv.id
+    const displayName = convDisplayName(conv)
+    const initList = conv.conversation_participants.slice(0, 2)
+    return (
+      <div
+        onClick={() => setActiveConv(conv)}
+        style={{
+          padding: '11px 16px', cursor: 'pointer',
+          background: isActive ? '#EDEDEF' : 'transparent',
+          borderLeft: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
+          display: 'flex', alignItems: 'center', gap: 11,
+        }}
+      >
+        <div style={{ width: 42, height: 42, borderRadius: '50%', background: archived ? '#F5F5F5' : '#F0F0F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+          {initList.length > 1 ? (
+            <>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: 24, height: 24, borderRadius: '50%', background: archived ? '#AEAEB2' : '#8E8E93', color: 'white', fontSize: 9, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--surface)' }}>
+                {initials(initList[0].profiles?.name ?? '?')}
+              </div>
+              <div style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: '50%', background: archived ? '#8E8E93' : '#636366', color: 'white', fontSize: 9, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--surface)' }}>
+                {initials(initList[1].profiles?.name ?? '?')}
+              </div>
+            </>
+          ) : (
+            <MessageSquare size={16} color={archived ? '#AEAEB2' : '#8E8E93'} />
+          )}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontWeight: !archived && (unread[conv.id] ?? 0) > 0 ? 700 : 600, fontSize: 13.5, color: archived ? 'var(--text-secondary)' : 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+              {!archived && (unread[conv.id] ?? 0) > 0 && (
+                <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center', lineHeight: '16px' }}>
+                  {unread[conv.id]}
+                </span>
+              )}
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{fmtTime(conv.updated_at)}</span>
+            </div>
+          </div>
+        </div>
+        <div onClick={e => e.stopPropagation()}>
+          {archived ? (
+            <button
+              onClick={() => unarchiveConversation(conv.id)}
+              title="Aus Archiv wiederherstellen"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', opacity: 0, transition: 'opacity 0.15s', display: 'flex', alignItems: 'center' }}
+              onMouseEnter={e => { (e.currentTarget.style.opacity = '1'); (e.currentTarget.style.color = 'var(--accent)') }}
+              onMouseLeave={e => { (e.currentTarget.style.opacity = '0'); (e.currentTarget.style.color = 'var(--text-tertiary)') }}
+            >
+              <ArchiveRestore size={13} />
+            </button>
+          ) : (
+            <button
+              onClick={() => archiveConversation(conv.id)}
+              title="Archivieren"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', opacity: 0, transition: 'opacity 0.15s', display: 'flex', alignItems: 'center' }}
+              onMouseEnter={e => { (e.currentTarget.style.opacity = '1') }}
+              onMouseLeave={e => { (e.currentTarget.style.opacity = '0') }}
+            >
+              <Archive size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -215,56 +339,49 @@ export default function ChatTab({ eventId }: { eventId: string }) {
         {/* Sidebar */}
         <div style={{ width: 280, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            {conversations.length === 0 && (
+            {conversations.length === 0 && archivedConvs.length === 0 && (
               <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, fontStyle: 'italic' }}>
                 Noch keine Chats verfügbar.
               </div>
             )}
-            {conversations.map(conv => {
-              const isActive = activeConv?.id === conv.id
-              const displayName = convDisplayName(conv)
-              const initList = conv.conversation_participants.slice(0, 2)
-              return (
-                <div
-                  key={conv.id}
-                  onClick={() => setActiveConv(conv)}
-                  style={{
-                    padding: '11px 16px', cursor: 'pointer',
-                    background: isActive ? '#EDEDEF' : 'transparent',
-                    borderLeft: `2px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
-                    display: 'flex', alignItems: 'center', gap: 11,
-                  }}
-                >
-                  <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#F0F0F2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
-                    {initList.length > 1 ? (
-                      <>
-                        <div style={{ position: 'absolute', top: 0, left: 0, width: 24, height: 24, borderRadius: '50%', background: '#8E8E93', color: 'white', fontSize: 9, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--surface)' }}>
-                          {initials(initList[0].profiles?.name ?? '?')}
-                        </div>
-                        <div style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: '50%', background: '#636366', color: 'white', fontSize: 9, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--surface)' }}>
-                          {initials(initList[1].profiles?.name ?? '?')}
-                        </div>
-                      </>
-                    ) : (
-                      <MessageSquare size={16} color="#8E8E93" />
-                    )}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                      <span style={{ fontWeight: (unread[conv.id] ?? 0) > 0 ? 700 : 600, fontSize: 13.5, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-                        {(unread[conv.id] ?? 0) > 0 && (
-                          <span style={{ background: 'var(--accent)', color: '#fff', borderRadius: 10, fontSize: 10, fontWeight: 700, padding: '1px 6px', minWidth: 18, textAlign: 'center', lineHeight: '16px' }}>
-                            {unread[conv.id]}
-                          </span>
-                        )}
-                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{fmtTime(conv.updated_at)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+            {conversations.map(conv => (
+              <ConvItem key={conv.id} conv={conv} />
+            ))}
+
+            {/* Archive toggle */}
+            <button
+              onClick={toggleArchived}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 7,
+                padding: '10px 16px', background: 'none', border: 'none',
+                borderTop: conversations.length > 0 ? '1px solid var(--border)' : 'none',
+                cursor: 'pointer', fontSize: 12, color: 'var(--text-tertiary)',
+                fontFamily: 'inherit', textAlign: 'left',
+              }}
+            >
+              {showArchived ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+              <Archive size={12} />
+              Archivierte Chats
+              {archivedConvs.length > 0 && (
+                <span style={{ marginLeft: 'auto', background: '#E5E5EA', borderRadius: 8, fontSize: 10, fontWeight: 600, padding: '1px 6px', color: '#636366' }}>
+                  {archivedConvs.length}
+                </span>
+              )}
+            </button>
+
+            {showArchived && (
+              <div style={{ borderTop: '1px solid var(--border)' }}>
+                {loadingArchived && (
+                  <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center' }}>Wird geladen…</div>
+                )}
+                {!loadingArchived && archivedConvs.length === 0 && (
+                  <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', fontStyle: 'italic' }}>Kein Archiv vorhanden.</div>
+                )}
+                {archivedConvs.map(conv => (
+                  <ConvItem key={conv.id} conv={conv} archived />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

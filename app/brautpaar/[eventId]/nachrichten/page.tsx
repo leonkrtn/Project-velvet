@@ -19,10 +19,11 @@ export default async function NachrichtenPage({ params }: Props) {
     supabase
       .from('conversations')
       .select(`
-        id, name, created_by, created_at, updated_at,
+        id, name, created_by, created_at, updated_at, is_staff_chat,
         conversation_participants(user_id, profiles(id, name))
       `)
       .eq('event_id', eventId)
+      .eq('is_archived', false)
       .order('updated_at', { ascending: false }),
     admin
       .from('event_members')

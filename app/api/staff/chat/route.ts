@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
           event_id: eventId,
           name: `Chat · ${staffName}`,
           created_by: organizerAuthId,
+          is_staff_chat: true,
         })
         .select('id')
         .single()

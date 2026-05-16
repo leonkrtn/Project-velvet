@@ -17,10 +17,11 @@ export default async function ChatsPage({ params }: Props) {
     supabase
       .from('conversations')
       .select(`
-        id, name, created_by, created_at, updated_at,
+        id, name, created_by, created_at, updated_at, is_staff_chat,
         conversation_participants(user_id, profiles(id, name))
       `)
       .eq('event_id', eventId)
+      .eq('is_archived', false)
       .order('updated_at', { ascending: false }),
     admin
       .from('event_members')
@@ -64,13 +65,32 @@ export default async function ChatsPage({ params }: Props) {
   }))
 
   // Normalize conversation_participants nested profiles
-  const conversations = (conversationsRes.data ?? []).map(conv => ({
+  const conversationsRaw = (conversationsRes.data ?? []).map(conv => ({
     ...conv,
     conversation_participants: (conv.conversation_participants ?? []).map((p: { user_id: string; profiles: { id: string; name: string }[] | { id: string; name: string } | null }) => ({
       ...p,
       profiles: Array.isArray(p.profiles) ? (p.profiles[0] ?? null) : p.profiles,
     })),
   }))
+
+  // Hide staff chats that have no messages yet — they're created lazily and
+  // only become useful once communication starts.
+  const staffChatIds = conversationsRaw
+    .filter(c => c.is_staff_chat)
+    .map(c => c.id)
+
+  let staffChatsWithMessages = new Set<string>()
+  if (staffChatIds.length > 0) {
+    const { data: msgRows } = await admin
+      .from('messages')
+      .select('conversation_id')
+      .in('conversation_id', staffChatIds)
+    staffChatsWithMessages = new Set(msgRows?.map(m => m.conversation_id) ?? [])
+  }
+
+  const conversations = conversationsRaw.filter(c =>
+    !c.is_staff_chat || staffChatsWithMessages.has(c.id)
+  )
 
   return (
     <ChatsClient
