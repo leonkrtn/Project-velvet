@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest) {
     name?: string
     email?: string
     password?: string
-    avatar_url?: string
+    avatar_r2_key?: string
   }
 
   const errors: string[] = []
@@ -24,11 +24,11 @@ export async function PATCH(req: NextRequest) {
     if (error) errors.push('Name konnte nicht gespeichert werden.')
   }
 
-  // Update avatar_url
-  if (body.avatar_url !== undefined) {
+  // Store R2 key for avatar (URL is generated on-demand via Worker)
+  if (body.avatar_r2_key !== undefined) {
     const { error } = await supabase
       .from('profiles')
-      .update({ avatar_url: body.avatar_url })
+      .update({ avatar_r2_key: body.avatar_r2_key })
       .eq('id', user.id)
     if (error) errors.push('Profilbild konnte nicht gespeichert werden.')
   }

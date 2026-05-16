@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { requestDownloadUrl } from '@/lib/files/worker-client'
 import SidebarLayout from './SidebarLayout'
 
 interface Props {
@@ -33,14 +34,24 @@ export default async function EventLayout({ children, params }: Props) {
       .single(),
     supabase
       .from('profiles')
-      .select('name, avatar_url')
+      .select('name, avatar_r2_key')
       .eq('id', user.id)
       .single(),
   ])
 
   if (!eventRes.data) redirect('/veranstalter')
 
-  const profile = profileRes.data as { name: string | null; avatar_url?: string | null } | null
+  const profile = profileRes.data as { name: string | null; avatar_r2_key?: string | null } | null
+
+  // Generate a fresh presigned download URL (1h TTL) from the stored R2 key
+  let userAvatarUrl: string | null = null
+  if (profile?.avatar_r2_key) {
+    try {
+      userAvatarUrl = await requestDownloadUrl(profile.avatar_r2_key)
+    } catch {
+      // Non-fatal — sidebar just shows initials instead
+    }
+  }
 
   return (
     <SidebarLayout
@@ -49,7 +60,7 @@ export default async function EventLayout({ children, params }: Props) {
       eventDate={eventRes.data.date}
       eventCode={eventRes.data.event_code ?? null}
       userName={profile?.name ?? null}
-      userAvatarUrl={profile?.avatar_url ?? null}
+      userAvatarUrl={userAvatarUrl}
     >
       {children}
     </SidebarLayout>

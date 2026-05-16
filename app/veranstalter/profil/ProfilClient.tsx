@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useRef } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 import { ChevronLeft, Camera, User, Mail, Lock, Check, AlertCircle, Loader2 } from 'lucide-react'
 
 interface Props {
@@ -13,7 +13,8 @@ interface Props {
 
 type Section = 'name' | 'email' | 'password' | 'avatar'
 
-export default function ProfilClient({ userId, initialName, initialEmail, initialAvatarUrl }: Props) {
+export default function ProfilClient({ userId: _userId, initialName, initialEmail, initialAvatarUrl }: Props) {
+  const router = useRouter()
   const [name, setName] = useState(initialName)
   const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
@@ -22,9 +23,7 @@ export default function ProfilClient({ userId, initialName, initialEmail, initia
   const [saving, setSaving] = useState<Section | null>(null)
   const [success, setSuccess] = useState<Section | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [avatarUploading, setAvatarUploading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
-  const supabase = createClient()
 
   function showSuccess(section: Section) {
     setSuccess(section)
@@ -63,14 +62,8 @@ export default function ProfilClient({ userId, initialName, initialEmail, initia
 
   async function savePassword() {
     if (!password || saving) return
-    if (password !== passwordConfirm) {
-      setError('Passwörter stimmen nicht überein.')
-      return
-    }
-    if (password.length < 8) {
-      setError('Passwort muss mindestens 8 Zeichen haben.')
-      return
-    }
+    if (password !== passwordConfirm) { setError('Passwörter stimmen nicht überein.'); return }
+    if (password.length < 8) { setError('Passwort muss mindestens 8 Zeichen haben.'); return }
     setSaving('password')
     const res = await fetch('/api/veranstalter/profile', {
       method: 'PATCH',
@@ -89,41 +82,50 @@ export default function ProfilClient({ userId, initialName, initialEmail, initia
   }
 
   async function uploadAvatar(file: File) {
-    if (!file.type.startsWith('image/')) {
-      setError('Nur Bilddateien erlaubt.')
-      return
-    }
-    setAvatarUploading(true)
+    if (!file.type.startsWith('image/')) { setError('Nur Bilddateien erlaubt.'); return }
+    setSaving('avatar')
     setError(null)
 
-    const ext = file.name.split('.').pop() ?? 'jpg'
-    const path = `${userId}/avatar.${ext}`
+    // Step 1: Request presigned PUT URL from Worker via our API
+    const uploadRes = await fetch('/api/veranstalter/profile/request-avatar-upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contentType: file.type }),
+    })
+    if (!uploadRes.ok) {
+      setSaving(null)
+      setError('Upload konnte nicht gestartet werden.')
+      return
+    }
+    const { uploadUrl, key } = await uploadRes.json() as { uploadUrl: string; key: string }
 
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(path, file, { upsert: true, contentType: file.type })
-
-    if (uploadError) {
-      setAvatarUploading(false)
-      setError('Profilbild konnte nicht hochgeladen werden. Stelle sicher, dass der "avatars" Bucket in Supabase Storage existiert.')
+    // Step 2: Upload directly to R2 via presigned PUT URL
+    const putRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type },
+    })
+    if (!putRes.ok) {
+      setSaving(null)
+      setError('Datei konnte nicht hochgeladen werden.')
       return
     }
 
-    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
-
-    const res = await fetch('/api/veranstalter/profile', {
+    // Step 3: Store the R2 key in the DB
+    const saveRes = await fetch('/api/veranstalter/profile', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ avatar_url: publicUrl }),
+      body: JSON.stringify({ avatar_r2_key: key }),
     })
-
-    setAvatarUploading(false)
-    if (res.ok) {
-      setAvatarUrl(publicUrl)
-      showSuccess('avatar')
-    } else {
-      setError('Profilbild-URL konnte nicht gespeichert werden.')
+    setSaving(null)
+    if (!saveRes.ok) {
+      setError('Profilbild-Schlüssel konnte nicht gespeichert werden.')
+      return
     }
+
+    // Step 4: Reload so the server generates a fresh presigned display URL
+    showSuccess('avatar')
+    router.refresh()
   }
 
   function initials(n: string) {
@@ -140,11 +142,7 @@ export default function ProfilClient({ userId, initialName, initialEmail, initia
       }}>
         <Link
           href="/veranstalter"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            fontSize: 13, color: 'var(--text-secondary)',
-            textDecoration: 'none', padding: '4px 8px', borderRadius: 6,
-          }}
+          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none', padding: '4px 8px', borderRadius: 6 }}
         >
           <ChevronLeft size={15} />
           Zurück
@@ -157,72 +155,39 @@ export default function ProfilClient({ userId, initialName, initialEmail, initia
       {/* Content */}
       <div style={{ flex: 1, maxWidth: 560, width: '100%', margin: '0 auto', padding: '32px 24px 64px', boxSizing: 'border-box' }}>
 
-        {/* Error / success feedback */}
         {error && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '12px 16px', borderRadius: 10, marginBottom: 20,
-            background: '#FFF0F0', border: '1px solid #FFCDD2', color: '#C62828',
-          }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 10, marginBottom: 20, background: '#FFF0F0', border: '1px solid #FFCDD2', color: '#C62828' }}>
             <AlertCircle size={16} style={{ flexShrink: 0 }} />
             <span style={{ fontSize: 13 }}>{error}</span>
           </div>
         )}
 
-        {/* Avatar section */}
-        <div style={{
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 14, padding: '24px', marginBottom: 16,
-          display: 'flex', alignItems: 'center', gap: 20,
-        }}>
+        {/* Avatar */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '24px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
-            <div style={{
-              width: 80, height: 80, borderRadius: '50%',
-              background: avatarUrl ? 'transparent' : 'var(--accent)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              overflow: 'hidden',
-            }}>
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <span style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>
-                  {name ? initials(name) : <User size={32} color="#fff" />}
-                </span>
-              )}
+            <div style={{ width: 80, height: 80, borderRadius: '50%', background: avatarUrl ? 'transparent' : 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              {avatarUrl
+                ? <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ fontSize: 28, fontWeight: 700, color: '#fff' }}>{name ? initials(name) : <User size={32} color="#fff" />}</span>
+              }
             </div>
             <button
               onClick={() => fileRef.current?.click()}
-              disabled={avatarUploading}
-              style={{
-                position: 'absolute', bottom: 0, right: 0,
-                width: 28, height: 28, borderRadius: '50%',
-                background: 'var(--surface)', border: '2px solid var(--border)',
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
+              disabled={saving === 'avatar'}
               title="Foto ändern"
+              style={{ position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              {avatarUploading
+              {saving === 'avatar'
                 ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
                 : <Camera size={13} color="var(--text-secondary)" />
               }
             </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f) }}
-            />
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) uploadAvatar(f) }} />
           </div>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-              {name || '—'}
-            </div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>{name || '—'}</div>
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>{initialEmail}</div>
-            <button
-              onClick={() => fileRef.current?.click()}
-              style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
-            >
+            <button onClick={() => fileRef.current?.click()} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
               Profilbild ändern
             </button>
             {success === 'avatar' && <StatusChip />}
@@ -231,56 +196,26 @@ export default function ProfilClient({ userId, initialName, initialEmail, initia
 
         {/* Name */}
         <FormCard icon={<User size={16} />} title="Name">
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && saveName()}
-            placeholder="Dein vollständiger Name"
-            style={inputStyle}
-          />
+          <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveName()} placeholder="Vollständiger Name" style={inputStyle} />
           <SaveButton onClick={saveName} saving={saving === 'name'} success={success === 'name'} />
         </FormCard>
 
         {/* Email */}
         <FormCard icon={<Mail size={16} />} title="E-Mail-Adresse">
-          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '0 0 10px' }}>
-            Nach der Änderung erhältst du eine Bestätigungsmail an die neue Adresse.
-          </p>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && saveEmail()}
-            placeholder="neue@email.de"
-            style={inputStyle}
-          />
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '0 0 10px' }}>Nach der Änderung erhältst du eine Bestätigungsmail an die neue Adresse.</p>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEmail()} placeholder="neue@email.de" style={inputStyle} />
           <SaveButton onClick={saveEmail} saving={saving === 'email'} success={success === 'email'} label="E-Mail ändern" />
         </FormCard>
 
         {/* Password */}
         <FormCard icon={<Lock size={16} />} title="Passwort ändern">
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Neues Passwort (min. 8 Zeichen)"
-            style={{ ...inputStyle, marginBottom: 8 }}
-          />
-          <input
-            type="password"
-            value={passwordConfirm}
-            onChange={e => setPasswordConfirm(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && savePassword()}
-            placeholder="Passwort bestätigen"
-            style={inputStyle}
-          />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Neues Passwort (min. 8 Zeichen)" style={{ ...inputStyle, marginBottom: 8 }} />
+          <input type="password" value={passwordConfirm} onChange={e => setPasswordConfirm(e.target.value)} onKeyDown={e => e.key === 'Enter' && savePassword()} placeholder="Passwort bestätigen" style={inputStyle} />
           <SaveButton onClick={savePassword} saving={saving === 'password'} success={success === 'password'} label="Passwort ändern" />
         </FormCard>
       </div>
 
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
@@ -295,10 +230,7 @@ const inputStyle: React.CSSProperties = {
 
 function FormCard({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 14, padding: '20px 24px', marginBottom: 12,
-    }}>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 24px', marginBottom: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
         <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{title}</span>
@@ -308,24 +240,10 @@ function FormCard({ icon, title, children }: { icon: React.ReactNode; title: str
   )
 }
 
-function SaveButton({ onClick, saving, success, label = 'Speichern' }: {
-  onClick: () => void
-  saving: boolean
-  success: boolean
-  label?: string
-}) {
+function SaveButton({ onClick, saving, success, label = 'Speichern' }: { onClick: () => void; saving: boolean; success: boolean; label?: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <button
-        onClick={onClick}
-        disabled={saving}
-        style={{
-          padding: '9px 20px', background: 'var(--accent)', color: '#fff',
-          border: 'none', borderRadius: 8, cursor: saving ? 'default' : 'pointer',
-          fontSize: 14, fontWeight: 500, fontFamily: 'inherit',
-          opacity: saving ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 6,
-        }}
-      >
+      <button onClick={onClick} disabled={saving} style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, cursor: saving ? 'default' : 'pointer', fontSize: 14, fontWeight: 500, fontFamily: 'inherit', opacity: saving ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 6 }}>
         {saving && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
         {label}
       </button>

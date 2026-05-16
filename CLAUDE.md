@@ -137,7 +137,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 |---|---|
 | `events` | Core event record |
 | `event_members` | User ↔ Event role assignments |
-| `profiles` | Extended user profile (name, email, is_approved_organizer, avatar_url TEXT — added by 0077) |
+| `profiles` | Extended user profile (name, email, is_approved_organizer, avatar_r2_key TEXT — R2 key, added by 0077) |
 | `guests` | Wedding guests |
 | `begleitpersonen` | Guest companions |
 | `hotels` / `hotel_rooms` | Hotel logistics |
@@ -323,15 +323,16 @@ supabase/migrations/
   0075_ablaufplan_multiday.sql         Adds ablaufplan_days (day_index, name, start_hour, end_hour) + day_index to timeline_entries; RLS for veranstalter/brautpaar/dl
                                        Extends conversations/messages RLS to allow organizer_staff users
                                        who are conversation participants (enables staff ↔ organizer 1:1 chat).
-  0077_profile_avatar.sql              Adds avatar_url TEXT to profiles (for Veranstalter profile pictures via Supabase Storage).
-                                       Requires an "avatars" bucket in Supabase Storage (public, with RLS allowing authenticated uploads).
+  0077_profile_avatar.sql              Adds avatar_r2_key TEXT to profiles (R2 object key, NOT a public URL).
+                                       Display URL generated on-demand via Worker requestDownloadUrl (1h presigned GET).
 
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)
   ProfilClient.tsx                     Edit form: name, email, password, profile picture (Supabase Storage "avatars" bucket)
 
 app/api/veranstalter/profile/
-  route.ts                             PATCH — updates name/avatar_url in profiles table; email/password via supabase.auth.updateUser
+  route.ts                             PATCH — updates name/avatar_r2_key in profiles; email/password via supabase.auth.updateUser
+  request-avatar-upload/route.ts       POST — returns presigned R2 PUT URL (via Worker) for key profiles/{userId}/avatar
 
 workers/
   file-service/                 Cloudflare Worker — thin R2 presigned URL generator
