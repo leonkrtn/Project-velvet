@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Settings, Trash2, Plus, Search, LogOut } from 'lucide-react'
+import { Settings, Trash2, Plus, Search, LogOut, CalendarDays } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
+import EventKalenderModal from './EventKalenderModal'
+import type { EventSummary as KalenderEventSummary } from './EventKalenderModal'
 
 
 type EventSummary = {
@@ -70,6 +72,7 @@ export default function VeranstalterEventsPage() {
   // Delete confirmation
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [showKalender, setShowKalender] = useState(false)
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '11px 14px', fontSize: 14,
@@ -254,9 +257,16 @@ export default function VeranstalterEventsPage() {
     : events
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto', padding: '28px 16px 64px' }}>
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: '28px 16px 64px' }}>
 
       {/* Delete confirmation modal */}
+      {showKalender && (
+        <EventKalenderModal
+          events={events as unknown as KalenderEventSummary[]}
+          onClose={() => setShowKalender(false)}
+        />
+      )}
+
       {deleteConfirmId && (
         <div
           style={{
@@ -332,6 +342,23 @@ export default function VeranstalterEventsPage() {
             }}
           >
             <LogOut size={14} /> Abmelden
+          </button>
+          <button
+            onClick={() => setShowKalender(true)}
+            title="Eventkalender"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px',
+              border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+              background: 'none', cursor: 'pointer', color: 'var(--text-secondary)',
+              fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
+              transition: 'border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text)'; e.currentTarget.style.color = 'var(--text)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+          >
+            <CalendarDays size={14} />
+            Kalender
           </button>
           <button
             onClick={() => router.push('/veranstalter/konfiguration')}
