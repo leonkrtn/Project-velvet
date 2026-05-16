@@ -58,7 +58,7 @@ const FEATURE_ROUTES: Record<FeatureKey, string> = {
   messaging:       '/brautpaar/nachrichten',
   // Brautpaar portal sidebar toggles — no dedicated route
   'bp-gaeste': '', 'bp-sitzplan': '', 'bp-ablaufplan': '', 'bp-catering': '',
-  'bp-dekoration': '', 'bp-musik': '', 'bp-patisserie': '', 'bp-medien': '',
+  'bp-dekoration': '', 'bp-musik': '', 'bp-medien': '',
   'bp-budget': '', 'bp-aufgaben': '', 'bp-nachrichten': '', 'bp-dateien': '',
   // RSVP step toggles — no dedicated route
   'rsvp-musikwunsch': '', 'rsvp-geschenke': '', 'rsvp-hotel': '',

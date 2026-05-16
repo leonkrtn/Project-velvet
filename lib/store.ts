@@ -120,7 +120,7 @@ export type FeatureKey =
   | 'messaging'
   // Brautpaar portal sidebar toggles (only affect bp portal, not vendors)
   | 'bp-gaeste' | 'bp-sitzplan' | 'bp-ablaufplan' | 'bp-catering' | 'bp-dekoration'
-  | 'bp-musik' | 'bp-patisserie' | 'bp-medien' | 'bp-budget' | 'bp-aufgaben'
+  | 'bp-musik' | 'bp-medien' | 'bp-budget' | 'bp-aufgaben'
   | 'bp-nachrichten' | 'bp-dateien'
   // RSVP step toggles (hide/show individual steps for guests)
   | 'rsvp-musikwunsch' | 'rsvp-geschenke' | 'rsvp-hotel'
@@ -132,7 +132,7 @@ export const DEFAULT_FEATURE_TOGGLES: Record<FeatureKey, boolean> = {
   deko: true, 'gaeste-fotos': true, messaging: false,
   'bp-gaeste': true, 'bp-sitzplan': true, 'bp-ablaufplan': true,
   'bp-catering': true, 'bp-dekoration': true, 'bp-musik': true,
-  'bp-patisserie': true, 'bp-medien': true, 'bp-budget': true,
+  'bp-medien': true, 'bp-budget': true,
   'bp-aufgaben': true, 'bp-nachrichten': true, 'bp-dateien': true,
   'rsvp-musikwunsch': true, 'rsvp-geschenke': true, 'rsvp-hotel': true,
   'rsvp-begleitpersonen': true, 'rsvp-menu': true,

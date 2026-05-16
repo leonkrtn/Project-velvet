@@ -3,7 +3,7 @@ import Link from 'next/link'
 import {
   Calendar, MapPin, Users, Mail, Phone, UserCircle,
   UtensilsCrossed, MessageSquare, Grid2X2, Music2,
-  Cake, Flower2, Camera, Clock, Heart, ArrowRight,
+  Flower2, Camera, Clock, Heart, ArrowRight,
 } from 'lucide-react'
 
 interface Props { params: Promise<{ eventId: string }> }
@@ -16,7 +16,6 @@ const ALL_MODULE_DEFS = [
   { key: 'ablaufplan',  label: 'Ablaufplan',         icon: Clock,           href: 'ablaufplan' },
   { key: 'gaesteliste', label: 'Gästeliste',         icon: Users,           href: 'gaesteliste' },
   { key: 'musik',       label: 'Musik',              icon: Music2,          href: 'musik' },
-  { key: 'patisserie',  label: 'Patisserie',         icon: Cake,            href: 'patisserie' },
   { key: 'dekoration',  label: 'Dekoration',         icon: Flower2,         href: 'dekoration' },
   { key: 'medien',      label: 'Foto & Videograf',   icon: Camera,          href: 'medien' },
   { key: 'sitzplan',    label: 'Sitzplan',           icon: Grid2X2,         href: 'sitzplan' },

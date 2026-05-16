@@ -76,7 +76,6 @@ const BP_NAV_ITEMS = [
   { key: 'bp-catering',    label: 'Catering & Menü',   group: 'DETAILS' },
   { key: 'bp-dekoration',  label: 'Dekoration',        group: 'DETAILS' },
   { key: 'bp-musik',       label: 'Musik',             group: 'DETAILS' },
-  { key: 'bp-patisserie',  label: 'Patisserie',        group: 'DETAILS' },
   { key: 'bp-medien',      label: 'Foto & Videograf',  group: 'DETAILS' },
   { key: 'bp-budget',      label: 'Budget',            group: 'VERWALTUNG' },
   { key: 'bp-aufgaben',    label: 'Aufgaben',          group: 'VERWALTUNG' },

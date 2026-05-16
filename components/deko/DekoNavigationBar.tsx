@@ -26,7 +26,7 @@ export default function DekoNavigationBar({
   const AREA_SUGGESTIONS = [
     'Eingang', 'Empfang', 'Trauung', 'Cocktailstunde', 'Festsaal',
     'Haupttafel', 'Buffet', 'Tanzfläche', 'Bar', 'Lounge',
-    'Außenbereich', 'Patisserie-Tisch', 'Brautpaarplatz', 'Sektempfang',
+    'Außenbereich', 'Brautpaarplatz', 'Sektempfang',
   ]
 
   const supabase = createClient()

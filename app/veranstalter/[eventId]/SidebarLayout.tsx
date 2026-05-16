@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Settings, Users, MessageSquare,
   Calendar, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
-  Music2, Cake, Flower2, Camera, FolderOpen, LogOut, UserCircle, SlidersHorizontal,
+  Music2, Flower2, Camera, FolderOpen, LogOut, UserCircle, SlidersHorizontal,
 } from 'lucide-react'
 
 interface Props {
@@ -29,7 +29,6 @@ const NAV_ITEMS = [
   { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
   { key: 'gaesteliste',     label: 'Gästeliste',        icon: Users },
   { key: 'musik',           label: 'Musik',             icon: Music2 },
-  { key: 'patisserie',      label: 'Patisserie',        icon: Cake },
   { key: 'dekoration',      label: 'Dekoration',        icon: Flower2 },
   { key: 'medien',          label: 'Foto & Videograf',  icon: Camera },
   { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },

@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Check, ArrowLeft, ChevronDown, ChevronRight, HelpCircle,
   LayoutDashboard, UtensilsCrossed, MessageSquare,
-  Calendar, Music2, Cake, Flower2, Camera, Grid2X2, Users,
+  Calendar, Music2, Flower2, Camera, Grid2X2, Users,
   LucideIcon,
 } from 'lucide-react'
 import type { DienstleisterPermRow } from './page'
@@ -84,14 +84,6 @@ const CONFIGURABLE_TABS: TabConfig[] = [
     sections: [
       { key: 'anforderungen', label: 'Technische Anforderungen', tooltip: 'Soundcheck, PA-System, Bühne, Mikrofone, Strom' },
       { key: 'songliste',     label: 'Songliste',                tooltip: 'Wunsch-, No-Go- und Playlist-Songs' },
-    ],
-  },
-  {
-    key: 'patisserie', label: 'Patisserie', icon: Cake,
-    sections: [
-      { key: 'lieferung', label: 'Lieferung',            tooltip: 'Lieferdatum, Uhrzeit und Aufstellort' },
-      { key: 'kuehlung',  label: 'Kühlung erforderlich',  tooltip: 'Kühllagerung und besondere Hinweise' },
-      { key: 'torte',     label: 'Hochzeitstorte',        tooltip: 'Beschreibung, Schichten und Geschmacksrichtungen' },
     ],
   },
   {
