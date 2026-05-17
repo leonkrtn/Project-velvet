@@ -231,6 +231,10 @@ export default function KonfigurationClient() {
   const [setupAuthError, setSetupAuthError] = useState('')
   const [setupAuthSuccess, setSetupAuthSuccess] = useState(false)
 
+  /* ── Staff chat toggle ── */
+  const [staffChatEnabled, setStaffChatEnabled] = useState(false)
+  const [staffChatSaving, setStaffChatSaving] = useState(false)
+
   /* ── Seating concepts ── */
   const [concepts, setConcepts] = useState<SeatingConcept[]>([])
   const [editingConceptId, setEditingConceptId] = useState<string | null>(null)
@@ -251,13 +255,14 @@ export default function KonfigurationClient() {
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
 
-      const [{ data: roomRow }, { data: staffRows }, { data: presetRow }, { data: tmplRows }, { data: frRows }, { data: conceptRows }] = await Promise.all([
+      const [{ data: roomRow }, { data: staffRows }, { data: presetRow }, { data: tmplRows }, { data: frRows }, { data: conceptRows }, { data: orgSettings }] = await Promise.all([
         supabase.from('organizer_room_configs').select('*').eq('user_id', user.id).single(),
         supabase.from('organizer_staff').select('id,organizer_id,name,email,phone,role_category,available_days,hourly_rate,notes,auth_user_id,must_change_password').eq('organizer_id', user.id).order('created_at', { ascending: true }),
         supabase.from('organizer_presets').select('*').eq('user_id', user.id).single(),
         supabase.from('deko_organizer_templates').select('*').eq('organizer_id', user.id).order('sort_order'),
         supabase.from('deko_organizer_flat_rates').select('*').eq('organizer_id', user.id),
         supabase.from('organizer_seating_concepts').select('*').eq('organizer_id', user.id).order('sort_order'),
+        supabase.from('organizer_settings').select('staff_chat_enabled').eq('organizer_id', user.id).maybeSingle(),
       ])
 
       if (roomRow) {
@@ -269,6 +274,7 @@ export default function KonfigurationClient() {
       setDekoTemplates((tmplRows ?? []) as DekoOrganizerTemplate[])
       setDekoFlatRates((frRows ?? []) as DekoOrganizerFlatRate[])
       setConcepts((conceptRows ?? []) as SeatingConcept[])
+      setStaffChatEnabled(orgSettings?.staff_chat_enabled ?? false)
       if (presetRow) {
         setSettings({
           venue:               presetRow.venue               ?? '',
@@ -374,6 +380,18 @@ export default function KonfigurationClient() {
     } finally {
       setSetupAuthSubmitting(false)
     }
+  }
+
+  async function toggleStaffChat(val: boolean) {
+    if (!userId) return
+    setStaffChatEnabled(val)
+    setStaffChatSaving(true)
+    try {
+      await supabase.from('organizer_settings').upsert(
+        { organizer_id: userId, staff_chat_enabled: val, updated_at: new Date().toISOString() },
+        { onConflict: 'organizer_id' }
+      )
+    } finally { setStaffChatSaving(false) }
   }
 
   function toggleDay(day: string) {
@@ -651,6 +669,31 @@ export default function KonfigurationClient() {
               </div>
             </div>
           )}
+
+          {/* Staff chat toggle */}
+          <div style={{ ...card, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: '0 0 3px' }}>Mitarbeiter-Chat</p>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: 0 }}>Mitarbeiter können sich gegenseitig Nachrichten schicken</p>
+              </div>
+              <button
+                onClick={() => toggleStaffChat(!staffChatEnabled)}
+                disabled={staffChatSaving}
+                style={{
+                  width: 48, height: 26, borderRadius: 13, border: 'none', cursor: staffChatSaving ? 'not-allowed' : 'pointer',
+                  background: staffChatEnabled ? '#6366F1' : '#D1D5DB', transition: 'background 0.2s',
+                  position: 'relative', flexShrink: 0, opacity: staffChatSaving ? 0.7 : 1,
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 3, left: staffChatEnabled ? 25 : 3, width: 20, height: 20,
+                  borderRadius: '50%', background: '#fff', transition: 'left 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }} />
+              </button>
+            </div>
+          </div>
 
           <div style={card}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>

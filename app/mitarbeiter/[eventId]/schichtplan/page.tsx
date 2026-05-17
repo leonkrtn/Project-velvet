@@ -35,19 +35,19 @@ export default async function MitarbeiterSchichtplanPage({ params }: Props) {
 
   let myDayIds: string[] = []
   let allShifts: ShiftRow[] = []
-  let allStaff: { id: string; name: string }[] = []
+  let allStaff: { id: string; name: string; auth_user_id: string | null }[] = []
   let myTimeLogs: TimeLogRow[] = []
 
   if (dayIds.length > 0) {
     const [{ data: assignments }, { data: shiftsData }, { data: staffData }, { data: logsData }] = await Promise.all([
       admin.from('personalplanung_assignments').select('day_id').eq('staff_id', staffRow.id).in('day_id', dayIds),
       admin.from('personalplanung_shifts').select('*').in('day_id', dayIds).order('start_hour'),
-      admin.from('organizer_staff').select('id, name').eq('organizer_id', staffRow.organizer_id),
+      admin.from('organizer_staff').select('id, name, auth_user_id').eq('organizer_id', staffRow.organizer_id),
       admin.from('shift_time_logs').select('id, shift_id, staff_id, actual_start, actual_end, notes').eq('staff_id', staffRow.id).eq('event_id', eventId),
     ])
     myDayIds = (assignments ?? []).map(a => a.day_id)
     allShifts = (shiftsData ?? []) as ShiftRow[]
-    allStaff = (staffData ?? []) as { id: string; name: string }[]
+    allStaff = (staffData ?? []) as { id: string; name: string; auth_user_id: string | null }[]
     myTimeLogs = (logsData ?? []) as TimeLogRow[]
   }
 
