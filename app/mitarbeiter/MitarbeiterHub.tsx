@@ -43,6 +43,16 @@ export default function MitarbeiterHub({
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: '28px 16px 64px', fontFamily: 'inherit' }}>
+      <style>{`
+        @media (max-width: 600px) {
+          .ma-header { flex-wrap: wrap !important; }
+          .ma-header-main { flex: 1 1 100%; }
+          .ma-header-actions { flex: 1 1 100% !important; flex-shrink: 1 !important; }
+          .ma-action-btn { flex: 1; justify-content: center !important; }
+          .ma-logout-label { display: none; }
+          .ma-logout-btn { padding: 8px 10px !important; }
+        }
+      `}</style>
 
       {/* Modals */}
       {showKalender && (
@@ -58,34 +68,39 @@ export default function MitarbeiterHub({
       )}
 
       {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
-        marginBottom: 28, gap: 16,
-      }}>
-        <div>
-          <h1 style={{ fontSize: 26, fontWeight: 500, color: 'var(--text, #111827)', margin: '0 0 4px' }}>
-            Mein Bereich
-          </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-tertiary, #9CA3AF)', margin: 0 }}>
-            Willkommen, {staffName}.
-          </p>
-        </div>
+      <div className="ma-header" style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 28 }}>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        {/* Title + logout icon (icon-only on mobile) */}
+        <div className="ma-header-main" style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <h1 style={{ fontSize: 26, fontWeight: 500, color: 'var(--text, #111827)', margin: '0 0 4px' }}>
+              Mein Bereich
+            </h1>
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary, #9CA3AF)', margin: 0 }}>
+              Willkommen, {staffName}.
+            </p>
+          </div>
           <button
+            className="ma-logout-btn"
             onClick={handleLogout}
             title="Abmelden"
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 14px',
+              padding: '8px 14px', flexShrink: 0,
               border: '1px solid var(--border, #E5E7EB)', borderRadius: 'var(--radius-sm, 8px)',
               background: 'none', cursor: 'pointer', color: 'var(--text-secondary, #6B7280)',
               fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
             }}
           >
-            <LogOut size={14} /> Abmelden
+            <LogOut size={14} />
+            <span className="ma-logout-label">Abmelden</span>
           </button>
+        </div>
+
+        {/* Action buttons — same row on desktop, full-width below on mobile */}
+        <div className="ma-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           <button
+            className="ma-action-btn"
             onClick={() => setShowAbrechnung(true)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
@@ -101,6 +116,7 @@ export default function MitarbeiterHub({
             <TrendingUp size={14} /> Abrechnung
           </button>
           <button
+            className="ma-action-btn"
             onClick={() => setShowKalender(true)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
@@ -111,7 +127,7 @@ export default function MitarbeiterHub({
               transition: 'border-color 0.15s, color 0.15s',
             }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text, #111827)'; e.currentTarget.style.color = 'var(--text, #111827)' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #E5E7EB)'; e.currentTarget.style.color = 'var(--text-secondary, #6B7280)' }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border, #E5E7EB)'; e.currentTarget.style.color = 'var(--text, #111827)' }}
           >
             <CalendarDays size={14} /> Kalender
           </button>

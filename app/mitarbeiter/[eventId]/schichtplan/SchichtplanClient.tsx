@@ -10,7 +10,21 @@ type StaffMember = { id: string; name: string }
 type TimeLog = { id: string; shift_id: string; staff_id: string; actual_start: string | null; actual_end: string | null; notes: string | null }
 type ChatMessage = { id: string; conversation_id: string; sender_id: string | null; content: string; created_at: string; sender?: { name: string } | null }
 
+type MessageItem =
+  | { type: 'separator'; label: string }
+  | { type: 'message'; msg: ChatMessage; isMine: boolean }
+
 type ActiveTab = 'schicht' | 'team' | 'chat'
+
+function getDateLabel(dateStr: string): string {
+  const d = new Date(dateStr)
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+  if (d.toDateString() === today.toDateString()) return 'Heute'
+  if (d.toDateString() === yesterday.toDateString()) return 'Gestern'
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: 'long' })
+}
 
 interface Props {
   eventId: string
@@ -193,6 +207,20 @@ export default function SchichtplanClient({
   const teamDayShifts = teamDayId ? allShifts.filter(s => s.day_id === teamDayId) : []
   const staffById = new Map(allStaff.map(s => [s.id, s]))
 
+  const messagesWithSeparators = useMemo<MessageItem[]>(() => {
+    const result: MessageItem[] = []
+    let lastLabel = ''
+    for (const msg of chatMessages) {
+      const label = getDateLabel(msg.created_at)
+      if (label !== lastLabel) {
+        result.push({ type: 'separator', label })
+        lastLabel = label
+      }
+      result.push({ type: 'message', msg, isMine: msg.sender_id === staffAuthUserId })
+    }
+    return result
+  }, [chatMessages, staffAuthUserId])
+
   // ── Helpers ───────────────────────────────────────────────────────────────
   const tabBtnStyle = (active: boolean): React.CSSProperties => ({
     flex: 1, padding: '10px 4px', background: 'none', border: 'none', cursor: 'pointer',
@@ -200,6 +228,85 @@ export default function SchichtplanClient({
     color: active ? '#6366F1' : '#9CA3AF', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
     borderTop: active ? '2px solid #6366F1' : '2px solid transparent', transition: 'all 0.15s',
   })
+
+  // ── Full-screen WhatsApp-style chat ──────────────────────────────────────
+  if (activeTab === 'chat') {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: '#EDE8E1', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif', zIndex: 50 }}>
+
+        {/* Chat Header */}
+        <div style={{ background: '#6366F1', color: '#fff', display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 16, paddingRight: 16, paddingBottom: 14, paddingTop: 'calc(14px + env(safe-area-inset-top))', flexShrink: 0 }}>
+          <button
+            onClick={() => setActiveTab('schicht')}
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0, marginRight: 2 }}
+          >
+            <ArrowLeft size={22} />
+          </button>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+            V
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>Veranstalter</div>
+            <div style={{ fontSize: 12, opacity: 0.8, marginTop: 1 }}>Dein direkter Draht</div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px 10px', display: 'flex', flexDirection: 'column' }}>
+          {chatLoading ? (
+            <p style={{ fontSize: 13, color: '#8B7355', textAlign: 'center', marginTop: 40 }}>Lade Chat …</p>
+          ) : messagesWithSeparators.length === 0 ? (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 60 }}>
+              <span style={{ background: 'rgba(255,255,255,0.75)', color: '#7C6E5A', fontSize: 12.5, padding: '6px 16px', borderRadius: 14, boxShadow: '0 1px 2px rgba(0,0,0,0.08)' }}>
+                Noch keine Nachrichten. Schreibe dem Veranstalter!
+              </span>
+            </div>
+          ) : messagesWithSeparators.map((item, idx) => {
+            if (item.type === 'separator') {
+              return (
+                <div key={`sep-${idx}`} style={{ display: 'flex', justifyContent: 'center', margin: '12px 0 8px' }}>
+                  <span style={{ background: 'rgba(255,255,255,0.82)', color: '#7C6E5A', fontSize: 11.5, fontWeight: 600, padding: '3px 12px', borderRadius: 12, boxShadow: '0 1px 2px rgba(0,0,0,0.07)' }}>
+                    {item.label}
+                  </span>
+                </div>
+              )
+            }
+            const { msg, isMine } = item
+            return (
+              <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', marginBottom: 6 }}>
+                <div style={{ maxWidth: '75%', padding: '8px 12px 5px', borderRadius: isMine ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: isMine ? '#6366F1' : '#fff', color: isMine ? '#fff' : '#111827', fontSize: 14.5, lineHeight: 1.45, boxShadow: '0 1px 2px rgba(0,0,0,0.1)', wordBreak: 'break-word' }}>
+                  {msg.content}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3, marginTop: 3 }}>
+                    <span style={{ fontSize: 10.5, opacity: isMine ? 0.75 : 0.5 }}>{fmtTime(msg.created_at)}</span>
+                    {isMine && <span style={{ fontSize: 11, opacity: 0.8 }}>✓</span>}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Input bar */}
+        <div style={{ background: '#EDE8E1', paddingLeft: 12, paddingRight: 12, paddingTop: 8, paddingBottom: 'calc(10px + env(safe-area-inset-bottom))', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+          <input
+            value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
+            placeholder="Nachricht …"
+            style={{ flex: 1, padding: '10px 16px', fontSize: 15, border: 'none', borderRadius: 24, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#111827', boxShadow: '0 1px 3px rgba(0,0,0,0.09)' }}
+          />
+          <button
+            onClick={sendMessage}
+            disabled={!chatInput.trim() || chatSending || !chatConvId}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: '50%', border: 'none', background: chatInput.trim() && chatConvId ? '#6366F1' : '#C4B9AC', color: '#fff', cursor: chatInput.trim() && chatConvId ? 'pointer' : 'not-allowed', flexShrink: 0, transition: 'background 0.15s' }}
+          >
+            <Send size={18} />
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100dvh', background: '#F3F4F6', fontFamily: 'system-ui, sans-serif', display: 'flex', flexDirection: 'column' }}>
@@ -441,59 +548,6 @@ export default function SchichtplanClient({
           </div>
         )}
 
-        {/* CHAT TAB */}
-        {activeTab === 'chat' && (
-          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 140px)' }}>
-            {/* Chat header */}
-            <div style={{ padding: '12px 16px', background: '#fff', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#6366F1', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>V</div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700 }}>Veranstalter</div>
-                <div style={{ fontSize: 11.5, color: '#9CA3AF' }}>Dein direkter Draht</div>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px', display: 'flex', flexDirection: 'column', gap: 10, background: '#F3F4F6' }}>
-              {chatLoading ? (
-                <p style={{ fontSize: 13, color: '#9CA3AF', textAlign: 'center', marginTop: 40 }}>Lade Chat …</p>
-              ) : chatMessages.length === 0 ? (
-                <p style={{ fontSize: 13, color: '#9CA3AF', textAlign: 'center', marginTop: 40 }}>Noch keine Nachrichten. Schreibe dem Veranstalter!</p>
-              ) : chatMessages.map(msg => {
-                const isMine = msg.sender_id === staffAuthUserId
-                return (
-                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', gap: 2 }}>
-                    <div style={{ maxWidth: '78%', padding: '10px 14px', borderRadius: isMine ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: isMine ? '#6366F1' : '#fff', color: isMine ? '#fff' : '#111827', fontSize: 14, lineHeight: 1.45, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                      {msg.content}
-                    </div>
-                    <span style={{ fontSize: 10.5, color: '#9CA3AF' }}>
-                      {isMine ? 'Du' : (msg.sender?.name ?? 'Veranstalter')} · {fmtTime(msg.created_at)}
-                    </span>
-                  </div>
-                )
-              })}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Input */}
-            <div style={{ padding: '10px 14px', background: '#fff', borderTop: '1px solid #E5E7EB', display: 'flex', gap: 8, flexShrink: 0 }}>
-              <input
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-                placeholder="Nachricht …"
-                style={{ flex: 1, padding: '10px 14px', fontSize: 14, border: '1px solid #E5E7EB', borderRadius: 10, fontFamily: 'inherit', outline: 'none', background: '#fff', color: '#111827' }}
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!chatInput.trim() || chatSending || !chatConvId}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 42, height: 42, borderRadius: 10, border: 'none', background: chatInput.trim() && chatConvId ? '#6366F1' : '#E5E7EB', color: '#fff', cursor: chatInput.trim() && chatConvId ? 'pointer' : 'not-allowed', flexShrink: 0, transition: 'background 0.15s' }}
-              >
-                <Send size={16} />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Bottom Nav ── */}
@@ -506,7 +560,7 @@ export default function SchichtplanClient({
           <Users size={18} />
           <span>Team</span>
         </button>
-        <button onClick={() => setActiveTab('chat')} style={tabBtnStyle(activeTab === 'chat')}>
+        <button onClick={() => setActiveTab('chat')} style={tabBtnStyle(false)}>
           <MessageSquare size={18} />
           <span>Chat</span>
         </button>
