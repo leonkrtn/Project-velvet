@@ -22,9 +22,10 @@ export default async function MitarbeiterSchichtplanPage({ params }: Props) {
   if (!staffRow) redirect('/login')
   if (staffRow.must_change_password) redirect('/mitarbeiter/change-password')
 
-  const [{ data: eventData }, { data: dayRows }] = await Promise.all([
+  const [{ data: eventData }, { data: dayRows }, { data: organizerProfile }] = await Promise.all([
     admin.from('events').select('title, date').eq('id', eventId).single(),
     admin.from('personalplanung_days').select('*').eq('event_id', eventId).order('sort_order'),
+    admin.from('profiles').select('name').eq('id', staffRow.organizer_id).maybeSingle(),
   ])
 
   const days = (dayRows ?? []) as { id: string; label: string; date: string; sort_order: number }[]
@@ -68,6 +69,7 @@ export default async function MitarbeiterSchichtplanPage({ params }: Props) {
       staffName={staffRow.name}
       staffAuthUserId={staffRow.auth_user_id ?? ''}
       organizerAuthUserId={staffRow.organizer_id}
+      organizerName={organizerProfile?.name ?? ''}
       days={myDays}
       allDays={days}
       myShifts={myShifts}

@@ -33,6 +33,7 @@ interface Props {
   staffName: string
   staffAuthUserId: string
   organizerAuthUserId: string
+  organizerName: string
   days: Day[]
   allDays: Day[]
   myShifts: Shift[]
@@ -78,7 +79,7 @@ function initials(name: string): string {
 }
 
 export default function SchichtplanClient({
-  eventId, eventTitle, staffId, staffName, staffAuthUserId, organizerAuthUserId,
+  eventId, eventTitle, staffId, staffName, staffAuthUserId, organizerAuthUserId, organizerName,
   days, allDays, myShifts, allShifts, allStaff,
   mySwaps: initialSwaps, myTimeLogs: initialTimeLogs,
 }: Props) {
@@ -353,18 +354,18 @@ export default function SchichtplanClient({
         <div style={{ position: 'fixed', inset: 0, background: '#EDE8E1', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif', zIndex: 50 }}>
 
           {/* Header */}
-          <div style={{ background: '#6366F1', color: '#fff', display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 16, paddingRight: 16, paddingBottom: 14, paddingTop: 'calc(14px + env(safe-area-inset-top))', flexShrink: 0 }}>
+          <div style={{ background: '#fff', color: '#111827', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 16, paddingRight: 16, paddingBottom: 14, paddingTop: 'calc(14px + env(safe-area-inset-top))', flexShrink: 0 }}>
             <button
               onClick={() => { setChatView('list'); setActiveConvId(null); setChatMessages([]) }}
-              style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0, marginRight: 2 }}
+              style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0, marginRight: 2 }}
             >
               <ArrowLeft size={22} />
             </button>
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, flexShrink: 0, color: '#374151' }}>
               {initials(activeConvName || 'V')}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>{activeConvName || 'Chat'}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, color: '#111827' }}>{activeConvName || 'Chat'}</div>
             </div>
           </div>
 
@@ -430,15 +431,15 @@ export default function SchichtplanClient({
       <div style={{ position: 'fixed', inset: 0, background: '#F3F4F6', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, sans-serif', zIndex: 50 }}>
 
         {/* Header */}
-        <div style={{ background: '#6366F1', color: '#fff', display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 16, paddingRight: 16, paddingBottom: 14, paddingTop: 'calc(14px + env(safe-area-inset-top))', flexShrink: 0 }}>
+        <div style={{ background: '#fff', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 12, paddingLeft: 16, paddingRight: 16, paddingBottom: 14, paddingTop: 'calc(14px + env(safe-area-inset-top))', flexShrink: 0 }}>
           <button
             onClick={() => setActiveTab('schicht')}
-            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0, marginRight: 2 }}
+            style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', flexShrink: 0, marginRight: 2 }}
           >
             <ArrowLeft size={22} />
           </button>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 18, fontWeight: 700 }}>Chats</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>Chats</div>
           </div>
         </div>
 
@@ -451,12 +452,12 @@ export default function SchichtplanClient({
               {/* Organizer row */}
               {orgConvId && (
                 <button
-                  onClick={() => openConversation(orgConvId, 'Veranstalter')}
+                  onClick={() => openConversation(orgConvId, organizerName || 'Veranstalter')}
                   style={{ width: '100%', background: '#fff', border: 'none', borderBottom: '1px solid #F3F4F6', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', textAlign: 'left' }}
                 >
-                  <div style={{ width: 46, height: 46, borderRadius: '50%', background: '#6366F1', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>V</div>
+                  <div style={{ width: 46, height: 46, borderRadius: '50%', background: '#E5E7EB', color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, flexShrink: 0 }}>{initials(organizerName || 'V')}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>Veranstalter</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>{organizerName || 'Veranstalter'}</div>
                     <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 1 }}>Dein direkter Draht</div>
                   </div>
                   {(unreadCounts[orgConvId] ?? 0) > 0 && (
