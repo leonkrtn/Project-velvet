@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 140px)', overflow: 'hidden', margin: '-36px -40px -60px' }}>
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Left nav sidebar */}
       <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', padding: '16px 12px', gap: 8 }}>
         <div className="skeleton" style={{ height: 11, width: 70, marginBottom: 6, borderRadius: 4 }} />
