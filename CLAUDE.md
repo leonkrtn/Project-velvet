@@ -178,6 +178,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `shift_time_logs` | Actual check-in/out times per shift (shift_id, staff_id, event_id, actual_start, actual_end, notes). RLS: organizer reads all for their staff; staff reads own. Written via `/api/staff/checkin`. |
 | `event_organizer_costs` | Organizer's own cost items |
 | `feature_toggles` | Per-event feature flags — columns: `event_id`, `key`, `enabled`, `value TEXT` (optional text metadata, e.g. ISO date for `gaeste-fotos-unlock-at`) |
+| `organizer_settings` | Per-organizer config (migration 0078). Currently: `staff_chat_enabled BOOLEAN DEFAULT FALSE`. RLS: organizer full access; staff read-only. |
 
 ---
 
@@ -325,6 +326,7 @@ supabase/migrations/
                                        who are conversation participants (enables staff ↔ organizer 1:1 chat).
   0077_profile_avatar.sql              Adds avatar_r2_key TEXT to profiles (R2 object key, NOT a public URL).
                                        Display URL generated on-demand via Worker requestDownloadUrl (1h presigned GET).
+  0078_staff_to_staff_chat.sql         Creates organizer_settings (staff_chat_enabled toggle). RLS: organizer all; staff read-only.
 
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)
@@ -378,6 +380,8 @@ app/api/mitarbeiter/
 app/api/staff/
   checkin/route.ts              POST {shiftId, action:'checkin'|'checkout'} — creates/updates shift_time_logs row
   chat/route.ts                 POST {eventId, staffId} — finds or creates 1:1 organizer↔staff conversation;
+  direct-chat/route.ts          POST {eventId, targetStaffId} — finds or creates 1:1 staff↔staff conversation;
+                                      checks organizer_settings.staff_chat_enabled; both staff must share organizer.
                                       returns conversationId. Uses admin client; accessible to organizer or own staff.
   [staffId]/setup-auth/route.ts POST — creates/resets Supabase auth account for staff
   swaps/route.ts                POST — creates swap request

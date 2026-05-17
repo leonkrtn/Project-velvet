@@ -59,7 +59,13 @@ export default function BrautpaarSitzplanPage() {
 
   if (loading) return (
     <div className="bp-page">
-      <div className="bp-skeleton" style={{ height: 400, borderRadius: 'var(--bp-r-md)' }} />
+      {/* Page header: title + subtitle */}
+      <div className="bp-page-header">
+        <div className="bp-skeleton" style={{ height: 28, width: 120, marginBottom: 8, borderRadius: 8 }} />
+        <div className="bp-skeleton" style={{ height: 16, width: 300, borderRadius: 6 }} />
+      </div>
+      {/* Canvas area */}
+      <div className="bp-skeleton" style={{ height: 'calc(100vh - 260px)', minHeight: 400, borderRadius: 'var(--bp-r-md)' }} />
     </div>
   )
 

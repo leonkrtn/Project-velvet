@@ -465,10 +465,21 @@ export default function GeschenkTab({ eventId }: { eventId: string }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
-        {[1, 2, 3].map(i => (
-          <div key={i} className="bp-skeleton" style={{ height: 72, borderRadius: 'var(--bp-r-md)' }} />
-        ))}
+      <div>
+        {/* Header: title + caption on left, button on right */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+          <div>
+            <div className="bp-skeleton" style={{ height: 18, width: 130, marginBottom: 8, borderRadius: 6 }} />
+            <div className="bp-skeleton" style={{ height: 13, width: 280, borderRadius: 4 }} />
+          </div>
+          <div className="bp-skeleton" style={{ height: 36, width: 150, borderRadius: 8, flexShrink: 0 }} />
+        </div>
+        {/* Wish card rows */}
+        <div style={{ display: 'flex', gap: '0.625rem', flexDirection: 'column' }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bp-skeleton" style={{ height: 72, borderRadius: 'var(--bp-r-md)' }} />
+          ))}
+        </div>
       </div>
     )
   }

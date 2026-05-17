@@ -61,17 +61,24 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Layer 3: /veranstalter/* organizer check
-  // Requires custom_access_token_hook registered in Supabase Dashboard
-  // (Authentication → Hooks → Custom Access Token → public.custom_access_token_hook).
-  // Without the hook, app_metadata.is_approved_organizer is never set and all
-  // organizers would be blocked. Page-level checks handle authorization instead.
+  // Layer 3: /veranstalter/* — only approved organizers allowed
   if (pathname.startsWith('/veranstalter/') && pathname !== '/veranstalter/pending') {
-    const isApproved = user.app_metadata?.is_approved_organizer === true
-    if (isApproved === false && user.app_metadata?.is_approved_organizer !== undefined) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/veranstalter/pending'
-      return NextResponse.redirect(url)
+    // Fast path: mitarbeiter can never be a veranstalter
+    if (user.app_metadata?.role === 'mitarbeiter') {
+      return NextResponse.redirect(new URL('/mitarbeiter', request.url))
+    }
+    // Authoritative check via profiles table (works without app_metadata hook)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_approved_organizer')
+      .eq('id', user.id)
+      .single()
+    if (!profile?.is_approved_organizer) {
+      const { data: memberships } = await supabase
+        .from('event_members')
+        .select('event_id, role')
+        .eq('user_id', user.id)
+      return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? []), request.url))
     }
   }
 
