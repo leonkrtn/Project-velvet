@@ -364,7 +364,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
           </div>
         </div>
 
-        <div style={{ ...row, gridTemplateColumns: '1fr 1fr' }}>
+        <div className="grid-2col" style={{ ...row, gridTemplateColumns: '1fr 1fr' }}>
           <div>
             <label style={label}>Eventname *</label>
             <input style={input} value={form.title} onChange={e => update('title', e.target.value)} />
@@ -374,7 +374,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
             <input style={input} value={form.couple_name ?? ''} onChange={e => update('couple_name', e.target.value || null)} placeholder="Max & Maria Mustermann" />
           </div>
         </div>
-        <div style={{ ...row, gridTemplateColumns: '1fr 1fr' }}>
+        <div className="grid-2col" style={{ ...row, gridTemplateColumns: '1fr 1fr' }}>
           <div>
             <label style={label}>Datum</label>
             <DateInput style={input} value={form.date} onChange={v => update('date', v)} />
@@ -406,7 +406,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
 
       {/* 2. Location */}
       <SectionWrap title="Location">
-        <div style={{ ...row, gridTemplateColumns: '1fr 1fr' }}>
+        <div className="grid-2col" style={{ ...row, gridTemplateColumns: '1fr 1fr' }}>
           <div>
             <label style={label}>Location Name</label>
             <input style={input} value={form.location_name ?? ''} onChange={e => update('location_name', e.target.value || null)} placeholder="Schloss Musterburg" />
@@ -416,7 +416,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
             <input style={input} value={form.location_street ?? ''} onChange={e => update('location_street', e.target.value || null)} placeholder="Musterstraße 1" />
           </div>
         </div>
-        <div style={{ ...row, gridTemplateColumns: '120px 1fr 1fr' }}>
+        <div className="grid-2col" style={{ ...row, gridTemplateColumns: '120px 1fr 1fr' }}>
           <div>
             <label style={label}>PLZ</label>
             <input style={input} value={form.location_zip ?? ''} onChange={e => update('location_zip', e.target.value || null)} placeholder="12345" />
@@ -434,7 +434,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
 
       {/* 3. Gäste */}
       <SectionWrap title="Gäste">
-        <div style={{ ...row, gridTemplateColumns: '1fr 1fr' }}>
+        <div className="grid-2col" style={{ ...row, gridTemplateColumns: '1fr 1fr' }}>
           <div>
             <label style={label}>Max. Begleitpersonen pro Gast</label>
             <input type="number" min={0} max={10} style={input} value={form.max_begleitpersonen} onChange={e => update('max_begleitpersonen', parseInt(e.target.value) || 0)} />
@@ -558,7 +558,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
 
       {/* 6. Budget */}
       <SectionWrap title="Budget">
-        <div style={{ ...row, gridTemplateColumns: '1fr 1fr 1fr' }}>
+        <div className="grid-2col" style={{ ...row, gridTemplateColumns: '1fr 1fr 1fr' }}>
           <div>
             <label style={label}>Gesamtbudget (€)</label>
             <input type="number" min={0} style={input} value={form.budget_total ?? ''} onChange={e => update('budget_total', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0" />
@@ -589,7 +589,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
                 <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
                   Person {i + 1}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label style={label}>Name</label>
                     <input style={{ ...input, background: '#fff' }} value={m.profiles?.name ?? ''} readOnly />

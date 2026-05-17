@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
   Send, Plus, X, Trash2, MessageSquare, Archive, ArchiveRestore,
@@ -103,6 +103,8 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const activeConvIdRef = useRef<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
+  const newChatTitleId = useId()
+  const deleteConfirmTitleId = useId()
 
   // Member lookup by user_id for name resolution fallback (fixes "?" bug)
   const membersById = useMemo(() =>
@@ -581,7 +583,8 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
             <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>Chats</h2>
             <button
               onClick={() => { setShowNewChat(true); setChatCreationType(null) }}
-              title="Neuer Chat"
+              aria-label="Neuer Chat"
+              className="mob-touch"
               style={{
                 width: 32, height: 32, borderRadius: '50%', border: 'none',
                 background: 'var(--accent)', color: '#fff', cursor: 'pointer',
@@ -609,6 +612,8 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
+                aria-label="Suche löschen"
+                className="mob-touch"
                 style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-tertiary)', display: 'flex' }}
               >
                 <X size={13} />
@@ -618,10 +623,12 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
 
           {/* Search tabs */}
           {isSearching && (
-            <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
+            <div role="tablist" aria-label="Suchergebnis-Typ" style={{ display: 'flex', gap: 4, marginTop: 10 }}>
               {(['chats', 'messages'] as const).map(tab => (
                 <button
                   key={tab}
+                  role="tab"
+                  aria-selected={searchTab === tab}
                   onClick={() => setSearchTab(tab)}
                   style={{
                     flex: 1, padding: '5px 0', fontSize: 12, fontWeight: 500,
@@ -900,6 +907,9 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
           onClick={closeNewChat}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={newChatTitleId}
             style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', width: 440, maxWidth: '100%', boxShadow: 'var(--shadow-md)', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}
           >
@@ -907,14 +917,16 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
               {chatCreationType && (
                 <button onClick={() => { setChatCreationType(null); setSelectedMembers([]); setChatName('') }}
+                  aria-label="Zurück"
+                  className="mob-touch"
                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary)', display: 'flex' }}>
                   <ArrowLeft size={18} />
                 </button>
               )}
-              <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', margin: 0, flex: 1 }}>
+              <h3 id={newChatTitleId} style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', margin: 0, flex: 1 }}>
                 {chatCreationType === null ? 'Neuer Chat' : chatCreationType === 'single' ? 'Einzelchat starten' : 'Gruppe erstellen'}
               </h3>
-              <button onClick={closeNewChat} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary)', display: 'flex' }}>
+              <button onClick={closeNewChat} aria-label="Schließen" className="mob-touch" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary)', display: 'flex' }}>
                 <X size={18} />
               </button>
             </div>
@@ -1079,8 +1091,8 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
           onClick={() => setDeleteConfirm(null)}
         >
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 28, width: 360, maxWidth: '100%', boxShadow: 'var(--shadow-md)' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 10 }}>Chat löschen?</h3>
+          <div role="dialog" aria-modal="true" aria-labelledby={deleteConfirmTitleId} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 28, width: 360, maxWidth: '100%', boxShadow: 'var(--shadow-md)' }} onClick={e => e.stopPropagation()}>
+            <h3 id={deleteConfirmTitleId} style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 10 }}>Chat löschen?</h3>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24 }}>Alle Nachrichten werden unwiderruflich gelöscht.</p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setDeleteConfirm(null)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>

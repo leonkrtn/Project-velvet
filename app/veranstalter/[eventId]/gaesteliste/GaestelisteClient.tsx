@@ -90,7 +90,9 @@ function StarPicker({ value, onChange }: { value: number | null; onChange: (v: n
         <button
           key={n}
           type="button"
+          aria-label={`${n} ${n === 1 ? 'Stern' : 'Sterne'}`}
           onClick={() => onChange(value === n ? null : n)}
+          className="mob-touch"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: (value ?? 0) >= n ? '#f5a623' : 'var(--border)' }}
         >
           <Star size={18} fill={(value ?? 0) >= n ? '#f5a623' : 'none'} />
@@ -103,14 +105,20 @@ function StarPicker({ value, onChange }: { value: number | null; onChange: (v: n
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const titleId = React.useId()
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onClick={onClose}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={onClose}
+    >
       <div style={{ background: '#fff', borderRadius: 'var(--radius)', width: '100%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
         onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex' }}>
+          <h3 id={titleId} style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>{title}</h3>
+          <button onClick={onClose} aria-label="Schließen" className="mob-touch" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex' }}>
             <X size={16} />
           </button>
         </div>
@@ -246,10 +254,10 @@ function HotelTab({ eventId, initialHotels }: { eventId: string; initialHotels: 
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
                   <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{bookedRooms}/{totalRooms} belegt</span>
-                  <button onClick={e => { e.stopPropagation(); openHotel(hotel) }} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <button onClick={e => { e.stopPropagation(); openHotel(hotel) }} aria-label="Hotel bearbeiten" className="mob-touch" style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                     <Edit2 size={12} style={{ color: 'var(--text-secondary)' }} />
                   </button>
-                  <button onClick={e => { e.stopPropagation(); deleteHotel(hotel.id) }} style={{ background: 'none', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <button onClick={e => { e.stopPropagation(); deleteHotel(hotel.id) }} aria-label="Hotel löschen" className="mob-touch" style={{ background: 'none', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                     <Trash2 size={12} style={{ color: '#DC2626' }} />
                   </button>
                   {open ? <ChevronDown size={16} style={{ color: 'var(--text-secondary)' }} /> : <ChevronRight size={16} style={{ color: 'var(--text-secondary)' }} />}
@@ -283,10 +291,10 @@ function HotelTab({ eventId, initialHotels }: { eventId: string; initialHotels: 
                               </td>
                               <td style={{ padding: '10px 14px' }}>
                                 <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                                  <button onClick={() => openRoom(hotel.id, room)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                  <button onClick={() => openRoom(hotel.id, room)} aria-label="Zimmer bearbeiten" className="mob-touch" style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                                     <Edit2 size={12} style={{ color: 'var(--text-secondary)' }} />
                                   </button>
-                                  <button onClick={() => deleteRoom(hotel.id, room.id)} style={{ background: 'none', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                  <button onClick={() => deleteRoom(hotel.id, room.id)} aria-label="Zimmer löschen" className="mob-touch" style={{ background: 'none', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                                     <Trash2 size={12} style={{ color: '#DC2626' }} />
                                   </button>
                                 </div>
@@ -563,17 +571,23 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid var(--border)' }}>
+      <div role="tablist" style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid var(--border)' }}>
         {[
           { key: 'gaeste', label: 'Gästeliste' },
           { key: 'hotel', label: `Hotel (${initialHotels.length})` },
         ].map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key as 'gaeste' | 'hotel')} style={{
-            padding: '9px 18px', background: 'none', border: 'none', borderBottom: `2px solid ${activeTab === tab.key ? 'var(--accent)' : 'transparent'}`,
-            marginBottom: -2, fontSize: 13, fontWeight: activeTab === tab.key ? 700 : 400,
-            color: activeTab === tab.key ? 'var(--accent)' : 'var(--text-secondary)',
-            cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-          }}>
+          <button
+            key={tab.key}
+            role="tab"
+            aria-selected={activeTab === tab.key}
+            onClick={() => setActiveTab(tab.key as 'gaeste' | 'hotel')}
+            style={{
+              padding: '9px 18px', background: 'none', border: 'none', borderBottom: `2px solid ${activeTab === tab.key ? 'var(--accent)' : 'transparent'}`,
+              marginBottom: -2, fontSize: 13, fontWeight: activeTab === tab.key ? 700 : 400,
+              color: activeTab === tab.key ? 'var(--accent)' : 'var(--text-secondary)',
+              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+            }}
+          >
             {tab.label}
           </button>
         ))}
@@ -590,7 +604,8 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
           </div>
 
           <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px', padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ overflowX: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px', padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)', minWidth: 480 }}>
               {['Name', 'Seite', 'Menü', 'Allergien'].map(h => (
                 <span key={h} style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)' }}>{h}</span>
               ))}
@@ -601,7 +616,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
             {filtered.map(g => {
               const st = STATUS_STYLE[g.status] ?? STATUS_STYLE.angelegt
               return (
-                <div key={g.id} onClick={() => openEdit(g)} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px', padding: '12px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center', cursor: 'pointer', transition: 'background 0.1s' }}
+                <div key={g.id} onClick={() => openEdit(g)} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px', padding: '12px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center', cursor: 'pointer', transition: 'background 0.1s', minWidth: 480 }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#FAFAFA')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                   <div>
@@ -618,6 +633,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
                 </div>
               )
             })}
+            </div>{/* end overflow-x wrapper */}
           </div>
         </>
       )}

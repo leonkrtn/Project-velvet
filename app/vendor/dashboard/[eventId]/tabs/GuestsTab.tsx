@@ -97,7 +97,8 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
       )}
 
       {loading ? (
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflowX: 'auto', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ minWidth: 520 }}>
           {/* Header row — matches gridCols 1fr 100px 120px 160px 100px */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px 100px', padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)', gap: 12, alignItems: 'center' }}>
             {[70, 40, 50, 60, 40].map((w, i) => (
@@ -117,9 +118,11 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
               <div className="skeleton" style={{ height: 12, width: 65 }} />
             </div>
           ))}
+          </div>
         </div>
       ) : (
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflowX: 'auto', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ minWidth: 520 }}>
           {visibleCols.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: gridCols, padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)' }}>
               {visibleCols.map(c => (
@@ -161,6 +164,7 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
               </div>
             )
           })}
+          </div>
         </div>
       )}
     </div>

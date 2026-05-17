@@ -81,9 +81,9 @@ export default function MitarbeiterHub({
             </p>
           </div>
           <button
-            className="ma-logout-btn"
+            className="ma-logout-btn mob-touch"
             onClick={handleLogout}
-            title="Abmelden"
+            aria-label="Abmelden"
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px', flexShrink: 0,

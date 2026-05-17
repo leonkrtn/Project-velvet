@@ -173,7 +173,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
           {/* Profile avatar / icon */}
           <Link
             href={`/veranstalter/profil?from=${encodeURIComponent(pathname)}`}
-            title={userName ? `Profil: ${userName}` : 'Profil verwalten'}
+            aria-label={userName ? `Profil: ${userName}` : 'Profil verwalten'}
+            className="mob-touch"
             style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '7px 0', borderRadius: 8, textDecoration: 'none',
@@ -205,7 +206,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
           {/* Settings */}
           <Link
             href={`/veranstalter/konfiguration?from=${encodeURIComponent(pathname)}`}
-            title="Einstellungen"
+            aria-label="Einstellungen"
+            className="mob-touch"
             style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '7px 0', borderRadius: 8, textDecoration: 'none',
@@ -220,7 +222,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
           {/* Logout */}
           <button
             onClick={handleLogout}
-            title="Abmelden"
+            aria-label="Abmelden"
+            className="mob-touch"
             style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '7px 0', borderRadius: 8, border: 'none',
@@ -267,6 +270,9 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
         }}>
           <button
             onClick={() => setMobileOpen(true)}
+            aria-label="Menü öffnen"
+            aria-expanded={mobileOpen}
+            className="mob-touch"
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
           >
             <Menu size={20} />

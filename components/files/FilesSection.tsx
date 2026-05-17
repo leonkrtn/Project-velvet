@@ -178,7 +178,7 @@ function FileRow({
             <button
               onClick={() => toggleRole('brautpaar')}
               disabled={savingVisibility}
-              title={isBpVisible ? 'Brautpaar: sichtbar (klicken zum Ausblenden)' : 'Brautpaar: ausgeblendet (klicken zum Einblenden)'}
+              aria-label={isBpVisible ? 'Brautpaar: sichtbar (klicken zum Ausblenden)' : 'Brautpaar: ausgeblendet (klicken zum Einblenden)'}
               style={{
                 display: 'flex', alignItems: 'center', gap: 3,
                 padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 500,
@@ -194,7 +194,7 @@ function FileRow({
             <button
               onClick={() => toggleRole('dienstleister')}
               disabled={savingVisibility}
-              title={isDlVisible ? 'Dienstleister: sichtbar (klicken zum Ausblenden)' : 'Dienstleister: ausgeblendet (klicken zum Einblenden)'}
+              aria-label={isDlVisible ? 'Dienstleister: sichtbar (klicken zum Ausblenden)' : 'Dienstleister: ausgeblendet (klicken zum Einblenden)'}
               style={{
                 display: 'flex', alignItems: 'center', gap: 3,
                 padding: '2px 7px', borderRadius: 4, fontSize: 10, fontWeight: 500,
@@ -230,6 +230,8 @@ function FileRow({
           <button
             onClick={handleDelete}
             disabled={deleting}
+            aria-label="Datei löschen"
+            className="mob-touch"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: 32, height: 32, borderRadius: 6,
@@ -310,17 +312,21 @@ function UploadPanel({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h2 style={{ fontSize: 17, fontWeight: 600, margin: 0 }}>Datei hochladen</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4 }}>
+          <button onClick={onClose} aria-label="Schließen" className="mob-touch" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4 }}>
             <X size={18} />
           </button>
         </div>
 
         {/* Drop zone */}
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Datei auswählen oder hierher ziehen"
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={e => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files) }}
           onClick={() => inputRef.current?.click()}
+          onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && inputRef.current?.click()}
           style={{
             border: `2px dashed ${dragOver ? 'var(--accent, #6366f1)' : 'var(--border, #e5e5e5)'}`,
             borderRadius: 10, padding: '28px 20px', textAlign: 'center',

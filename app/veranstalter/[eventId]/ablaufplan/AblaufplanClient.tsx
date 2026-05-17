@@ -348,6 +348,7 @@ export default function AblaufplanClient({
         {!readOnly && role !== 'dienstleister' && (
           <button
             onClick={() => setModal({ entry: null, prefill: { startMinutes: currentDay.start_hour * 60, duration: 60 } })}
+            className="mob-touch"
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
           >
             <Plus size={14} /> Punkt hinzufügen
@@ -356,7 +357,7 @@ export default function AblaufplanClient({
       </div>
 
       {/* ── Day tabs ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, flexShrink: 0, flexWrap: 'wrap' }}>
+      <div role="tablist" aria-label="Tage" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, flexShrink: 0, flexWrap: 'wrap' }}>
         {days.map(day => (
           <div key={day.day_index} style={{ position: 'relative' }}>
             <div
@@ -369,7 +370,10 @@ export default function AblaufplanClient({
               }}
             >
               <button
+                role="tab"
+                aria-selected={activeDay === day.day_index}
                 onClick={() => setActiveDay(day.day_index)}
+                className="mob-touch"
                 style={{
                   padding: '6px 14px', border: 'none', background: 'transparent',
                   color: activeDay === day.day_index ? 'var(--accent)' : 'var(--text)',
@@ -386,7 +390,8 @@ export default function AblaufplanClient({
               {canManageDays && (
                 <button
                   onClick={e => { e.stopPropagation(); setPopover(p => p === day.day_index ? null : day.day_index) }}
-                  title="Tag konfigurieren"
+                  aria-label="Tag konfigurieren"
+                  className="mob-touch"
                   style={{
                     padding: '6px 8px', border: 'none', borderLeft: '1px solid var(--border)',
                     background: 'transparent', cursor: 'pointer', color: 'var(--text-tertiary)',
@@ -411,6 +416,7 @@ export default function AblaufplanClient({
         {canManageDays && (
           <button
             onClick={addDay}
+            className="mob-touch"
             style={{ padding: '6px 12px', border: '1.5px dashed var(--border)', borderRadius: 'var(--radius-sm)', background: 'transparent', color: 'var(--text-tertiary)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
           >
             <Plus size={12} /> Tag hinzufügen

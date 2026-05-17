@@ -70,9 +70,31 @@ body {
 * { -webkit-tap-highlight-color: transparent; }
 
 :focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: 2px;
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
   border-radius: 4px;
+}
+
+/* ── Responsive 2-column form grids (mobile-only: collapse to 1 col) ── */
+@media (max-width: 640px) {
+  .grid-2col {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Mobile touch targets (44px minimum, mobile-only) ── */
+@media (max-width: 767px) {
+  .mob-touch {
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  .mob-touch-flex {
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+  }
 }
 
 input, select, textarea, button {

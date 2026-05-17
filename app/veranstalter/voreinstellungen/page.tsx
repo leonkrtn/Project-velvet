@@ -144,11 +144,11 @@ if (loading) return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
           <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
             <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
             <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
           </div>
@@ -160,7 +160,7 @@ if (loading) return (
           <div className="skeleton" style={{ height: 13, width: 60 }} />
           <div className="skeleton" style={{ height: 22, width: 90, borderRadius: 6 }} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
           <div className="skeleton" style={{ height: 38, borderRadius: 8 }} />
         </div>
@@ -218,7 +218,7 @@ if (loading) return (
             <label style={labelStyle}>Bezeichnung / Saal</label>
             <input value={settings.location_name} onChange={e => patchSettings({ location_name: e.target.value })} placeholder="Festsaal West" style={inp} {...focusBorder} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Straße & Hausnummer</label>
               <input value={settings.location_street} onChange={e => patchSettings({ location_street: e.target.value })} placeholder="Musterstraße 1" style={inp} {...focusBorder} />
@@ -228,7 +228,7 @@ if (loading) return (
               <input value={settings.location_zip} onChange={e => patchSettings({ location_zip: e.target.value })} placeholder="12345" style={inp} {...focusBorder} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelStyle}>Stadt</label>
               <input value={settings.location_city} onChange={e => patchSettings({ location_city: e.target.value })} placeholder="Musterstadt" style={inp} {...focusBorder} />
@@ -247,7 +247,7 @@ if (loading) return (
           <p style={{ ...sectionTitle, marginBottom: 0 }}>Raum</p>
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-tertiary)', background: 'var(--border)', borderRadius: 6, padding: '3px 8px' }}>Bald verfügbar</span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div><label style={labelStyle}>Länge (m)</label><input disabled placeholder="12" style={inp} /></div>
           <div><label style={labelStyle}>Breite (m)</label><input disabled placeholder="8" style={inp} /></div>
         </div>

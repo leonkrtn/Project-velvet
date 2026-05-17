@@ -160,7 +160,7 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
             <button
               onClick={downloadAllPhotos}
               disabled={downloading}
-              title="Alle Fotos herunterladen"
+              aria-label="Alle Fotos herunterladen"
               style={{
                 display: 'flex', alignItems: 'center', gap: 5,
                 padding: '7px 12px', borderRadius: 'var(--radius-sm)',
@@ -203,7 +203,7 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
       {error && (
         <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,59,48,0.06)', border: '1px solid rgba(255,59,48,0.15)', color: '#FF3B30', fontSize: 13, marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
           {error}
-          <button onClick={() => setError(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#FF3B30' }}><X size={14} /></button>
+          <button onClick={() => setError(null)} aria-label="Fehler schließen" className="mob-touch" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#FF3B30' }}><X size={14} /></button>
         </div>
       )}
 
@@ -211,12 +211,16 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
         <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Wird geladen…</div>
       ) : photos.length === 0 ? (
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Foto hochladen"
           style={{
             background: 'var(--surface)', borderRadius: 'var(--radius)',
             border: '2px dashed var(--border)', padding: '40px 24px',
             textAlign: 'center', cursor: 'pointer',
           }}
           onClick={() => fileRef.current?.click()}
+          onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && fileRef.current?.click()}
         >
           <Images size={28} style={{ color: 'var(--text-tertiary)', marginBottom: 10 }} />
           <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Noch keine Fotos hochgeladen</p>
@@ -227,12 +231,16 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
           {photos.map(photo => (
             <div
               key={photo.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`Foto von ${photo.uploader_name ?? 'Unbekannt'} vergrößern`}
               style={{
                 position: 'relative', breakInside: 'avoid', marginBottom: 8,
                 borderRadius: 'var(--radius-sm)', overflow: 'hidden',
                 cursor: 'pointer', background: 'var(--border)',
               }}
               onClick={() => setLightbox(photo)}
+              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setLightbox(photo)}
             >
               {photo.url && (
                 <img
@@ -258,6 +266,8 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
                   {photo.can_delete && (
                     <button
                       onClick={e => { e.stopPropagation(); deletePhoto(photo) }}
+                      aria-label="Foto löschen"
+                      className="mob-touch"
                       style={{ background: 'rgba(255,59,48,0.85)', border: 'none', borderRadius: 4, padding: '3px 5px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                     >
                       <Trash2 size={11} color="#fff" />
@@ -296,6 +306,8 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
         >
           <button
             onClick={() => setLightbox(null)}
+            aria-label="Schließen"
+            className="mob-touch"
             style={{ position: 'absolute', top: 16, right: 20, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <X size={18} color="#fff" />
@@ -314,6 +326,7 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
             </p>
             <button
               onClick={e => { e.stopPropagation(); downloadSinglePhoto(lightbox, `foto-${lightbox.uploader_name ?? 'gast'}.jpg`) }}
+              aria-label="Foto herunterladen"
               style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: '#fff', fontSize: 12, fontFamily: 'inherit' }}
             >
               <Download size={13} /> Download

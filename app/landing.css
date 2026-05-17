@@ -90,6 +90,14 @@
 }
 .lp-nav-cta:hover { background: #8A6B28; transform: translateY(-1px); opacity: 1; }
 
+@media (max-width: 767px) {
+  .lp-nav-cta,
+  .lp-btn-primary,
+  .lp-btn-ghost {
+    min-height: 44px;
+  }
+}
+
 /* ─── HERO ─── */
 .lp-hero {
   position: relative;

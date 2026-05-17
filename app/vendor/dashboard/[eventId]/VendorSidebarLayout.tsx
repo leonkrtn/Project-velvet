@@ -188,6 +188,9 @@ export default function VendorSidebarLayout({ eventId, eventTitle, eventDate, ch
         }}>
           <button
             onClick={() => setMobileOpen(true)}
+            aria-label="Menü öffnen"
+            aria-expanded={mobileOpen}
+            className="mob-touch"
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
           >
             <Menu size={20} />

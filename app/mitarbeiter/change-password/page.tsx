@@ -60,10 +60,11 @@ export default function MitarbeiterChangePasswordPage() {
                 onChange={e => setPassword(e.target.value)}
                 required
                 minLength={8}
+                autoComplete="new-password"
                 style={{ width: '100%', padding: '10px 40px 10px 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 placeholder="Mindestens 8 Zeichen"
               />
-              <button type="button" onClick={() => setShowPw(v => !v)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex' }}>
+              <button type="button" onClick={() => setShowPw(v => !v)} aria-label={showPw ? 'Passwort verbergen' : 'Passwort anzeigen'} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex' }}>
                 {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
@@ -78,6 +79,7 @@ export default function MitarbeiterChangePasswordPage() {
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
               required
+              autoComplete="new-password"
               style={{ width: '100%', padding: '10px 12px', border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
               placeholder="Passwort wiederholen"
             />

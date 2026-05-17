@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useId } from 'react'
 import { X, Plus, Check, MapPin, Clock, Pencil, Trash2 } from 'lucide-react'
 import { CATEGORY_COLORS } from './DayCalendar'
 
@@ -283,6 +283,7 @@ export default function EventModal({
   }
 
   const catColor = CATEGORY_COLORS[form.category] ?? '#888'
+  const modalTitleId = useId()
 
   return (
     <div
@@ -290,12 +291,15 @@ export default function EventModal({
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={modalTitleId}
         style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', width: 520, maxWidth: '100%', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.25)' }}
         onMouseDown={e => e.stopPropagation()}
       >
         {/* ── Header ── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 0' }}>
-          <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px' }}>
+          <h3 id={modalTitleId} style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px' }}>
             {isCreate ? 'Neuer Ablaufpunkt' : canWrite ? 'Punkt bearbeiten' : 'Ablaufpunkt'}
           </h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -304,7 +308,8 @@ export default function EventModal({
               <button
                 type="button"
                 onClick={() => setEditMode(v => !v)}
-                title={editMode ? 'Bearbeitungsmodus beenden' : 'Checkliste bearbeiten'}
+                aria-label={editMode ? 'Bearbeitungsmodus beenden' : 'Checkliste bearbeiten'}
+                className="mob-touch"
                 style={{
                   padding: '5px 10px', fontSize: 12, borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border)',
@@ -322,13 +327,14 @@ export default function EventModal({
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
+                aria-label="Ablaufpunkt löschen"
+                className="mob-touch"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#FF3B30', display: 'flex', alignItems: 'center' }}
-                title="Ablaufpunkt löschen"
               >
                 <Trash2 size={15} />
               </button>
             )}
-            <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: 'var(--text-tertiary)', display: 'flex' }}>
+            <button type="button" onClick={onClose} aria-label="Schließen" className="mob-touch" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: 'var(--text-tertiary)', display: 'flex' }}>
               <X size={18} />
             </button>
           </div>
@@ -436,8 +442,12 @@ export default function EventModal({
             {checklist.map((item, i) => (
               <div
                 key={i}
+                role="button"
+                tabIndex={0}
+                aria-pressed={item.done}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7, cursor: 'pointer' }}
                 onClick={() => toggleItem(i)}
+                onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && toggleItem(i)}
               >
                 <div style={{
                   width: 17, height: 17, borderRadius: 4,
@@ -454,6 +464,8 @@ export default function EventModal({
                   <button
                     type="button"
                     onClick={e => { e.stopPropagation(); deleteItem(i) }}
+                    aria-label="Element löschen"
+                    className="mob-touch"
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: '#FF3B30', display: 'flex', alignItems: 'center', opacity: 0.7 }}
                     onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
                     onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}

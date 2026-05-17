@@ -143,6 +143,8 @@ export default function ProfilClient({ userId: _userId, initialName, initialEmai
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 10 }}>
         <button
           onClick={() => router.push(returnTo)}
+          aria-label="Zurück"
+          className="mob-touch"
           style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, fontFamily: 'inherit' }}
         >
           <ChevronLeft size={15} />
@@ -168,7 +170,7 @@ export default function ProfilClient({ userId: _userId, initialName, initialEmai
             <button
               onClick={() => fileRef.current?.click()}
               disabled={avatarSaving}
-              title="Foto ändern"
+              aria-label="Foto ändern"
               style={{ position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               {avatarSaving ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Camera size={13} color="var(--text-secondary)" />}
@@ -191,6 +193,7 @@ export default function ProfilClient({ userId: _userId, initialName, initialEmai
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="Vollständiger Name"
+            autoComplete="name"
             style={inputStyle}
           />
         </FormCard>
@@ -200,7 +203,7 @@ export default function ProfilClient({ userId: _userId, initialName, initialEmai
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '0 0 10px' }}>
             Nach der Änderung erhältst du eine Bestätigungsmail an die neue Adresse.
           </p>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEmail()} placeholder="neue@email.de" style={inputStyle} />
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && saveEmail()} placeholder="neue@email.de" autoComplete="email" style={inputStyle} />
           {emailError && <ErrorMsg msg={emailError} />}
           <ActionRow>
             <SaveButton onClick={saveEmail} saving={emailSaving} success={emailSuccess} label="E-Mail ändern" />
@@ -209,8 +212,8 @@ export default function ProfilClient({ userId: _userId, initialName, initialEmai
 
         {/* Password */}
         <FormCard icon={<Lock size={16} />} title="Passwort ändern">
-          <input type="password" value={password} onChange={e => { setPassword(e.target.value); setPasswordError(null) }} placeholder="Neues Passwort (min. 8 Zeichen)" style={{ ...inputStyle, marginBottom: 8 }} />
-          <input type="password" value={passwordConfirm} onChange={e => { setPasswordConfirm(e.target.value); setPasswordError(null) }} onKeyDown={e => e.key === 'Enter' && savePassword()} placeholder="Passwort bestätigen" style={inputStyle} />
+          <input type="password" value={password} onChange={e => { setPassword(e.target.value); setPasswordError(null) }} placeholder="Neues Passwort (min. 8 Zeichen)" autoComplete="new-password" style={{ ...inputStyle, marginBottom: 8 }} />
+          <input type="password" value={passwordConfirm} onChange={e => { setPasswordConfirm(e.target.value); setPasswordError(null) }} onKeyDown={e => e.key === 'Enter' && savePassword()} placeholder="Passwort bestätigen" autoComplete="new-password" style={inputStyle} />
           {passwordError && <ErrorMsg msg={passwordError} />}
           <ActionRow>
             <SaveButton onClick={savePassword} saving={passwordSaving} success={passwordSuccess} label="Passwort ändern" />

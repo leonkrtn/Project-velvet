@@ -269,6 +269,9 @@ export default function VeranstalterEventsPage() {
 
       {deleteConfirmId && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
           style={{
             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -284,7 +287,7 @@ export default function VeranstalterEventsPage() {
             onClick={e => e.stopPropagation()}
           >
             <div style={{ marginBottom: 18 }}>
-              <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>Event löschen?</p>
+              <p id="delete-dialog-title" style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)', margin: '0 0 8px' }}>Event löschen?</p>
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
                 <strong>{displayEventName(eventToDelete)}</strong> und alle zugehörigen Daten werden unwiderruflich gelöscht.
               </p>
@@ -332,7 +335,8 @@ export default function VeranstalterEventsPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <button
             onClick={async () => { const { createClient: cc } = await import('@/lib/supabase/client'); await cc().auth.signOut(); router.push('/login') }}
-            title="Abmelden"
+            aria-label="Abmelden"
+            className="mob-touch"
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '8px 14px',

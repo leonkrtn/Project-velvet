@@ -217,8 +217,14 @@ export default function LandingPage() {
 
   function toggleFaq(item: HTMLElement) {
     const isOpen = item.classList.contains('open')
-    document.querySelectorAll('.lp-faq-item.open').forEach(i => i.classList.remove('open'))
-    if (!isOpen) item.classList.add('open')
+    document.querySelectorAll('.lp-faq-item.open').forEach(i => {
+      i.classList.remove('open')
+      i.querySelector('.lp-faq-q')?.setAttribute('aria-expanded', 'false')
+    })
+    if (!isOpen) {
+      item.classList.add('open')
+      item.querySelector('.lp-faq-q')?.setAttribute('aria-expanded', 'true')
+    }
   }
 
   return (
@@ -499,13 +505,18 @@ export default function LandingPage() {
             { q: 'Was passiert, wenn wir Hilfe brauchen?', a: 'Über die Kommunikationsfunktion in eurem Dashboard könnt ihr jederzeit direkt mit eurem Veranstalter in Kontakt treten. Alle Nachrichten werden gespeichert und sind für beide Seiten nachlesbar. Schnell, einfach, stressfrei.' },
           ] as const).map(({ q, a }, i) => (
             <div key={i} className={`lp-faq-item lp-reveal${i > 0 ? ` lp-reveal-d${i}` : ''}`}>
-              <button className="lp-faq-q" onClick={e => toggleFaq((e.currentTarget as HTMLElement).parentElement as HTMLElement)}>
+              <button
+                className="lp-faq-q"
+                aria-expanded="false"
+                aria-controls={`lp-faq-a-${i}`}
+                onClick={e => toggleFaq((e.currentTarget as HTMLElement).parentElement as HTMLElement)}
+              >
                 {q}
                 <svg className="lp-faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M12 5v14M5 12h14"/>
                 </svg>
               </button>
-              <div className="lp-faq-a"><div className="lp-faq-a-inner">{a}</div></div>
+              <div id={`lp-faq-a-${i}`} className="lp-faq-a"><div className="lp-faq-a-inner">{a}</div></div>
             </div>
           ))}
         </div>

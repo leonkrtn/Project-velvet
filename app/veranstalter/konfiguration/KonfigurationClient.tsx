@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useId } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
@@ -110,7 +110,7 @@ function TemplateCard({
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', background: 'var(--surface)', gap: 10 }}>
-        <button onClick={() => setExpanded(e => !e)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-tertiary)' }}>
+        <button onClick={() => setExpanded(e => !e)} aria-expanded={expanded} aria-label={expanded ? 'Einklappen' : 'Aufklappen'} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-tertiary)' }}>
           {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
         </button>
         {editingName
@@ -120,8 +120,8 @@ function TemplateCard({
               style={{ ...dekoInp, flex: 1, height: 32 }} />
           : <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{template.name}</span>
         }
-        <button onClick={() => setEditingName(true)} style={dekoIconBtn}><Edit2 size={13} /></button>
-        <button onClick={onDelete} style={{ ...dekoIconBtn, color: '#E06C75' }}><Trash2 size={13} /></button>
+        <button onClick={() => setEditingName(true)} aria-label="Vorlage umbenennen" className="mob-touch" style={dekoIconBtn}><Edit2 size={13} /></button>
+        <button onClick={onDelete} aria-label="Vorlage löschen" className="mob-touch" style={{ ...dekoIconBtn, color: '#E06C75' }}><Trash2 size={13} /></button>
       </div>
 
       {expanded && (
@@ -137,7 +137,7 @@ function TemplateCard({
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
                 {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(fr.amount)}
               </span>
-              <button onClick={() => onDeleteFlatRate(fr.id)} style={{ ...dekoIconBtn, color: '#E06C75' }}><Trash2 size={12} /></button>
+              <button onClick={() => onDeleteFlatRate(fr.id)} aria-label="Pauschale löschen" className="mob-touch" style={{ ...dekoIconBtn, color: '#E06C75' }}><Trash2 size={12} /></button>
             </div>
           ))}
 
@@ -159,7 +159,7 @@ function TemplateCard({
                   }} style={{ padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
                     Hinzufügen
                   </button>
-                  <button onClick={() => setAddingFr(false)} style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
+                  <button onClick={() => setAddingFr(false)} aria-label="Abbrechen" className="mob-touch" style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
                     <X size={12} />
                   </button>
                 </div>
@@ -234,6 +234,10 @@ export default function KonfigurationClient() {
   /* ── Staff chat toggle ── */
   const [staffChatEnabled, setStaffChatEnabled] = useState(false)
   const [staffChatSaving, setStaffChatSaving] = useState(false)
+
+  const staffModalTitleId = useId()
+  const setupAuthTitleId = useId()
+  const deleteStaffTitleId = useId()
 
   /* ── Seating concepts ── */
   const [concepts, setConcepts] = useState<SeatingConcept[]>([])
@@ -536,9 +540,9 @@ export default function KonfigurationClient() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display:'inline-flex', background:'#EBEBEC', borderRadius:10, padding:3, marginBottom:28, gap:2 }}>
+      <div role="tablist" aria-label="Konfiguration" style={{ display:'inline-flex', background:'#EBEBEC', borderRadius:10, padding:3, marginBottom:28, gap:2 }}>
         {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{
+          <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} style={{
             padding:'7px 20px', border:'none', cursor:'pointer', fontSize:13, fontWeight:500,
             borderRadius:8, transition:'all 0.15s', fontFamily:'inherit',
             background: tab===t.key ? 'var(--surface)' : 'transparent',
@@ -618,8 +622,8 @@ export default function KonfigurationClient() {
                     <button onClick={() => setEditingConceptId(c.id)} style={{ padding: '5px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }}>
                       Konfigurieren
                     </button>
-                    <button onClick={() => { setRenamingConceptId(c.id); setRenameConceptDraft(c.name) }} style={{ ...dekoIconBtn }}><Edit2 size={13} /></button>
-                    <button onClick={() => deleteConcept(c.id)} style={{ ...dekoIconBtn, color: '#E06C75' }}><Trash2 size={13} /></button>
+                    <button onClick={() => { setRenamingConceptId(c.id); setRenameConceptDraft(c.name) }} aria-label="Konzept umbenennen" className="mob-touch" style={{ ...dekoIconBtn }}><Edit2 size={13} /></button>
+                    <button onClick={() => deleteConcept(c.id)} aria-label="Konzept löschen" className="mob-touch" style={{ ...dekoIconBtn, color: '#E06C75' }}><Trash2 size={13} /></button>
                   </div>
                 ))}
               </div>
@@ -637,7 +641,7 @@ export default function KonfigurationClient() {
                   <button onClick={createConcept} style={{ padding: '8px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
                     Erstellen
                   </button>
-                  <button onClick={() => setAddingConcept(false)} style={{ padding: '8px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
+                  <button onClick={() => setAddingConcept(false)} aria-label="Abbrechen" className="mob-touch" style={{ padding: '8px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
                     <X size={14} />
                   </button>
                 </div>
@@ -657,8 +661,8 @@ export default function KonfigurationClient() {
           {/* Delete staff confirm */}
           {deleteStaffId && (
             <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={() => !deletingStaff && setDeleteStaffId(null)}>
-              <div style={{ background:'#fff', borderRadius:'var(--radius)', padding:'28px 28px 24px', maxWidth:380, width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.18)' }} onClick={e=>e.stopPropagation()}>
-                <p style={{ fontSize:17, fontWeight:700, marginBottom:8 }}>Mitarbeiter löschen?</p>
+              <div role="dialog" aria-modal="true" aria-labelledby={deleteStaffTitleId} style={{ background:'#fff', borderRadius:'var(--radius)', padding:'28px 28px 24px', maxWidth:380, width:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.18)' }} onClick={e=>e.stopPropagation()}>
+                <p id={deleteStaffTitleId} style={{ fontSize:17, fontWeight:700, marginBottom:8 }}>Mitarbeiter löschen?</p>
                 <p style={{ fontSize:14, color:'var(--text-secondary)', marginBottom:20 }}>Diese Aktion kann nicht rückgängig gemacht werden.</p>
                 <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
                   <button onClick={() => setDeleteStaffId(null)} style={{ padding:'10px 18px', borderRadius:'var(--radius-sm)', border:'1px solid var(--border)', background:'none', cursor:'pointer', fontFamily:'inherit', fontSize:14 }}>Abbrechen</button>
@@ -735,14 +739,15 @@ export default function KonfigurationClient() {
                   <div style={{ display:'flex', gap:6, marginLeft:12 }}>
                     <button
                       onClick={() => { setSetupAuthStaffId(m.id); setSetupAuthPassword(''); setSetupAuthError(''); setSetupAuthSuccess(false) }}
-                      title={m.auth_user_id ? 'Passwort zurücksetzen' : 'Portal-Konto erstellen'}
+                      aria-label={m.auth_user_id ? 'Passwort zurücksetzen' : 'Portal-Konto erstellen'}
+                      className="mob-touch"
                       style={{ padding:'6px 10px', background: m.auth_user_id ? '#EFF6FF' : 'none', border:`1px solid ${m.auth_user_id ? '#BFDBFE' : 'var(--border)'}`, borderRadius:7, cursor:'pointer', color: m.auth_user_id ? '#1D4ED8' : 'var(--text-tertiary)', display:'flex', alignItems:'center', gap:4, fontSize:11, fontFamily:'inherit', fontWeight: m.auth_user_id ? 600 : 400 }}>
                       {m.auth_user_id ? '🔑 Konto' : '+ Konto'}
                     </button>
-                    <button onClick={() => openEditStaff(m)} style={{ padding:6, background:'none', border:'1px solid var(--border)', borderRadius:7, cursor:'pointer', color:'var(--text-tertiary)', display:'flex' }}>
+                    <button onClick={() => openEditStaff(m)} aria-label="Mitarbeiter bearbeiten" className="mob-touch" style={{ padding:6, background:'none', border:'1px solid var(--border)', borderRadius:7, cursor:'pointer', color:'var(--text-tertiary)', display:'flex' }}>
                       <Pencil size={13} />
                     </button>
-                    <button onClick={() => setDeleteStaffId(m.id)} style={{ padding:6, background:'none', border:'1px solid var(--border)', borderRadius:7, cursor:'pointer', color:'var(--text-tertiary)', display:'flex' }}>
+                    <button onClick={() => setDeleteStaffId(m.id)} aria-label="Mitarbeiter löschen" className="mob-touch" style={{ padding:6, background:'none', border:'1px solid var(--border)', borderRadius:7, cursor:'pointer', color:'var(--text-tertiary)', display:'flex' }}>
                       <Trash2 size={13} />
                     </button>
                   </div>
@@ -754,13 +759,13 @@ export default function KonfigurationClient() {
           {/* Staff modal */}
           {showStaffModal && (
             <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={closeStaffModal}>
-              <div style={{ background:'var(--surface)', borderRadius:'var(--radius)', padding:28, width:480, maxWidth:'100%', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.15)' }} onClick={e=>e.stopPropagation()}>
+              <div role="dialog" aria-modal="true" aria-labelledby={staffModalTitleId} style={{ background:'var(--surface)', borderRadius:'var(--radius)', padding:28, width:480, maxWidth:'100%', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.15)' }} onClick={e=>e.stopPropagation()}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-                  <h3 style={{ fontSize:18, fontWeight:700, letterSpacing:'-0.3px' }}>{editingStaff?'Mitarbeiter bearbeiten':'Mitarbeiter hinzufügen'}</h3>
-                  <button onClick={closeStaffModal} style={{ background:'none', border:'none', cursor:'pointer', padding:4, display:'flex', color:'var(--text-tertiary)' }}><X size={18}/></button>
+                  <h3 id={staffModalTitleId} style={{ fontSize:18, fontWeight:700, letterSpacing:'-0.3px' }}>{editingStaff?'Mitarbeiter bearbeiten':'Mitarbeiter hinzufügen'}</h3>
+                  <button onClick={closeStaffModal} aria-label="Schließen" className="mob-touch" style={{ background:'none', border:'none', cursor:'pointer', padding:4, display:'flex', color:'var(--text-tertiary)' }}><X size={18}/></button>
                 </div>
 
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+                <div className="grid-2col" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
                   <div><label style={label12}>Name *</label><input style={inp} value={staffForm.name} onChange={e=>setStaffForm(f=>({...f,name:e.target.value}))} placeholder="Max Mustermann" /></div>
                   <div>
                     <label style={label12}>Funktion</label>
@@ -770,7 +775,7 @@ export default function KonfigurationClient() {
                     </select>
                   </div>
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+                <div className="grid-2col" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
                   <div><label style={label12}>E-Mail</label><input type="email" style={inp} value={staffForm.email??''} onChange={e=>setStaffForm(f=>({...f,email:e.target.value}))} /></div>
                   <div><label style={label12}>Telefon</label><input style={inp} value={staffForm.phone??''} onChange={e=>setStaffForm(f=>({...f,phone:e.target.value}))} /></div>
                 </div>
@@ -809,13 +814,13 @@ export default function KonfigurationClient() {
           if (!m) return null
           return (
             <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }} onClick={() => setSetupAuthStaffId(null)}>
-              <div style={{ background:'var(--surface)', borderRadius:'var(--radius)', padding:28, width:380, maxWidth:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.15)' }} onClick={e=>e.stopPropagation()}>
+              <div role="dialog" aria-modal="true" aria-labelledby={setupAuthTitleId} style={{ background:'var(--surface)', borderRadius:'var(--radius)', padding:28, width:380, maxWidth:'100%', boxShadow:'0 20px 60px rgba(0,0,0,0.15)' }} onClick={e=>e.stopPropagation()}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
                   <div>
-                    <h3 style={{ fontSize:16, fontWeight:700, margin:'0 0 2px' }}>{m.auth_user_id ? 'Passwort zurücksetzen' : 'Portal-Konto erstellen'}</h3>
+                    <h3 id={setupAuthTitleId} style={{ fontSize:16, fontWeight:700, margin:'0 0 2px' }}>{m.auth_user_id ? 'Passwort zurücksetzen' : 'Portal-Konto erstellen'}</h3>
                     <p style={{ fontSize:12, color:'var(--text-tertiary)', margin:0 }}>{m.name} · {m.email ?? 'Keine E-Mail'}</p>
                   </div>
-                  <button onClick={() => setSetupAuthStaffId(null)} style={{ background:'none', border:'none', cursor:'pointer', padding:4, display:'flex', color:'var(--text-tertiary)' }}><X size={16}/></button>
+                  <button onClick={() => setSetupAuthStaffId(null)} aria-label="Schließen" className="mob-touch" style={{ background:'none', border:'none', cursor:'pointer', padding:4, display:'flex', color:'var(--text-tertiary)' }}><X size={16}/></button>
                 </div>
                 {!m.email && (
                   <p style={{ fontSize:13, color:'#EF4444', marginBottom:12 }}>Dieser Mitarbeiter hat keine E-Mail-Adresse hinterlegt. Bitte zuerst bearbeiten.</p>
@@ -861,11 +866,11 @@ export default function KonfigurationClient() {
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
               <div><label style={label12}>Location Name</label><input value={settings.venue} onChange={e=>setSettings(s=>({...s,venue:e.target.value}))} placeholder="Schloss Lichtenberg" style={inp} /></div>
               <div><label style={label12}>Bezeichnung / Saal</label><input value={settings.location_name} onChange={e=>setSettings(s=>({...s,location_name:e.target.value}))} placeholder="Festsaal West" style={inp} /></div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <div className="grid-2col" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                 <div><label style={label12}>Straße & Hausnummer</label><input value={settings.location_street} onChange={e=>setSettings(s=>({...s,location_street:e.target.value}))} placeholder="Musterstraße 1" style={inp} /></div>
                 <div><label style={label12}>PLZ</label><input value={settings.location_zip} onChange={e=>setSettings(s=>({...s,location_zip:e.target.value}))} placeholder="12345" style={inp} /></div>
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <div className="grid-2col" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                 <div><label style={label12}>Stadt</label><input value={settings.location_city} onChange={e=>setSettings(s=>({...s,location_city:e.target.value}))} placeholder="Musterstadt" style={inp} /></div>
                 <div><label style={label12}>Website</label><input value={settings.location_website} onChange={e=>setSettings(s=>({...s,location_website:e.target.value}))} placeholder="https://location.de" style={inp} /></div>
               </div>
@@ -960,7 +965,7 @@ export default function KonfigurationClient() {
                   <button onClick={createTemplate} style={{ padding: '8px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
                     Erstellen
                   </button>
-                  <button onClick={() => setAddingTemplate(false)} style={{ padding: '8px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
+                  <button onClick={() => setAddingTemplate(false)} aria-label="Abbrechen" className="mob-touch" style={{ padding: '8px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
                     <X size={14} />
                   </button>
                 </div>

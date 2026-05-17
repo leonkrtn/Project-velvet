@@ -592,6 +592,14 @@
   font-size: 0.875rem;
 }
 
+@media (max-width: 767px) {
+  .bp-btn,
+  .bp-btn-sm,
+  .bp-btn-icon {
+    min-height: 44px;
+  }
+}
+
 .bp-btn-lg {
   height: 48px;
   padding: 0 1.75rem;

@@ -208,8 +208,8 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
         <button
           className="bp-sidebar-toggle"
           onClick={e => { e.stopPropagation(); toggleExpanded() }}
+          aria-expanded={expanded}
           aria-label={expanded ? 'Sidebar zuklappen' : 'Sidebar aufklappen'}
-          title={expanded ? 'Zuklappen' : 'Aufklappen'}
         >
           <ChevronRight />
         </button>

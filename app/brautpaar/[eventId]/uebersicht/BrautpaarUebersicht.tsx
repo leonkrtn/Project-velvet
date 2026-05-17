@@ -135,12 +135,6 @@ export default function BrautpaarUebersicht({
                 color: 'var(--bp-ink-2)',
                 transition: 'background var(--bp-transition), box-shadow var(--bp-transition)',
               }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.background = 'var(--bp-ivory)'
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.background = ''
-              }}
             >
               <span style={{ color: 'var(--bp-gold)', flexShrink: 0 }}>{mod.icon}</span>
               <span style={{ fontSize: '0.9375rem', fontWeight: 500 }}>{mod.label}</span>

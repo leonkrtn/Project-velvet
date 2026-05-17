@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useId } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -154,6 +154,10 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
 
   // Info lightbox
   const [infoMemberId, setInfoMemberId] = useState<string | null>(null)
+
+  const inviteModalTitleId = useId()
+  const infoLightboxTitleId = useId()
+  const removeConfirmTitleId = useId()
 
   const bpMembers = members.filter(m => m.role === 'brautpaar')
   const dlMembers = members.filter(m => m.role === 'dienstleister')
@@ -356,7 +360,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     const statusCfg = INVITE_STATUS_CFG[m.invite_status ?? 'invited'] ?? INVITE_STATUS_CFG.invited
     return (
       <div key={m.id} style={{ borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 40px', gap: 0, padding: '14px 20px', alignItems: 'center', cursor: 'pointer' }} onClick={() => toggle(m.id)}>
+        <div role="button" tabIndex={0} aria-expanded={isOpen} style={{ display: 'grid', gridTemplateColumns: '40px 1fr 40px', gap: 0, padding: '14px 20px', alignItems: 'center', cursor: 'pointer' }} onClick={() => toggle(m.id)} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && toggle(m.id)}>
           <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
             {initials(displayName)}
           </div>
@@ -401,7 +405,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     return (
       <div key={m.id} style={{ borderBottom: '1px solid var(--border)' }}>
         {/* Row header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 40px', gap: 0, padding: '14px 20px', alignItems: 'center', cursor: 'pointer' }} onClick={() => toggle(m.id)}>
+        <div role="button" tabIndex={0} aria-expanded={isOpen} style={{ display: 'grid', gridTemplateColumns: '40px 1fr 40px', gap: 0, padding: '14px 20px', alignItems: 'center', cursor: 'pointer' }} onClick={() => toggle(m.id)} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && toggle(m.id)}>
           <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#F0F0F5', color: '#666', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
             {initials(displayName)}
           </div>
@@ -641,9 +645,9 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
       {/* ── Invite Modal ── */}
       {showInviteModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => modalStep === 'code' ? closeModal() : undefined}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 28, width: 460, maxWidth: '100%', boxShadow: 'var(--shadow-md)', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-labelledby={inviteModalTitleId} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 28, width: 460, maxWidth: '100%', boxShadow: 'var(--shadow-md)', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ marginBottom: 20 }}>
-              <h3 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 0 }}>{STEP_TITLES[modalStep]}</h3>
+              <h3 id={inviteModalTitleId} style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 0 }}>{STEP_TITLES[modalStep]}</h3>
               {showStepIndicator && (
                 <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
                   {DL_STEPS.map((s, i) => (
@@ -662,7 +666,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
       {/* ── Info Lightbox ── */}
       {infoMember && infoVendor && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setInfoMemberId(null)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', width: 500, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-md)' }} onClick={e => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-labelledby={infoLightboxTitleId} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', width: 500, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--shadow-md)' }} onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -670,7 +674,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
                   {initials(infoVendor.name ?? infoMember.profiles?.name ?? '?')}
                 </div>
                 <div>
-                  <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px' }}>
+                  <div id={infoLightboxTitleId} style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px' }}>
                     {infoVendor.name ?? infoMember.profiles?.name ?? 'Unbekannt'}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>
@@ -678,7 +682,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
                   </div>
                 </div>
               </div>
-              <button onClick={() => setInfoMemberId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', marginLeft: 12 }}>
+              <button onClick={() => setInfoMemberId(null)} aria-label="Schließen" className="mob-touch" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', marginLeft: 12 }}>
                 <X size={18} />
               </button>
             </div>
@@ -744,8 +748,8 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
       {/* ── Remove Confirm ── */}
       {removeConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setRemoveConfirm(null)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 28, width: 380, maxWidth: '100%', boxShadow: 'var(--shadow-md)' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 12 }}>Mitglied entfernen?</h3>
+          <div role="dialog" aria-modal="true" aria-labelledby={removeConfirmTitleId} style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: 28, width: 380, maxWidth: '100%', boxShadow: 'var(--shadow-md)' }} onClick={e => e.stopPropagation()}>
+            <h3 id={removeConfirmTitleId} style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', marginBottom: 12 }}>Mitglied entfernen?</h3>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24 }}>Diese Person verliert den Zugang zum Event. Diese Aktion kann nicht rückgängig gemacht werden.</p>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setRemoveConfirm(null)} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>

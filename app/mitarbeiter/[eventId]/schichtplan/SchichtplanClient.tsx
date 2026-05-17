@@ -515,7 +515,7 @@ export default function SchichtplanClient({
                 border: '1px solid #E5E7EB', color: '#6B7280', textDecoration: 'none',
                 flexShrink: 0,
               }}
-              title="Zurück zur Übersicht"
+              aria-label="Zurück zur Übersicht"
             >
               <ArrowLeft size={15} />
             </a>
@@ -743,16 +743,16 @@ export default function SchichtplanClient({
       </div>
 
       {/* ── Bottom Nav ── */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #E5E7EB', display: 'flex', zIndex: 30, boxShadow: '0 -2px 10px rgba(0,0,0,0.06)' }}>
-        <button onClick={() => setActiveTab('schicht')} style={tabBtnStyle(activeTab === 'schicht')}>
+      <div role="tablist" aria-label="Navigation" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #E5E7EB', display: 'flex', zIndex: 30, boxShadow: '0 -2px 10px rgba(0,0,0,0.06)' }}>
+        <button role="tab" aria-selected={activeTab === 'schicht'} onClick={() => setActiveTab('schicht')} style={tabBtnStyle(activeTab === 'schicht')}>
           <Clock size={18} />
           <span>Mein Plan</span>
         </button>
-        <button onClick={() => setActiveTab('team')} style={tabBtnStyle(activeTab === 'team')}>
+        <button role="tab" aria-selected={activeTab === 'team'} onClick={() => setActiveTab('team')} style={tabBtnStyle(activeTab === 'team')}>
           <Users size={18} />
           <span>Team</span>
         </button>
-        <button onClick={() => setActiveTab('chat')} style={tabBtnStyle(false)}>
+        <button role="tab" aria-selected={false} onClick={() => setActiveTab('chat')} style={tabBtnStyle(false)}>
           <MessageSquare size={18} />
           <span>Chat</span>
         </button>
@@ -762,10 +762,10 @@ export default function SchichtplanClient({
       {swapModalShift && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           onClick={e => { if (e.target === e.currentTarget) setSwapModalShift(null) }}>
-          <div style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: 540 }}>
+          <div role="dialog" aria-modal="true" aria-label="Tausch beantragen" style={{ background: '#fff', borderRadius: '16px 16px 0 0', padding: '24px 20px 32px', width: '100%', maxWidth: 540 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Tausch beantragen</h3>
-              <button onClick={() => setSwapModalShift(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={18} /></button>
+              <button onClick={() => setSwapModalShift(null)} aria-label="Schließen" className="mob-touch" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF' }}><X size={18} /></button>
             </div>
             <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
               Schicht: <strong>{swapModalShift.task}</strong> · {fmtHour(swapModalShift.start_hour)}–{fmtHour(swapModalShift.end_hour)}
