@@ -10,9 +10,13 @@ import {
 import type { PdfEventData, PdfMode, PdfSection } from '@/components/pdf/PdfTypes'
 
 // Lazy-load PDF components — browser only, ssr: false keeps them out of the
-// server bundle entirely (avoiding the StyleSheet.create circular-dep crash)
+// server bundle entirely (avoiding the StyleSheet.create circular-dep crash).
+// BlobProvider is loaded via a thin wrapper (PdfBlobProvider) that also calls
+// Font.registerHyphenationCallback in the same module-init, ensuring the
+// hyphenation callback is set before @react-pdf's text-layout chunk captures
+// its internal `re` reference (see components/pdf/PdfBlobProvider.ts).
 const BlobProvider = dynamic(
-  () => import('@react-pdf/renderer').then(m => ({ default: m.BlobProvider })),
+  () => import('@/components/pdf/PdfBlobProvider').then(m => ({ default: m.BlobProvider })),
   { ssr: false },
 )
 const VelvetPdfDocument = dynamic(
