@@ -23,12 +23,18 @@ export default async function BrautpaarDateienPage({ params }: Props) {
   }
 
   return (
-    <FilesSection
-      eventId={eventId}
-      canUpload={member.role === 'brautpaar' || member.role === 'veranstalter'}
-      userId={user.id}
-      isVeranstalter={member.role === 'veranstalter'}
-      userRole={member.role}
-    />
+    <div className="bp-page">
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px', margin: '0 0 4px', color: 'var(--bp-ink-1)' }}>Dateien</h1>
+        <p style={{ fontSize: 14, color: 'var(--bp-ink-3)', margin: 0 }}>Dokumente und Dateien für euer Event.</p>
+      </div>
+      <FilesSection
+        eventId={eventId}
+        canUpload={member.role === 'brautpaar' || member.role === 'veranstalter'}
+        userId={user.id}
+        isVeranstalter={member.role === 'veranstalter'}
+        userRole={member.role}
+      />
+    </div>
   )
 }

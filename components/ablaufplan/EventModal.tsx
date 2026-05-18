@@ -50,6 +50,7 @@ interface FormState {
   location: string
   start_minutes: string   // "HH:MM" string
   duration_minutes: number
+  open_end: boolean
   category: Category
   day_index: number
 }
@@ -149,6 +150,7 @@ export default function EventModal({
     location:         entry?.location         ?? '',
     start_minutes:    minutesToTime(entry?.start_minutes ?? prefill?.startMinutes),
     duration_minutes: entry?.duration_minutes ?? prefill?.duration ?? 60,
+    open_end:         entry?.duration_minutes == null && !!entry,
     category:         (entry?.category as Category) ?? 'Feier',
     day_index:        entry?.day_index ?? activeDay,
   }))
@@ -261,7 +263,7 @@ export default function EventModal({
       title:            form.title || null,
       location:         form.location || null,
       start_minutes:    startMin,
-      duration_minutes: form.duration_minutes,
+      duration_minutes: form.open_end ? null : form.duration_minutes,
       category:         form.category,
       day_index:        form.day_index,
       sort_order:       startMin ?? 9999,
@@ -392,14 +394,50 @@ export default function EventModal({
               </div>
             </div>
             <div>
-              <label style={labelSt}>Dauer (Minuten)</label>
-              <input
-                type="number" min={5} step={5}
-                style={inputSt}
-                value={form.duration_minutes}
-                onChange={e => setForm(f => ({ ...f, duration_minutes: parseInt(e.target.value) || 60 }))}
-                disabled={!canWrite}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                <label style={{ ...labelSt, marginBottom: 0 }}>Dauer (Minuten)</label>
+                {canWrite && (
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, open_end: !f.open_end }))}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                      background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                      color: form.open_end ? 'var(--accent)' : 'var(--text-tertiary)',
+                    }}
+                  >
+                    <span style={{
+                      width: 28, height: 16, borderRadius: 8, position: 'relative', flexShrink: 0, display: 'inline-block',
+                      background: form.open_end ? 'var(--accent)' : 'var(--border)',
+                      transition: 'background 0.15s',
+                    }}>
+                      <span style={{
+                        position: 'absolute', top: 2, left: form.open_end ? 14 : 2,
+                        width: 12, height: 12, borderRadius: '50%', background: '#fff',
+                        transition: 'left 0.15s',
+                      }} />
+                    </span>
+                    Open End
+                  </button>
+                )}
+              </div>
+              {form.open_end ? (
+                <input
+                  style={{ ...inputSt, color: 'var(--text-tertiary)', background: 'var(--surface)' }}
+                  value="–:–"
+                  disabled
+                  readOnly
+                />
+              ) : (
+                <input
+                  type="number" min={5} step={5}
+                  style={inputSt}
+                  value={form.duration_minutes}
+                  onChange={e => setForm(f => ({ ...f, duration_minutes: parseInt(e.target.value) || 60 }))}
+                  disabled={!canWrite}
+                />
+              )}
             </div>
           </div>
 

@@ -37,6 +37,7 @@ type WizardData = {
   childrenNote: string
   maxBegleitpersonen: number
   mealOptions: string[]
+  event_type: 'hochzeit' | 'firmenevent' | 'intern'
 }
 
 const DEFAULT_WIZARD: WizardData = {
@@ -45,7 +46,14 @@ const DEFAULT_WIZARD: WizardData = {
   childrenAllowed: true, childrenNote: '',
   maxBegleitpersonen: 2,
   mealOptions: ['fleisch', 'fisch', 'vegetarisch', 'vegan'],
+  event_type: 'hochzeit',
 }
+
+const EVENT_TYPE_OPTIONS: { value: 'hochzeit' | 'firmenevent' | 'intern'; label: string; disabled: boolean }[] = [
+  { value: 'hochzeit',    label: 'Hochzeit',    disabled: false },
+  { value: 'firmenevent', label: 'Firmenevent', disabled: true },
+  { value: 'intern',      label: 'Intern',      disabled: true },
+]
 
 const ALL_MEALS = ['fleisch', 'fisch', 'vegetarisch', 'vegan']
 
@@ -203,6 +211,11 @@ export default function VeranstalterEventsPage() {
       })
       if (error) throw error
       const newId = data as string
+
+      // Set event_type (RPC doesn't accept it yet)
+      if (wizardData.event_type !== 'hochzeit') {
+        await supabase.from('events').update({ event_type: wizardData.event_type }).eq('id', newId)
+      }
 
 
       const newEvent: EventSummary = {
@@ -421,6 +434,42 @@ export default function VeranstalterEventsPage() {
           {wizardStep === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Event-Grunddaten</h2>
+
+              {/* Event-Typ */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 8 }}>
+                  Event-Typ
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {EVENT_TYPE_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={opt.disabled}
+                      onClick={() => !opt.disabled && updateWizard({ event_type: opt.value })}
+                      style={{
+                        flex: 1, padding: '10px 8px', borderRadius: 'var(--radius-sm)',
+                        border: `1.5px solid ${wizardData.event_type === opt.value ? 'var(--accent)' : 'var(--border)'}`,
+                        background: wizardData.event_type === opt.value ? 'rgba(var(--accent-rgb,183,139,74),0.08)' : '#fff',
+                        color: opt.disabled ? 'var(--text-tertiary)' : wizardData.event_type === opt.value ? 'var(--accent)' : 'var(--text)',
+                        fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+                        cursor: opt.disabled ? 'not-allowed' : 'pointer',
+                        opacity: opt.disabled ? 0.45 : 1,
+                        transition: 'border-color 0.15s, background 0.15s',
+                        position: 'relative',
+                      }}
+                    >
+                      {opt.label}
+                      {opt.disabled && (
+                        <span style={{ display: 'block', fontSize: 9, fontWeight: 400, color: 'var(--text-tertiary)', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Bald verfügbar
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 6 }}>
                   Eventname <span style={{ color: 'var(--accent)' }}>*</span>

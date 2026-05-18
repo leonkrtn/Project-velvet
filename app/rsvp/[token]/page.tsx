@@ -264,7 +264,16 @@ export default function RSVPPage() {
           respondedAt: g.respondedAt ?? undefined,
           begleitpersonen: g.begleitpersonen ?? [],
         } as Guest)
-        setWishlist(data.wishlist ?? [])
+        const wishes: WishlistItem[] = data.wishlist ?? []
+        setWishlist(wishes)
+        // Pre-fill contribution amounts from money_target when no prior contribution exists
+        const prefilled: Record<string, string> = {}
+        for (const w of wishes) {
+          if (w.is_money_wish && w.money_target && w.my_contribution === 0) {
+            prefilled[w.id] = w.money_target.toFixed(2)
+          }
+        }
+        if (Object.keys(prefilled).length > 0) setContributeAmounts(prefilled)
         if (g.status !== 'eingeladen' && g.status !== 'angelegt') {
           setAttending(g.status === 'zugesagt')
           setTrinkAlkohol(g.trinkAlkohol ?? undefined)
@@ -1090,18 +1099,47 @@ export default function RSVPPage() {
         {step === 'confirmation' && (
           <div style={{ animation: 'fadeUp 0.5s ease' }}>
 
-            {/* Status header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-              <div style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0, background: attending ? 'rgba(201,168,76,0.12)' : 'var(--black3)', border: `1px solid ${attending ? 'rgba(201,168,76,0.25)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: attending ? 'var(--gold)' : 'var(--grey3)' }}>
-                {attending ? <CheckCircle size={20} /> : <XCircle size={20} />}
+            {/* Success banner */}
+            <div style={{
+              background: attending ? 'rgba(201,168,76,0.08)' : 'rgba(0,0,0,0.04)',
+              border: `1.5px solid ${attending ? 'rgba(201,168,76,0.3)' : 'var(--border)'}`,
+              borderRadius: 'var(--r-md)', padding: '18px 20px', marginBottom: 20,
+              display: 'flex', alignItems: 'flex-start', gap: 14,
+            }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+                background: attending ? 'rgba(201,168,76,0.15)' : 'var(--black3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: attending ? 'var(--gold)' : 'var(--grey3)',
+              }}>
+                {attending ? <CheckCircle size={22} /> : <XCircle size={22} />}
               </div>
               <div>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: attending ? 'var(--gold)' : 'var(--text-dim)', marginBottom: 3 }}>
-                  {attending ? 'Zusage bestätigt' : 'Absage übermittelt'}
+                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: attending ? 'var(--gold)' : 'var(--text-dim)', marginBottom: 4 }}>
+                  {attending ? 'Alle Angaben erfolgreich übermittelt' : 'Absage übermittelt'}
                 </p>
-                <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 400, color: 'var(--text)', lineHeight: 1.2 }}>
+                <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 400, color: 'var(--text)', lineHeight: 1.25, marginBottom: 8 }}>
                   {attending ? 'Danke für deine Zusage!' : 'Schade, dass du nicht kommen kannst.'}
                 </h2>
+                {attending && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {[
+                      { key: 'rsvp', label: 'Teilnahme & Menü' },
+                      suggestedSongs.length > 0 && { key: 'musik', label: `${suggestedSongs.length} Musikwunsch${suggestedSongs.length > 1 ? '…e' : ''}` },
+                      companions.length > 0 && { key: 'begleitung', label: `${companions.length} Begleitperson${companions.length > 1 ? 'en' : ''}` },
+                      hotelRoomId && hotelRoomId !== 'none' && { key: 'hotel', label: 'Hotelzimmer' },
+                    ].filter(Boolean).map((item: any) => (
+                      <span key={item.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-mid)' }}>
+                        <CheckCircle size={11} color="var(--gold)" style={{ flexShrink: 0 }} />
+                        {item.label} gespeichert
+                      </span>
+                    ))}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-mid)' }}>
+                      <CheckCircle size={11} color="var(--gold)" style={{ flexShrink: 0 }} />
+                      Angaben beim Brautpaar eingegangen
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

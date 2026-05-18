@@ -79,10 +79,10 @@ type Tab = 'gaesteliste' | 'geschenke' | 'hotel' | 'rsvp' | 'einstellungen'
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: 'gaesteliste',   label: 'Gästeliste',         icon: <Users size={15} /> },
-  { key: 'rsvp',          label: 'Einladungen',         icon: <Mail size={15} /> },
   { key: 'geschenke',     label: 'Geschenkliste',       icon: <Gift size={15} /> },
   { key: 'hotel',         label: 'Hotel',               icon: <HotelIcon size={15} /> },
   { key: 'einstellungen', label: 'Gäste-Einstellungen', icon: <Settings size={15} /> },
+  { key: 'rsvp',          label: 'Einladungen',         icon: <Mail size={15} /> },
 ]
 
 // ── Attending badge ───────────────────────────────────────────────────────────
