@@ -5,6 +5,13 @@
 
 ---
 
+## UI Conventions
+
+- **No emojis** — use Lucide React icons everywhere instead (already a dependency)
+- Icons are the only decorative elements in UI; never use emoji as icons, bullets, or decorations
+
+---
+
 ## Stack
 
 | Layer | Technology |

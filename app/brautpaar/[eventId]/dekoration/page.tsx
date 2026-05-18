@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DekoPageClient from '@/components/deko/DekoPageClient'
 import type { DekoArea, DekoCanvas, DekoItem, DekoCatalogItem, DekoFlatRate } from '@/lib/deko/types'
+import { Monitor } from 'lucide-react'
 
 interface Props { params: Promise<{ eventId: string }> }
 
@@ -52,7 +53,9 @@ export default async function BrautpaarDekorationPage({ params }: Props) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Mobile notice — shown below 900px via CSS */}
       <div className="bp-below-desktop bp-page" style={{ textAlign: 'center', paddingTop: '3rem' }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>💻</div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+          <Monitor size={40} style={{ color: 'var(--bp-ink-3)' }} />
+        </div>
         <h2 className="bp-h2" style={{ marginBottom: '0.5rem' }}>Nur auf dem Desktop verfügbar</h2>
         <p className="bp-body">Die Dekoration kann nur auf einem größeren Bildschirm bearbeitet werden. Bitte öffne diese Seite auf einem Laptop oder Tablet.</p>
       </div>

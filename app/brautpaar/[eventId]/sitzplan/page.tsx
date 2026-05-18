@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { Monitor } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { RaumPoint, RaumElement, RaumTablePool } from '@/components/room/RaumKonfigurator'
 
@@ -47,7 +48,7 @@ function MobileSitzplanView({ data }: { data: { tables: SitzTable[], assignments
         borderRadius: 'var(--bp-r-md)', padding: '0.875rem 1rem', marginBottom: '1.5rem',
         display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
       }}>
-        <span style={{ fontSize: '1rem' }}>💻</span>
+        <Monitor size={16} style={{ color: 'var(--bp-gold-deep)', flexShrink: 0, marginTop: 2 }} />
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--bp-gold-deep)', lineHeight: 1.5 }}>
           Der interaktive Sitzplan ist nur auf größeren Bildschirmen verfügbar. Hier siehst du eine Übersicht der Tischbelegung.
         </p>
