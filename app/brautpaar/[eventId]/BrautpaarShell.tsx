@@ -321,7 +321,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
               <span />
             </button>
             <span className="bp-font-wordmark" style={{ fontSize: '1rem', color: 'var(--bp-ink)' }}>
-              Velvet
+              {eventTitle}
             </span>
             <div style={{ width: 36 }} />
           </header>
