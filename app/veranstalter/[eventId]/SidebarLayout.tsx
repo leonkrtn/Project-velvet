@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Settings, Users, MessageSquare,
   Calendar, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
   Music2, Flower2, Camera, FolderOpen, LogOut, UserCircle, SlidersHorizontal,
+  FileDown,
 } from 'lucide-react'
 
 interface Props {
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
   { key: 'personalplanung', label: 'Personalplanung',   icon: UserCog },
   { key: 'dateien',         label: 'Dateien',           icon: FolderOpen },
+  { key: 'pdf-export',     label: 'PDF-Export',        icon: FileDown },
 ]
 
 function initials(name: string) {
@@ -59,7 +61,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
 
   const isChats = pathname === `${base}/chats` || pathname.startsWith(`${base}/chats/`)
   const isDeko = pathname === `${base}/dekoration` || pathname.startsWith(`${base}/dekoration/`)
-  const isFullscreen = isChats || isDeko
+  const isPdfExport = pathname === `${base}/pdf-export` || pathname.startsWith(`${base}/pdf-export/`)
+  const isFullscreen = isChats || isDeko || isPdfExport
 
   const sidebar = (
     <nav style={{
