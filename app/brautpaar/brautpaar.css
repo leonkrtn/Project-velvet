@@ -386,11 +386,13 @@
   background: rgba(44, 40, 37, 0.5);
   z-index: 35;
   opacity: 0;
+  pointer-events: none;
   transition: opacity var(--bp-transition);
 }
 
 .bp-mobile-overlay.open {
   opacity: 1;
+  pointer-events: auto;
 }
 
 @media (max-width: 768px) {
