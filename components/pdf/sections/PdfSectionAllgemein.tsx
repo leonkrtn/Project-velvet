@@ -1,6 +1,6 @@
 import { Page, View, Text } from '@react-pdf/renderer'
 import { S, COLORS } from '../PdfStyles'
-import { PageHeader, SectionTitle, PageFooter } from '../PdfShared'
+import { PageHeader, SectionTitle, PageFooter, fmtTime } from '../PdfShared'
 import type { PdfEventData, PdfMode } from '../PdfTypes'
 
 function fmtDate(d: string | null) {
@@ -57,7 +57,7 @@ export default function PdfSectionAllgemein({ data, mode, sectionIndex, headerTi
         </View>
         <View style={S.kvItem3}>
           <Text style={S.kvLabel}>Zeremonienstart</Text>
-          <Text style={S.kvValue}>{event.ceremony_start ? `${event.ceremony_start} Uhr` : '—'}</Text>
+          <Text style={S.kvValue}>{event.ceremony_start ? `${fmtTime(event.ceremony_start)} Uhr` : '—'}</Text>
         </View>
         <View style={S.kvItem3}>
           <Text style={S.kvLabel}>Veranstaltungsort</Text>

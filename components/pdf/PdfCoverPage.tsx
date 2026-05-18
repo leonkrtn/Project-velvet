@@ -1,5 +1,6 @@
 import { Page, View, Text } from '@react-pdf/renderer'
 import { COLORS } from './PdfStyles'
+import { fmtTime } from './PdfShared'
 import type { PdfEventData, PdfMode } from './PdfTypes'
 
 function fmtDate(d: string | null | Date) {
@@ -152,7 +153,7 @@ export default function PdfCoverPage({ data, mode }: Props) {
             </View>
             <View style={[CELL, BORDER_RIGHT]}>
               <Text style={CELL_LABEL}>Zeremonienstart</Text>
-              <Text style={CELL_VALUE}>{event.ceremony_start ? `${event.ceremony_start} Uhr` : '—'}</Text>
+              <Text style={CELL_VALUE}>{event.ceremony_start ? `${fmtTime(event.ceremony_start)} Uhr` : '—'}</Text>
             </View>
             <View style={CELL}>
               <Text style={CELL_LABEL}>Projektphase</Text>

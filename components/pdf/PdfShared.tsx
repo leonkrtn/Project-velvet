@@ -1,5 +1,14 @@
 import { View, Text } from '@react-pdf/renderer'
 
+// Extracts HH:MM from an ISO timestamp or returns the value as-is for plain time strings.
+export function fmtTime(value: string | null | undefined): string {
+  if (!value) return '—'
+  const isoMatch = value.match(/T(\d{2}:\d{2})/)
+  if (isoMatch) return isoMatch[1]
+  const plainMatch = value.match(/^(\d{2}:\d{2})/)
+  return plainMatch ? plainMatch[1] : value
+}
+
 interface PageHeaderProps {
   title: string
   timestamp: string
