@@ -9,7 +9,7 @@
 // Importing BlobProvider, Font, AND VelvetPdfDocument (which transitively pulls
 // in all section components) in one module ensures a single @react-pdf/renderer
 // instance — one `re`, set up correctly before any rendering.
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { BlobProvider, Font } from '@react-pdf/renderer'
 import VelvetPdfDocument from './VelvetPdfDocument'
 import type { PdfEventData, PdfMode, PdfSection } from './PdfTypes'
@@ -24,8 +24,12 @@ interface Props {
 }
 
 export default function PdfBlobProviderWithDoc({ data, mode, sections, children }: Props) {
+  const doc = useMemo(
+    () => <VelvetPdfDocument data={data} mode={mode} sections={sections} />,
+    [data, mode, sections],
+  )
   return (
-    <BlobProvider document={<VelvetPdfDocument data={data} mode={mode} sections={sections} />}>
+    <BlobProvider document={doc}>
       {children}
     </BlobProvider>
   )
