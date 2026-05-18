@@ -14,6 +14,14 @@ const CATEGORY_COLORS: Record<string, string> = {
   Logistik: '#6B6B6B',
 }
 
+// Light background variants — react-pdf's color parser doesn't support 8-digit hex (#RRGGBBAA)
+const CATEGORY_BG_COLORS: Record<string, string> = {
+  Zeremonie: '#DBEAFE',
+  Empfang: '#DCFCE7',
+  Feier: '#EDE9FE',
+  Logistik: '#F3F4F6',
+}
+
 function minsToTime(mins: number | null) {
   if (mins == null) return '—'
   const h = Math.floor(mins / 60)
@@ -130,7 +138,7 @@ export default function PdfSectionAblaufplan({ data, mode: _mode }: Props) {
                       <View style={[{ width: 60 }, S.tableCell]}>
                         {e.category ? (
                           <View style={{
-                            backgroundColor: `${catColor}20`,
+                            backgroundColor: CATEGORY_BG_COLORS[e.category ?? ''] ?? COLORS.ultraLight,
                             borderRadius: 2,
                             paddingVertical: 1, paddingHorizontal: 4,
                             alignSelf: 'flex-start',
