@@ -963,7 +963,7 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
   return (
     <div>
       <div style={{
-        display: 'inline-flex',
+        display: 'flex',
         gap: 0,
         marginBottom: '1.25rem',
         background: 'var(--bp-paper)',
@@ -971,6 +971,9 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
         borderRadius: 'var(--bp-r-sm)',
         boxShadow: 'var(--bp-shadow-card)',
         overflow: 'hidden',
+        width: '100%',
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
       }}>
         {[
           { label: 'Gesamt',     value: guests.length, color: 'var(--bp-ink)' },
@@ -984,6 +987,7 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
             display: 'flex',
             alignItems: 'center',
             gap: '0.375rem',
+            flexShrink: 0,
           }}>
             <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: s.color }}>{s.value}</span>
             <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>{s.label}</span>
@@ -1032,7 +1036,7 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
         </div>
       )}
 
-      <div className="bp-card" style={{ overflow: 'hidden' }}>
+      <div className="bp-hide-mobile bp-card" style={{ overflow: 'hidden' }}>
         {filtered.length === 0 ? (
           <div className="bp-empty">
             <div className="bp-empty-title">Keine Gäste gefunden</div>
@@ -1062,29 +1066,13 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
                       : '—'}
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
-                    {confirmDeleteId === g.id ? (
-                      <div style={{ display: 'inline-flex', gap: '0.375rem', alignItems: 'center' }}>
-                        <button
-                          className="bp-btn bp-btn-sm"
-                          style={{ background: '#B91C1C', color: '#fff', border: 'none' }}
-                          onClick={() => deleteGuest(g.id)}
-                          disabled={deleting}
-                        >
-                          {deleting ? '…' : 'Löschen'}
-                        </button>
-                        <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={() => setConfirmDeleteId(null)}>
-                          Abbrechen
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon"
-                        onClick={() => setConfirmDeleteId(g.id)}
-                        title="Gast löschen"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
+                    <button
+                      className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon"
+                      onClick={() => setConfirmDeleteId(g.id)}
+                      title="Gast löschen"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -1092,6 +1080,63 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
           </table>
         )}
       </div>
+
+      <div className="bp-mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {filtered.length === 0 ? (
+          <div className="bp-empty">
+            <div className="bp-empty-title">Keine Gäste gefunden</div>
+            <div className="bp-empty-body">Passt eure Suche oder den Filter an.</div>
+          </div>
+        ) : filtered.map(g => (
+          <div
+            key={g.id}
+            className="bp-card"
+            onClick={() => setSelectedGuest(g)}
+            style={{ padding: '0.875rem 1rem', cursor: 'pointer', touchAction: 'manipulation', display: 'flex', alignItems: 'center', gap: '0.75rem' }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9375rem', marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {g.name}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <AttendingBadge status={g.status} />
+                {g.side && <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>{g.side}</span>}
+                {g.meal_choice && <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>{MEAL_LABELS[g.meal_choice] ?? g.meal_choice}</span>}
+              </div>
+            </div>
+            <button
+              className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon"
+              onClick={e => { e.stopPropagation(); setConfirmDeleteId(g.id) }}
+              title="Gast löschen"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {confirmDeleteId && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(44,40,37,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={e => { if (e.target === e.currentTarget) setConfirmDeleteId(null) }}
+        >
+          <div style={{ background: 'var(--bp-paper)', borderRadius: 'var(--bp-r-lg)', padding: '1.75rem', width: '100%', maxWidth: 360, boxShadow: 'var(--bp-shadow-elevated)' }}>
+            <h2 className="bp-h2" style={{ margin: '0 0 0.75rem' }}>Gast löschen?</h2>
+            <p className="bp-caption" style={{ margin: '0 0 1.5rem' }}>Diese Aktion kann nicht rückgängig gemacht werden.</p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button className="bp-btn bp-btn-ghost" onClick={() => setConfirmDeleteId(null)}>Abbrechen</button>
+              <button
+                className="bp-btn bp-btn-sm"
+                style={{ background: '#B91C1C', color: '#fff', border: 'none', height: 40 }}
+                onClick={() => deleteGuest(confirmDeleteId)}
+                disabled={deleting}
+              >
+                {deleting ? '…' : 'Löschen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedGuest && (
         <GuestLightbox

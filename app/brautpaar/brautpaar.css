@@ -1065,3 +1065,24 @@
   white-space: nowrap;
   border-width: 0;
 }
+
+
+/* ── Mobile: horizontal-scrollable tab nav ── */
+@media (max-width: 640px) {
+  .bp-step-tabs {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .bp-step-tabs::-webkit-scrollbar { display: none; }
+  .bp-step-tab { flex-shrink: 0; }
+}
+
+/* ── Mobile visibility helpers ── */
+@media (max-width: 640px) {
+  .bp-hide-mobile { display: none !important; }
+}
+@media (min-width: 641px) {
+  .bp-mobile-only { display: none !important; }
+}
