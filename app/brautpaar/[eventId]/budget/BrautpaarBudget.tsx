@@ -341,7 +341,8 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
         <div className="bp-card-header">
           <h2 className="bp-section-title" style={{ margin: 0 }}>Positionen ({visibleItems.length + 1})</h2>
         </div>
-        <table className="bp-table">
+        <div style={{ overflowX: 'auto' }}>
+        <table className="bp-table" style={{ minWidth: 560 }}>
           <thead>
             <tr>
               <th>Beschreibung</th>
@@ -389,7 +390,8 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
             )}
           </tbody>
         </table>
-        <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--bp-rule)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        </div>
+        <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--bp-rule)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
           <AddItemForm eventId={eventId} onAdded={i => setItems(prev => [...prev, i])} />
           <div style={{ textAlign: 'right' }}>
             <div className="bp-label">Gesamt geplant</div>

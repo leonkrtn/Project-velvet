@@ -549,8 +549,9 @@ export default function CateringForm({
               Lege für jede Essensoption das konkrete Gericht fest. Mit „Von … übernehmen" kannst du eine Spalte kopieren und nur das Abweichende ändern.
             </p>
 
+            <div style={{ overflowX: 'auto' }}>
             {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, marginBottom: 4, overflowX: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, marginBottom: 4, minWidth: 160 + mealOptions.length * 148 + 40 }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', padding: '0 2px' }}>
                 {posLabel}
               </div>
@@ -582,7 +583,7 @@ export default function CateringForm({
             {/* Rows */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
               {plan.menu_courses.map((course, i) => (
-                <div key={course.id} style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, alignItems: 'center' }}>
+                <div key={course.id} style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, alignItems: 'center', minWidth: 160 + mealOptions.length * 148 + 40 }}>
                   <input
                     style={{ ...input, fontSize: 13 }}
                     value={course.name}
@@ -604,6 +605,7 @@ export default function CateringForm({
                   </button>
                 </div>
               ))}
+            </div>
             </div>
 
             {/* Add row */}
