@@ -1,12 +1,42 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, Component } from 'react'
+import dynamic from 'next/dynamic'
 import {
   Eye, Download, LayoutDashboard, Users, Grid2X2, Calendar,
   UtensilsCrossed, Wallet, Music2, Flower2, Camera, Briefcase,
   CakeSlice, FileDown, Loader2, AlertTriangle,
 } from 'lucide-react'
 import type { PdfEventData, PdfMode, PdfSection } from '@/components/pdf/PdfTypes'
+
+// Lazy-load PDF components — browser only, ssr: false keeps them out of the
+// server bundle entirely (avoiding the StyleSheet.create circular-dep crash)
+const BlobProvider    = dynamic(() => import('@react-pdf/renderer').then(m => ({ default: m.BlobProvider })),    { ssr: false })
+const PDFDownloadLink = dynamic(() => import('@react-pdf/renderer').then(m => ({ default: m.PDFDownloadLink })), { ssr: false })
+const VelvetPdfDocument = dynamic(() => import('@/components/pdf/VelvetPdfDocument'), { ssr: false })
+
+// ── Error boundary ────────────────────────────────────────────────────────
+class PdfErrorBoundary extends Component<
+  { children: React.ReactNode; onError: (msg: string) => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; onError: (msg: string) => void }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(error: Error) { this.props.onError(error.message) }
+  render() {
+    if (this.state.hasError) return null
+    return this.props.children
+  }
+}
+
+// Propagates BlobProvider errors into React state (can't call setState in render callback)
+function BlobError({ message, onError }: { message: string; onError: (msg: string) => void }) {
+  useEffect(() => { onError(message) }, [message, onError])
+  return null
+}
 
 // ── Section definitions ───────────────────────────────────────────────────
 const ALL_SECTIONS: Array<{ key: PdfSection; label: string; Icon: React.ElementType }> = [
@@ -29,28 +59,21 @@ interface Props {
 }
 
 export default function PdfExportClient({ eventId, data }: Props) {
+  const [mounted, setMounted]         = useState(false)
   const [mode, setMode]               = useState<PdfMode>('intern')
   const [selected, setSelected]       = useState<Set<PdfSection>>(
     new Set(ALL_SECTIONS.map(s => s.key))
   )
+  const [showPreview, setShowPreview] = useState(false)
   const [generating, setGenerating]   = useState(false)
-  const [pdfUrl, setPdfUrl]           = useState<string | null>(null)
   const [pdfError, setPdfError]       = useState<string | null>(null)
 
-  // Revoke previous blob URL when a new one is created
-  useEffect(() => {
-    return () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl) }
-  }, [pdfUrl])
+  useEffect(() => { setMounted(true) }, [])
 
-  // When mode switches to extern, remove budget
   useEffect(() => {
     if (mode === 'extern') {
-      setSelected(prev => {
-        const next = new Set(prev)
-        next.delete('budget')
-        return next
-      })
-      setPdfUrl(null)
+      setSelected(prev => { const next = new Set(prev); next.delete('budget'); return next })
+      setShowPreview(false)
     }
   }, [mode])
 
@@ -61,140 +84,92 @@ export default function PdfExportClient({ eventId, data }: Props) {
       else next.add(key)
       return next
     })
-    setPdfUrl(null)
+    setShowPreview(false)
   }
 
   const selectAll = () => {
     const next = new Set(ALL_SECTIONS.map(s => s.key) as PdfSection[])
     if (mode === 'extern') next.delete('budget')
     setSelected(next)
-    setPdfUrl(null)
+    setShowPreview(false)
   }
 
-  const selectNone = () => {
-    setSelected(new Set())
-    setPdfUrl(null)
-  }
+  const selectNone = () => { setSelected(new Set()); setShowPreview(false) }
 
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(() => {
     if (selected.size === 0) return
     setPdfError(null)
     setGenerating(true)
-    if (pdfUrl) {
-      URL.revokeObjectURL(pdfUrl)
-      setPdfUrl(null)
-    }
-
-    try {
-      const res = await fetch('/api/pdf/render', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, mode, sections: Array.from(selected) }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
-        throw new Error(err.error ?? `HTTP ${res.status}`)
-      }
-
-      const blob = await res.blob()
-      setPdfUrl(URL.createObjectURL(blob))
-    } catch (err) {
-      setPdfError(err instanceof Error ? err.message : 'Unbekannter Fehler')
-    } finally {
-      setGenerating(false)
-    }
-  }, [selected, data, mode, pdfUrl])
+    setTimeout(() => { setShowPreview(true); setGenerating(false) }, 80)
+  }, [selected])
 
   const activeSections = ALL_SECTIONS.filter(s => !(s.key === 'budget' && mode === 'extern'))
 
   const fileName = `velvet-export-${data.event.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`
+
+  const docNode = mounted && showPreview && selected.size > 0 && VelvetPdfDocument
+    ? <VelvetPdfDocument data={data} mode={mode} sections={Array.from(selected)} />
+    : null
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 36px)', gap: 0, overflow: 'hidden' }}>
 
       {/* ── Left panel ─────────────────────────────────────────────────── */}
       <div style={{
-        width: 320,
-        minWidth: 320,
+        width: 320, minWidth: 320,
         borderRight: '1px solid var(--border)',
-        display: 'flex',
-        flexDirection: 'column',
-        overflowY: 'auto',
-        background: 'var(--surface)',
+        display: 'flex', flexDirection: 'column',
+        overflowY: 'auto', background: 'var(--surface)',
       }}>
         {/* Header */}
         <div style={{ padding: '24px 20px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <FileDown size={18} style={{ color: 'var(--text-secondary)' }} />
-            <h1 style={{ fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: '-0.2px' }}>
-              PDF-Export
-            </h1>
+            <h1 style={{ fontSize: 16, fontWeight: 700, margin: 0, letterSpacing: '-0.2px' }}>PDF-Export</h1>
           </div>
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-            {data.event.title}
-          </p>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{data.event.title}</p>
         </div>
 
         {/* Mode toggle */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: 8 }}>
-            Modus
-          </p>
-          <div style={{
-            display: 'flex', borderRadius: 8,
-            border: '1px solid var(--border)', overflow: 'hidden',
-          }}>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Modus</p>
+          <div style={{ display: 'flex', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
             {(['intern', 'extern'] as PdfMode[]).map(m => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                style={{
-                  flex: 1, padding: '8px 0', border: 'none', cursor: 'pointer',
-                  fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
-                  background: mode === m ? 'var(--accent, #0F0F0F)' : 'transparent',
-                  color: mode === m ? '#fff' : 'var(--text-secondary)',
-                  transition: 'background 0.15s, color 0.15s',
-                }}
-              >
+              <button key={m} onClick={() => setMode(m)} style={{
+                flex: 1, padding: '8px 0', border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
+                background: mode === m ? 'var(--accent, #0F0F0F)' : 'transparent',
+                color: mode === m ? '#fff' : 'var(--text-secondary)',
+                transition: 'background 0.15s, color 0.15s',
+              }}>
                 {m === 'intern' ? 'Intern' : 'Extern'}
               </button>
             ))}
           </div>
           <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6, marginBottom: 0 }}>
-            {mode === 'intern'
-              ? 'Alle Daten inkl. Budget, Preise und interne Notizen.'
-              : 'Ohne Budget, Preise und persönliche Kontaktdaten.'}
+            {mode === 'intern' ? 'Alle Daten inkl. Budget, Preise und interne Notizen.' : 'Ohne Budget, Preise und persönliche Kontaktdaten.'}
           </p>
         </div>
 
         {/* Section list */}
         <div style={{ padding: '12px 20px', flex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', margin: 0 }}>
-              Bereiche
-            </p>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', margin: 0 }}>Bereiche</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={selectAll} style={textBtn}>Alle</button>
               <span style={{ color: 'var(--text-tertiary)' }}>·</span>
               <button onClick={selectNone} style={textBtn}>Keine</button>
             </div>
           </div>
-
           {activeSections.map(({ key, label, Icon }) => {
             const active = selected.has(key)
             return (
-              <button
-                key={key}
-                onClick={() => toggleSection(key)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-                  padding: '8px 10px', borderRadius: 8, border: 'none',
-                  background: active ? 'var(--surface-hover, rgba(0,0,0,0.04))' : 'transparent',
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  marginBottom: 2, transition: 'background 0.12s',
-                }}
-              >
+              <button key={key} onClick={() => toggleSection(key)} style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                padding: '8px 10px', borderRadius: 8, border: 'none',
+                background: active ? 'var(--surface-hover, rgba(0,0,0,0.04))' : 'transparent',
+                cursor: 'pointer', fontFamily: 'inherit', marginBottom: 2, transition: 'background 0.12s',
+              }}>
                 <div style={{
                   width: 16, height: 16, borderRadius: 4, flexShrink: 0,
                   border: `1.5px solid ${active ? 'var(--accent, #0F0F0F)' : 'var(--border)'}`,
@@ -208,10 +183,7 @@ export default function PdfExportClient({ eventId, data }: Props) {
                   )}
                 </div>
                 <Icon size={14} style={{ color: active ? 'var(--text-primary)' : 'var(--text-tertiary)', flexShrink: 0 }} />
-                <span style={{
-                  fontSize: 13, fontWeight: active ? 500 : 400,
-                  color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-                }}>
+                <span style={{ fontSize: 13, fontWeight: active ? 500 : 400, color: active ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
                   {label}
                 </span>
               </button>
@@ -231,103 +203,76 @@ export default function PdfExportClient({ eventId, data }: Props) {
               color: selected.size === 0 ? 'var(--text-tertiary)' : '#fff',
               cursor: selected.size === 0 || generating ? 'not-allowed' : 'pointer',
               fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
-              transition: 'opacity 0.15s',
               opacity: generating ? 0.7 : 1,
             }}
           >
-            {generating
-              ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
-              : <Eye size={15} />
-            }
+            {generating ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Eye size={15} />}
             {generating ? 'Wird generiert…' : 'Vorschau generieren'}
           </button>
 
-          {pdfUrl && (
-            <a
-              href={pdfUrl}
-              download={fileName}
+          {mounted && showPreview && docNode && (
+            <PDFDownloadLink
+              document={docNode}
+              fileName={fileName}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 width: '100%', padding: '10px 0', borderRadius: 8,
-                border: '1px solid var(--border)',
-                background: 'var(--surface)',
-                color: 'var(--text-primary)',
-                textDecoration: 'none',
-                fontSize: 13, fontWeight: 500,
-                boxSizing: 'border-box',
+                border: '1px solid var(--border)', background: 'var(--surface)',
+                color: 'var(--text-primary)', textDecoration: 'none',
+                fontSize: 13, fontWeight: 500, boxSizing: 'border-box',
               }}
             >
-              <Download size={15} />
-              PDF herunterladen
-            </a>
+              {({ loading }) => (
+                <>
+                  {loading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={15} />}
+                  {loading ? 'Wird vorbereitet…' : 'PDF herunterladen'}
+                </>
+              )}
+            </PDFDownloadLink>
           )}
         </div>
       </div>
 
-      {/* ── Right panel: PDF preview ────────────────────────────────────── */}
+      {/* ── Right panel ────────────────────────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#e5e5e5' }}>
         {pdfError ? (
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 16,
-          }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: 16,
-              background: 'var(--surface)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-            }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
               <AlertTriangle size={28} style={{ color: '#D97706' }} />
             </div>
             <div style={{ textAlign: 'center', maxWidth: 320 }}>
-              <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
-                PDF konnte nicht erstellt werden
-              </p>
-              <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 12px', fontFamily: 'monospace' }}>
-                {pdfError}
-              </p>
-              <button
-                onClick={() => setPdfError(null)}
-                style={{ ...textBtn, fontSize: 13, color: 'var(--text-primary)' }}
-              >
+              <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>PDF konnte nicht erstellt werden</p>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 12px', fontFamily: 'monospace' }}>{pdfError}</p>
+              <button onClick={() => { setPdfError(null); setShowPreview(false) }} style={{ ...textBtn, fontSize: 13, color: 'var(--text-primary)' }}>
                 Zurücksetzen
               </button>
             </div>
           </div>
-        ) : pdfUrl ? (
-          <iframe
-            src={pdfUrl}
-            title="PDF Vorschau"
-            style={{ flex: 1, border: 'none', width: '100%', height: '100%', display: 'block' }}
-          />
+        ) : mounted && showPreview && docNode ? (
+          <PdfErrorBoundary onError={msg => { setShowPreview(false); setPdfError(msg) }}>
+            <BlobProvider document={docNode}>
+              {({ url, loading, error }) => {
+                if (error) return <BlobError message={error.message} onError={msg => { setShowPreview(false); setPdfError(msg) }} />
+                if (loading || !url) return (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--text-tertiary)' }} />
+                  </div>
+                )
+                return <iframe src={url} title="PDF Vorschau" style={{ flex: 1, border: 'none', width: '100%', height: '100%', display: 'block' }} />
+              }}
+            </BlobProvider>
+          </PdfErrorBoundary>
         ) : (
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 16,
-          }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: 16,
-              background: 'var(--surface)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-            }}>
-              {generating
-                ? <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--text-tertiary)' }} />
-                : <FileDown size={28} style={{ color: 'var(--text-tertiary)' }} />
-              }
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
+              <FileDown size={28} style={{ color: 'var(--text-tertiary)' }} />
             </div>
             <div style={{ textAlign: 'center' }}>
               <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
-                {generating
-                  ? 'PDF wird generiert…'
-                  : selected.size === 0 ? 'Keine Bereiche ausgewählt' : 'Vorschau noch nicht generiert'}
+                {selected.size === 0 ? 'Keine Bereiche ausgewählt' : 'Vorschau noch nicht generiert'}
               </p>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-                {generating
-                  ? 'Das kann einen Moment dauern.'
-                  : selected.size === 0
-                  ? 'Wähle mindestens einen Bereich aus.'
-                  : 'Klicke auf „Vorschau generieren" um fortzufahren.'}
+                {selected.size === 0 ? 'Wähle mindestens einen Bereich aus.' : 'Klicke auf „Vorschau generieren" um fortzufahren.'}
               </p>
             </div>
           </div>
