@@ -10,7 +10,10 @@ import {
 import type { PdfEventData, PdfMode, PdfSection } from '@/components/pdf/PdfTypes'
 
 // Lazy-load PDF components — browser only
-const PDFViewer      = dynamic(() => import('@react-pdf/renderer').then(m => ({ default: m.PDFViewer })),      { ssr: false })
+// NOTE: PDFViewer is intentionally NOT used — it creates a secondary React root
+// via updateContainer which conflicts with React 18.3.1 internals at runtime.
+// BlobProvider + native <iframe> avoids that reconciler conflict entirely.
+const BlobProvider    = dynamic(() => import('@react-pdf/renderer').then(m => ({ default: m.BlobProvider })),    { ssr: false })
 const PDFDownloadLink = dynamic(() => import('@react-pdf/renderer').then(m => ({ default: m.PDFDownloadLink })), { ssr: false })
 const VelvetPdfDocument = dynamic(() => import('@/components/pdf/VelvetPdfDocument'), { ssr: false })
 
@@ -29,6 +32,12 @@ class PdfErrorBoundary extends Component<
     if (this.state.hasError) return null
     return this.props.children
   }
+}
+
+// Propagates BlobProvider errors into React state (can't call setState in render callback)
+function BlobError({ message, onError }: { message: string; onError: (msg: string) => void }) {
+  React.useEffect(() => { onError(message) }, [message, onError])
+  return null
 }
 
 // ── Section definitions ───────────────────────────────────────────────────
@@ -316,14 +325,23 @@ export default function PdfExportClient({ eventId, data }: Props) {
           </div>
         ) : mounted && showPreview && docNode ? (
           <PdfErrorBoundary onError={msg => { setShowPreview(false); setPdfError(msg) }}>
-            <PDFViewer
-              width="100%"
-              height="100%"
-              showToolbar={true}
-              style={{ border: 'none', flex: 1 }}
-            >
-              {docNode}
-            </PDFViewer>
+            <BlobProvider document={docNode}>
+              {({ url, loading, error }) => {
+                if (error) return <BlobError message={error.message} onError={msg => { setShowPreview(false); setPdfError(msg) }} />
+                if (loading || !url) return (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--text-tertiary)' }} />
+                  </div>
+                )
+                return (
+                  <iframe
+                    src={url}
+                    title="PDF Vorschau"
+                    style={{ flex: 1, border: 'none', width: '100%', height: '100%', display: 'block' }}
+                  />
+                )
+              }}
+            </BlobProvider>
           </PdfErrorBoundary>
         ) : (
           <div style={{
