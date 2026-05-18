@@ -26,8 +26,10 @@ export async function POST(req: NextRequest) {
 
     const element = createElement(VelvetPdfDocument, { data, mode, sections })
     const buffer = await renderToBuffer(element as React.ReactElement)
+    // Buffer extends Uint8Array which is valid BodyInit
+    const uint8 = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
 
-    return new NextResponse(buffer as unknown as BodyInit, {
+    return new NextResponse(uint8 as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'inline',
