@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Pencil, Trash2, AlertTriangle, Check, ArrowLeftRight, MessageSquare, Send, Clock } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
+import ZeiterfassungSection from './ZeiterfassungSection'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const HOUR_START = 8
@@ -239,6 +240,7 @@ export default function PersonalplanungPage() {
   const supabase = createClient()
 
   // ── State ─────────────────────────────────────────────────────────────────
+  const [activeView, setActiveView] = useState<'schichtplan' | 'zeiterfassung'>('schichtplan')
   const [staff, setStaff] = useState<StaffMember[]>([])
   const [days, setDays] = useState<PlanDay[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
@@ -700,6 +702,25 @@ export default function PersonalplanungPage() {
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
             Mitarbeiter, Tätigkeitsbereiche und Schichten für das Event planen.
           </p>
+          {/* View switcher */}
+          <div style={{ display: 'flex', gap: 2, marginTop: 14, background: 'var(--bg)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', width: 'fit-content' }}>
+            {([['schichtplan', 'Schichtplan'], ['zeiterfassung', 'Zeiterfassung']] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setActiveView(key)}
+                style={{
+                  padding: '6px 14px', border: 'none', borderRadius: 6, fontFamily: 'inherit',
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                  background: activeView === key ? '#fff' : 'transparent',
+                  color: activeView === key ? 'var(--text)' : 'var(--text-secondary)',
+                  boxShadow: activeView === key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  transition: 'background 0.15s',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {swaps.length > 0 && (
@@ -727,8 +748,13 @@ export default function PersonalplanungPage() {
         </div>
       </div>
 
-      {/* Empty states */}
-      {staff.length === 0 ? (
+      {/* Zeiterfassung view */}
+      {activeView === 'zeiterfassung' && (
+        <ZeiterfassungSection eventId={eventId as string} />
+      )}
+
+      {/* Schichtplan view */}
+      {activeView === 'schichtplan' && (staff.length === 0 ? (
         <EmptyState
           icon="👥"
           title="Keine Mitarbeiter angelegt"
@@ -1320,7 +1346,7 @@ export default function PersonalplanungPage() {
             </div>
           )}
         </>
-      )}
+      ))}
 
       {/* ── Day modal ── */}
       {showDayModal && (

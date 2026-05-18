@@ -164,7 +164,7 @@ export default function AblaufplanClient({
   // ── Derived ────────────────────────────────────────────────────────────────
   const currentDay = days.find(d => d.day_index === activeDay) ?? days[0]
   const dayEntries = entries.filter(e => e.day_index === activeDay)
-  const canManageDays = !readOnly && role === 'veranstalter'
+  const canManageDays = !readOnly && (role === 'veranstalter' || role === 'brautpaar')
 
   // ── Day management ─────────────────────────────────────────────────────────
   async function persistDay(day: AblaufplanDay): Promise<AblaufplanDay> {
@@ -240,7 +240,7 @@ export default function AblaufplanClient({
           title:            data.title ?? null,
           location:         data.location ?? null,
           start_minutes:    data.start_minutes ?? null,
-          duration_minutes: data.duration_minutes ?? 60,
+          duration_minutes: data.duration_minutes !== undefined ? data.duration_minutes : 60,
           category:         data.category ?? 'Feier',
           day_index:        data.day_index ?? activeDay,
           sort_order:       data.start_minutes ?? 9999,
@@ -265,7 +265,7 @@ export default function AblaufplanClient({
           title:            data.title ?? null,
           location:         data.location ?? null,
           start_minutes:    data.start_minutes ?? null,
-          duration_minutes: data.duration_minutes ?? 60,
+          duration_minutes: data.duration_minutes !== undefined ? data.duration_minutes : 60,
           category:         data.category ?? 'Feier',
           day_index:        data.day_index ?? activeDay,
           sort_order:       data.start_minutes ?? 9999,

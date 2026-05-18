@@ -26,7 +26,7 @@ export default async function VendorDekorationPage({ params }: Props) {
   if (tabAccess === 'none') redirect(`/vendor/dashboard/${eventId}/uebersicht`)
 
   const role = 'dienstleister'
-  const dlReadOnly = tabAccess !== 'write'
+  const dlReadOnly = true
 
   const { data: profile } = await supabase
     .from('profiles').select('display_name').eq('id', user.id).single()
