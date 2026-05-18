@@ -271,6 +271,5 @@ export type PdfSection =
   | 'budget'
   | 'musik'
   | 'dekoration'
-  | 'patisserie'
   | 'medien'
   | 'dienstleister'

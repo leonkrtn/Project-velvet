@@ -14,7 +14,6 @@ import PdfSectionCatering from './sections/PdfSectionCatering'
 import PdfSectionBudget from './sections/PdfSectionBudget'
 import PdfSectionMusik from './sections/PdfSectionMusik'
 import PdfSectionDekoration from './sections/PdfSectionDekoration'
-import PdfSectionPatisserie from './sections/PdfSectionPatisserie'
 import PdfSectionMedien from './sections/PdfSectionMedien'
 import PdfSectionDienstleister from './sections/PdfSectionDienstleister'
 import type { PdfEventData, PdfMode, PdfSection } from './PdfTypes'
@@ -40,7 +39,7 @@ export default function VelvetPdfDocument({ data, mode, sections }: Props) {
   // Pre-compute 1-based section index for each included section
   const orderedSections: PdfSection[] = [
     'allgemein', 'gaesteliste', 'sitzplan', 'ablaufplan', 'catering',
-    'budget', 'musik', 'dekoration', 'patisserie', 'medien', 'dienstleister',
+    'budget', 'musik', 'dekoration', 'medien', 'dienstleister',
   ]
   const idxMap: Partial<Record<PdfSection, number>> = {}
   let n = 0
@@ -85,9 +84,6 @@ export default function VelvetPdfDocument({ data, mode, sections }: Props) {
       )}
       {has('dekoration') && (
         <PdfSectionDekoration data={data} mode={mode} sectionIndex={idxMap.dekoration!} {...sharedProps} />
-      )}
-      {has('patisserie') && (
-        <PdfSectionPatisserie data={data} mode={mode} sectionIndex={idxMap.patisserie!} {...sharedProps} />
       )}
       {has('medien') && (
         <PdfSectionMedien data={data} sectionIndex={idxMap.medien!} {...sharedProps} />
