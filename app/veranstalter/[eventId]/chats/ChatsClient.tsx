@@ -99,10 +99,19 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const [showArchived, setShowArchived] = useState(false)
   const [archivedLoaded, setArchivedLoaded] = useState(false)
   const [loadingArchived, setLoadingArchived] = useState(false)
+  const [mobileShowChat, setMobileShowChat] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const activeConvIdRef = useRef<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
   const newChatTitleId = useId()
   const deleteConfirmTitleId = useId()
 
@@ -356,6 +365,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
         }
         setConversations(prev => [normalized, ...prev])
         setActiveConv(normalized)
+        setMobileShowChat(true)
       }
     }
 
@@ -469,7 +479,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
 
     return (
       <div
-        onClick={() => setActiveConv(conv)}
+        onClick={() => { setActiveConv(conv); setMobileShowChat(true) }}
         onMouseEnter={() => setHoveredConvId(conv.id)}
         onMouseLeave={() => setHoveredConvId(null)}
         style={{
@@ -574,8 +584,11 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
 
       {/* ── Left panel ── */}
       <div style={{
-        width: 300, minWidth: 300, borderRight: '1px solid var(--border)',
-        display: 'flex', flexDirection: 'column', background: 'var(--surface)',
+        width: isMobile ? '100%' : 300,
+        minWidth: isMobile ? 0 : 300,
+        borderRight: isMobile ? 'none' : '1px solid var(--border)',
+        display: isMobile && mobileShowChat ? 'none' : 'flex',
+        flexDirection: 'column', background: 'var(--surface)',
       }}>
         {/* Header */}
         <div style={{ padding: '18px 16px 10px', borderBottom: '1px solid var(--border)' }}>
@@ -662,7 +675,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
                     key={msg.id}
                     onClick={() => {
                       const c = conversations.find(x => x.id === msg.conversation_id)
-                      if (c) { setActiveConv(c); setSearchQuery('') }
+                      if (c) { setActiveConv(c); setSearchQuery(''); setMobileShowChat(true) }
                     }}
                     style={{
                       padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)',
@@ -739,7 +752,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
       </div>
 
       {/* ── Right panel ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: isMobile && !mobileShowChat ? 'none' : 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         {activeConv ? (
           <>
             {/* Chat header */}
@@ -748,6 +761,15 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
               display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface)',
               flexShrink: 0,
             }}>
+              {isMobile && (
+                <button
+                  onClick={() => setMobileShowChat(false)}
+                  aria-label="Zurück zur Chatliste"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary)', display: 'flex', flexShrink: 0 }}
+                >
+                  <ArrowLeft size={22} />
+                </button>
+              )}
               <div style={{
                 width: 38, height: 38, borderRadius: '50%', background: '#E8E8EC',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
