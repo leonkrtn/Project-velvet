@@ -103,6 +103,17 @@ input, select, textarea, button {
   color: inherit;
 }
 
+/* Normalize date/time inputs — prevents iOS from overriding font/color */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+}
+
 /* ── Transitions ── */
 a, button { transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease; }
 
