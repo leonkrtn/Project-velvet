@@ -5,7 +5,6 @@ import type { PdfEventData, PdfMode } from '../PdfTypes'
 interface Props {
   data: PdfEventData
   mode: PdfMode
-  calendarImages?: Record<number, string>  // dayIndex -> base64 PNG
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -13,6 +12,14 @@ const CATEGORY_COLORS: Record<string, string> = {
   Empfang: '#15803D',
   Feier: '#7C3AED',
   Logistik: '#6B6B6B',
+}
+
+// Light background variants — react-pdf's color parser doesn't support 8-digit hex (#RRGGBBAA)
+const CATEGORY_BG_COLORS: Record<string, string> = {
+  Zeremonie: '#DBEAFE',
+  Empfang: '#DCFCE7',
+  Feier: '#EDE9FE',
+  Logistik: '#F3F4F6',
 }
 
 function minsToTime(mins: number | null) {
@@ -30,7 +37,7 @@ function fmtDuration(mins: number | null) {
   return m > 0 ? `${h}h ${m}min` : `${h}h`
 }
 
-export default function PdfSectionAblaufplan({ data, mode, calendarImages }: Props) {
+export default function PdfSectionAblaufplan({ data, mode: _mode }: Props) {
   const { timelineEntries, ablaufplanDays } = data
 
   const days = ablaufplanDays.length > 0
@@ -52,13 +59,17 @@ export default function PdfSectionAblaufplan({ data, mode, calendarImages }: Pro
       {days.map((day, di) => {
         const entries = (entriesByDay.get(day.day_index) ?? [])
           .sort((a, b) => (a.start_minutes ?? 9999) - (b.start_minutes ?? 9999))
-        const calImg = calendarImages?.[day.day_index]
 
         return (
           <Page key={day.id} size="A4" orientation="portrait" style={S.page} wrap>
-            {di === 0 && (
+            {/* Section header — full black on first page, darker continuation label on subsequent */}
+            {di === 0 ? (
               <View style={S.sectionHeader}>
                 <Text style={S.sectionHeaderText}>Ablaufplan</Text>
+              </View>
+            ) : (
+              <View style={[S.sectionHeader, { backgroundColor: COLORS.darkGray }]}>
+                <Text style={S.sectionHeaderText}>Ablaufplan — Fortsetzung</Text>
               </View>
             )}
 
@@ -94,17 +105,6 @@ export default function PdfSectionAblaufplan({ data, mode, calendarImages }: Pro
               </Text>
             </View>
 
-            {/* Calendar image if available */}
-            {calImg && (
-              <View style={{
-                borderWidth: 1, borderColor: COLORS.border, borderStyle: 'solid',
-                borderRadius: 3, overflow: 'hidden', marginBottom: 12,
-              }}>
-                {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                <Text style={[S.small, S.muted, { padding: 8 }]}>Kalenderansicht: {day.name}</Text>
-              </View>
-            )}
-
             {/* Detail table */}
             {entries.length > 0 ? (
               <View style={S.table}>
@@ -138,7 +138,7 @@ export default function PdfSectionAblaufplan({ data, mode, calendarImages }: Pro
                       <View style={[{ width: 60 }, S.tableCell]}>
                         {e.category ? (
                           <View style={{
-                            backgroundColor: `${catColor}20`,
+                            backgroundColor: CATEGORY_BG_COLORS[e.category ?? ''] ?? COLORS.ultraLight,
                             borderRadius: 2,
                             paddingVertical: 1, paddingHorizontal: 4,
                             alignSelf: 'flex-start',

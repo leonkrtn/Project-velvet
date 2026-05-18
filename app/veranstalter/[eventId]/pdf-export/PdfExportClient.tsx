@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, Component } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo, Component } from 'react'
 import dynamic from 'next/dynamic'
 import {
   Eye, Download, LayoutDashboard, Users, Grid2X2, Calendar,
@@ -11,9 +11,14 @@ import type { PdfEventData, PdfMode, PdfSection } from '@/components/pdf/PdfType
 
 // Lazy-load PDF components — browser only, ssr: false keeps them out of the
 // server bundle entirely (avoiding the StyleSheet.create circular-dep crash)
-const BlobProvider    = dynamic(() => import('@react-pdf/renderer').then(m => ({ default: m.BlobProvider })),    { ssr: false })
-const PDFDownloadLink = dynamic(() => import('@react-pdf/renderer').then(m => ({ default: m.PDFDownloadLink })), { ssr: false })
-const VelvetPdfDocument = dynamic(() => import('@/components/pdf/VelvetPdfDocument'), { ssr: false })
+const BlobProvider = dynamic(
+  () => import('@react-pdf/renderer').then(m => ({ default: m.BlobProvider })),
+  { ssr: false },
+)
+const VelvetPdfDocument = dynamic(
+  () => import('@/components/pdf/VelvetPdfDocument'),
+  { ssr: false },
+)
 
 // ── Error boundary ────────────────────────────────────────────────────────
 class PdfErrorBoundary extends Component<
@@ -38,6 +43,14 @@ function BlobError({ message, onError }: { message: string; onError: (msg: strin
   return null
 }
 
+// Captures the resolved blob URL into parent state via useEffect — avoids setState-in-render
+function BlobUrlCapture({ url, onCapture }: { url: string | null; onCapture: (u: string) => void }) {
+  useEffect(() => {
+    if (url) onCapture(url)
+  }, [url, onCapture])
+  return null
+}
+
 // ── Section definitions ───────────────────────────────────────────────────
 const ALL_SECTIONS: Array<{ key: PdfSection; label: string; Icon: React.ElementType }> = [
   { key: 'allgemein',     label: 'Veranstaltungsinfo', Icon: LayoutDashboard },
@@ -58,7 +71,7 @@ interface Props {
   data: PdfEventData
 }
 
-export default function PdfExportClient({ eventId, data }: Props) {
+export default function PdfExportClient({ eventId: _eventId, data }: Props) {
   const [mounted, setMounted]         = useState(false)
   const [mode, setMode]               = useState<PdfMode>('intern')
   const [selected, setSelected]       = useState<Set<PdfSection>>(
@@ -67,13 +80,23 @@ export default function PdfExportClient({ eventId, data }: Props) {
   const [showPreview, setShowPreview] = useState(false)
   const [generating, setGenerating]   = useState(false)
   const [pdfError, setPdfError]       = useState<string | null>(null)
+  const [blobUrl, setBlobUrl]         = useState<string | null>(null)
+  const generateTimerRef              = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { setMounted(true) }, [])
+
+  // Clear timer on unmount to avoid setState on an unmounted component
+  useEffect(() => {
+    return () => {
+      if (generateTimerRef.current != null) clearTimeout(generateTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (mode === 'extern') {
       setSelected(prev => { const next = new Set(prev); next.delete('budget'); return next })
       setShowPreview(false)
+      setBlobUrl(null)
     }
   }, [mode])
 
@@ -85,6 +108,7 @@ export default function PdfExportClient({ eventId, data }: Props) {
       return next
     })
     setShowPreview(false)
+    setBlobUrl(null)
   }
 
   const selectAll = () => {
@@ -92,24 +116,56 @@ export default function PdfExportClient({ eventId, data }: Props) {
     if (mode === 'extern') next.delete('budget')
     setSelected(next)
     setShowPreview(false)
+    setBlobUrl(null)
   }
 
-  const selectNone = () => { setSelected(new Set()); setShowPreview(false) }
+  const selectNone = () => {
+    setSelected(new Set())
+    setShowPreview(false)
+    setBlobUrl(null)
+  }
 
   const handleGenerate = useCallback(() => {
     if (selected.size === 0) return
+    if (generateTimerRef.current != null) clearTimeout(generateTimerRef.current)
     setPdfError(null)
+    setBlobUrl(null)
     setGenerating(true)
-    setTimeout(() => { setShowPreview(true); setGenerating(false) }, 80)
+    generateTimerRef.current = setTimeout(() => {
+      setShowPreview(true)
+      setGenerating(false)
+    }, 80)
   }, [selected])
+
+  // Stable callback so BlobUrlCapture's useEffect dep doesn't re-fire on every render
+  const handleBlobUrl = useCallback((url: string) => setBlobUrl(url), [])
+
+  const handleError = useCallback((msg: string) => {
+    setShowPreview(false)
+    setBlobUrl(null)
+    setPdfError(msg)
+  }, [])
 
   const activeSections = ALL_SECTIONS.filter(s => !(s.key === 'budget' && mode === 'extern'))
 
-  const fileName = `velvet-export-${data.event.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`
+  // Memoize sections array — only changes when selected Set reference changes
+  const sections = useMemo(() => Array.from(selected), [selected])
 
-  const docNode = mounted && showPreview && selected.size > 0 && VelvetPdfDocument
-    ? <VelvetPdfDocument data={data} mode={mode} sections={Array.from(selected)} />
-    : null
+  // Strip characters that are invalid in common filesystem filenames
+  const fileName = useMemo(() => {
+    const safe = data.event.title
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+      .replace(/\s+/g, '-')
+      .toLowerCase()
+    return `velvet-export-${safe}-${new Date().toISOString().slice(0, 10)}.pdf`
+  }, [data.event.title])
+
+  // Only create the JSX node when we actually want to render; memoized to avoid re-creating
+  // on unrelated re-renders (which would restart BlobProvider's generation)
+  const docNode = useMemo(() => {
+    if (!mounted || !showPreview || sections.length === 0) return null
+    return <VelvetPdfDocument data={data} mode={mode} sections={sections} />
+  }, [mounted, showPreview, sections, data, mode])
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 36px)', gap: 0, overflow: 'hidden' }}>
@@ -210,25 +266,36 @@ export default function PdfExportClient({ eventId, data }: Props) {
             {generating ? 'Wird generiert…' : 'Vorschau generieren'}
           </button>
 
+          {/* Download button — appears once blobUrl is available from BlobProvider.
+              Uses the same blob URL as the preview iframe, so the PDF is only rendered once. */}
           {mounted && showPreview && docNode && (
-            <PDFDownloadLink
-              document={docNode}
-              fileName={fileName}
-              style={{
+            blobUrl ? (
+              <a
+                href={blobUrl}
+                download={fileName}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  width: '100%', padding: '10px 0', borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'var(--surface)',
+                  color: 'var(--text-primary)', textDecoration: 'none',
+                  fontSize: 13, fontWeight: 500, boxSizing: 'border-box',
+                }}
+              >
+                <Download size={15} />
+                PDF herunterladen
+              </a>
+            ) : (
+              <button disabled style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 width: '100%', padding: '10px 0', borderRadius: 8,
                 border: '1px solid var(--border)', background: 'var(--surface)',
-                color: 'var(--text-primary)', textDecoration: 'none',
-                fontSize: 13, fontWeight: 500, boxSizing: 'border-box',
-              }}
-            >
-              {({ loading }) => (
-                <>
-                  {loading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={15} />}
-                  {loading ? 'Wird vorbereitet…' : 'PDF herunterladen'}
-                </>
-              )}
-            </PDFDownloadLink>
+                color: 'var(--text-tertiary)', fontFamily: 'inherit',
+                fontSize: 13, fontWeight: 500, cursor: 'not-allowed', boxSizing: 'border-box',
+              }}>
+                <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                Wird vorbereitet…
+              </button>
+            )
           )}
         </div>
       </div>
@@ -243,22 +310,35 @@ export default function PdfExportClient({ eventId, data }: Props) {
             <div style={{ textAlign: 'center', maxWidth: 320 }}>
               <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>PDF konnte nicht erstellt werden</p>
               <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 12px', fontFamily: 'monospace' }}>{pdfError}</p>
-              <button onClick={() => { setPdfError(null); setShowPreview(false) }} style={{ ...textBtn, fontSize: 13, color: 'var(--text-primary)' }}>
+              <button
+                onClick={() => { setPdfError(null); setShowPreview(false); setBlobUrl(null) }}
+                style={{ ...textBtn, fontSize: 13, color: 'var(--text-primary)' }}
+              >
                 Zurücksetzen
               </button>
             </div>
           </div>
         ) : mounted && showPreview && docNode ? (
-          <PdfErrorBoundary onError={msg => { setShowPreview(false); setPdfError(msg) }}>
+          <PdfErrorBoundary onError={handleError}>
             <BlobProvider document={docNode}>
               {({ url, loading, error }) => {
-                if (error) return <BlobError message={error.message} onError={msg => { setShowPreview(false); setPdfError(msg) }} />
+                if (error) return <BlobError message={error.message} onError={handleError} />
                 if (loading || !url) return (
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--text-tertiary)' }} />
                   </div>
                 )
-                return <iframe src={url} title="PDF Vorschau" style={{ flex: 1, border: 'none', width: '100%', height: '100%', display: 'block' }} />
+                return (
+                  <>
+                    {/* Capture URL once — used by download anchor in left panel */}
+                    <BlobUrlCapture url={url} onCapture={handleBlobUrl} />
+                    <iframe
+                      src={url}
+                      title="PDF Vorschau"
+                      style={{ flex: 1, border: 'none', width: '100%', height: '100%', display: 'block' }}
+                    />
+                  </>
+                )
               }}
             </BlobProvider>
           </PdfErrorBoundary>

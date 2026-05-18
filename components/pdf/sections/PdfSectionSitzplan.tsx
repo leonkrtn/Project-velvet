@@ -1,6 +1,6 @@
-import { Page, View, Text, Svg, Polygon, Circle, Rect, G } from '@react-pdf/renderer'
+import { Page, View, Text, Svg, Polygon, Circle, Rect } from '@react-pdf/renderer'
 import { S, COLORS } from '../PdfStyles'
-import type { PdfEventData, PdfMode } from '../PdfTypes'
+import type { PdfEventData, PdfMode, PdfSeatingTable } from '../PdfTypes'
 
 interface Props {
   data: PdfEventData
@@ -16,9 +16,23 @@ function allergyLabel(tag: string) {
   return map[tag] || tag
 }
 
+// Returns the axis-aligned bounding box half-extents for a table, accounting for rotation.
+function tableBounds(t: PdfSeatingTable) {
+  if (t.shape === 'round') {
+    const r = t.table_length / 2
+    return { minX: t.pos_x - r, maxX: t.pos_x + r, minY: t.pos_y - r, maxY: t.pos_y + r }
+  }
+  const rad = (t.rotation * Math.PI) / 180
+  const cosR = Math.abs(Math.cos(rad))
+  const sinR = Math.abs(Math.sin(rad))
+  const hw = (t.table_length / 2) * cosR + (t.table_width / 2) * sinR
+  const hh = (t.table_length / 2) * sinR + (t.table_width / 2) * cosR
+  return { minX: t.pos_x - hw, maxX: t.pos_x + hw, minY: t.pos_y - hh, maxY: t.pos_y + hh }
+}
+
 function buildRoomSvg(
   points: Array<{ x: number; y: number }>,
-  tables: PdfEventData['seatingTables'],
+  tables: PdfSeatingTable[],
   svgW: number,
   svgH: number,
 ) {
@@ -26,10 +40,19 @@ function buildRoomSvg(
 
   const xs = points.map(p => p.x)
   const ys = points.map(p => p.y)
-  const minX = Math.min(...xs, ...tables.map(t => t.pos_x - t.table_length))
-  const maxX = Math.max(...xs, ...tables.map(t => t.pos_x + t.table_length))
-  const minY = Math.min(...ys, ...tables.map(t => t.pos_y - t.table_length))
-  const maxY = Math.max(...ys, ...tables.map(t => t.pos_y + t.table_length))
+
+  // Compute axis-aligned bounding box that includes room polygon AND all tables
+  let minX = Math.min(...xs)
+  let maxX = Math.max(...xs)
+  let minY = Math.min(...ys)
+  let maxY = Math.max(...ys)
+  for (const t of tables) {
+    const b = tableBounds(t)
+    if (b.minX < minX) minX = b.minX
+    if (b.maxX > maxX) maxX = b.maxX
+    if (b.minY < minY) minY = b.minY
+    if (b.maxY > maxY) maxY = b.maxY
+  }
 
   const pad = 20
   const scaleX = (svgW - 2 * pad) / Math.max(maxX - minX, 0.001)
@@ -47,34 +70,39 @@ function buildRoomSvg(
   const tableElems = tables.map(t => {
     const cx = toX(t.pos_x)
     const cy = toY(t.pos_y)
-    const r = (t.table_length / 2) * scale
 
     if (t.shape === 'round') {
-      return { type: 'circle' as const, cx, cy, r, name: t.name }
+      const r = Math.max((t.table_length / 2) * scale, 8)
+      return { type: 'circle' as const, cx, cy, r }
     } else {
-      const w = t.table_length * scale
-      const h = t.table_width * scale
-      return { type: 'rect' as const, cx, cy, w, h, rotation: t.rotation, name: t.name }
+      const w = Math.max(t.table_length * scale, 16)
+      const h = Math.max(t.table_width * scale, 10)
+      return { type: 'rect' as const, cx, cy, w, h, rotation: t.rotation }
     }
   })
 
-  return { polyPoints, tableElems, toX, toY }
+  return { polyPoints, tableElems }
 }
 
 export default function PdfSectionSitzplan({ data, mode }: Props) {
   const { seatingTables, seatingAssignments, guests, begleitpersonen, roomPoints, coupleName } = data
 
+  // Fast lookup maps
+  const guestMap    = new Map(guests.map(g => [g.id, g]))
+  const begleitMap  = new Map(begleitpersonen.map(b => [b.id, b]))
+
   // Stats
   const totalCapacity = seatingTables.reduce((s, t) => s + t.capacity, 0)
-  const placedCount = seatingAssignments.length
-  const unplaced = (guests.filter(g => g.status === 'zugesagt').length + begleitpersonen.filter(b => {
-    const g = guests.find(gg => gg.id === b.guest_id)
-    return g?.status === 'zugesagt'
-  }).length) - placedCount
 
-  // Guest / begleit lookup maps
-  const guestMap = new Map(guests.map(g => [g.id, g]))
-  const begleitMap = new Map(begleitpersonen.map(b => [b.id, b]))
+  // "Platziert" = all seated (including brautpaar slots)
+  const placedCount = seatingAssignments.length
+
+  // "Ohne Platz" = confirmed guests + confirmed begleitpersonen that have no seat assignment
+  const confirmedGuestCount  = guests.filter(g => g.status === 'zugesagt').length
+  const confirmedBegleitCount = begleitpersonen.filter(b => guestMap.get(b.guest_id)?.status === 'zugesagt').length
+  // Only count guest/begleit assignments, not brautpaar slots
+  const guestSeatedCount = seatingAssignments.filter(a => a.brautpaar_slot == null).length
+  const unplaced = Math.max(0, (confirmedGuestCount + confirmedBegleitCount) - guestSeatedCount)
 
   // Group assignments by table
   const assignmentsByTable = new Map<string, typeof seatingAssignments>()
@@ -111,7 +139,7 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
             <Text style={S.statLabel}>Platziert</Text>
           </View>
           <View style={S.statBox}>
-            <Text style={[S.statValue, { color: unplaced > 0 ? COLORS.amber : COLORS.midGray }]}>{Math.max(0, unplaced)}</Text>
+            <Text style={[S.statValue, { color: unplaced > 0 ? COLORS.amber : COLORS.midGray }]}>{unplaced}</Text>
             <Text style={S.statLabel}>Ohne Platz</Text>
           </View>
         </View>
@@ -131,32 +159,31 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
                 stroke={COLORS.darkGray}
                 strokeWidth={1.5}
               />
-              {/* Tables */}
+              {/* Tables — names shown in legend below, no SVG text to avoid font conflicts */}
               {svg.tableElems.map((t, i) => {
                 if (t.type === 'circle') {
                   return (
-                    <G key={i}>
-                      <Circle
-                        cx={t.cx} cy={t.cy} r={Math.max(t.r, 8)}
-                        fill={COLORS.white}
-                        stroke={COLORS.black}
-                        strokeWidth={1}
-                      />
-                    </G>
+                    <Circle
+                      key={i}
+                      cx={t.cx} cy={t.cy} r={t.r}
+                      fill={COLORS.white}
+                      stroke={COLORS.black}
+                      strokeWidth={1}
+                    />
                   )
                 } else {
                   const hw = t.w / 2
                   const hh = t.h / 2
                   return (
-                    <G key={i} transform={`rotate(${t.rotation}, ${t.cx}, ${t.cy})`}>
-                      <Rect
-                        x={t.cx - hw} y={t.cy - hh}
-                        width={Math.max(t.w, 16)} height={Math.max(t.h, 10)}
-                        fill={COLORS.white}
-                        stroke={COLORS.black}
-                        strokeWidth={1}
-                      />
-                    </G>
+                    <Rect
+                      key={i}
+                      x={t.cx - hw} y={t.cy - hh}
+                      width={t.w} height={t.h}
+                      fill={COLORS.white}
+                      stroke={COLORS.black}
+                      strokeWidth={1}
+                      transform={t.rotation ? `rotate(${t.rotation}, ${t.cx}, ${t.cy})` : undefined}
+                    />
                   )
                 }
               })}
@@ -177,7 +204,7 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
           <>
             <Text style={S.subHeader}>Tischübersicht</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {seatingTables.map((t, i) => {
+              {seatingTables.map(t => {
                 const assigned = assignmentsByTable.get(t.id) ?? []
                 return (
                   <View key={t.id} style={{
@@ -205,7 +232,7 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
       {/* Page 2+: Table assignment detail */}
       {seatingTables.length > 0 && (
         <Page size="A4" orientation="portrait" style={S.page}>
-          <View style={S.sectionHeader}>
+          <View style={[S.sectionHeader, { backgroundColor: COLORS.darkGray }]}>
             <Text style={S.sectionHeaderText}>Sitzplan — Tischzuweisungen</Text>
           </View>
 
@@ -216,12 +243,12 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
 
               for (const a of assignments) {
                 if (a.brautpaar_slot != null) {
-                  rows.push({
-                    label: a.brautpaar_slot === 1
-                      ? (coupleName?.split(' & ')[0] || 'Brautpaar 1')
-                      : (coupleName?.split(' & ')[1] || 'Brautpaar 2'),
-                    extra: '(Brautpaar)',
-                  })
+                  // Resolve brautpaar name: split on ' & ', fall back gracefully
+                  const parts = coupleName?.split(' & ') ?? []
+                  const slotName = a.brautpaar_slot === 1
+                    ? (parts[0] || 'Brautpaar 1')
+                    : (parts[1] || parts[0] || 'Brautpaar 2')
+                  rows.push({ label: slotName, extra: '(Brautpaar)' })
                 } else if (a.guest_id) {
                   const g = guestMap.get(a.guest_id)
                   if (g) {
@@ -242,7 +269,7 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
                 }
               }
 
-              // Fill empty seats
+              // Show up to 3 empty seats to indicate remaining capacity
               const emptySeats = t.capacity - assignments.length
               for (let i = 0; i < Math.min(emptySeats, 3); i++) {
                 rows.push({ label: '— (frei)', extra: '', muted: true })
@@ -284,9 +311,9 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
                         }}>
                           {r.label}
                         </Text>
-                        {r.extra && (
+                        {r.extra ? (
                           <Text style={{ fontSize: 7, color: COLORS.midGray, maxWidth: 80 }}>{r.extra}</Text>
-                        )}
+                        ) : null}
                       </View>
                     ))}
                   </View>

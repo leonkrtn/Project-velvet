@@ -7,8 +7,6 @@ export interface PdfGuest {
   allergy_tags: string[] | null
   allergy_custom: string | null
   notes: string | null
-  email: string | null
-  phone: string | null
 }
 
 export interface PdfBegleitperson {

@@ -1,4 +1,10 @@
-import { Document } from '@react-pdf/renderer'
+import { Document, Font } from '@react-pdf/renderer'
+
+// In @react-pdf/renderer v4, the default hyphenation function is loaded lazily
+// and can be null when the patterns chunk isn't ready, causing
+// "TypeError: re is not a function" during text layout. A no-op callback
+// short-circuits that path and lets text render without hyphenation.
+Font.registerHyphenationCallback(word => [word])
 import PdfCoverPage from './PdfCoverPage'
 import PdfSectionAllgemein from './sections/PdfSectionAllgemein'
 import PdfSectionGaesteliste from './sections/PdfSectionGaesteliste'
