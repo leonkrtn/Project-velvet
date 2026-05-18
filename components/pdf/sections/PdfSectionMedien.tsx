@@ -1,26 +1,23 @@
 import { Page, View, Text } from '@react-pdf/renderer'
 import { S, COLORS } from '../PdfStyles'
+import { PageHeader, SectionTitle, PageFooter } from '../PdfShared'
 import type { PdfEventData } from '../PdfTypes'
 
-const TYPE_COLORS: Record<string, string> = {
-  must_have: COLORS.green,
-  optional:  COLORS.blue,
-  forbidden: COLORS.red,
-}
-const TYPE_LABELS: Record<string, string> = {
-  must_have: 'Pflicht',
-  optional:  'Optional',
-  forbidden: 'Verboten',
+interface Props {
+  data: PdfEventData
+  sectionIndex: number
+  headerTitle: string
+  exportTimestamp: string
 }
 
-export default function PdfSectionMedien({ data }: { data: PdfEventData }) {
+export default function PdfSectionMedien({ data, sectionIndex, headerTitle, exportTimestamp }: Props) {
   const { mediaBriefing, mediaShotItems } = data
 
-  const mustHave  = mediaShotItems.filter(s => s.type === 'must_have')
-  const optional  = mediaShotItems.filter(s => s.type === 'optional')
-  const forbidden = mediaShotItems.filter(s => s.type === 'forbidden')
+  const mustHave  = mediaShotItems.filter(s => s.type === 'must_have').sort((a, b) => a.sort_order - b.sort_order)
+  const optional  = mediaShotItems.filter(s => s.type === 'optional').sort((a, b) => a.sort_order - b.sort_order)
+  const forbidden = mediaShotItems.filter(s => s.type === 'forbidden').sort((a, b) => a.sort_order - b.sort_order)
 
-  // Group must_have by category
+  // Group must_have by category for the 3-col table
   const byCategory = new Map<string, typeof mustHave>()
   for (const s of mustHave) {
     const cat = s.category || 'Allgemein'
@@ -29,15 +26,15 @@ export default function PdfSectionMedien({ data }: { data: PdfEventData }) {
   }
 
   return (
-    <Page size="A4" orientation="portrait" style={S.page}>
-      <View style={S.sectionHeader}>
-        <Text style={S.sectionHeaderText}>Medien & Fotografie</Text>
-      </View>
+    <Page size="A4" orientation="portrait" style={S.page} wrap>
+      <PageHeader title={headerTitle} timestamp={exportTimestamp} />
+
+      <SectionTitle index={sectionIndex} title="Medien & Fotografie" />
 
       {/* Stats */}
       <View style={S.statRow}>
         <View style={S.statBox}>
-          <Text style={[S.statValue, { color: COLORS.green }]}>{mustHave.length}</Text>
+          <Text style={S.statValue}>{mustHave.length}</Text>
           <Text style={S.statLabel}>Pflicht-Shots</Text>
         </View>
         <View style={S.statBox}>
@@ -45,7 +42,7 @@ export default function PdfSectionMedien({ data }: { data: PdfEventData }) {
           <Text style={S.statLabel}>Optionale Shots</Text>
         </View>
         <View style={S.statBox}>
-          <Text style={[S.statValue, { color: COLORS.red }]}>{forbidden.length}</Text>
+          <Text style={S.statValue}>{forbidden.length}</Text>
           <Text style={S.statLabel}>Verboten</Text>
         </View>
       </View>
@@ -54,7 +51,7 @@ export default function PdfSectionMedien({ data }: { data: PdfEventData }) {
       {mediaBriefing && (
         <>
           <Text style={S.subHeader}>Briefing</Text>
-          <View style={S.kvGrid2}>
+          <View style={[S.kvGrid, { marginTop: 8 }]}>
             {mediaBriefing.photo_briefing && (
               <View style={{ width: '100%' }}>
                 <Text style={S.kvLabel}>Foto-Briefing</Text>
@@ -65,12 +62,6 @@ export default function PdfSectionMedien({ data }: { data: PdfEventData }) {
               <View style={{ width: '100%' }}>
                 <Text style={S.kvLabel}>Video-Briefing</Text>
                 <Text style={S.kvValue}>{mediaBriefing.video_briefing}</Text>
-              </View>
-            )}
-            {mediaBriefing.photo_restrictions && (
-              <View style={{ width: '100%' }}>
-                <Text style={S.kvLabel}>Einschränkungen</Text>
-                <Text style={[S.kvValue, { color: COLORS.red }]}>{mediaBriefing.photo_restrictions}</Text>
               </View>
             )}
             {mediaBriefing.upload_instructions && (
@@ -89,75 +80,76 @@ export default function PdfSectionMedien({ data }: { data: PdfEventData }) {
         </>
       )}
 
-      {/* Shot list — must have, grouped by category */}
-      {mustHave.length > 0 && (
-        <>
-          <Text style={S.subHeader}>Shot-Liste — Pflicht-Aufnahmen</Text>
-          {Array.from(byCategory.entries()).map(([cat, shots]) => (
-            <View key={cat} style={{ marginBottom: 10 }} wrap={false}>
-              <Text style={[S.kvLabel, { marginBottom: 4 }]}>{cat}</Text>
-              <View style={S.table}>
-                <View style={S.tableHeaderRow}>
-                  <Text style={[S.tableCellHeader, { flex: 2 }]}>Aufnahme</Text>
-                  <Text style={[S.tableCellHeader, { flex: 3 }]}>Beschreibung</Text>
-                </View>
-                {shots.map((s, i) => (
-                  <View key={s.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
+      {/* Shot list — must have, grouped by category (3 columns: category / title / description) */}
+      <Text style={S.subHeader}>Shot-Liste – Pflicht-Aufnahmen</Text>
+      {mustHave.length > 0 ? (
+        <View style={[S.table, { marginTop: 8 }]}>
+          <View style={S.tableHeaderRow}>
+            <Text style={[S.tableCellHeader, { flex: 1.5 }]}>Zeremonie-Abschnitt</Text>
+            <Text style={[S.tableCellHeader, { flex: 2 }]}>Aufnahme</Text>
+            <Text style={[S.tableCellHeader, { flex: 3 }]}>Beschreibung</Text>
+          </View>
+          {(() => {
+            let rowIdx = 0
+            return Array.from(byCategory.entries()).map(([cat, shots]) =>
+              shots.map((s, i) => {
+                const idx = rowIdx++
+                return (
+                  <View key={s.id} style={idx % 2 === 0 ? S.tableRow : S.tableRowAlt}>
+                    <Text style={[S.tableCell, { flex: 1.5 }]}>{i === 0 ? cat : ''}</Text>
                     <Text style={[S.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>{s.title}</Text>
                     <Text style={[S.tableCell, { flex: 3 }]}>{s.description || '—'}</Text>
                   </View>
-                ))}
-              </View>
-            </View>
-          ))}
-        </>
+                )
+              })
+            )
+          })()}
+        </View>
+      ) : (
+        <Text style={[S.mutedItalic, { marginTop: 6 }]}>Keine Pflicht-Aufnahmen erfasst.</Text>
       )}
 
       {/* Optional shots */}
-      {optional.length > 0 && (
-        <>
-          <Text style={S.subHeader}>Shot-Liste — Optionale Aufnahmen</Text>
-          <View style={S.table}>
-            <View style={S.tableHeaderRow}>
-              <Text style={[S.tableCellHeader, { flex: 1.5 }]}>Aufnahme</Text>
-              <Text style={[S.tableCellHeader, { width: 60 }]}>Kategorie</Text>
-              <Text style={[S.tableCellHeader, { flex: 2 }]}>Beschreibung</Text>
-            </View>
-            {optional.map((s, i) => (
-              <View key={s.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
-                <Text style={[S.tableCell, { flex: 1.5 }]}>{s.title}</Text>
-                <Text style={[S.tableCell, { width: 60 }]}>{s.category || '—'}</Text>
-                <Text style={[S.tableCell, { flex: 2 }]}>{s.description || '—'}</Text>
-              </View>
-            ))}
+      <Text style={S.subHeader}>Optionale Shots</Text>
+      {optional.length > 0 ? (
+        <View style={[S.table, { marginTop: 8 }]}>
+          <View style={S.tableHeaderRow}>
+            <Text style={[S.tableCellHeader, { flex: 1.5 }]}>Aufnahme</Text>
+            <Text style={[S.tableCellHeader, { width: 70 }]}>Kategorie</Text>
+            <Text style={[S.tableCellHeader, { flex: 3 }]}>Beschreibung</Text>
           </View>
-        </>
+          {optional.map((s, i) => (
+            <View key={s.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
+              <Text style={[S.tableCell, { flex: 1.5, fontFamily: 'Helvetica-Bold' }]}>{s.title}</Text>
+              <Text style={[S.tableCell, { width: 70 }]}>{s.category || '—'}</Text>
+              <Text style={[S.tableCell, { flex: 3 }]}>{s.description || '—'}</Text>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Text style={[S.mutedItalic, { marginTop: 6 }]}>Keine optionalen Shots erfasst.</Text>
       )}
 
       {/* Forbidden */}
-      {forbidden.length > 0 && (
-        <>
-          <Text style={S.subHeader}>Verboten / Unerwünscht</Text>
-          <View style={S.table}>
-            <View style={S.tableHeaderRow}>
-              <Text style={[S.tableCellHeader, { flex: 2 }]}>Aufnahme</Text>
-              <Text style={[S.tableCellHeader, { flex: 3 }]}>Begründung</Text>
-            </View>
-            {forbidden.map((s, i) => (
-              <View key={s.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
-                <Text style={[S.tableCell, { flex: 2, color: COLORS.red }]}>{s.title}</Text>
-                <Text style={[S.tableCell, { flex: 3 }]}>{s.description || '—'}</Text>
-              </View>
-            ))}
+      <Text style={S.subHeader}>Verbotene Aufnahmen</Text>
+      {forbidden.length > 0 ? (
+        <View style={[S.table, { marginTop: 8 }]}>
+          <View style={S.tableHeaderRow}>
+            <Text style={[S.tableCellHeader, { flex: 2 }]}>Aufnahme</Text>
+            <Text style={[S.tableCellHeader, { flex: 3 }]}>Begründung</Text>
           </View>
-        </>
+          {forbidden.map((s, i) => (
+            <View key={s.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
+              <Text style={[S.tableCell, { flex: 2, color: COLORS.red }]}>{s.title}</Text>
+              <Text style={[S.tableCell, { flex: 3 }]}>{s.description || '—'}</Text>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Text style={[S.mutedItalic, { marginTop: 6 }]}>Keine Einschränkungen erfasst.</Text>
       )}
 
-      {mediaShotItems.length === 0 && !mediaBriefing && (
-        <Text style={[S.muted, S.small]}>Kein Medien-Briefing vorhanden.</Text>
-      )}
-
-      <Text style={S.footer} render={({ pageNumber }) => `${pageNumber}`} fixed />
+      <PageFooter />
     </Page>
   )
 }
