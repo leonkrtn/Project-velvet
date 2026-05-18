@@ -393,7 +393,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
         </div>
         <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--bp-rule)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
           <AddItemForm eventId={eventId} onAdded={i => setItems(prev => [...prev, i])} />
-          <div style={{ textAlign: 'right' }}>
+          <div style={{ textAlign: 'right', marginLeft: 'auto' }}>
             <div className="bp-label">Gesamt geplant</div>
             <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1.5rem', fontWeight: 600, color: 'var(--bp-ink)' }}>
               {formatCurrency(totalWithFee)}
