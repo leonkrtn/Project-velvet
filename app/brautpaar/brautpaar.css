@@ -410,6 +410,7 @@
   .bp-content-offset,
   .bp-content-offset[data-expanded="true"] {
     padding-left: 0;
+    padding-top: 56px;
   }
 
   .bp-sidebar-toggle {
@@ -435,8 +436,10 @@
   padding: 0 1rem;
   align-items: center;
   justify-content: space-between;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 30;
 }
 
