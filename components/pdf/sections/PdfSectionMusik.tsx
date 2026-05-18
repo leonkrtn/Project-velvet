@@ -10,7 +10,8 @@ export default function PdfSectionMusik({ data }: { data: PdfEventData }) {
   const wishes   = musicSongs.filter(s => s.type === 'wish')
   const noGos    = musicSongs.filter(s => s.type === 'no_go')
   const playlist = musicSongs.filter(s => s.type === 'playlist')
-  const guestSuggestions = musicSongs.filter(s => s.source === 'gast')
+  // Only show guest suggestions that aren't already in the wish list (avoiding duplicates)
+  const guestSuggestions = musicSongs.filter(s => s.source === 'gast' && s.type !== 'wish')
 
   // Group wishes by moment
   const byMoment = new Map<string, typeof wishes>()
@@ -96,10 +97,31 @@ export default function PdfSectionMusik({ data }: { data: PdfEventData }) {
         </>
       )}
 
-      {/* Guest suggestions */}
+      {/* Playlist */}
+      {playlist.length > 0 && (
+        <>
+          <Text style={S.subHeader}>Playlist</Text>
+          <View style={S.table}>
+            <View style={S.tableHeaderRow}>
+              <Text style={[S.tableCellHeader, { flex: 2 }]}>Titel</Text>
+              <Text style={[S.tableCellHeader, { flex: 2 }]}>Interpret</Text>
+              <Text style={[S.tableCellHeader, { flex: 1 }]}>Moment</Text>
+            </View>
+            {playlist.map((s, i) => (
+              <View key={s.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
+                <Text style={[S.tableCell, { flex: 2 }]}>{s.title || '—'}</Text>
+                <Text style={[S.tableCell, { flex: 2 }]}>{s.artist || '—'}</Text>
+                <Text style={[S.tableCell, { flex: 1 }]}>{s.moment || '—'}</Text>
+              </View>
+            ))}
+          </View>
+        </>
+      )}
+
+      {/* Guest suggestions (only those not already in wish list) */}
       {guestSuggestions.length > 0 && (
         <>
-          <Text style={S.subHeader}>Gast-Vorschläge</Text>
+          <Text style={S.subHeader}>Gast-Vorschläge (noch nicht übernommen)</Text>
           <View style={S.table}>
             <View style={S.tableHeaderRow}>
               <Text style={[S.tableCellHeader, { flex: 1.5 }]}>Vorgeschlagen von</Text>

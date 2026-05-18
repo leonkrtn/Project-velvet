@@ -71,8 +71,12 @@ export default function PdfSectionBudget({ data }: Props) {
           </View>
           {deckung != null && (
             <View style={S.statBox}>
-              <Text style={S.statValue}>{deckung} %</Text>
-              <Text style={S.statLabel}>Ausgeschöpft</Text>
+              <Text style={[S.statValue, { color: deckung > 100 ? COLORS.red : deckung > 90 ? COLORS.amber : COLORS.darkGray }]}>
+                {deckung} %
+              </Text>
+              <Text style={[S.statLabel, { color: deckung > 100 ? COLORS.red : undefined }]}>
+                {deckung > 100 ? 'Über Budget!' : 'Ausgeschöpft'}
+              </Text>
             </View>
           )}
         </View>

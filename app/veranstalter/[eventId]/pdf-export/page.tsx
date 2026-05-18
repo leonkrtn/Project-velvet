@@ -23,12 +23,25 @@ export default async function PdfExportPage({ params }: Props) {
 
   if (!member || member.role !== 'veranstalter') redirect('/veranstalter')
 
-  // ── Fetch all data in parallel ───────────────────────────────────────────
+  // ── Step 1: Fetch guests first to obtain IDs for the begleitpersonen query.
+  // This avoids an `await` inside the Promise.all array (which would serialise
+  // every query that comes after it instead of running them in parallel).
+  const { data: guestsRaw, error: guestsError } = await supabase
+    .from('guests')
+    .select('id, name, status, side, meal_choice, allergy_tags, allergy_custom, notes')
+    .eq('event_id', eventId)
+    .order('name')
+
+  if (guestsError) redirect('/veranstalter')
+
+  const guests  = guestsRaw ?? []
+  const guestIds = guests.map((g: { id: string }) => g.id)
+
+  // ── Step 2: All remaining queries in parallel ────────────────────────────
   const [
     eventRes,
     bpRes,
     orgCostsRes,
-    guestsRes,
     begleitRes,
     roomConfigRes,
     tablesRes,
@@ -69,17 +82,12 @@ export default async function PdfExportPage({ params }: Props) {
       .neq('source', 'catering')
       .order('created_at'),
 
-    supabase.from('guests')
-      .select('id, name, status, side, meal_choice, allergy_tags, allergy_custom, notes, email, phone')
-      .eq('event_id', eventId)
-      .order('name'),
-
-    supabase.from('begleitpersonen')
-      .select('id, guest_id, name, meal_choice, allergy_tags, allergy_custom')
-      .in('guest_id',
-        await supabase.from('guests').select('id').eq('event_id', eventId)
-          .then(r => (r.data ?? []).map((g: { id: string }) => g.id))
-      ),
+    // Guard against empty guestIds — PostgREST behaviour with .in([]) is undefined
+    guestIds.length > 0
+      ? supabase.from('begleitpersonen')
+          .select('id, guest_id, name, meal_choice, allergy_tags, allergy_custom')
+          .in('guest_id', guestIds)
+      : Promise.resolve({ data: [] as any[], error: null }),
 
     supabase.from('event_room_configs').select('points, elements').eq('event_id', eventId).maybeSingle(),
 
@@ -149,7 +157,6 @@ export default async function PdfExportPage({ params }: Props) {
   if (!eventRes.data) redirect('/veranstalter')
 
   // ── Compute derived data ─────────────────────────────────────────────────
-  const guests     = guestsRes.data ?? []
   const begleit    = begleitRes.data ?? []
   const confirmedIds = new Set(guests.filter((g: { status: string }) => g.status === 'zugesagt').map((g: { id: string }) => g.id))
 
@@ -171,9 +178,9 @@ export default async function PdfExportPage({ params }: Props) {
   const confirmedGuestCount = guests.filter((g: { status: string }) => g.status === 'zugesagt').length
     + begleit.filter((b: { guest_id: string }) => confirmedIds.has(b.guest_id)).length
 
-  // Deko items by canvas
-  const canvases = canvasesRes.data ?? []
-  const canvasIds = canvases.map((c: { id: string }) => c.id)
+  // Deko items by canvas (second sequential query — needs canvas IDs from the parallel batch above)
+  const canvases   = canvasesRes.data ?? []
+  const canvasIds  = canvases.map((c: { id: string }) => c.id)
   let dekoItemsByCanvas: Record<string, PdfEventData['dekoItemsByCanvas'][string]> = {}
   if (canvasIds.length > 0) {
     const { data: itemsRaw } = await supabase
@@ -189,7 +196,7 @@ export default async function PdfExportPage({ params }: Props) {
   // Room points
   const roomPoints = (roomConfigRes.data?.points ?? []) as Array<{ x: number; y: number }>
 
-  // Normalize bp members
+  // Normalize brautpaar members
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bpMembers = (bpRes.data ?? []).map((m: any) => {
     const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
@@ -231,7 +238,7 @@ export default async function PdfExportPage({ params }: Props) {
     musicRequirements: reqRes.data ?? null,
 
     dekoAreas:          (areasRes.data ?? []) as PdfEventData['dekoAreas'],
-    dekoCanvases:       (canvases) as PdfEventData['dekoCanvases'],
+    dekoCanvases:       canvases as PdfEventData['dekoCanvases'],
     dekoItemsByCanvas,
     dekoCatalogItems:   (catalogRes.data ?? []) as PdfEventData['dekoCatalogItems'],
     dekoFlatRates:      (flatRatesRes.data ?? []) as PdfEventData['dekoFlatRates'],

@@ -21,10 +21,9 @@ const CANVAS_TYPE_LABEL: Record<string, string> = {
 export default function PdfSectionDekoration({ data, mode }: Props) {
   const { dekoAreas, dekoCanvases, dekoItemsByCanvas, dekoCatalogItems, dekoFlatRates } = data
 
-  // Build catalog lookup
   const catalogMap = new Map(dekoCatalogItems.map(c => [c.id, c]))
+  const flatRateMap = new Map(dekoFlatRates.map(fr => [fr.id, fr]))
 
-  // Count article items across all canvases
   const ARTICLE_TYPES = ['article', 'flat_rate_article', 'fabric']
   let totalArticles = 0
   for (const items of Object.values(dekoItemsByCanvas)) {
@@ -33,14 +32,21 @@ export default function PdfSectionDekoration({ data, mode }: Props) {
   const frozenCount = dekoCanvases.filter(c => c.is_frozen && c.canvas_type === 'main').length
   const totalFrozen = dekoCanvases.filter(c => c.canvas_type === 'main').length
 
-  // Compute total deko budget (intern)
+  // Compute total deko budget (intern only)
   let dekoTotal = 0
   if (mode === 'intern') {
     for (const items of Object.values(dekoItemsByCanvas)) {
       for (const item of items) {
-        if (item.type === 'article' || item.type === 'flat_rate_article') {
+        if (item.type === 'article') {
           const cat = catalogMap.get(item.data.catalog_item_id as string)
           if (cat && !cat.is_free && cat.price_per_unit) {
+            dekoTotal += cat.price_per_unit * ((item.data.quantity as number) ?? 1)
+          }
+        } else if (item.type === 'flat_rate_article') {
+          // flat_rate_article has its own is_free flag; price comes from catalog item
+          const cat = catalogMap.get(item.data.catalog_item_id as string)
+          const itemIsFree = (item.data.is_free as boolean | undefined) ?? false
+          if (cat && !itemIsFree && !cat.is_free && cat.price_per_unit) {
             dekoTotal += cat.price_per_unit * ((item.data.quantity as number) ?? 1)
           }
         } else if (item.type === 'fabric') {
@@ -56,7 +62,6 @@ export default function PdfSectionDekoration({ data, mode }: Props) {
     }
   }
 
-  // Sort areas
   const sortedAreas = [...dekoAreas].sort((a, b) => a.sort_order - b.sort_order)
 
   return (
@@ -144,7 +149,7 @@ export default function PdfSectionDekoration({ data, mode }: Props) {
                       <View style={S.table}>
                         <View style={S.tableHeaderRow}>
                           <Text style={[S.tableCellHeader, { flex: 2 }]}>Artikel</Text>
-                          <Text style={[S.tableCellHeader, { width: 55 }]}>Typ</Text>
+                          <Text style={[S.tableCellHeader, { width: 65 }]}>Typ</Text>
                           <Text style={[S.tableCellHeader, { width: 50, textAlign: 'right' }]}>Menge</Text>
                           {mode === 'intern' && (
                             <>
@@ -154,32 +159,43 @@ export default function PdfSectionDekoration({ data, mode }: Props) {
                           )}
                         </View>
                         {articleItems.map((item, i) => {
-                          const cat = catalogMap.get(item.data.catalog_item_id as string)
-                          const name = cat?.name ?? '—'
                           const isFabric = item.type === 'fabric'
+                          const isFlatRate = item.type === 'flat_rate_article'
+
+                          // flat_rate_article: look up via catalog_item_id (it has one), name fallback from flat rate
+                          const cat = catalogMap.get(item.data.catalog_item_id as string)
+                          const linkedFlatRate = isFlatRate
+                            ? flatRateMap.get(item.data.flat_rate_id as string)
+                            : undefined
+                          const name = cat?.name ?? linkedFlatRate?.name ?? '—'
+
                           const qty = isFabric
                             ? `${item.data.quantity_meters ?? 0} m`
                             : `${item.data.quantity ?? 1}×`
+
+                          const itemIsFree = isFlatRate
+                            ? ((item.data.is_free as boolean | undefined) ?? false) || (cat?.is_free ?? false)
+                            : (cat?.is_free ?? false)
+
                           const unitPrice = isFabric ? cat?.price_per_meter : cat?.price_per_unit
                           const total = isFabric
                             ? (cat?.price_per_meter ?? 0) * ((item.data.quantity_meters as number) ?? 0)
                             : (cat?.price_per_unit ?? 0) * ((item.data.quantity as number) ?? 1)
-                          const isFree = cat?.is_free ?? false
+
+                          const typeLabel = isFabric ? 'Stoff' : isFlatRate ? 'Pauschal' : 'Artikel'
 
                           return (
                             <View key={item.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
                               <Text style={[S.tableCell, { flex: 2 }]}>{name}</Text>
-                              <Text style={[S.tableCell, { width: 55 }]}>
-                                {isFabric ? 'Stoff' : 'Artikel'}
-                              </Text>
+                              <Text style={[S.tableCell, { width: 65 }]}>{typeLabel}</Text>
                               <Text style={[S.tableCell, { width: 50, textAlign: 'right' }]}>{qty}</Text>
                               {mode === 'intern' && (
                                 <>
                                   <Text style={[S.tableCell, { width: 65, textAlign: 'right' }]}>
-                                    {isFree ? 'Inklusive' : fmtMoney(unitPrice)}
+                                    {itemIsFree ? 'Inklusive' : fmtMoney(unitPrice)}
                                   </Text>
                                   <Text style={[S.tableCell, { width: 65, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>
-                                    {isFree ? '—' : fmtMoney(total)}
+                                    {itemIsFree ? '—' : fmtMoney(total)}
                                   </Text>
                                 </>
                               )}

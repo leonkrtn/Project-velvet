@@ -8,7 +8,7 @@ interface Props {
 }
 
 function fmtMoney(n: number | null | undefined) {
-  if (!n) return '—'
+  if (n == null) return '—'
   return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 })
 }
 

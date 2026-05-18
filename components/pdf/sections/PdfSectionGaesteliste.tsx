@@ -31,41 +31,18 @@ function statusLabel(status: string) {
 }
 
 export default function PdfSectionGaesteliste({ data, mode }: Props) {
-  const { guests, begleitpersonen, event } = data
+  const { guests, begleitpersonen, event, mealCounts, allergyCounts } = data
 
   const zugesagt = guests.filter(g => g.status === 'zugesagt').length
   const abgesagt = guests.filter(g => g.status === 'abgesagt').length
   const offen = guests.length - zugesagt - abgesagt
 
-  // Count begleitpersonen of confirmed guests
   const confirmedIds = new Set(guests.filter(g => g.status === 'zugesagt').map(g => g.id))
   const confirmedBegleit = begleitpersonen.filter(b => confirmedIds.has(b.guest_id))
 
-  // Meal counts
-  const mealCounts: Record<string, number> = {}
-  for (const g of guests.filter(g => g.status === 'zugesagt')) {
-    if (g.meal_choice) mealCounts[g.meal_choice] = (mealCounts[g.meal_choice] ?? 0) + 1
-  }
-  for (const b of confirmedBegleit) {
-    if (b.meal_choice) mealCounts[b.meal_choice] = (mealCounts[b.meal_choice] ?? 0) + 1
-  }
-
-  // Allergy counts
-  const allergyCounts: Record<string, number> = {}
-  for (const g of guests.filter(g => g.status === 'zugesagt')) {
-    for (const tag of (g.allergy_tags ?? [])) {
-      allergyCounts[tag] = (allergyCounts[tag] ?? 0) + 1
-    }
-  }
-  for (const b of confirmedBegleit) {
-    for (const tag of (b.allergy_tags ?? [])) {
-      allergyCounts[tag] = (allergyCounts[tag] ?? 0) + 1
-    }
-  }
-
   const mealOptions = event.meal_options ?? []
 
-  // Build begleit map
+  // Build begleit map for fast O(1) lookup per guest row
   const begleitByGuest = new Map<string, typeof begleitpersonen>()
   for (const b of begleitpersonen) {
     if (!begleitByGuest.has(b.guest_id)) begleitByGuest.set(b.guest_id, [])
@@ -98,13 +75,14 @@ export default function PdfSectionGaesteliste({ data, mode }: Props) {
           <Text style={S.statValue}>{offen}</Text>
           <Text style={S.statLabel}>Offen</Text>
         </View>
+        {/* Show confirmed begleitpersonen — the relevant count for planning */}
         <View style={S.statBox}>
-          <Text style={S.statValue}>{begleitpersonen.length}</Text>
-          <Text style={S.statLabel}>Begleitpersonen</Text>
+          <Text style={S.statValue}>{confirmedBegleit.length}</Text>
+          <Text style={S.statLabel}>Best. Begleit.</Text>
         </View>
       </View>
 
-      {/* Meal + Allergy stats side by side */}
+      {/* Meal + Allergy stats — use server-computed counts (include all confirmed begleitpersonen) */}
       {(mealOptions.length > 0 || Object.keys(allergyCounts).length > 0) && (
         <View style={{ flexDirection: 'row', gap: 16, marginBottom: 14 }}>
           {mealOptions.length > 0 && Object.keys(mealCounts).length > 0 && (
