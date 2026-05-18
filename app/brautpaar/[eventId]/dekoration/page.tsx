@@ -50,6 +50,14 @@ export default async function BrautpaarDekorationPage({ params }: Props) {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      {/* Mobile notice — shown below 900px via CSS */}
+      <div className="bp-below-desktop bp-page" style={{ textAlign: 'center', paddingTop: '3rem' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>💻</div>
+        <h2 className="bp-h2" style={{ marginBottom: '0.5rem' }}>Nur auf dem Desktop verfügbar</h2>
+        <p className="bp-body">Die Dekoration kann nur auf einem größeren Bildschirm bearbeitet werden. Bitte öffne diese Seite auf einem Laptop oder Tablet.</p>
+      </div>
+      {/* Full editor — hidden below 900px via CSS */}
+      <div className="bp-desktop-only" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <DekoPageClient
         eventId={eventId}
         role="brautpaar"
@@ -63,6 +71,7 @@ export default async function BrautpaarDekorationPage({ params }: Props) {
         allFrozen={allFrozen}
         isVeranstalter={false}
       />
+      </div>
     </div>
   )
 }

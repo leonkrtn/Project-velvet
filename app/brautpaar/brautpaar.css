@@ -1086,3 +1086,21 @@
 @media (min-width: 641px) {
   .bp-mobile-only { display: none !important; }
 }
+
+/* ── Desktop-only helpers (for complex tools: sitzplan, deko) ── */
+@media (max-width: 899px) {
+  .bp-desktop-only { display: none !important; }
+}
+@media (min-width: 900px) {
+  .bp-below-desktop { display: none !important; }
+}
+
+/* ── Date/time inputs: prevent iOS from overriding font & colour ── */
+.bp-input[type="date"],
+.bp-input[type="time"],
+.bp-input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  color: var(--bp-ink);
+  font-family: 'DM Sans', system-ui, sans-serif;
+}

@@ -972,8 +972,6 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
         boxShadow: 'var(--bp-shadow-card)',
         overflow: 'hidden',
         width: '100%',
-        overflowX: 'auto',
-        scrollbarWidth: 'none',
       }}>
         {[
           { label: 'Gesamt',     value: guests.length, color: 'var(--bp-ink)' },
@@ -982,12 +980,14 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
           { label: 'Ausstehend', value: ausstehend,    color: 'var(--bp-ink-3)' },
         ].map((s, i) => (
           <div key={s.label} style={{
-            padding: '0.375rem 0.875rem',
+            flex: 1,
+            minWidth: 0,
+            padding: '0.375rem 0.25rem',
             borderLeft: i > 0 ? '1px solid var(--bp-rule)' : 'none',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.375rem',
-            flexShrink: 0,
+            justifyContent: 'center',
+            gap: '0.25rem',
           }}>
             <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: s.color }}>{s.value}</span>
             <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>{s.label}</span>
