@@ -173,9 +173,7 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
                       <Text
                         x={t.cx} y={t.cy + 3}
                         textAnchor="middle"
-                        fontSize={Math.min(8, Math.max(5, t.r * 0.55))}
-                        fill={COLORS.darkGray}
-                        fontFamily="Helvetica"
+                        style={{ fontSize: Math.min(8, Math.max(5, t.r * 0.55)), fill: COLORS.darkGray, fontFamily: 'Helvetica' }}
                       >
                         {t.name}
                       </Text>
@@ -196,9 +194,7 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
                       <Text
                         x={t.cx} y={t.cy + 3}
                         textAnchor="middle"
-                        fontSize={Math.min(8, Math.max(5, Math.min(t.w, t.h) * 0.35))}
-                        fill={COLORS.darkGray}
-                        fontFamily="Helvetica"
+                        style={{ fontSize: Math.min(8, Math.max(5, Math.min(t.w, t.h) * 0.35)), fill: COLORS.darkGray, fontFamily: 'Helvetica' }}
                       >
                         {t.name}
                       </Text>
