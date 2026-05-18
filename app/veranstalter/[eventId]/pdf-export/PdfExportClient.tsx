@@ -9,18 +9,14 @@ import {
 } from 'lucide-react'
 import type { PdfEventData, PdfMode, PdfSection } from '@/components/pdf/PdfTypes'
 
-// Lazy-load PDF components — browser only, ssr: false keeps them out of the
-// server bundle entirely (avoiding the StyleSheet.create circular-dep crash).
-// BlobProvider is loaded via a thin wrapper (PdfBlobProvider) that also calls
-// Font.registerHyphenationCallback in the same module-init, ensuring the
-// hyphenation callback is set before @react-pdf's text-layout chunk captures
-// its internal `re` reference (see components/pdf/PdfBlobProvider.ts).
-const BlobProvider = dynamic(
-  () => import('@/components/pdf/PdfBlobProvider').then(m => ({ default: m.BlobProvider })),
-  { ssr: false },
-)
-const VelvetPdfDocument = dynamic(
-  () => import('@/components/pdf/VelvetPdfDocument'),
+// Single dynamic import for ALL @react-pdf/renderer code (BlobProvider +
+// VelvetPdfDocument + all section components). Splitting these across two
+// separate dynamic() calls caused webpack to create two separate module
+// instances of @react-pdf/renderer, each with their own copy of the internal
+// `re` variable — one copy always null → "TypeError: re is not a function".
+// One chunk = one module instance = one `re` = no crash.
+const PdfBlobProvider = dynamic(
+  () => import('@/components/pdf/PdfBlobProvider'),
   { ssr: false },
 )
 
@@ -164,12 +160,6 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
     return `velvet-export-${safe}-${new Date().toISOString().slice(0, 10)}.pdf`
   }, [data.event.title])
 
-  // Only create the JSX node when we actually want to render; memoized to avoid re-creating
-  // on unrelated re-renders (which would restart BlobProvider's generation)
-  const docNode = useMemo(() => {
-    if (!mounted || !showPreview || sections.length === 0) return null
-    return <VelvetPdfDocument data={data} mode={mode} sections={sections} />
-  }, [mounted, showPreview, sections, data, mode])
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 36px)', gap: 0, overflow: 'hidden' }}>
@@ -272,7 +262,7 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
 
           {/* Download button — appears once blobUrl is available from BlobProvider.
               Uses the same blob URL as the preview iframe, so the PDF is only rendered once. */}
-          {mounted && showPreview && docNode && (
+          {mounted && showPreview && sections.length > 0 && (
             blobUrl ? (
               <a
                 href={blobUrl}
@@ -322,9 +312,9 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
               </button>
             </div>
           </div>
-        ) : mounted && showPreview && docNode ? (
+        ) : mounted && showPreview && sections.length > 0 ? (
           <PdfErrorBoundary onError={handleError}>
-            <BlobProvider document={docNode}>
+            <PdfBlobProvider data={data} mode={mode} sections={sections}>
               {({ url, loading, error }) => {
                 if (error) return <BlobError message={error.message} onError={handleError} />
                 if (loading || !url) return (
@@ -334,7 +324,6 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
                 )
                 return (
                   <>
-                    {/* Capture URL once — used by download anchor in left panel */}
                     <BlobUrlCapture url={url} onCapture={handleBlobUrl} />
                     <iframe
                       src={url}
@@ -344,7 +333,7 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
                   </>
                 )
               }}
-            </BlobProvider>
+            </PdfBlobProvider>
           </PdfErrorBoundary>
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
