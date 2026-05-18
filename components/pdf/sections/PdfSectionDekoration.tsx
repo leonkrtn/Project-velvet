@@ -1,38 +1,36 @@
 import { Page, View, Text } from '@react-pdf/renderer'
 import { S, COLORS } from '../PdfStyles'
+import { PageHeader, SectionTitle, PageFooter } from '../PdfShared'
 import type { PdfEventData, PdfMode } from '../PdfTypes'
 
 interface Props {
   data: PdfEventData
   mode: PdfMode
+  sectionIndex: number
+  headerTitle: string
+  exportTimestamp: string
 }
 
 function fmtMoney(n: number | null | undefined) {
   if (n == null || n === 0) return '—'
-  return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 })
+  return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const CANVAS_TYPE_LABEL: Record<string, string> = {
-  main: 'Hauptcanvas',
-  variant: 'Variante',
-  moodboard: 'Moodboard',
-}
+const ARTICLE_TYPES = ['article', 'flat_rate_article', 'fabric']
 
-export default function PdfSectionDekoration({ data, mode }: Props) {
+export default function PdfSectionDekoration({ data, mode, sectionIndex, headerTitle, exportTimestamp }: Props) {
   const { dekoAreas, dekoCanvases, dekoItemsByCanvas, dekoCatalogItems, dekoFlatRates } = data
 
-  const catalogMap = new Map(dekoCatalogItems.map(c => [c.id, c]))
+  const catalogMap  = new Map(dekoCatalogItems.map(c => [c.id, c]))
   const flatRateMap = new Map(dekoFlatRates.map(fr => [fr.id, fr]))
 
-  const ARTICLE_TYPES = ['article', 'flat_rate_article', 'fabric']
   let totalArticles = 0
   for (const items of Object.values(dekoItemsByCanvas)) {
     totalArticles += items.filter(i => ARTICLE_TYPES.includes(i.type)).length
   }
-  const frozenCount = dekoCanvases.filter(c => c.is_frozen && c.canvas_type === 'main').length
-  const totalFrozen = dekoCanvases.filter(c => c.canvas_type === 'main').length
+  const frozenMain  = dekoCanvases.filter(c => c.is_frozen && c.canvas_type === 'main').length
+  const totalMain   = dekoCanvases.filter(c => c.canvas_type === 'main').length
 
-  // Compute total deko budget (intern only)
   let dekoTotal = 0
   if (mode === 'intern') {
     for (const items of Object.values(dekoItemsByCanvas)) {
@@ -43,7 +41,6 @@ export default function PdfSectionDekoration({ data, mode }: Props) {
             dekoTotal += cat.price_per_unit * ((item.data.quantity as number) ?? 1)
           }
         } else if (item.type === 'flat_rate_article') {
-          // flat_rate_article has its own is_free flag; price comes from catalog item
           const cat = catalogMap.get(item.data.catalog_item_id as string)
           const itemIsFree = (item.data.is_free as boolean | undefined) ?? false
           if (cat && !itemIsFree && !cat.is_free && cat.price_per_unit) {
@@ -57,18 +54,16 @@ export default function PdfSectionDekoration({ data, mode }: Props) {
         }
       }
     }
-    for (const fr of dekoFlatRates) {
-      dekoTotal += fr.amount
-    }
+    for (const fr of dekoFlatRates) dekoTotal += fr.amount
   }
 
   const sortedAreas = [...dekoAreas].sort((a, b) => a.sort_order - b.sort_order)
 
   return (
     <Page size="A4" orientation="portrait" style={S.page} wrap>
-      <View style={S.sectionHeader}>
-        <Text style={S.sectionHeaderText}>Dekoration</Text>
-      </View>
+      <PageHeader title={headerTitle} timestamp={exportTimestamp} />
+
+      <SectionTitle index={sectionIndex} title="Dekoration" />
 
       {/* Stats */}
       <View style={S.statRow}>
@@ -81,12 +76,12 @@ export default function PdfSectionDekoration({ data, mode }: Props) {
           <Text style={S.statLabel}>Artikel gesamt</Text>
         </View>
         <View style={S.statBox}>
-          <Text style={S.statValue}>{frozenCount}/{totalFrozen}</Text>
+          <Text style={S.statValue}>{frozenMain} / {totalMain}</Text>
           <Text style={S.statLabel}>Eingereicht</Text>
         </View>
         {mode === 'intern' && (
           <View style={S.statBox}>
-            <Text style={S.statValue}>{fmtMoney(dekoTotal)}</Text>
+            <Text style={S.statValue}>{fmtMoney(dekoTotal)} €</Text>
             <Text style={S.statLabel}>Budget gesamt</Text>
           </View>
         )}
@@ -96,135 +91,92 @@ export default function PdfSectionDekoration({ data, mode }: Props) {
         const areaCanvases = dekoCanvases
           .filter(c => c.area_id === area.id)
           .sort((a, b) => a.sort_order - b.sort_order)
+
+        // Collect all article items across canvases for this area's main/variant canvases
+        const mainCanvas = areaCanvases.find(c => c.canvas_type === 'main')
+        const items      = mainCanvas ? (dekoItemsByCanvas[mainCanvas.id] ?? []) : []
+        const articleItems = items.filter(i => ARTICLE_TYPES.includes(i.type))
+        const voteItems    = items.filter(i => i.type === 'vote_card')
+        const textItems    = items.filter(i => ['text_block', 'sticky_note', 'heading', 'checklist'].includes(i.type))
+
+        const hasContent = articleItems.length > 0 || voteItems.length > 0 || textItems.length > 0
+
+        const voteTexts = voteItems.map(v => (v.data.title as string) || '—').join(', ')
+        const textSummary = textItems.length > 0 ? `${textItems.length} Textnotiz${textItems.length !== 1 ? 'en' : ''}` : null
+
         return (
-          <View key={area.id} style={{ marginBottom: 16 }} wrap={false}>
-            {/* Area header with color accent */}
-            <View style={{
-              flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8,
-            }}>
-              <View style={{
-                width: 4, height: 16,
-                backgroundColor: area.color || COLORS.darkGray,
-                borderRadius: 2,
-              }} />
-              <Text style={{ fontSize: 12, fontFamily: 'Helvetica-Bold', color: COLORS.black }}>
-                {area.name}
-              </Text>
-            </View>
+          <View key={area.id} style={{ marginBottom: 14 }} wrap={false}>
+            {/* BEREICH: area name sub-header */}
+            <Text style={S.subHeader}>Bereich: {area.name}</Text>
 
-            {areaCanvases.length === 0 ? (
-              <Text style={[S.muted, S.small, { paddingLeft: 12 }]}>Keine Canvases in diesem Bereich.</Text>
+            {!hasContent ? (
+              <Text style={[S.mutedItalic, { marginTop: 6 }]}>Keine Inhalte erfasst.</Text>
             ) : (
-              areaCanvases.map(canvas => {
-                const items = dekoItemsByCanvas[canvas.id] ?? []
-                const articleItems = items.filter(i => ARTICLE_TYPES.includes(i.type))
-                const textItems = items.filter(i => ['text_block', 'sticky_note', 'heading', 'checklist'].includes(i.type))
-                const voteItems = items.filter(i => i.type === 'vote_card')
-
-                return (
-                  <View key={canvas.id} style={{ paddingLeft: 12, marginBottom: 10 }}>
-                    {/* Canvas sub-header */}
-                    <View style={{
-                      flexDirection: 'row', gap: 6, alignItems: 'center', marginBottom: 6,
-                    }}>
-                      <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: COLORS.darkGray }}>
-                        {canvas.name}
-                      </Text>
-                      <View style={[S.badge, { backgroundColor: COLORS.ultraLight, color: COLORS.midGray }]}>
-                        <Text style={{ fontSize: 7, color: COLORS.midGray }}>
-                          {CANVAS_TYPE_LABEL[canvas.canvas_type] ?? canvas.canvas_type}
-                        </Text>
-                      </View>
-                      {canvas.is_frozen && (
-                        <View style={[S.badge, { backgroundColor: '#DCFCE7', color: COLORS.green }]}>
-                          <Text style={{ fontSize: 7, color: COLORS.green, fontFamily: 'Helvetica-Bold' }}>
-                            Eingereicht
-                          </Text>
-                        </View>
+              <>
+                {articleItems.length > 0 && (
+                  <View style={[S.table, { marginTop: 8 }]}>
+                    <View style={S.tableHeaderRow}>
+                      <Text style={[S.tableCellHeader, { flex: 2 }]}>Artikel</Text>
+                      <Text style={[S.tableCellHeader, { width: 60 }]}>Typ</Text>
+                      <Text style={[S.tableCellHeader, { width: 50, textAlign: 'right' }]}>Menge</Text>
+                      {mode === 'intern' && (
+                        <>
+                          <Text style={[S.tableCellHeader, { width: 70, textAlign: 'right' }]}>Preis / Einh. (€)</Text>
+                          <Text style={[S.tableCellHeader, { width: 65, textAlign: 'right' }]}>Gesamt (€)</Text>
+                        </>
                       )}
                     </View>
+                    {articleItems.map((item, i) => {
+                      const isFabric   = item.type === 'fabric'
+                      const isFlatRate = item.type === 'flat_rate_article'
+                      const cat        = catalogMap.get(item.data.catalog_item_id as string)
+                      const linkedFR   = isFlatRate ? flatRateMap.get(item.data.flat_rate_id as string) : undefined
+                      const name       = cat?.name ?? linkedFR?.name ?? '—'
+                      const qty        = isFabric
+                        ? `${item.data.quantity_meters ?? 0} m`
+                        : `${item.data.quantity ?? 1}×`
+                      const itemIsFree = isFlatRate
+                        ? ((item.data.is_free as boolean | undefined) ?? false) || (cat?.is_free ?? false)
+                        : (cat?.is_free ?? false)
+                      const unitPrice  = isFabric ? cat?.price_per_meter : cat?.price_per_unit
+                      const total      = isFabric
+                        ? (cat?.price_per_meter ?? 0) * ((item.data.quantity_meters as number) ?? 0)
+                        : (cat?.price_per_unit ?? 0) * ((item.data.quantity as number) ?? 1)
+                      const typeLabel  = isFabric ? 'Stoff' : isFlatRate ? 'Pauschal' : 'Artikel'
 
-                    {/* Article list */}
-                    {articleItems.length > 0 && (
-                      <View style={S.table}>
-                        <View style={S.tableHeaderRow}>
-                          <Text style={[S.tableCellHeader, { flex: 2 }]}>Artikel</Text>
-                          <Text style={[S.tableCellHeader, { width: 65 }]}>Typ</Text>
-                          <Text style={[S.tableCellHeader, { width: 50, textAlign: 'right' }]}>Menge</Text>
+                      return (
+                        <View key={item.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
+                          <Text style={[S.tableCell, { flex: 2, fontFamily: 'Helvetica-Bold' }]}>{name}</Text>
+                          <Text style={[S.tableCell, { width: 60 }]}>{typeLabel}</Text>
+                          <Text style={[S.tableCell, { width: 50, textAlign: 'right' }]}>{qty}</Text>
                           {mode === 'intern' && (
                             <>
-                              <Text style={[S.tableCellHeader, { width: 65, textAlign: 'right' }]}>Preis/Einh.</Text>
-                              <Text style={[S.tableCellHeader, { width: 65, textAlign: 'right' }]}>Gesamt</Text>
+                              <Text style={[S.tableCell, { width: 70, textAlign: 'right' }]}>
+                                {itemIsFree ? 'Inklusive' : fmtMoney(unitPrice)}
+                              </Text>
+                              <Text style={[S.tableCell, { width: 65, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>
+                                {itemIsFree ? '—' : fmtMoney(total)}
+                              </Text>
                             </>
                           )}
                         </View>
-                        {articleItems.map((item, i) => {
-                          const isFabric = item.type === 'fabric'
-                          const isFlatRate = item.type === 'flat_rate_article'
-
-                          // flat_rate_article: look up via catalog_item_id (it has one), name fallback from flat rate
-                          const cat = catalogMap.get(item.data.catalog_item_id as string)
-                          const linkedFlatRate = isFlatRate
-                            ? flatRateMap.get(item.data.flat_rate_id as string)
-                            : undefined
-                          const name = cat?.name ?? linkedFlatRate?.name ?? '—'
-
-                          const qty = isFabric
-                            ? `${item.data.quantity_meters ?? 0} m`
-                            : `${item.data.quantity ?? 1}×`
-
-                          const itemIsFree = isFlatRate
-                            ? ((item.data.is_free as boolean | undefined) ?? false) || (cat?.is_free ?? false)
-                            : (cat?.is_free ?? false)
-
-                          const unitPrice = isFabric ? cat?.price_per_meter : cat?.price_per_unit
-                          const total = isFabric
-                            ? (cat?.price_per_meter ?? 0) * ((item.data.quantity_meters as number) ?? 0)
-                            : (cat?.price_per_unit ?? 0) * ((item.data.quantity as number) ?? 1)
-
-                          const typeLabel = isFabric ? 'Stoff' : isFlatRate ? 'Pauschal' : 'Artikel'
-
-                          return (
-                            <View key={item.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
-                              <Text style={[S.tableCell, { flex: 2 }]}>{name}</Text>
-                              <Text style={[S.tableCell, { width: 65 }]}>{typeLabel}</Text>
-                              <Text style={[S.tableCell, { width: 50, textAlign: 'right' }]}>{qty}</Text>
-                              {mode === 'intern' && (
-                                <>
-                                  <Text style={[S.tableCell, { width: 65, textAlign: 'right' }]}>
-                                    {itemIsFree ? 'Inklusive' : fmtMoney(unitPrice)}
-                                  </Text>
-                                  <Text style={[S.tableCell, { width: 65, textAlign: 'right', fontFamily: 'Helvetica-Bold' }]}>
-                                    {itemIsFree ? '—' : fmtMoney(total)}
-                                  </Text>
-                                </>
-                              )}
-                            </View>
-                          )
-                        })}
-                      </View>
-                    )}
-
-                    {/* Vote cards */}
-                    {voteItems.length > 0 && (
-                      <Text style={[S.small, S.muted, { marginTop: 4 }]}>
-                        Vote-Karten: {voteItems.map(v => v.data.title as string || '—').join(', ')}
-                      </Text>
-                    )}
-
-                    {/* Text items summary */}
-                    {textItems.length > 0 && (
-                      <Text style={[S.small, S.muted, { marginTop: 4 }]}>
-                        Textnotizen: {textItems.length} Element{textItems.length !== 1 ? 'e' : ''}
-                      </Text>
-                    )}
-
-                    {articleItems.length === 0 && textItems.length === 0 && voteItems.length === 0 && (
-                      <Text style={[S.small, S.muted]}>Keine Inhalte.</Text>
-                    )}
+                      )
+                    })}
                   </View>
-                )
-              })
+                )}
+
+                {/* Vote-Karten and Textnotizen kv row */}
+                <View style={[S.kvGrid, { marginTop: articleItems.length > 0 ? 4 : 8, marginBottom: 0 }]}>
+                  <View style={S.kvItem}>
+                    <Text style={S.kvLabel}>Vote-Karten</Text>
+                    <Text style={S.kvValue}>{voteTexts || '—'}</Text>
+                  </View>
+                  <View style={S.kvItem}>
+                    <Text style={S.kvLabel}>Textnotizen</Text>
+                    <Text style={S.kvValue}>{textSummary || '—'}</Text>
+                  </View>
+                </View>
+              </>
             )}
           </View>
         )
@@ -234,11 +186,11 @@ export default function PdfSectionDekoration({ data, mode }: Props) {
       {mode === 'intern' && dekoFlatRates.length > 0 && (
         <>
           <Text style={S.subHeader}>Pauschalpreise</Text>
-          <View style={S.table}>
+          <View style={[S.table, { marginTop: 8 }]}>
             <View style={S.tableHeaderRow}>
               <Text style={[S.tableCellHeader, { flex: 2 }]}>Name</Text>
               <Text style={[S.tableCellHeader, { flex: 2 }]}>Beschreibung</Text>
-              <Text style={[S.tableCellHeader, { width: 80, textAlign: 'right' }]}>Betrag</Text>
+              <Text style={[S.tableCellHeader, { width: 80, textAlign: 'right' }]}>Betrag (€)</Text>
             </View>
             {dekoFlatRates.map((fr, i) => (
               <View key={fr.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
@@ -253,7 +205,7 @@ export default function PdfSectionDekoration({ data, mode }: Props) {
         </>
       )}
 
-      <Text style={S.footer} render={({ pageNumber }) => `${pageNumber}`} fixed />
+      <PageFooter />
     </Page>
   )
 }

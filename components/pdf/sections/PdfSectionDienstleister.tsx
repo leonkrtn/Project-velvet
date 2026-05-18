@@ -1,36 +1,33 @@
 import { Page, View, Text } from '@react-pdf/renderer'
 import { S, COLORS } from '../PdfStyles'
+import { PageHeader, SectionTitle, PageFooter, StatusBadge } from '../PdfShared'
 import type { PdfEventData, PdfMode } from '../PdfTypes'
 
 interface Props {
   data: PdfEventData
   mode: PdfMode
+  sectionIndex: number
+  headerTitle: string
+  exportTimestamp: string
 }
 
-function statusColor(s: string) {
-  if (s === 'bestätigt' || s === 'bestaetigt') return COLORS.green
-  if (s === 'abgesagt') return COLORS.red
-  return COLORS.amber
-}
-
-function statusLabel(s: string) {
-  if (s === 'bestätigt' || s === 'bestaetigt') return 'Bestätigt'
-  if (s === 'abgesagt') return 'Abgesagt'
-  return 'Angefragt'
+function vendorBadge(s: string) {
+  if (s === 'bestätigt' || s === 'bestaetigt') return { label: 'Bestätigt', bg: COLORS.green,   color: COLORS.white }
+  if (s === 'abgesagt')                         return { label: 'Abgesagt',  bg: COLORS.red,     color: COLORS.white }
+  return                                               { label: 'Angefragt', bg: COLORS.amber,   color: COLORS.white }
 }
 
 function fmtMoney(n: number | null | undefined) {
   if (n == null || n === 0) return '—'
-  return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 })
+  return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export default function PdfSectionDienstleister({ data, mode }: Props) {
+export default function PdfSectionDienstleister({ data, mode, sectionIndex, headerTitle, exportTimestamp }: Props) {
   const { vendors } = data
 
   const confirmed = vendors.filter(v => v.status === 'bestätigt' || v.status === 'bestaetigt').length
   const open      = vendors.length - confirmed - vendors.filter(v => v.status === 'abgesagt').length
 
-  // Group by category
   const byCategory = new Map<string, typeof vendors>()
   for (const v of vendors) {
     const cat = v.category || 'Sonstiges'
@@ -39,10 +36,10 @@ export default function PdfSectionDienstleister({ data, mode }: Props) {
   }
 
   return (
-    <Page size="A4" orientation="portrait" style={S.page}>
-      <View style={S.sectionHeader}>
-        <Text style={S.sectionHeaderText}>Dienstleister</Text>
-      </View>
+    <Page size="A4" orientation="portrait" style={S.page} wrap>
+      <PageHeader title={headerTitle} timestamp={exportTimestamp} />
+
+      <SectionTitle index={sectionIndex} title="Dienstleister" />
 
       {/* Stats */}
       <View style={S.statRow}>
@@ -51,67 +48,64 @@ export default function PdfSectionDienstleister({ data, mode }: Props) {
           <Text style={S.statLabel}>Gesamt</Text>
         </View>
         <View style={S.statBox}>
-          <Text style={[S.statValue, { color: COLORS.green }]}>{confirmed}</Text>
+          <Text style={S.statValue}>{confirmed}</Text>
           <Text style={S.statLabel}>Bestätigt</Text>
         </View>
         <View style={S.statBox}>
-          <Text style={[S.statValue, { color: COLORS.amber }]}>{open}</Text>
+          <Text style={S.statValue}>{open}</Text>
           <Text style={S.statLabel}>Noch offen</Text>
         </View>
       </View>
 
       {vendors.length === 0 ? (
-        <Text style={[S.muted, S.small]}>Keine Dienstleister erfasst.</Text>
+        <Text style={S.mutedItalic}>Keine Dienstleister erfasst.</Text>
       ) : (
         Array.from(byCategory.entries()).map(([cat, list]) => (
-          <View key={cat} style={{ marginBottom: 14 }} wrap={false}>
+          <View key={cat} style={{ marginBottom: 14 }}>
             <Text style={S.subHeader}>{cat}</Text>
-            <View style={S.table}>
+            <View style={[S.table, { marginTop: 8 }]}>
               <View style={S.tableHeaderRow}>
                 <Text style={[S.tableCellHeader, { flex: 2 }]}>Name</Text>
-                <Text style={[S.tableCellHeader, { width: 65 }]}>Status</Text>
+                <Text style={[S.tableCellHeader, { width: 68 }]}>Status</Text>
                 <Text style={[S.tableCellHeader, { flex: 1.5 }]}>E-Mail</Text>
                 <Text style={[S.tableCellHeader, { flex: 1 }]}>Telefon</Text>
                 {mode === 'intern' && (
                   <>
-                    <Text style={[S.tableCellHeader, { width: 60, textAlign: 'right' }]}>Preis</Text>
-                    <Text style={[S.tableCellHeader, { flex: 1 }]}>Notizen</Text>
+                    <Text style={[S.tableCellHeader, { width: 64, textAlign: 'right' }]}>Preis (€)</Text>
+                    <Text style={[S.tableCellHeader, { flex: 1.2 }]}>Notizen</Text>
                   </>
                 )}
               </View>
-              {list.map((v, i) => (
-                <View key={v.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
-                  <View style={[{ flex: 2 }, S.tableCell]}>
-                    <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold' }}>{v.name}</Text>
-                    {v.contact_name && (
-                      <Text style={{ fontSize: 8, color: COLORS.midGray }}>Kontakt: {v.contact_name}</Text>
+              {list.map((v, i) => {
+                const badge = vendorBadge(v.status)
+                return (
+                  <View key={v.id} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt} wrap={false}>
+                    <View style={[S.tableCell, { flex: 2 }]}>
+                      <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold' }}>{v.name}</Text>
+                      {v.contact_name && (
+                        <Text style={{ fontSize: 8, color: COLORS.midGray }}>Kontakt: {v.contact_name}</Text>
+                      )}
+                    </View>
+                    <View style={[S.tableCell, { width: 68, justifyContent: 'center' }]}>
+                      <StatusBadge label={badge.label} bg={badge.bg} color={badge.color} />
+                    </View>
+                    <Text style={[S.tableCell, { flex: 1.5 }]}>{v.email ?? '—'}</Text>
+                    <Text style={[S.tableCell, { flex: 1 }]}>{v.phone ?? '—'}</Text>
+                    {mode === 'intern' && (
+                      <>
+                        <Text style={[S.tableCell, { width: 64, textAlign: 'right' }]}>{fmtMoney(v.price)}</Text>
+                        <Text style={[S.tableCell, { flex: 1.2 }]}>{v.notes ?? '—'}</Text>
+                      </>
                     )}
                   </View>
-                  <View style={[{ width: 65 }, S.tableCell, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                    <View style={{
-                      width: 5, height: 5, borderRadius: 3,
-                      backgroundColor: statusColor(v.status),
-                    }} />
-                    <Text style={{ fontSize: 8, color: statusColor(v.status), fontFamily: 'Helvetica-Bold' }}>
-                      {statusLabel(v.status)}
-                    </Text>
-                  </View>
-                  <Text style={[S.tableCell, { flex: 1.5 }]}>{v.email ?? '—'}</Text>
-                  <Text style={[S.tableCell, { flex: 1 }]}>{v.phone ?? '—'}</Text>
-                  {mode === 'intern' && (
-                    <>
-                      <Text style={[S.tableCell, { width: 60, textAlign: 'right' }]}>{fmtMoney(v.price)}</Text>
-                      <Text style={[S.tableCell, { flex: 1 }]}>{v.notes ?? '—'}</Text>
-                    </>
-                  )}
-                </View>
-              ))}
+                )
+              })}
             </View>
           </View>
         ))
       )}
 
-      <Text style={S.footer} render={({ pageNumber }) => `${pageNumber}`} fixed />
+      <PageFooter />
     </Page>
   )
 }

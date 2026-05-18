@@ -25,8 +25,33 @@ interface Props {
   sections: PdfSection[]
 }
 
+function buildExportTimestamp() {
+  const now = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(now.getDate())}.${p(now.getMonth() + 1)}.${String(now.getFullYear()).slice(2)}, ${p(now.getHours())}:${p(now.getMinutes())}`
+}
+
 export default function VelvetPdfDocument({ data, mode, sections }: Props) {
   const has = (s: PdfSection) => sections.includes(s)
+
+  const headerTitle = `${data.event.title} – Velvet`
+  const exportTimestamp = buildExportTimestamp()
+
+  // Pre-compute 1-based section index for each included section
+  const orderedSections: PdfSection[] = [
+    'allgemein', 'gaesteliste', 'sitzplan', 'ablaufplan', 'catering',
+    'budget', 'musik', 'dekoration', 'patisserie', 'medien', 'dienstleister',
+  ]
+  const idxMap: Partial<Record<PdfSection, number>> = {}
+  let n = 0
+  for (const s of orderedSections) {
+    if (sections.includes(s) && (s !== 'budget' || mode === 'intern')) {
+      n++
+      idxMap[s] = n
+    }
+  }
+
+  const sharedProps = { headerTitle, exportTimestamp }
 
   return (
     <Document
@@ -37,17 +62,39 @@ export default function VelvetPdfDocument({ data, mode, sections }: Props) {
     >
       <PdfCoverPage data={data} mode={mode} />
 
-      {has('allgemein')     && <PdfSectionAllgemein     data={data} mode={mode} />}
-      {has('gaesteliste')   && <PdfSectionGaesteliste   data={data} mode={mode} />}
-      {has('sitzplan')      && <PdfSectionSitzplan      data={data} mode={mode} />}
-      {has('ablaufplan')    && <PdfSectionAblaufplan     data={data} mode={mode} />}
-      {has('catering')      && <PdfSectionCatering      data={data} mode={mode} />}
-      {has('budget') && mode === 'intern' && <PdfSectionBudget data={data} mode={mode} />}
-      {has('musik')         && <PdfSectionMusik         data={data} />}
-      {has('dekoration')    && <PdfSectionDekoration    data={data} mode={mode} />}
-      {has('patisserie')    && <PdfSectionPatisserie    data={data} mode={mode} />}
-      {has('medien')        && <PdfSectionMedien        data={data} />}
-      {has('dienstleister') && <PdfSectionDienstleister data={data} mode={mode} />}
+      {has('allgemein') && (
+        <PdfSectionAllgemein data={data} mode={mode} sectionIndex={idxMap.allgemein!} {...sharedProps} />
+      )}
+      {has('gaesteliste') && (
+        <PdfSectionGaesteliste data={data} mode={mode} sectionIndex={idxMap.gaesteliste!} {...sharedProps} />
+      )}
+      {has('sitzplan') && (
+        <PdfSectionSitzplan data={data} mode={mode} sectionIndex={idxMap.sitzplan!} {...sharedProps} />
+      )}
+      {has('ablaufplan') && (
+        <PdfSectionAblaufplan data={data} mode={mode} sectionIndex={idxMap.ablaufplan!} {...sharedProps} />
+      )}
+      {has('catering') && (
+        <PdfSectionCatering data={data} mode={mode} sectionIndex={idxMap.catering!} {...sharedProps} />
+      )}
+      {has('budget') && mode === 'intern' && (
+        <PdfSectionBudget data={data} mode={mode} sectionIndex={idxMap.budget!} {...sharedProps} />
+      )}
+      {has('musik') && (
+        <PdfSectionMusik data={data} sectionIndex={idxMap.musik!} {...sharedProps} />
+      )}
+      {has('dekoration') && (
+        <PdfSectionDekoration data={data} mode={mode} sectionIndex={idxMap.dekoration!} {...sharedProps} />
+      )}
+      {has('patisserie') && (
+        <PdfSectionPatisserie data={data} mode={mode} sectionIndex={idxMap.patisserie!} {...sharedProps} />
+      )}
+      {has('medien') && (
+        <PdfSectionMedien data={data} sectionIndex={idxMap.medien!} {...sharedProps} />
+      )}
+      {has('dienstleister') && (
+        <PdfSectionDienstleister data={data} mode={mode} sectionIndex={idxMap.dienstleister!} {...sharedProps} />
+      )}
     </Document>
   )
 }
