@@ -7,6 +7,15 @@ interface Props {
   mode: PdfMode
 }
 
+function allergyLabel(tag: string) {
+  const map: Record<string, string> = {
+    gluten: 'Gluten', lactose: 'Laktose', nuts: 'Nüsse', egg: 'Eier',
+    fish: 'Fisch', shellfish: 'Schalentiere', soy: 'Soja',
+    vegetarian: 'Vegetarisch', vegan: 'Vegan', halal: 'Halal', kosher: 'Koscher',
+  }
+  return map[tag] || tag
+}
+
 function buildRoomSvg(
   points: Array<{ x: number; y: number }>,
   tables: PdfEventData['seatingTables'],
@@ -173,7 +182,7 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
                 return (
                   <View key={t.id} style={{
                     borderWidth: 1, borderColor: COLORS.border, borderStyle: 'solid',
-                    borderRadius: 3, padding: '4px 8px',
+                    borderRadius: 3, paddingVertical: 4, paddingHorizontal: 8,
                     flexDirection: 'row', gap: 6, alignItems: 'center',
                   }}>
                     <View style={{
@@ -218,7 +227,7 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
                   if (g) {
                     rows.push({
                       label: g.name,
-                      extra: [g.meal_choice, ...(g.allergy_tags ?? []).map((x: string) => x)].filter(Boolean).join(', '),
+                      extra: [g.meal_choice, ...(g.allergy_tags ?? []).map(allergyLabel)].filter(Boolean).join(', '),
                     })
                   }
                 } else if (a.begleitperson_id) {
@@ -226,7 +235,7 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
                   if (b) {
                     rows.push({
                       label: `  └ ${b.name}`,
-                      extra: [b.meal_choice, ...(b.allergy_tags ?? []).map((x: string) => x)].filter(Boolean).join(', '),
+                      extra: [b.meal_choice, ...(b.allergy_tags ?? []).map(allergyLabel)].filter(Boolean).join(', '),
                       muted: true,
                     })
                   }

@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, Component } from 'react'
 import dynamic from 'next/dynamic'
 import {
   Eye, Download, LayoutDashboard, Users, Grid2X2, Calendar,
   UtensilsCrossed, Wallet, Music2, Flower2, Camera, Briefcase,
-  CakeSlice, FileDown, Loader2,
+  CakeSlice, FileDown, Loader2, AlertTriangle,
 } from 'lucide-react'
 import type { PdfEventData, PdfMode, PdfSection } from '@/components/pdf/PdfTypes'
 
@@ -13,6 +13,23 @@ import type { PdfEventData, PdfMode, PdfSection } from '@/components/pdf/PdfType
 const PDFViewer      = dynamic(() => import('@react-pdf/renderer').then(m => ({ default: m.PDFViewer })),      { ssr: false })
 const PDFDownloadLink = dynamic(() => import('@react-pdf/renderer').then(m => ({ default: m.PDFDownloadLink })), { ssr: false })
 const VelvetPdfDocument = dynamic(() => import('@/components/pdf/VelvetPdfDocument'), { ssr: false })
+
+// ── Error boundary to prevent PDF render errors from crashing the app ────────
+class PdfErrorBoundary extends Component<
+  { children: React.ReactNode; onError: (msg: string) => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; onError: (msg: string) => void }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+  static getDerivedStateFromError() { return { hasError: true } }
+  componentDidCatch(error: Error) { this.props.onError(error.message) }
+  render() {
+    if (this.state.hasError) return null
+    return this.props.children
+  }
+}
 
 // ── Section definitions ───────────────────────────────────────────────────
 const ALL_SECTIONS: Array<{ key: PdfSection; label: string; Icon: React.ElementType }> = [
@@ -42,6 +59,7 @@ export default function PdfExportClient({ eventId, data }: Props) {
   )
   const [showPreview, setShowPreview] = useState(false)
   const [generating, setGenerating]   = useState(false)
+  const [pdfError, setPdfError]       = useState<string | null>(null)
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -81,8 +99,8 @@ export default function PdfExportClient({ eventId, data }: Props) {
 
   const handleGenerate = useCallback(() => {
     if (selected.size === 0) return
+    setPdfError(null)
     setGenerating(true)
-    // Small tick to allow spinner to render before heavy PDF computation
     setTimeout(() => {
       setShowPreview(true)
       setGenerating(false)
@@ -268,15 +286,45 @@ export default function PdfExportClient({ eventId, data }: Props) {
 
       {/* ── Right panel: PDF viewer ─────────────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#e5e5e5' }}>
-        {mounted && showPreview && docNode ? (
-          <PDFViewer
-            width="100%"
-            height="100%"
-            showToolbar={true}
-            style={{ border: 'none', flex: 1 }}
-          >
-            {docNode}
-          </PDFViewer>
+        {pdfError ? (
+          <div style={{
+            flex: 1, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 16,
+          }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: 16,
+              background: 'var(--surface)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+            }}>
+              <AlertTriangle size={28} style={{ color: '#D97706' }} />
+            </div>
+            <div style={{ textAlign: 'center', maxWidth: 320 }}>
+              <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+                PDF konnte nicht erstellt werden
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 12px', fontFamily: 'monospace' }}>
+                {pdfError}
+              </p>
+              <button
+                onClick={() => { setPdfError(null); setShowPreview(false) }}
+                style={{ ...textBtn, textDecoration: 'none', fontSize: 13, color: 'var(--text-primary)' }}
+              >
+                Zurücksetzen
+              </button>
+            </div>
+          </div>
+        ) : mounted && showPreview && docNode ? (
+          <PdfErrorBoundary onError={msg => { setShowPreview(false); setPdfError(msg) }}>
+            <PDFViewer
+              width="100%"
+              height="100%"
+              showToolbar={true}
+              style={{ border: 'none', flex: 1 }}
+            >
+              {docNode}
+            </PDFViewer>
+          </PdfErrorBoundary>
         ) : (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',

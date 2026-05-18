@@ -7,7 +7,7 @@ interface Props {
   mode: PdfMode
 }
 
-function fmtMoney(n: number) {
+function fmtMoney(n: number | null | undefined) {
   if (!n) return '—'
   return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 })
 }
@@ -54,7 +54,7 @@ export default function PdfSectionPatisserie({ data, mode }: Props) {
             </View>
             <View style={S.kvItem}>
               <Text style={S.kvLabel}>Aromen</Text>
-              <Text style={S.kvValue}>{p.flavors.length > 0 ? p.flavors.join(', ') : '—'}</Text>
+              <Text style={S.kvValue}>{(p.flavors ?? []).length > 0 ? (p.flavors ?? []).join(', ') : '—'}</Text>
             </View>
             <View style={{ width: '100%' }}>
               <Text style={S.kvLabel}>Diätetische Anforderungen</Text>
@@ -92,7 +92,7 @@ export default function PdfSectionPatisserie({ data, mode }: Props) {
           </View>
 
           {/* Dessertbuffet */}
-          {p.dessert_buffet && p.dessert_items.length > 0 && (
+          {p.dessert_buffet && (p.dessert_items ?? []).length > 0 && (
             <>
               <Text style={S.subHeader}>Dessertbuffet</Text>
               <View style={{
@@ -100,7 +100,7 @@ export default function PdfSectionPatisserie({ data, mode }: Props) {
                 borderWidth: 1, borderColor: COLORS.border, borderStyle: 'solid',
                 borderRadius: 3, padding: 10, marginBottom: 14,
               }}>
-                {p.dessert_items.map((item, i) => (
+                {(p.dessert_items ?? []).map((item, i) => (
                   <Text key={i} style={{ fontSize: 9, color: COLORS.darkGray, marginBottom: 2 }}>
                     • {item}
                   </Text>

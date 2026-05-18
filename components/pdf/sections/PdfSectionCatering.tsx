@@ -7,6 +7,15 @@ interface Props {
   mode: PdfMode
 }
 
+function allergyLabel(tag: string) {
+  const map: Record<string, string> = {
+    gluten: 'Gluten', lactose: 'Laktose', nuts: 'Nüsse', egg: 'Eier',
+    fish: 'Fisch', shellfish: 'Schalentiere', soy: 'Soja',
+    vegetarian: 'Vegetarisch', vegan: 'Vegan', halal: 'Halal', kosher: 'Koscher',
+  }
+  return map[tag] || tag
+}
+
 const SERVICE_STYLE_MAP: Record<string, string> = {
   klassisch: 'Klassisch (mehrgängig)',
   buffet: 'Buffet',
@@ -86,22 +95,22 @@ export default function PdfSectionCatering({ data, mode }: Props) {
               <Text style={S.kvLabel}>Service-Personal</Text>
               <Text style={S.kvValue}>{cateringPlan.service_staff ? 'Ja' : 'Nein'}</Text>
             </View>
-            {cateringPlan.equipment_needed.length > 0 && (
+            {(cateringPlan.equipment_needed ?? []).length > 0 && (
               <View style={{ width: '100%' }}>
                 <Text style={S.kvLabel}>Benötigtes Equipment</Text>
-                <Text style={S.kvValue}>{cateringPlan.equipment_needed.join(', ')}</Text>
+                <Text style={S.kvValue}>{(cateringPlan.equipment_needed ?? []).join(', ')}</Text>
               </View>
             )}
           </View>
 
           {/* Drinks */}
-          {cateringPlan.drinks_selection.length > 0 && (
+          {(cateringPlan.drinks_selection ?? []).length > 0 && (
             <>
               <Text style={S.subHeader}>Getränke</Text>
               <View style={S.kvGrid2}>
                 <View style={S.kvItem}>
                   <Text style={S.kvLabel}>Auswahl</Text>
-                  <Text style={S.kvValue}>{cateringPlan.drinks_selection.join(', ')}</Text>
+                  <Text style={S.kvValue}>{(cateringPlan.drinks_selection ?? []).join(', ')}</Text>
                 </View>
                 <View style={S.kvItem}>
                   <Text style={S.kvLabel}>Abrechnung</Text>
@@ -112,10 +121,10 @@ export default function PdfSectionCatering({ data, mode }: Props) {
           )}
 
           {/* Menu courses */}
-          {cateringPlan.menu_courses.length > 0 && (
+          {(cateringPlan.menu_courses ?? []).length > 0 && (
             <>
               <Text style={S.subHeader}>Menügänge</Text>
-              {cateringPlan.menu_courses.map((course, ci) => (
+              {(cateringPlan.menu_courses ?? []).map((course, ci) => (
                 <View key={course.id} style={{ marginBottom: 10 }} wrap={false}>
                   <Text style={[S.kvLabel, { marginBottom: 4 }]}>Gang {ci + 1}: {course.name}</Text>
                   <View style={S.table}>
@@ -167,7 +176,7 @@ export default function PdfSectionCatering({ data, mode }: Props) {
                         .sort((a, b) => b[1] - a[1])
                         .map(([tag, cnt], i) => (
                         <View key={tag} style={i % 2 === 0 ? S.tableRow : S.tableRowAlt}>
-                          <Text style={[S.tableCell, { flex: 2 }]}>{tag}</Text>
+                          <Text style={[S.tableCell, { flex: 2 }]}>{allergyLabel(tag)}</Text>
                           <Text style={[S.tableCell, { width: 40, textAlign: 'right' }]}>{cnt}</Text>
                         </View>
                       ))}

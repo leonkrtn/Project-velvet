@@ -91,8 +91,6 @@ export default function PdfSectionDekoration({ data, mode }: Props) {
         const areaCanvases = dekoCanvases
           .filter(c => c.area_id === area.id)
           .sort((a, b) => a.sort_order - b.sort_order)
-        const areaFlatRates = dekoFlatRates.filter(() => false) // flat rates are event-wide
-
         return (
           <View key={area.id} style={{ marginBottom: 16 }} wrap={false}>
             {/* Area header with color accent */}

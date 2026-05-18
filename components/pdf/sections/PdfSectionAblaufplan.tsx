@@ -83,7 +83,7 @@ export default function PdfSectionAblaufplan({ data, mode, calendarImages }: Pro
             <View style={{
               backgroundColor: COLORS.ultraLight,
               borderWidth: 1, borderColor: COLORS.border, borderStyle: 'solid',
-              borderRadius: 4, padding: '8px 12px', marginBottom: 12,
+              borderRadius: 4, paddingVertical: 8, paddingHorizontal: 12, marginBottom: 12,
               flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
             }}>
               <Text style={{ fontSize: 13, fontFamily: 'Helvetica-Bold', color: COLORS.black }}>
