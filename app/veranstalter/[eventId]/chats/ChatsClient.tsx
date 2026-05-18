@@ -484,6 +484,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
         onMouseLeave={() => setHoveredConvId(null)}
         style={{
           padding: '10px 14px', cursor: 'pointer',
+          touchAction: 'manipulation',
           background: isActive ? 'var(--surface-active, #EDEDEF)' : isHovered ? '#F5F5F7' : 'transparent',
           borderLeft: `3px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
           display: 'flex', alignItems: 'center', gap: 11,
@@ -591,17 +592,17 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
         flexDirection: 'column', background: 'var(--surface)',
       }}>
         {/* Header */}
-        <div style={{ padding: '18px 16px 10px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ padding: '18px 16px 10px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>Chats</h2>
             <button
               onClick={() => { setShowNewChat(true); setChatCreationType(null) }}
               aria-label="Neuer Chat"
-              className="mob-touch"
               style={{
-                width: 32, height: 32, borderRadius: '50%', border: 'none',
+                width: 40, height: 40, minWidth: 40, borderRadius: '50%', border: 'none',
                 background: 'var(--accent)', color: '#fff', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, touchAction: 'manipulation',
               }}
             >
               <Plus size={16} />
