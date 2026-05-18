@@ -592,7 +592,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
         flexDirection: 'column', background: 'var(--surface)',
       }}>
         {/* Header */}
-        <div style={{ padding: '18px 16px 10px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 2 }}>
+        <div style={{ padding: '18px 16px 10px', borderBottom: '1px solid var(--border)', position: 'sticky', top: isMobile ? 56 : 0, background: 'var(--surface)', zIndex: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>Chats</h2>
             <button
