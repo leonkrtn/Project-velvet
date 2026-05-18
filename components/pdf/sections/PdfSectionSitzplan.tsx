@@ -1,4 +1,4 @@
-import { Page, View, Text, Svg, Polygon, Circle, Rect, G } from '@react-pdf/renderer'
+import { Page, View, Text, Svg, Polygon, Circle, Rect } from '@react-pdf/renderer'
 import { S, COLORS } from '../PdfStyles'
 import type { PdfEventData, PdfMode, PdfSeatingTable } from '../PdfTypes'
 
@@ -73,11 +73,11 @@ function buildRoomSvg(
 
     if (t.shape === 'round') {
       const r = Math.max((t.table_length / 2) * scale, 8)
-      return { type: 'circle' as const, cx, cy, r, name: t.name }
+      return { type: 'circle' as const, cx, cy, r }
     } else {
       const w = Math.max(t.table_length * scale, 16)
       const h = Math.max(t.table_width * scale, 10)
-      return { type: 'rect' as const, cx, cy, w, h, rotation: t.rotation, name: t.name }
+      return { type: 'rect' as const, cx, cy, w, h, rotation: t.rotation }
     }
   })
 
@@ -159,46 +159,31 @@ export default function PdfSectionSitzplan({ data, mode }: Props) {
                 stroke={COLORS.darkGray}
                 strokeWidth={1.5}
               />
-              {/* Tables with name labels */}
+              {/* Tables — names shown in legend below, no SVG text to avoid font conflicts */}
               {svg.tableElems.map((t, i) => {
                 if (t.type === 'circle') {
                   return (
-                    <G key={i}>
-                      <Circle
-                        cx={t.cx} cy={t.cy} r={t.r}
-                        fill={COLORS.white}
-                        stroke={COLORS.black}
-                        strokeWidth={1}
-                      />
-                      <Text
-                        x={t.cx} y={t.cy + 3}
-                        textAnchor="middle"
-                        style={{ fontSize: Math.min(8, Math.max(5, t.r * 0.55)), fill: COLORS.darkGray, fontFamily: 'Helvetica' }}
-                      >
-                        {t.name}
-                      </Text>
-                    </G>
+                    <Circle
+                      key={i}
+                      cx={t.cx} cy={t.cy} r={t.r}
+                      fill={COLORS.white}
+                      stroke={COLORS.black}
+                      strokeWidth={1}
+                    />
                   )
                 } else {
                   const hw = t.w / 2
                   const hh = t.h / 2
                   return (
-                    <G key={i} transform={`rotate(${t.rotation}, ${t.cx}, ${t.cy})`}>
-                      <Rect
-                        x={t.cx - hw} y={t.cy - hh}
-                        width={t.w} height={t.h}
-                        fill={COLORS.white}
-                        stroke={COLORS.black}
-                        strokeWidth={1}
-                      />
-                      <Text
-                        x={t.cx} y={t.cy + 3}
-                        textAnchor="middle"
-                        style={{ fontSize: Math.min(8, Math.max(5, Math.min(t.w, t.h) * 0.35)), fill: COLORS.darkGray, fontFamily: 'Helvetica' }}
-                      >
-                        {t.name}
-                      </Text>
-                    </G>
+                    <Rect
+                      key={i}
+                      x={t.cx - hw} y={t.cy - hh}
+                      width={t.w} height={t.h}
+                      fill={COLORS.white}
+                      stroke={COLORS.black}
+                      strokeWidth={1}
+                      transform={t.rotation ? `rotate(${t.rotation}, ${t.cx}, ${t.cy})` : undefined}
+                    />
                   )
                 }
               })}
