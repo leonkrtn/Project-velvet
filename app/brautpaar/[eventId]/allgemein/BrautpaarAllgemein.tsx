@@ -62,6 +62,12 @@ export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
   const [saved, setSaved]   = useState(false)
   const [error, setError]   = useState<string | null>(null)
   const [newMealOption, setNewMealOption] = useState('')
+  const [ceremonyTimeStr, setCeremonyTimeStr] = useState(() => {
+    const cs = initialData.ceremony_start
+    if (!cs) return ''
+    const m = cs.match(/T(\d{2}:\d{2})/)
+    return m ? m[1] : ''
+  })
 
   const set = useCallback(<K extends keyof EventData>(key: K, value: EventData[K]) => {
     setData(prev => ({ ...prev, [key]: value }))
@@ -152,7 +158,15 @@ export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
             <input className="bp-input" type="date" value={data.date ?? ''} onChange={e => set('date', e.target.value || null)} />
           </Field>
           <Field label="Beginn der Zeremonie">
-            <TimeInput className="bp-input" value={data.ceremony_start ?? ''} onChange={v => set('ceremony_start', v || null)} />
+            <TimeInput
+              className="bp-input"
+              value={ceremonyTimeStr}
+              onChange={v => {
+                setCeremonyTimeStr(v)
+                const baseDate = data.date ?? data.ceremony_start?.slice(0, 10) ?? new Date().toISOString().slice(0, 10)
+                set('ceremony_start', v ? `${baseDate}T${v}:00+00:00` : null)
+              }}
+            />
           </Field>
           <div style={{ gridColumn: '1 / -1' }}>
             <Field label="Beschreibung">
