@@ -2,8 +2,9 @@
 const nextConfig = {
   // postgres-Paket läuft nur server-seitig (DDL-Migrationen),
   // nicht im Browser-Bundle
-  serverExternalPackages: ['postgres'],
-  // @react-pdf/renderer is an ESM package — must be transpiled
-  transpilePackages: ['@react-pdf/renderer'],
+  // postgres: server-only DDL migrations
+  // @react-pdf/renderer: loaded natively in Node.js API route (renderToBuffer),
+  // not bundled by webpack to avoid ESM/reconciler conflicts
+  serverExternalPackages: ['postgres', '@react-pdf/renderer'],
 }
 module.exports = nextConfig

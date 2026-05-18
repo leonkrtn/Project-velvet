@@ -1,44 +1,12 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, Component } from 'react'
-import dynamic from 'next/dynamic'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Eye, Download, LayoutDashboard, Users, Grid2X2, Calendar,
   UtensilsCrossed, Wallet, Music2, Flower2, Camera, Briefcase,
   CakeSlice, FileDown, Loader2, AlertTriangle,
 } from 'lucide-react'
 import type { PdfEventData, PdfMode, PdfSection } from '@/components/pdf/PdfTypes'
-
-// Lazy-load PDF components — browser only
-// NOTE: PDFViewer is intentionally NOT used — it creates a secondary React root
-// via updateContainer which conflicts with React 18.3.1 internals at runtime.
-// BlobProvider + native <iframe> avoids that reconciler conflict entirely.
-const BlobProvider    = dynamic(() => import('@react-pdf/renderer').then(m => ({ default: m.BlobProvider })),    { ssr: false })
-const PDFDownloadLink = dynamic(() => import('@react-pdf/renderer').then(m => ({ default: m.PDFDownloadLink })), { ssr: false })
-const VelvetPdfDocument = dynamic(() => import('@/components/pdf/VelvetPdfDocument'), { ssr: false })
-
-// ── Error boundary to prevent PDF render errors from crashing the app ────────
-class PdfErrorBoundary extends Component<
-  { children: React.ReactNode; onError: (msg: string) => void },
-  { hasError: boolean }
-> {
-  constructor(props: { children: React.ReactNode; onError: (msg: string) => void }) {
-    super(props)
-    this.state = { hasError: false }
-  }
-  static getDerivedStateFromError() { return { hasError: true } }
-  componentDidCatch(error: Error) { this.props.onError(error.message) }
-  render() {
-    if (this.state.hasError) return null
-    return this.props.children
-  }
-}
-
-// Propagates BlobProvider errors into React state (can't call setState in render callback)
-function BlobError({ message, onError }: { message: string; onError: (msg: string) => void }) {
-  React.useEffect(() => { onError(message) }, [message, onError])
-  return null
-}
 
 // ── Section definitions ───────────────────────────────────────────────────
 const ALL_SECTIONS: Array<{ key: PdfSection; label: string; Icon: React.ElementType }> = [
@@ -61,16 +29,18 @@ interface Props {
 }
 
 export default function PdfExportClient({ eventId, data }: Props) {
-  const [mounted, setMounted]         = useState(false)
   const [mode, setMode]               = useState<PdfMode>('intern')
   const [selected, setSelected]       = useState<Set<PdfSection>>(
     new Set(ALL_SECTIONS.map(s => s.key))
   )
-  const [showPreview, setShowPreview] = useState(false)
   const [generating, setGenerating]   = useState(false)
+  const [pdfUrl, setPdfUrl]           = useState<string | null>(null)
   const [pdfError, setPdfError]       = useState<string | null>(null)
 
-  useEffect(() => { setMounted(true) }, [])
+  // Revoke previous blob URL when a new one is created
+  useEffect(() => {
+    return () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl) }
+  }, [pdfUrl])
 
   // When mode switches to extern, remove budget
   useEffect(() => {
@@ -80,7 +50,7 @@ export default function PdfExportClient({ eventId, data }: Props) {
         next.delete('budget')
         return next
       })
-      setShowPreview(false)
+      setPdfUrl(null)
     }
   }, [mode])
 
@@ -91,45 +61,54 @@ export default function PdfExportClient({ eventId, data }: Props) {
       else next.add(key)
       return next
     })
-    setShowPreview(false)
+    setPdfUrl(null)
   }
 
   const selectAll = () => {
     const next = new Set(ALL_SECTIONS.map(s => s.key) as PdfSection[])
     if (mode === 'extern') next.delete('budget')
     setSelected(next)
-    setShowPreview(false)
+    setPdfUrl(null)
   }
 
   const selectNone = () => {
     setSelected(new Set())
-    setShowPreview(false)
+    setPdfUrl(null)
   }
 
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = useCallback(async () => {
     if (selected.size === 0) return
     setPdfError(null)
     setGenerating(true)
-    setTimeout(() => {
-      setShowPreview(true)
-      setGenerating(false)
-    }, 80)
-  }, [selected])
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl)
+      setPdfUrl(null)
+    }
 
-  const activeSections = ALL_SECTIONS
-    .filter(s => !(s.key === 'budget' && mode === 'extern'))
+    try {
+      const res = await fetch('/api/pdf/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data, mode, sections: Array.from(selected) }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        throw new Error(err.error ?? `HTTP ${res.status}`)
+      }
+
+      const blob = await res.blob()
+      setPdfUrl(URL.createObjectURL(blob))
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : 'Unbekannter Fehler')
+    } finally {
+      setGenerating(false)
+    }
+  }, [selected, data, mode, pdfUrl])
+
+  const activeSections = ALL_SECTIONS.filter(s => !(s.key === 'budget' && mode === 'extern'))
 
   const fileName = `velvet-export-${data.event.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`
-
-  const docNode = mounted && showPreview && selected.size > 0 && VelvetPdfDocument
-    ? (
-      <VelvetPdfDocument
-        data={data}
-        mode={mode}
-        sections={Array.from(selected)}
-      />
-    )
-    : null
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 36px)', gap: 0, overflow: 'hidden' }}>
@@ -216,7 +195,6 @@ export default function PdfExportClient({ eventId, data }: Props) {
                   marginBottom: 2, transition: 'background 0.12s',
                 }}
               >
-                {/* Checkbox */}
                 <div style={{
                   width: 16, height: 16, borderRadius: 4, flexShrink: 0,
                   border: `1.5px solid ${active ? 'var(--accent, #0F0F0F)' : 'var(--border)'}`,
@@ -251,7 +229,7 @@ export default function PdfExportClient({ eventId, data }: Props) {
               width: '100%', padding: '10px 0', borderRadius: 8, border: 'none',
               background: selected.size === 0 ? 'var(--border)' : 'var(--accent, #0F0F0F)',
               color: selected.size === 0 ? 'var(--text-tertiary)' : '#fff',
-              cursor: selected.size === 0 ? 'not-allowed' : 'pointer',
+              cursor: selected.size === 0 || generating ? 'not-allowed' : 'pointer',
               fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
               transition: 'opacity 0.15s',
               opacity: generating ? 0.7 : 1,
@@ -264,10 +242,10 @@ export default function PdfExportClient({ eventId, data }: Props) {
             {generating ? 'Wird generiert…' : 'Vorschau generieren'}
           </button>
 
-          {mounted && showPreview && docNode && (
-            <PDFDownloadLink
-              document={docNode}
-              fileName={fileName}
+          {pdfUrl && (
+            <a
+              href={pdfUrl}
+              download={fileName}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 width: '100%', padding: '10px 0', borderRadius: 8,
@@ -279,21 +257,14 @@ export default function PdfExportClient({ eventId, data }: Props) {
                 boxSizing: 'border-box',
               }}
             >
-              {({ loading }) => (
-                <>
-                  {loading
-                    ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
-                    : <Download size={15} />
-                  }
-                  {loading ? 'Wird vorbereitet…' : 'PDF herunterladen'}
-                </>
-              )}
-            </PDFDownloadLink>
+              <Download size={15} />
+              PDF herunterladen
+            </a>
           )}
         </div>
       </div>
 
-      {/* ── Right panel: PDF viewer ─────────────────────────────────────── */}
+      {/* ── Right panel: PDF preview ────────────────────────────────────── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#e5e5e5' }}>
         {pdfError ? (
           <div style={{
@@ -316,33 +287,19 @@ export default function PdfExportClient({ eventId, data }: Props) {
                 {pdfError}
               </p>
               <button
-                onClick={() => { setPdfError(null); setShowPreview(false) }}
-                style={{ ...textBtn, textDecoration: 'none', fontSize: 13, color: 'var(--text-primary)' }}
+                onClick={() => setPdfError(null)}
+                style={{ ...textBtn, fontSize: 13, color: 'var(--text-primary)' }}
               >
                 Zurücksetzen
               </button>
             </div>
           </div>
-        ) : mounted && showPreview && docNode ? (
-          <PdfErrorBoundary onError={msg => { setShowPreview(false); setPdfError(msg) }}>
-            <BlobProvider document={docNode}>
-              {({ url, loading, error }) => {
-                if (error) return <BlobError message={error.message} onError={msg => { setShowPreview(false); setPdfError(msg) }} />
-                if (loading || !url) return (
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--text-tertiary)' }} />
-                  </div>
-                )
-                return (
-                  <iframe
-                    src={url}
-                    title="PDF Vorschau"
-                    style={{ flex: 1, border: 'none', width: '100%', height: '100%', display: 'block' }}
-                  />
-                )
-              }}
-            </BlobProvider>
-          </PdfErrorBoundary>
+        ) : pdfUrl ? (
+          <iframe
+            src={pdfUrl}
+            title="PDF Vorschau"
+            style={{ flex: 1, border: 'none', width: '100%', height: '100%', display: 'block' }}
+          />
         ) : (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column',
@@ -354,14 +311,21 @@ export default function PdfExportClient({ eventId, data }: Props) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
             }}>
-              <FileDown size={28} style={{ color: 'var(--text-tertiary)' }} />
+              {generating
+                ? <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--text-tertiary)' }} />
+                : <FileDown size={28} style={{ color: 'var(--text-tertiary)' }} />
+              }
             </div>
             <div style={{ textAlign: 'center' }}>
               <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 4px' }}>
-                {selected.size === 0 ? 'Keine Bereiche ausgewählt' : 'Vorschau noch nicht generiert'}
+                {generating
+                  ? 'PDF wird generiert…'
+                  : selected.size === 0 ? 'Keine Bereiche ausgewählt' : 'Vorschau noch nicht generiert'}
               </p>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-                {selected.size === 0
+                {generating
+                  ? 'Das kann einen Moment dauern.'
+                  : selected.size === 0
                   ? 'Wähle mindestens einen Bereich aus.'
                   : 'Klicke auf „Vorschau generieren" um fortzufahren.'}
               </p>
