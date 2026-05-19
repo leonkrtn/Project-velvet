@@ -25,7 +25,7 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [stats, setStats] = useState<ParseStats | null>(null)
-  const [result, setResult] = useState<{ added: number; updated: number } | null>(null)
+  const [result, setResult] = useState<{ added: number; updated: number; errors: { rowIndex: number; name: string; reason: string }[] } | null>(null)
   const [confirming, setConfirming] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -88,10 +88,8 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
         setError(json.error ?? 'Fehler beim Importieren.')
         return
       }
-      const importResult = { added: json.added, updated: json.updated }
-      setResult(importResult)
+      setResult({ added: json.added ?? 0, updated: json.updated ?? 0, errors: json.errors ?? [] })
       setStep('done')
-      onSuccess(importResult)
     } catch {
       setError('Netzwerkfehler beim Importieren.')
     } finally {
@@ -276,20 +274,42 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
           )}
 
           {step === 'done' && result && (
-            <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <CheckCircle2 size={40} style={{ color: '#3D7A56', marginBottom: 16 }} />
-              <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Import abgeschlossen</p>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 24 }}>
-                {result.added > 0 && `${result.added} Gast/Gäste hinzugefügt`}
-                {result.added > 0 && result.updated > 0 && ', '}
-                {result.updated > 0 && `${result.updated} aktualisiert`}
-              </p>
-              <button
-                onClick={onClose}
-                style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}
-              >
-                Schließen
-              </button>
+            <div style={{ padding: '8px 0' }}>
+              <div style={{ textAlign: 'center', marginBottom: result.errors.length > 0 ? 20 : 0 }}>
+                <CheckCircle2 size={36} style={{ color: '#3D7A56', marginBottom: 12 }} />
+                <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Import abgeschlossen</p>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  {result.added > 0 && `${result.added} hinzugefügt`}
+                  {result.added > 0 && result.updated > 0 && ' · '}
+                  {result.updated > 0 && `${result.updated} aktualisiert`}
+                  {result.added === 0 && result.updated === 0 && result.errors.length === 0 && 'Keine Änderungen'}
+                </p>
+              </div>
+
+              {result.errors.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#DC2626', marginBottom: 8 }}>
+                    {result.errors.length} Fehler beim Speichern
+                  </p>
+                  <div style={{ maxHeight: 160, overflowY: 'auto', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 'var(--radius-sm)' }}>
+                    {result.errors.map((e, i) => (
+                      <div key={i} style={{ padding: '7px 12px', borderBottom: i < result.errors.length - 1 ? '1px solid rgba(220,38,38,0.1)' : undefined, fontSize: 12 }}>
+                        <span style={{ fontWeight: 600 }}>Zeile {e.rowIndex} · {e.name || '—'}: </span>
+                        <span style={{ color: '#DC2626' }}>{e.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <button
+                  onClick={() => { onSuccess({ added: result.added, updated: result.updated }); onClose() }}
+                  style={{ padding: '9px 24px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}
+                >
+                  Schließen
+                </button>
+              </div>
             </div>
           )}
         </div>
