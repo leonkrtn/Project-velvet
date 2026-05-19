@@ -61,6 +61,9 @@ export default async function PdfExportPage({ params }: Props) {
     briefingRes,
     shotsRes,
     vendorsRes,
+    getraenkeKatRes,
+    getraenkeArtRes,
+    getraenkeCocRes,
   ] = await Promise.all([
     supabase.from('events').select(`
       id, title, couple_name, date, ceremony_start,
@@ -152,6 +155,21 @@ export default async function PdfExportPage({ params }: Props) {
       .select('id, name, category, status, contact_name, phone, email, price, notes')
       .eq('event_id', eventId)
       .order('category').order('name'),
+
+    supabase.from('getraenke_kategorien')
+      .select('id, name, color')
+      .eq('event_id', eventId)
+      .order('sort_order'),
+
+    supabase.from('getraenke_artikel')
+      .select('id, kategorie_id, name, unit, amount_per_person, total_planned, price_per_unit')
+      .eq('event_id', eventId)
+      .order('sort_order'),
+
+    supabase.from('getraenke_cocktails')
+      .select('id, name, description, is_alcoholic, planned_count, price_per_unit, ingredients')
+      .eq('event_id', eventId)
+      .order('sort_order'),
   ])
 
   if (!eventRes.data) redirect('/veranstalter')

@@ -4,8 +4,8 @@ import React, { useState, useEffect, useCallback, useRef, useMemo, Component } f
 import dynamic from 'next/dynamic'
 import {
   Eye, Download, LayoutDashboard, Users, Grid2X2, Calendar,
-  UtensilsCrossed, Wallet, Music2, Flower2, Camera, Briefcase,
-  FileDown, Loader2, AlertTriangle,
+  UtensilsCrossed, GlassWater, Wallet, Music2, Flower2, Camera, Briefcase,
+  FileDown, Loader2, AlertTriangle, ArrowLeft, ArrowRight,
 } from 'lucide-react'
 import type { PdfEventData, PdfMode, PdfSection } from '@/components/pdf/PdfTypes'
 
@@ -58,6 +58,7 @@ const ALL_SECTIONS: Array<{ key: PdfSection; label: string; Icon: React.ElementT
   { key: 'sitzplan',      label: 'Sitzplan',            Icon: Grid2X2 },
   { key: 'ablaufplan',    label: 'Ablaufplan',           Icon: Calendar },
   { key: 'catering',      label: 'Catering',             Icon: UtensilsCrossed },
+  { key: 'getraenke',     label: 'Getränkeplanung',      Icon: GlassWater },
   { key: 'budget',        label: 'Budget',               Icon: Wallet },
   { key: 'musik',         label: 'Musik',                Icon: Music2 },
   { key: 'dekoration',    label: 'Dekoration',           Icon: Flower2 },
@@ -81,8 +82,17 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
   const [pdfError, setPdfError]       = useState<string | null>(null)
   const [blobUrl, setBlobUrl]         = useState<string | null>(null)
   const generateTimerRef              = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [isMobile, setIsMobile]       = useState(false)
+  const [mobileStep, setMobileStep]   = useState<1 | 2>(1)
 
   useEffect(() => { setMounted(true) }, [])
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // Clear timer on unmount to avoid setState on an unmounted component
   useEffect(() => {

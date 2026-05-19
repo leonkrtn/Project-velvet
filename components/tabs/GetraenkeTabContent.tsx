@@ -641,7 +641,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
               <p style={{ fontSize: 14, color: '#888', marginBottom: 16 }}>Noch keine Getränkekategorien angelegt</p>
               {canEdit && (
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  <button onClick={addPresetKategorien} style={{ padding: '8px 16px', background: '#B8943E', color: '#fff', border: 'none', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <button onClick={addPresetKategorien} style={{ padding: '8px 16px', background: '#fff', color: '#B8943E', border: '1px solid rgba(184, 148, 62, 0.5)', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Standard-Kategorien laden
                   </button>
                   <button onClick={() => setShowKatForm(true)} style={{ padding: '8px 16px', background: 'none', border: '1px solid #ddd', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: '#666' }}>
