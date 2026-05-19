@@ -571,7 +571,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
       </div>
 
       {/* Tabs */}
-      <div role="tablist" style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid var(--border)' }}>
+      <div role="tablist" style={{ display: 'flex', gap: 2, marginBottom: 24, background: 'var(--bg)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', width: 'fit-content' }}>
         {[
           { key: 'gaeste', label: 'Gästeliste' },
           { key: 'hotel', label: `Hotel (${initialHotels.length})` },
@@ -582,10 +582,12 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key as 'gaeste' | 'hotel')}
             style={{
-              padding: '9px 18px', background: 'none', border: 'none', borderBottom: `2px solid ${activeTab === tab.key ? 'var(--accent)' : 'transparent'}`,
-              marginBottom: -2, fontSize: 13, fontWeight: activeTab === tab.key ? 700 : 400,
-              color: activeTab === tab.key ? 'var(--accent)' : 'var(--text-secondary)',
-              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+              padding: '6px 14px', border: 'none', borderRadius: 6, fontFamily: 'inherit',
+              fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              background: activeTab === tab.key ? '#fff' : 'transparent',
+              color: activeTab === tab.key ? 'var(--text)' : 'var(--text-secondary)',
+              boxShadow: activeTab === tab.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              transition: 'background 0.15s',
             }}
           >
             {tab.label}
