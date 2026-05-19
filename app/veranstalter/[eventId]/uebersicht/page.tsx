@@ -333,6 +333,8 @@ export default async function UebersichtPage({ params }: Props) {
           budgetItems={budgetLineItems}
           cateringCosts={cateringCosts}
           effectiveGuestCount={effectiveGuestCount}
+          getränkeBilling={getränkeBilling}
+          getränkeBpTotal={getränkeBpTotal}
         />
       </div>
 
@@ -352,20 +354,23 @@ const STATUS_COLOR: Record<PaymentStatus, string> = {
   bezahlt:    '#15803D',
 }
 
-function KostenübersichtCard({ eventId, organizerFee, budgetItems, cateringCosts, effectiveGuestCount }: {
+function KostenübersichtCard({ eventId, organizerFee, budgetItems, cateringCosts, effectiveGuestCount, getränkeBilling, getränkeBpTotal }: {
   eventId: string
   organizerFee: number
   budgetItems: BudgetLineItem[]
   cateringCosts: CateringCostItem[]
   effectiveGuestCount: number
+  getränkeBilling: string
+  getränkeBpTotal: number
 }) {
-  const cateringTotal = cateringCosts.reduce((s, c) => s + (Number(c.price_per_person) || 0), 0) * effectiveGuestCount
+  const cateringTotal    = cateringCosts.reduce((s, c) => s + (Number(c.price_per_person) || 0), 0) * effectiveGuestCount
   const nonCateringItems = budgetItems.filter(i => i.category?.toLowerCase() !== 'catering')
-  const plannedTotal = nonCateringItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)
-  const actualTotal  = nonCateringItems.reduce((s, i) => s + (Number(i.actual)  || 0), 0)
-  const grandPlanned = plannedTotal + (organizerFee > 0 ? organizerFee : 0) + cateringTotal
-  const grandActual  = actualTotal
-  const hasItems = budgetItems.length > 0 || cateringCosts.length > 0 || organizerFee > 0
+  const plannedTotal     = nonCateringItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)
+  const actualTotal      = nonCateringItems.reduce((s, i) => s + (Number(i.actual)  || 0), 0)
+  const getränkeInTotal  = getränkeBilling === 'einzeln' ? getränkeBpTotal : 0
+  const grandPlanned     = plannedTotal + (organizerFee > 0 ? organizerFee : 0) + cateringTotal + getränkeInTotal
+  const grandActual      = actualTotal
+  const hasItems = budgetItems.length > 0 || cateringCosts.length > 0 || organizerFee > 0 || getränkeInTotal > 0
 
   return (
     <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
@@ -410,6 +415,19 @@ function KostenübersichtCard({ eventId, organizerFee, budgetItems, cateringCost
                 </div>
               </div>
               <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right', minWidth: 90 }}>{fmtMoney(cateringTotal)}</span>
+              <span style={{ fontSize: 13.5, color: 'var(--text-tertiary)', textAlign: 'right', minWidth: 90 }}>—</span>
+              <span style={{ minWidth: 80 }} />
+            </div>
+          )}
+
+          {/* Getränke (nur wenn einzeln abgerechnet) */}
+          {getränkeBilling === 'einzeln' && getränkeBpTotal > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 12, padding: '11px 22px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text-primary)' }}>Getränke</div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>Einzeln abgerechnet · BP-Preise</div>
+              </div>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'right', minWidth: 90 }}>{fmtMoney(getränkeBpTotal)}</span>
               <span style={{ fontSize: 13.5, color: 'var(--text-tertiary)', textAlign: 'right', minWidth: 90 }}>—</span>
               <span style={{ minWidth: 80 }} />
             </div>
