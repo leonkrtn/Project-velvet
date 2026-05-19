@@ -90,7 +90,6 @@ export async function POST(
 
     const allCells = [typ, hauptgast, id, name, email, phone, status, side, meal_choice, allergyRaw, allergy_custom, trinkRaw, age_category, notes]
     if (allCells.every(c => c === '')) return
-
     if (typ.startsWith('Hinweise:')) return
 
     const errors: string[] = []
@@ -146,12 +145,6 @@ export async function POST(
       ? allergyRaw.split(',').map(t => t.trim()).filter(t => t !== '')
       : []
 
-    const action: ParsedRow['action'] = errors.length > 0
-      ? 'error'
-      : id
-        ? 'update'
-        : 'create'
-
     rows.push({
       rowIndex: rowNumber,
       typ: typNorm || 'Gast',
@@ -169,9 +162,60 @@ export async function POST(
       age_category: normalizedAge,
       notes: notes || null,
       errors,
-      action,
+      action: errors.length > 0 ? 'error' : 'create', // finalized below after DB check
     })
   })
+
+  // Check which IDs in the file actually exist in this event's DB records.
+  // This determines whether a row truly updates an existing entry or creates a new one.
+  const guestIdsToCheck = rows
+    .filter(r => r.id && r.typ !== 'Begleitperson' && r.errors.length === 0)
+    .map(r => r.id as string)
+
+  const bpIdsToCheck = rows
+    .filter(r => r.id && r.typ === 'Begleitperson' && r.errors.length === 0)
+    .map(r => r.id as string)
+
+  const existingGuestIds = new Set<string>()
+  const existingBpIds = new Set<string>()
+
+  if (guestIdsToCheck.length > 0) {
+    const { data } = await supabase
+      .from('guests')
+      .select('id')
+      .eq('event_id', eventId)
+      .in('id', guestIdsToCheck)
+    for (const g of data ?? []) existingGuestIds.add(g.id)
+  }
+
+  if (bpIdsToCheck.length > 0) {
+    const { data } = await supabase
+      .from('begleitpersonen')
+      .select('id')
+      .in('id', bpIdsToCheck)
+    for (const bp of data ?? []) existingBpIds.add(bp.id)
+  }
+
+  for (const row of rows) {
+    if (row.errors.length > 0) continue
+    if (!row.id) {
+      row.action = 'create'
+    } else if (row.typ === 'Begleitperson') {
+      if (existingBpIds.has(row.id)) {
+        row.action = 'update'
+      } else {
+        row.action = 'create'
+        row.id = null
+      }
+    } else {
+      if (existingGuestIds.has(row.id)) {
+        row.action = 'update'
+      } else {
+        row.action = 'create'
+        row.id = null
+      }
+    }
+  }
 
   const total = rows.length
   const toCreate = rows.filter(r => r.action === 'create').length
