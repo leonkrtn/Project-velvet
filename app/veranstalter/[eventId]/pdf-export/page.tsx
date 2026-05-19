@@ -162,12 +162,12 @@ export default async function PdfExportPage({ params }: Props) {
       .order('sort_order'),
 
     supabase.from('getraenke_artikel')
-      .select('id, kategorie_id, name, unit, amount_per_person, total_planned, price_per_unit')
+      .select('id, kategorie_id, name, unit, amount_per_person, total_planned, price_per_unit, kalkulationspreis')
       .eq('event_id', eventId)
       .order('sort_order'),
 
     supabase.from('getraenke_cocktails')
-      .select('id, name, description, is_alcoholic, planned_count, price_per_unit, ingredients')
+      .select('id, name, description, is_alcoholic, planned_count, price_per_unit, kalkulationspreis, ingredients')
       .eq('event_id', eventId)
       .order('sort_order'),
   ])

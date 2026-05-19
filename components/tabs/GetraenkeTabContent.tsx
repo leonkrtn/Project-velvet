@@ -25,6 +25,7 @@ interface Artikel {
   amount_per_person: number
   total_planned: number
   price_per_unit: number
+  kalkulationspreis: number
   notes: string
   sort_order: number
 }
@@ -43,6 +44,7 @@ interface Cocktail {
   is_alcoholic: boolean
   planned_count: number
   price_per_unit: number
+  kalkulationspreis: number
   ingredients: Ingredient[]
   sort_order: number
 }
@@ -112,12 +114,25 @@ function FieldInput({
   )
 }
 
+// ── Info block sub-component ──────────────────────────────────────────────────
+
+function InfoBlock({
+  label, children,
+}: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: 'var(--bg, #f5f5f7)', borderRadius: 7, padding: '8px 10px', minWidth: 0 }}>
+      <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 4 }}>{label}</div>
+      {children}
+    </div>
+  )
+}
+
 // ── Artikel card ──────────────────────────────────────────────────────────────
 
 function ArtikelCard({
-  artikel, canEdit, guestCount, onChange, onDelete,
+  artikel, canEdit, isVera, guestCount, onChange, onDelete,
 }: {
-  artikel: Artikel; canEdit: boolean; guestCount: number
+  artikel: Artikel; canEdit: boolean; isVera: boolean; guestCount: number
   onChange: (a: Artikel) => void; onDelete: () => void
 }) {
   const [draft, setDraft]       = useState(artikel)
@@ -133,6 +148,7 @@ function ArtikelCard({
       amount_per_person: debouncedDraft.amount_per_person,
       total_planned:     debouncedDraft.total_planned,
       price_per_unit:    debouncedDraft.price_per_unit,
+      kalkulationspreis: debouncedDraft.kalkulationspreis,
       notes:             debouncedDraft.notes,
     }).eq('id', artikel.id).then(({ error }) => {
       if (!error) onChange(debouncedDraft)
@@ -159,7 +175,8 @@ function ArtikelCard({
     }
   }, [guestCount]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const lineTotal = draft.total_planned * draft.price_per_unit
+  const bpLineTotal   = draft.total_planned * draft.price_per_unit
+  const kalkLineTotal = draft.total_planned * draft.kalkulationspreis
 
   return (
     <div style={{
@@ -178,7 +195,7 @@ function ArtikelCard({
             value={draft.name}
             onChange={e => setField('name', e.target.value)}
             style={{
-              flex: 1, fontSize: 14, fontWeight: 600, color: '#1a1a1a',
+              flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: '#1a1a1a',
               border: 'none', outline: 'none', background: 'transparent',
               fontFamily: 'inherit', padding: 0,
             }}
@@ -197,71 +214,157 @@ function ArtikelCard({
         )}
       </div>
 
-      {/* 3 info blocks */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
-        {/* Block 1: Gesamt (read-only) + Einheit */}
-        <div style={{ background: 'var(--bg, #f5f5f7)', borderRadius: 7, padding: '8px 10px' }}>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 4 }}>Gesamt</div>
-          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', lineHeight: 1.2 }}>
-            {draft.total_planned || <span style={{ color: '#ccc' }}>—</span>}
-          </div>
-          {canEdit ? (
-            <select
-              value={draft.unit}
-              onChange={e => setField('unit', e.target.value)}
-              style={{ fontSize: 11, color: 'var(--text-secondary, #888)', border: 'none', background: 'transparent', padding: 0, marginTop: 3, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', width: '100%' }}
-            >
-              {UNITS.map(u => <option key={u}>{u}</option>)}
-            </select>
-          ) : (
-            <div style={{ fontSize: 11, color: 'var(--text-secondary, #888)', marginTop: 3 }}>{draft.unit}</div>
-          )}
-        </div>
+      {/* Info blocks — 2×2 for veranstalter, 1×3 for others */}
+      {isVera ? (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          {/* Gesamt */}
+          <InfoBlock label="Gesamt">
+            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', lineHeight: 1.2 }}>
+              {draft.total_planned || <span style={{ color: '#ccc' }}>—</span>}
+            </div>
+            {canEdit ? (
+              <select
+                value={draft.unit}
+                onChange={e => setField('unit', e.target.value)}
+                style={{ fontSize: 11, color: 'var(--text-secondary, #888)', border: 'none', background: 'transparent', padding: 0, marginTop: 3, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', width: '100%' }}
+              >
+                {UNITS.map(u => <option key={u}>{u}</option>)}
+              </select>
+            ) : (
+              <div style={{ fontSize: 11, color: 'var(--text-secondary, #888)', marginTop: 3 }}>{draft.unit}</div>
+            )}
+          </InfoBlock>
 
-        {/* Block 2: Pro Person (editable) */}
-        <div style={{ background: 'var(--bg, #f5f5f7)', borderRadius: 7, padding: '8px 10px' }}>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 4 }}>Pro Person</div>
-          {canEdit ? (
-            <input
-              type="number"
-              value={draft.amount_per_person || ''}
-              onChange={e => setField('amount_per_person', parseFloat(e.target.value) || 0)}
-              placeholder="0"
-              style={{
-                width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)',
-                border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit',
-              }}
-            />
-          ) : (
-            <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.amount_per_person || '—'}</div>
-          )}
-        </div>
-
-        {/* Block 3: Preis pro Stück */}
-        <div style={{ background: 'var(--bg, #f5f5f7)', borderRadius: 7, padding: '8px 10px' }}>
-          <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 4 }}>Preis / Stk</div>
-          {canEdit ? (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+          {/* Pro Person */}
+          <InfoBlock label="Pro Person">
+            {canEdit ? (
               <input
                 type="number"
-                value={draft.price_per_unit || ''}
-                onChange={e => setField('price_per_unit', parseFloat(e.target.value) || 0)}
+                value={draft.amount_per_person || ''}
+                onChange={e => setField('amount_per_person', parseFloat(e.target.value) || 0)}
                 placeholder="0"
                 style={{
-                  flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700,
+                  width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)',
                   border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit',
                 }}
               />
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)', flexShrink: 0 }}>€</span>
-            </div>
-          ) : (
-            <div style={{ fontSize: 15, fontWeight: 700 }}>{fmt(draft.price_per_unit)} €</div>
-          )}
-          {lineTotal > 0 && (
-            <div style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)', marginTop: 3 }}>= {fmt(lineTotal)} €</div>
-          )}
+            ) : (
+              <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.amount_per_person || '—'}</div>
+            )}
+          </InfoBlock>
+
+          {/* Preis BP */}
+          <InfoBlock label="Preis BP">
+            {canEdit ? (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                <input
+                  type="number"
+                  value={draft.price_per_unit || ''}
+                  onChange={e => setField('price_per_unit', parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  style={{
+                    width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700,
+                    border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit',
+                  }}
+                />
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)', flexShrink: 0 }}>€</span>
+              </div>
+            ) : (
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{fmt(draft.price_per_unit)} €</div>
+            )}
+            {bpLineTotal > 0 && (
+              <div style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)', marginTop: 3 }}>= {fmt(bpLineTotal)} €</div>
+            )}
+          </InfoBlock>
+
+          {/* Kalkulation */}
+          <InfoBlock label="Kalkulation">
+            {canEdit ? (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                <input
+                  type="number"
+                  value={draft.kalkulationspreis || ''}
+                  onChange={e => setField('kalkulationspreis', parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  style={{
+                    width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700,
+                    border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit',
+                  }}
+                />
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)', flexShrink: 0 }}>€</span>
+              </div>
+            ) : (
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{fmt(draft.kalkulationspreis)} €</div>
+            )}
+            {kalkLineTotal > 0 && (
+              <div style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)', marginTop: 3 }}>= {fmt(kalkLineTotal)} €</div>
+            )}
+          </InfoBlock>
         </div>
-      </div>
+      ) : (
+        /* 3-block row for brautpaar / dienstleister */
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,0.9fr) minmax(0,1fr)', gap: 6 }}>
+          {/* Gesamt */}
+          <InfoBlock label="Gesamt">
+            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', lineHeight: 1.2 }}>
+              {draft.total_planned || <span style={{ color: '#ccc' }}>—</span>}
+            </div>
+            {canEdit ? (
+              <select
+                value={draft.unit}
+                onChange={e => setField('unit', e.target.value)}
+                style={{ fontSize: 11, color: 'var(--text-secondary, #888)', border: 'none', background: 'transparent', padding: 0, marginTop: 3, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', width: '100%' }}
+              >
+                {UNITS.map(u => <option key={u}>{u}</option>)}
+              </select>
+            ) : (
+              <div style={{ fontSize: 11, color: 'var(--text-secondary, #888)', marginTop: 3 }}>{draft.unit}</div>
+            )}
+          </InfoBlock>
+
+          {/* Pro Person */}
+          <InfoBlock label="Pro Person">
+            {canEdit ? (
+              <input
+                type="number"
+                value={draft.amount_per_person || ''}
+                onChange={e => setField('amount_per_person', parseFloat(e.target.value) || 0)}
+                placeholder="0"
+                style={{
+                  width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)',
+                  border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit',
+                }}
+              />
+            ) : (
+              <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.amount_per_person || '—'}</div>
+            )}
+          </InfoBlock>
+
+          {/* Preis / Stk */}
+          <InfoBlock label="Preis / Stk">
+            {canEdit ? (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                <input
+                  type="number"
+                  value={draft.price_per_unit || ''}
+                  onChange={e => setField('price_per_unit', parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  style={{
+                    width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700,
+                    border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit',
+                  }}
+                />
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)', flexShrink: 0 }}>€</span>
+              </div>
+            ) : (
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{fmt(draft.price_per_unit)} €</div>
+            )}
+            {bpLineTotal > 0 && (
+              <div style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)', marginTop: 3 }}>= {fmt(bpLineTotal)} €</div>
+            )}
+          </InfoBlock>
+        </div>
+      )}
     </div>
   )
 }
@@ -269,12 +372,13 @@ function ArtikelCard({
 // ── Kategorie section ─────────────────────────────────────────────────────────
 
 function KategorieSection({
-  kat, artikel, canEdit, guestCount,
+  kat, artikel, canEdit, isVera, guestCount,
   onArtikelChange, onArtikelDelete, onArtikelAdd, onKatDelete,
 }: {
   kat: Kategorie
   artikel: Artikel[]
   canEdit: boolean
+  isVera: boolean
   guestCount: number
   onArtikelChange: (a: Artikel) => void
   onArtikelDelete: (id: string) => void
@@ -286,9 +390,12 @@ function KategorieSection({
   const [addUnit, setAddUnit]         = useState('Flasche')
   const [addAmt, setAddAmt]           = useState('')
   const [addPrice, setAddPrice]       = useState('')
+  const [addKalk, setAddKalk]         = useState('')
   const [saving, setSaving]           = useState(false)
 
-  const totalBudget = artikel.reduce((s, a) => s + a.total_planned * a.price_per_unit, 0)
+  const bpTotal   = artikel.reduce((s, a) => s + a.total_planned * a.price_per_unit, 0)
+  const kalkTotal = artikel.reduce((s, a) => s + a.total_planned * a.kalkulationspreis, 0)
+  const displayTotal = isVera ? kalkTotal : bpTotal
 
   async function addArtikel() {
     if (!addName.trim()) return
@@ -297,19 +404,20 @@ function KategorieSection({
     const perPerson = parseFloat(addAmt) || 0
     const total = perPerson > 0 && guestCount > 0 ? Math.ceil(perPerson * guestCount) : 0
     const { data, error } = await supabase.from('getraenke_artikel').insert({
-      event_id:         kat.event_id,
-      kategorie_id:     kat.id,
-      name:             addName.trim(),
-      unit:             addUnit,
+      event_id:          kat.event_id,
+      kategorie_id:      kat.id,
+      name:              addName.trim(),
+      unit:              addUnit,
       amount_per_person: perPerson,
-      total_planned:    total,
-      price_per_unit:   parseFloat(addPrice) || 0,
-      sort_order:       artikel.length,
+      total_planned:     total,
+      price_per_unit:    parseFloat(addPrice) || 0,
+      kalkulationspreis: parseFloat(addKalk) || 0,
+      sort_order:        artikel.length,
     }).select().single()
     setSaving(false)
     if (!error && data) {
-      onArtikelAdd(data as Artikel)
-      setAddName(''); setAddAmt(''); setAddPrice(''); setAddUnit('Flasche')
+      onArtikelAdd({ ...data, kalkulationspreis: data.kalkulationspreis ?? 0 } as Artikel)
+      setAddName(''); setAddAmt(''); setAddPrice(''); setAddKalk(''); setAddUnit('Flasche')
       setShowAddForm(false)
     }
   }
@@ -329,7 +437,6 @@ function KategorieSection({
         padding: '13px 16px',
         borderBottom: artikel.length > 0 || canEdit ? '1px solid var(--border, #f0f0f0)' : undefined,
       }}>
-        {/* Alkohol/Alkoholfrei icon */}
         {kat.is_alcoholic
           ? <Wine size={15} style={{ color: kat.color, flexShrink: 0 }} />
           : <GlassWater size={15} style={{ color: kat.color, flexShrink: 0 }} />
@@ -337,9 +444,9 @@ function KategorieSection({
         <span style={{ fontSize: 15, fontWeight: 700, flex: 1, color: 'var(--text-primary, #1a1a1a)' }}>
           {kat.name}
         </span>
-        {(artikel.length > 0 || totalBudget > 0) && (
+        {(artikel.length > 0 || displayTotal > 0) && (
           <span style={{ fontSize: 12, color: 'var(--text-tertiary, #aaa)' }}>
-            {artikel.length} Artikel{totalBudget > 0 ? ` · ${fmt(totalBudget)} €` : ''}
+            {artikel.length} Artikel{displayTotal > 0 ? ` · ${fmt(displayTotal)} €` : ''}
           </span>
         )}
         {canEdit && (
@@ -364,7 +471,7 @@ function KategorieSection({
         {artikel.length > 0 && (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gridTemplateColumns: `repeat(auto-fill, minmax(${isVera ? 280 : 260}px, 1fr))`,
             gap: 10,
             marginBottom: canEdit ? 10 : 0,
           }}>
@@ -373,6 +480,7 @@ function KategorieSection({
                 key={a.id}
                 artikel={a}
                 canEdit={canEdit}
+                isVera={isVera}
                 guestCount={guestCount}
                 onChange={onArtikelChange}
                 onDelete={() => onArtikelDelete(a.id)}
@@ -385,7 +493,6 @@ function KategorieSection({
         {canEdit && (
           showAddForm ? (
             <div style={{
-              marginTop: artikel.length > 0 ? 0 : 0,
               background: 'var(--bg, #f5f5f7)',
               borderRadius: 8,
               border: '1px dashed var(--border, #ddd)',
@@ -404,9 +511,12 @@ function KategorieSection({
                   {UNITS.map(u => <option key={u}>{u}</option>)}
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isVera ? '1fr 1fr 1fr' : '1fr 1fr', gap: 8, marginBottom: 10 }}>
                 <FieldInput value={addAmt} onChange={setAddAmt} placeholder="Menge pro Person" type="number" />
-                <FieldInput value={addPrice} onChange={setAddPrice} placeholder="Preis / Stk (€)" type="number" />
+                <FieldInput value={addPrice} onChange={setAddPrice} placeholder={isVera ? 'Preis BP (€)' : 'Preis / Stk (€)'} type="number" />
+                {isVera && (
+                  <FieldInput value={addKalk} onChange={setAddKalk} placeholder="Kalkulation (€)" type="number" />
+                )}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button
@@ -422,7 +532,7 @@ function KategorieSection({
                   {saving ? '…' : 'Hinzufügen'}
                 </button>
                 <button
-                  onClick={() => { setShowAddForm(false); setAddName(''); setAddAmt(''); setAddPrice('') }}
+                  onClick={() => { setShowAddForm(false); setAddName(''); setAddAmt(''); setAddPrice(''); setAddKalk('') }}
                   style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary, #666)' }}
                 >
                   Abbrechen
@@ -438,7 +548,6 @@ function KategorieSection({
                 background: 'none', border: '1px dashed var(--border, #ddd)',
                 borderRadius: 8, fontSize: 13, color: 'var(--text-tertiary, #aaa)',
                 cursor: 'pointer', fontFamily: 'inherit',
-                marginTop: artikel.length > 0 ? 0 : 0,
               }}
             >
               <Plus size={14} /> Artikel hinzufügen
@@ -452,8 +561,8 @@ function KategorieSection({
 
 // ── Cocktail card ─────────────────────────────────────────────────────────────
 
-function CocktailCard({ cocktail, canEdit, onChange, onDelete }: {
-  cocktail: Cocktail; canEdit: boolean; onChange: (c: Cocktail) => void; onDelete: () => void
+function CocktailCard({ cocktail, canEdit, isVera, onChange, onDelete }: {
+  cocktail: Cocktail; canEdit: boolean; isVera: boolean; onChange: (c: Cocktail) => void; onDelete: () => void
 }) {
   const [open, setOpen]       = useState(false)
   const [draft, setDraft]     = useState(cocktail)
@@ -464,12 +573,13 @@ function CocktailCard({ cocktail, canEdit, onChange, onDelete }: {
     setSaving(true)
     const supabase = createClient()
     const { error } = await supabase.from('getraenke_cocktails').update({
-      name:           draft.name,
-      description:    draft.description,
-      is_alcoholic:   draft.is_alcoholic,
-      planned_count:  draft.planned_count,
-      price_per_unit: draft.price_per_unit,
-      ingredients:    draft.ingredients,
+      name:              draft.name,
+      description:       draft.description,
+      is_alcoholic:      draft.is_alcoholic,
+      planned_count:     draft.planned_count,
+      price_per_unit:    draft.price_per_unit,
+      kalkulationspreis: draft.kalkulationspreis,
+      ingredients:       draft.ingredients,
     }).eq('id', cocktail.id)
     setSaving(false)
     if (!error) { onChange(draft); setOpen(false) }
@@ -485,9 +595,13 @@ function CocktailCard({ cocktail, canEdit, onChange, onDelete }: {
     setDraft(p => ({ ...p, ingredients: p.ingredients.filter((_, idx) => idx !== i) }))
   }
 
-  const color = cocktail.is_alcoholic ? '#8B2252' : '#2A9D8F'
-  const cocktailTotal = (cocktail.price_per_unit ?? 0) > 0 && cocktail.planned_count > 0
+  const color         = cocktail.is_alcoholic ? '#8B2252' : '#2A9D8F'
+  const bpTotal       = (cocktail.price_per_unit ?? 0) > 0 && cocktail.planned_count > 0
     ? (cocktail.price_per_unit ?? 0) * cocktail.planned_count : 0
+  const kalkTotal     = (cocktail.kalkulationspreis ?? 0) > 0 && cocktail.planned_count > 0
+    ? (cocktail.kalkulationspreis ?? 0) * cocktail.planned_count : 0
+  const displayTotal  = isVera ? kalkTotal : bpTotal
+  const displayPrice  = isVera ? (cocktail.kalkulationspreis ?? 0) : (cocktail.price_per_unit ?? 0)
 
   return (
     <div style={{ borderRadius: 10, border: '1px solid var(--border, #e8e8e8)', overflow: 'hidden', background: 'var(--surface, #fff)' }}>
@@ -498,14 +612,13 @@ function CocktailCard({ cocktail, canEdit, onChange, onDelete }: {
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
         <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{cocktail.name}</span>
         <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)' }}>{cocktail.is_alcoholic ? 'mit Alkohol' : 'alkoholfrei'}</span>
-        {cocktailTotal > 0 && (
+        {displayTotal > 0 ? (
           <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary, #666)' }}>
-            {fmt(cocktail.price_per_unit)} € × {cocktail.planned_count} = {fmt(cocktailTotal)} €
+            {fmt(displayPrice)} € × {cocktail.planned_count} = {fmt(displayTotal)} €
           </span>
-        )}
-        {cocktail.planned_count > 0 && cocktailTotal === 0 && (
+        ) : cocktail.planned_count > 0 ? (
           <span style={{ fontSize: 11, fontWeight: 700, color }}>{cocktail.planned_count}×</span>
-        )}
+        ) : null}
         {!canEdit && cocktail.ingredients.length > 0 && (
           <button
             onClick={e => { e.stopPropagation(); setOpen(p => !p) }}
@@ -539,9 +652,19 @@ function CocktailCard({ cocktail, canEdit, onChange, onDelete }: {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 5 }}>Preis pro Stück (€)</label>
-                <FieldInput value={draft.price_per_unit || ''} onChange={v => setDraft(p => ({ ...p, price_per_unit: parseFloat(v) || 0 }))} type="number" placeholder="0,00" />
+              <div style={{ display: 'grid', gridTemplateColumns: isVera ? '1fr 1fr' : '1fr', gap: 8 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 5 }}>
+                    {isVera ? 'Preis BP (€)' : 'Preis pro Stück (€)'}
+                  </label>
+                  <FieldInput value={draft.price_per_unit || ''} onChange={v => setDraft(p => ({ ...p, price_per_unit: parseFloat(v) || 0 }))} type="number" placeholder="0,00" />
+                </div>
+                {isVera && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 5 }}>Kalkulation (€)</label>
+                    <FieldInput value={draft.kalkulationspreis || ''} onChange={v => setDraft(p => ({ ...p, kalkulationspreis: parseFloat(v) || 0 }))} type="number" placeholder="0,00" />
+                  </div>
+                )}
               </div>
 
               <div>
@@ -631,55 +754,125 @@ function CocktailCard({ cocktail, canEdit, onChange, onDelete }: {
 
 // ── Budget footer ─────────────────────────────────────────────────────────────
 
-function BudgetFooter({ kategorien, artikel, cocktails }: {
-  kategorien: Kategorie[]; artikel: Artikel[]; cocktails: Cocktail[]
+function BudgetFooter({ mode, kategorien, artikel, cocktails }: {
+  mode: Mode; kategorien: Kategorie[]; artikel: Artikel[]; cocktails: Cocktail[]
 }) {
-  const artikelRows = kategorien.map(k => {
-    const items = artikel.filter(a => a.kategorie_id === k.id)
-    const total = items.reduce((s, a) => s + a.total_planned * a.price_per_unit, 0)
-    return { ...k, total, count: items.reduce((s, a) => s + a.total_planned, 0) }
-  }).filter(r => r.total > 0)
+  const isVera = mode === 'veranstalter'
+  const [includeBp, setIncludeBp] = useState(false)
+
+  // Per-category kalk and bp totals
+  const katRows = kategorien.map(k => {
+    const items    = artikel.filter(a => a.kategorie_id === k.id)
+    const kalkSum  = items.reduce((s, a) => s + a.total_planned * a.kalkulationspreis, 0)
+    const bpSum    = items.reduce((s, a) => s + a.total_planned * a.price_per_unit, 0)
+    const count    = items.reduce((s, a) => s + a.total_planned, 0)
+    return { ...k, kalkSum, bpSum, count }
+  }).filter(r => isVera ? (r.kalkSum > 0 || r.bpSum > 0) : r.bpSum > 0)
 
   const uncategorized = artikel.filter(a => !a.kategorie_id)
-  const uncatTotal    = uncategorized.reduce((s, a) => s + a.total_planned * a.price_per_unit, 0)
-  const artikelTotal  = artikel.reduce((s, a) => s + a.total_planned * a.price_per_unit, 0)
-  const cocktailTotal = cocktails.reduce((s, c) => s + (c.price_per_unit ?? 0) * c.planned_count, 0)
-  const grandTotal    = artikelTotal + cocktailTotal
+  const uncatKalk  = uncategorized.reduce((s, a) => s + a.total_planned * a.kalkulationspreis, 0)
+  const uncatBp    = uncategorized.reduce((s, a) => s + a.total_planned * a.price_per_unit, 0)
 
-  if (grandTotal === 0) return null
+  const artikelKalk  = artikel.reduce((s, a) => s + a.total_planned * a.kalkulationspreis, 0)
+  const artikelBp    = artikel.reduce((s, a) => s + a.total_planned * a.price_per_unit, 0)
+  const cocktailKalk = cocktails.reduce((s, c) => s + (c.kalkulationspreis ?? 0) * c.planned_count, 0)
+  const cocktailBp   = cocktails.reduce((s, c) => s + (c.price_per_unit ?? 0) * c.planned_count, 0)
+
+  const grandKalk = artikelKalk + cocktailKalk
+  const grandBp   = artikelBp + cocktailBp
+  const grandBpForDisplay = (isVera && includeBp) ? grandBp : 0
+
+  // For non-veranstalter: use bp totals
+  const displayKalk   = isVera ? grandKalk : grandBp
+  const displayKalkCC = isVera ? cocktailKalk : cocktailBp
+
+  if (isVera ? grandKalk === 0 && grandBp === 0 : grandBp === 0) return null
 
   return (
     <div style={{ background: 'var(--surface, #fff)', borderRadius: 12, border: '1px solid var(--border, #e8e8e8)', overflow: 'hidden', marginTop: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', borderBottom: '1px solid var(--border, #f0f0f0)', background: 'var(--bg, #f5f5f7)' }}>
-        <Calculator size={14} style={{ color: 'var(--text-tertiary, #aaa)' }} />
-        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)' }}>Budget-Übersicht</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', borderBottom: '1px solid var(--border, #f0f0f0)', background: 'var(--bg, #f5f5f7)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Calculator size={14} style={{ color: 'var(--text-tertiary, #aaa)' }} />
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)' }}>
+            {isVera ? 'Kalkulation' : 'Budget-Übersicht'}
+          </span>
+        </div>
+        {isVera && (
+          <button
+            onClick={() => setIncludeBp(p => !p)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '4px 10px', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer',
+              borderRadius: 6, border: '1px solid var(--border, #ddd)',
+              background: includeBp ? '#f0f7f0' : '#fff',
+              color: includeBp ? '#2d7a3a' : 'var(--text-secondary, #888)',
+            }}
+          >
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: includeBp ? '#2d7a3a' : '#ccc', display: 'inline-block' }} />
+            Brautpaarpreise einbeziehen
+          </button>
+        )}
       </div>
+
       <div style={{ padding: '4px 0' }}>
-        {artikelRows.map(r => (
-          <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 16px', borderBottom: '1px solid var(--bg, #f8f8f8)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: r.color }} />
-              <span style={{ fontSize: 13 }}>{r.name}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary, #bbb)' }}>({r.count} Stk.)</span>
+        {/* Category rows */}
+        {katRows.map(r => {
+          const rowKalk = isVera ? r.kalkSum : r.bpSum
+          const rowBp   = r.bpSum
+          return (
+            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 16px', borderBottom: '1px solid var(--bg, #f8f8f8)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: r.color }} />
+                <span style={{ fontSize: 13 }}>{r.name}</span>
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary, #bbb)' }}>({r.count} Stk.)</span>
+              </div>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                {isVera && includeBp && rowBp > 0 && (
+                  <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)' }}>BP: {fmt(rowBp)} €</span>
+                )}
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(rowKalk)} €</span>
+              </div>
             </div>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(r.total)} €</span>
-          </div>
-        ))}
-        {uncatTotal > 0 && (
+          )
+        })}
+
+        {/* Uncategorized */}
+        {(isVera ? uncatKalk > 0 : uncatBp > 0) && (
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 16px', borderBottom: '1px solid var(--bg, #f8f8f8)' }}>
             <span style={{ fontSize: 13, color: 'var(--text-secondary, #888)' }}>Sonstige Getränke</span>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(uncatTotal)} €</span>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {isVera && includeBp && uncatBp > 0 && (
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)' }}>BP: {fmt(uncatBp)} €</span>
+              )}
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(isVera ? uncatKalk : uncatBp)} €</span>
+            </div>
           </div>
         )}
-        {cocktailTotal > 0 && (
+
+        {/* Cocktails */}
+        {displayKalkCC > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 16px', borderBottom: '1px solid var(--bg, #f8f8f8)' }}>
             <span style={{ fontSize: 13, color: 'var(--text-secondary, #888)' }}>Cocktails</span>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(cocktailTotal)} €</span>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {isVera && includeBp && cocktailBp > 0 && (
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)' }}>BP: {fmt(cocktailBp)} €</span>
+              )}
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(displayKalkCC)} €</span>
+            </div>
           </div>
         )}
+
+        {/* Grand total */}
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 16px', background: 'var(--bg, #f5f5f7)' }}>
           <span style={{ fontSize: 14, fontWeight: 700 }}>Gesamt</span>
-          <span style={{ fontSize: 14, fontWeight: 700 }}>{fmt(grandTotal)} €</span>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'baseline' }}>
+            {isVera && includeBp && grandBpForDisplay > 0 && (
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary, #aaa)' }}>+ BP {fmt(grandBpForDisplay)} €</span>
+            )}
+            <span style={{ fontSize: 14, fontWeight: 700 }}>
+              {fmt(isVera ? displayKalk + grandBpForDisplay : displayKalk)} €
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -695,17 +888,18 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
   const [loading, setLoading]       = useState(true)
   const [tab, setTab]               = useState<'planung' | 'cocktails'>('planung')
 
-  const [newKatName, setNewKatName]         = useState('')
-  const [newKatColor, setNewKatColor]       = useState(CATEGORY_COLORS[0])
+  const [newKatName, setNewKatName]           = useState('')
+  const [newKatColor, setNewKatColor]         = useState(CATEGORY_COLORS[0])
   const [newKatAlcoholic, setNewKatAlcoholic] = useState(true)
-  const [addingKat, setAddingKat]           = useState(false)
-  const [showKatForm, setShowKatForm]       = useState(false)
+  const [addingKat, setAddingKat]             = useState(false)
+  const [showKatForm, setShowKatForm]         = useState(false)
 
-  const [newCocktailName, setNewCocktailName]               = useState('')
-  const [newCocktailAlcoholic, setNewCocktailAlcoholic]     = useState(true)
-  const [addingCocktail, setAddingCocktail]                 = useState(false)
+  const [newCocktailName, setNewCocktailName]           = useState('')
+  const [newCocktailAlcoholic, setNewCocktailAlcoholic] = useState(true)
+  const [addingCocktail, setAddingCocktail]             = useState(false)
 
   const canEdit = mode !== 'dienstleister'
+  const isVera  = mode === 'veranstalter'
 
   useEffect(() => {
     const supabase = createClient()
@@ -715,8 +909,13 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
       supabase.from('getraenke_cocktails').select('*').eq('event_id', eventId).order('sort_order'),
     ]).then(([{ data: k }, { data: a }, { data: c }]) => {
       setKategorien((k ?? []).map(row => ({ ...row, is_alcoholic: row.is_alcoholic ?? true })))
-      setArtikel(a ?? [])
-      setCocktails((c ?? []).map(row => ({ ...row, price_per_unit: row.price_per_unit ?? 0, ingredients: row.ingredients ?? [] })))
+      setArtikel((a ?? []).map(row => ({ ...row, kalkulationspreis: row.kalkulationspreis ?? 0 })))
+      setCocktails((c ?? []).map(row => ({
+        ...row,
+        price_per_unit:    row.price_per_unit ?? 0,
+        kalkulationspreis: row.kalkulationspreis ?? 0,
+        ingredients:       row.ingredients ?? [],
+      })))
       setLoading(false)
     })
   }, [eventId])
@@ -763,7 +962,10 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
     }).select().single()
     setAddingCocktail(false)
     if (!error && data) {
-      setCocktails(prev => [...prev, { ...(data as Omit<Cocktail, 'ingredients' | 'price_per_unit'>), ingredients: [], price_per_unit: 0 } as Cocktail])
+      setCocktails(prev => [...prev, {
+        ...(data as Omit<Cocktail, 'ingredients' | 'price_per_unit' | 'kalkulationspreis'>),
+        ingredients: [], price_per_unit: 0, kalkulationspreis: 0,
+      } as Cocktail])
       setNewCocktailName('')
     }
   }
@@ -841,6 +1043,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
                   kat={k}
                   artikel={artikel.filter(a => a.kategorie_id === k.id)}
                   canEdit={canEdit}
+                  isVera={isVera}
                   guestCount={guestCount}
                   onArtikelChange={updated => setArtikel(prev => prev.map(a => a.id === updated.id ? updated : a))}
                   onArtikelDelete={deleteArtikel}
@@ -931,6 +1134,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
                   key={c.id}
                   cocktail={c}
                   canEdit={canEdit}
+                  isVera={isVera}
                   onChange={updated => setCocktails(prev => prev.map(x => x.id === updated.id ? updated : x))}
                   onDelete={() => deleteCocktail(c.id)}
                 />
@@ -963,7 +1167,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
       )}
 
       {/* Budget footer */}
-      <BudgetFooter kategorien={kategorien} artikel={artikel} cocktails={cocktails} />
+      <BudgetFooter mode={mode} kategorien={kategorien} artikel={artikel} cocktails={cocktails} />
     </div>
   )
 }
