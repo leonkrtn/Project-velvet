@@ -151,6 +151,7 @@ export interface PdfGetraenkeArtikel {
   amount_per_person: number
   total_planned: number
   price_per_unit: number
+  kalkulationspreis: number
 }
 
 export interface PdfGetraenkeCocktail {
@@ -160,6 +161,7 @@ export interface PdfGetraenkeCocktail {
   is_alcoholic: boolean
   planned_count: number
   price_per_unit: number
+  kalkulationspreis: number
   ingredients: Array<{ name: string; amount: string; unit: string }>
 }
 
