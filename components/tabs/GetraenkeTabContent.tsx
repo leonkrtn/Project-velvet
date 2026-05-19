@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Plus, Trash2, X, GlassWater, Wine, Beer, Calculator,
+  Plus, Trash2, X, GlassWater, Wine, Calculator, Users,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -116,9 +116,7 @@ function FieldInput({
 
 // ── Info block sub-component ──────────────────────────────────────────────────
 
-function InfoBlock({
-  label, children,
-}: { label: string; children: React.ReactNode }) {
+function InfoBlock({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ background: 'var(--bg, #f5f5f7)', borderRadius: 7, padding: '8px 10px', minWidth: 0 }}>
       <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 4 }}>{label}</div>
@@ -130,14 +128,14 @@ function InfoBlock({
 // ── Artikel card ──────────────────────────────────────────────────────────────
 
 function ArtikelCard({
-  artikel, canEdit, isVera, guestCount, onChange, onDelete,
+  artikel, canEdit, isVera, effectiveGuestCount, onChange, onDelete,
 }: {
-  artikel: Artikel; canEdit: boolean; isVera: boolean; guestCount: number
+  artikel: Artikel; canEdit: boolean; isVera: boolean; effectiveGuestCount: number
   onChange: (a: Artikel) => void; onDelete: () => void
 }) {
-  const [draft, setDraft]       = useState(artikel)
-  const debouncedDraft          = useDebounce(draft, 600)
-  const savedRef                = useRef(artikel)
+  const [draft, setDraft]  = useState(artikel)
+  const debouncedDraft     = useDebounce(draft, 600)
+  const savedRef           = useRef(artikel)
 
   useEffect(() => {
     if (JSON.stringify(debouncedDraft) === JSON.stringify(savedRef.current)) return
@@ -158,22 +156,25 @@ function ArtikelCard({
   function setField<K extends keyof Artikel>(key: K, val: Artikel[K]) {
     setDraft(p => {
       const next = { ...p, [key]: val }
-      if (key === 'amount_per_person' && guestCount > 0) {
+      if (key === 'amount_per_person' && effectiveGuestCount > 0) {
         const perP = typeof val === 'number' ? val : parseFloat(val as string) || 0
-        next.total_planned = perP > 0 ? Math.ceil(perP * guestCount) : 0
+        next.total_planned = perP > 0 ? Math.ceil(perP * effectiveGuestCount) : 0
+      }
+      if (key === 'total_planned') {
+        // Direct edit of total_planned: keep amount_per_person unchanged
       }
       return next
     })
   }
 
   useEffect(() => {
-    if (draft.amount_per_person > 0 && guestCount > 0) {
-      const computed = Math.ceil(draft.amount_per_person * guestCount)
+    if (draft.amount_per_person > 0 && effectiveGuestCount > 0) {
+      const computed = Math.ceil(draft.amount_per_person * effectiveGuestCount)
       if (computed !== draft.total_planned) {
         setDraft(p => ({ ...p, total_planned: computed }))
       }
     }
-  }, [guestCount]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [effectiveGuestCount]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const bpLineTotal   = draft.total_planned * draft.price_per_unit
   const kalkLineTotal = draft.total_planned * draft.kalkulationspreis
@@ -182,11 +183,8 @@ function ArtikelCard({
     <div style={{
       background: 'var(--surface, #fff)',
       border: '1px solid var(--border, #e8e8e8)',
-      borderRadius: 10,
-      padding: '12px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 10,
+      borderRadius: 10, padding: '12px',
+      display: 'flex', flexDirection: 'column', gap: 10,
     }}>
       {/* Name row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -205,29 +203,30 @@ function ArtikelCard({
           <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{draft.name}</span>
         )}
         {canEdit && (
-          <button
-            onClick={onDelete}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.35, padding: 2, display: 'flex', alignItems: 'center', flexShrink: 0 }}
-          >
+          <button onClick={onDelete} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.35, padding: 2, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             <Trash2 size={12} style={{ color: '#e05252' }} />
           </button>
         )}
       </div>
 
-      {/* Info blocks — 2×2 for veranstalter, 1×3 for others */}
+      {/* Info blocks */}
       {isVera ? (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-          {/* Gesamt */}
+          {/* Gesamt (editable) */}
           <InfoBlock label="Gesamt">
-            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', lineHeight: 1.2 }}>
-              {draft.total_planned || <span style={{ color: '#ccc' }}>—</span>}
-            </div>
             {canEdit ? (
-              <select
-                value={draft.unit}
-                onChange={e => setField('unit', e.target.value)}
-                style={{ fontSize: 11, color: 'var(--text-secondary, #888)', border: 'none', background: 'transparent', padding: 0, marginTop: 3, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', width: '100%' }}
-              >
+              <input
+                type="number"
+                value={draft.total_planned || ''}
+                onChange={e => setField('total_planned', parseInt(e.target.value) || 0)}
+                placeholder="0"
+                style={{ width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }}
+              />
+            ) : (
+              <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.total_planned || <span style={{ color: '#ccc' }}>—</span>}</div>
+            )}
+            {canEdit ? (
+              <select value={draft.unit} onChange={e => setField('unit', e.target.value)} style={{ fontSize: 11, color: 'var(--text-secondary, #888)', border: 'none', background: 'transparent', padding: 0, marginTop: 3, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', width: '100%' }}>
                 {UNITS.map(u => <option key={u}>{u}</option>)}
               </select>
             ) : (
@@ -238,16 +237,8 @@ function ArtikelCard({
           {/* Pro Person */}
           <InfoBlock label="Pro Person">
             {canEdit ? (
-              <input
-                type="number"
-                value={draft.amount_per_person || ''}
-                onChange={e => setField('amount_per_person', parseFloat(e.target.value) || 0)}
-                placeholder="0"
-                style={{
-                  width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)',
-                  border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit',
-                }}
-              />
+              <input type="number" value={draft.amount_per_person || ''} onChange={e => setField('amount_per_person', parseFloat(e.target.value) || 0)} placeholder="0"
+                style={{ width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
             ) : (
               <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.amount_per_person || '—'}</div>
             )}
@@ -257,64 +248,42 @@ function ArtikelCard({
           <InfoBlock label="Preis BP">
             {canEdit ? (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                <input
-                  type="number"
-                  value={draft.price_per_unit || ''}
-                  onChange={e => setField('price_per_unit', parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  style={{
-                    width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700,
-                    border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit',
-                  }}
-                />
+                <input type="number" value={draft.price_per_unit || ''} onChange={e => setField('price_per_unit', parseFloat(e.target.value) || 0)} placeholder="0"
+                  style={{ width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700, border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)', flexShrink: 0 }}>€</span>
               </div>
             ) : (
               <div style={{ fontSize: 15, fontWeight: 700 }}>{fmt(draft.price_per_unit)} €</div>
             )}
-            {bpLineTotal > 0 && (
-              <div style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)', marginTop: 3 }}>= {fmt(bpLineTotal)} €</div>
-            )}
+            {bpLineTotal > 0 && <div style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)', marginTop: 3 }}>= {fmt(bpLineTotal)} €</div>}
           </InfoBlock>
 
           {/* Kalkulation */}
           <InfoBlock label="Kalkulation">
             {canEdit ? (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                <input
-                  type="number"
-                  value={draft.kalkulationspreis || ''}
-                  onChange={e => setField('kalkulationspreis', parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  style={{
-                    width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700,
-                    border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit',
-                  }}
-                />
+                <input type="number" value={draft.kalkulationspreis || ''} onChange={e => setField('kalkulationspreis', parseFloat(e.target.value) || 0)} placeholder="0"
+                  style={{ width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700, border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)', flexShrink: 0 }}>€</span>
               </div>
             ) : (
               <div style={{ fontSize: 15, fontWeight: 700 }}>{fmt(draft.kalkulationspreis)} €</div>
             )}
-            {kalkLineTotal > 0 && (
-              <div style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)', marginTop: 3 }}>= {fmt(kalkLineTotal)} €</div>
-            )}
+            {kalkLineTotal > 0 && <div style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)', marginTop: 3 }}>= {fmt(kalkLineTotal)} €</div>}
           </InfoBlock>
         </div>
       ) : (
         /* 3-block row for brautpaar / dienstleister */
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.1fr) minmax(0,0.9fr) minmax(0,1fr)', gap: 6 }}>
-          {/* Gesamt */}
           <InfoBlock label="Gesamt">
-            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', lineHeight: 1.2 }}>
-              {draft.total_planned || <span style={{ color: '#ccc' }}>—</span>}
-            </div>
             {canEdit ? (
-              <select
-                value={draft.unit}
-                onChange={e => setField('unit', e.target.value)}
-                style={{ fontSize: 11, color: 'var(--text-secondary, #888)', border: 'none', background: 'transparent', padding: 0, marginTop: 3, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', width: '100%' }}
-              >
+              <input type="number" value={draft.total_planned || ''} onChange={e => setField('total_planned', parseInt(e.target.value) || 0)} placeholder="0"
+                style={{ width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
+            ) : (
+              <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.total_planned || <span style={{ color: '#ccc' }}>—</span>}</div>
+            )}
+            {canEdit ? (
+              <select value={draft.unit} onChange={e => setField('unit', e.target.value)} style={{ fontSize: 11, color: 'var(--text-secondary, #888)', border: 'none', background: 'transparent', padding: 0, marginTop: 3, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', width: '100%' }}>
                 {UNITS.map(u => <option key={u}>{u}</option>)}
               </select>
             ) : (
@@ -322,46 +291,26 @@ function ArtikelCard({
             )}
           </InfoBlock>
 
-          {/* Pro Person */}
           <InfoBlock label="Pro Person">
             {canEdit ? (
-              <input
-                type="number"
-                value={draft.amount_per_person || ''}
-                onChange={e => setField('amount_per_person', parseFloat(e.target.value) || 0)}
-                placeholder="0"
-                style={{
-                  width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)',
-                  border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit',
-                }}
-              />
+              <input type="number" value={draft.amount_per_person || ''} onChange={e => setField('amount_per_person', parseFloat(e.target.value) || 0)} placeholder="0"
+                style={{ width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
             ) : (
               <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.amount_per_person || '—'}</div>
             )}
           </InfoBlock>
 
-          {/* Preis / Stk */}
           <InfoBlock label="Preis / Stk">
             {canEdit ? (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                <input
-                  type="number"
-                  value={draft.price_per_unit || ''}
-                  onChange={e => setField('price_per_unit', parseFloat(e.target.value) || 0)}
-                  placeholder="0"
-                  style={{
-                    width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700,
-                    border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit',
-                  }}
-                />
+                <input type="number" value={draft.price_per_unit || ''} onChange={e => setField('price_per_unit', parseFloat(e.target.value) || 0)} placeholder="0"
+                  style={{ width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700, border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)', flexShrink: 0 }}>€</span>
               </div>
             ) : (
               <div style={{ fontSize: 15, fontWeight: 700 }}>{fmt(draft.price_per_unit)} €</div>
             )}
-            {bpLineTotal > 0 && (
-              <div style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)', marginTop: 3 }}>= {fmt(bpLineTotal)} €</div>
-            )}
+            {bpLineTotal > 0 && <div style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)', marginTop: 3 }}>= {fmt(bpLineTotal)} €</div>}
           </InfoBlock>
         </div>
       )}
@@ -372,18 +321,19 @@ function ArtikelCard({
 // ── Kategorie section ─────────────────────────────────────────────────────────
 
 function KategorieSection({
-  kat, artikel, canEdit, isVera, guestCount,
-  onArtikelChange, onArtikelDelete, onArtikelAdd, onKatDelete,
+  kat, artikel, canEdit, isVera, effectiveGuestCount,
+  onArtikelChange, onArtikelDelete, onArtikelAdd, onKatDelete, onKatAlcoholicToggle,
 }: {
   kat: Kategorie
   artikel: Artikel[]
   canEdit: boolean
   isVera: boolean
-  guestCount: number
+  effectiveGuestCount: number
   onArtikelChange: (a: Artikel) => void
   onArtikelDelete: (id: string) => void
   onArtikelAdd: (a: Artikel) => void
   onKatDelete: () => void
+  onKatAlcoholicToggle: () => void
 }) {
   const [showAddForm, setShowAddForm] = useState(false)
   const [addName, setAddName]         = useState('')
@@ -402,7 +352,7 @@ function KategorieSection({
     setSaving(true)
     const supabase = createClient()
     const perPerson = parseFloat(addAmt) || 0
-    const total = perPerson > 0 && guestCount > 0 ? Math.ceil(perPerson * guestCount) : 0
+    const total = perPerson > 0 && effectiveGuestCount > 0 ? Math.ceil(perPerson * effectiveGuestCount) : 0
     const { data, error } = await supabase.from('getraenke_artikel').insert({
       event_id:          kat.event_id,
       kategorie_id:      kat.id,
@@ -428,19 +378,31 @@ function KategorieSection({
       borderRadius: 12,
       border: '1px solid var(--border, #e8e8e8)',
       borderLeft: `4px solid ${kat.color}`,
-      marginBottom: 16,
-      overflow: 'hidden',
+      marginBottom: 16, overflow: 'hidden',
     }}>
-      {/* ── Category header ── */}
+      {/* Category header */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '13px 16px',
         borderBottom: artikel.length > 0 || canEdit ? '1px solid var(--border, #f0f0f0)' : undefined,
       }}>
-        {kat.is_alcoholic
-          ? <Wine size={15} style={{ color: kat.color, flexShrink: 0 }} />
-          : <GlassWater size={15} style={{ color: kat.color, flexShrink: 0 }} />
-        }
+        {/* Clickable is_alcoholic icon */}
+        {canEdit ? (
+          <button
+            onClick={onKatAlcoholicToggle}
+            title={kat.is_alcoholic ? 'Alkoholisch (klicken zum Ändern)' : 'Alkoholfrei (klicken zum Ändern)'}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+          >
+            {kat.is_alcoholic
+              ? <Wine size={15} style={{ color: kat.color }} />
+              : <GlassWater size={15} style={{ color: kat.color }} />
+            }
+          </button>
+        ) : (
+          kat.is_alcoholic
+            ? <Wine size={15} style={{ color: kat.color, flexShrink: 0 }} />
+            : <GlassWater size={15} style={{ color: kat.color, flexShrink: 0 }} />
+        )}
         <span style={{ fontSize: 15, fontWeight: 700, flex: 1, color: 'var(--text-primary, #1a1a1a)' }}>
           {kat.name}
         </span>
@@ -450,38 +412,28 @@ function KategorieSection({
           </span>
         )}
         {canEdit && (
-          <button
-            onClick={e => { e.stopPropagation(); onKatDelete() }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.35, padding: '2px 4px', display: 'flex', alignItems: 'center' }}
-            title="Kategorie löschen"
-          >
+          <button onClick={e => { e.stopPropagation(); onKatDelete() }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.35, padding: '2px 4px', display: 'flex', alignItems: 'center' }} title="Kategorie löschen">
             <Trash2 size={13} style={{ color: '#e05252' }} />
           </button>
         )}
       </div>
 
-      {/* ── Article grid ── */}
+      {/* Article grid */}
       <div style={{ padding: '14px 16px' }}>
         {artikel.length === 0 && !canEdit && (
-          <p style={{ fontSize: 13, color: 'var(--text-tertiary, #aaa)', textAlign: 'center', padding: '16px 0', margin: 0 }}>
-            Keine Artikel
-          </p>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary, #aaa)', textAlign: 'center', padding: '16px 0', margin: 0 }}>Keine Artikel</p>
         )}
 
         {artikel.length > 0 && (
           <div style={{
             display: 'grid',
             gridTemplateColumns: `repeat(auto-fill, minmax(${isVera ? 280 : 260}px, 1fr))`,
-            gap: 10,
-            marginBottom: canEdit ? 10 : 0,
+            gap: 10, marginBottom: canEdit ? 10 : 0,
           }}>
             {artikel.map(a => (
               <ArtikelCard
-                key={a.id}
-                artikel={a}
-                canEdit={canEdit}
-                isVera={isVera}
-                guestCount={guestCount}
+                key={a.id} artikel={a} canEdit={canEdit} isVera={isVera}
+                effectiveGuestCount={effectiveGuestCount}
                 onChange={onArtikelChange}
                 onDelete={() => onArtikelDelete(a.id)}
               />
@@ -489,67 +441,32 @@ function KategorieSection({
           </div>
         )}
 
-        {/* ── Add artikel ── */}
         {canEdit && (
           showAddForm ? (
-            <div style={{
-              background: 'var(--bg, #f5f5f7)',
-              borderRadius: 8,
-              border: '1px dashed var(--border, #ddd)',
-              padding: '12px 14px',
-            }}>
-              <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', margin: '0 0 10px' }}>
-                Neuer Artikel
-              </p>
+            <div style={{ background: 'var(--bg, #f5f5f7)', borderRadius: 8, border: '1px dashed var(--border, #ddd)', padding: '12px 14px' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', margin: '0 0 10px' }}>Neuer Artikel</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 8, marginBottom: 8 }}>
                 <FieldInput value={addName} onChange={setAddName} placeholder="Bezeichnung" />
-                <select
-                  value={addUnit}
-                  onChange={e => setAddUnit(e.target.value)}
-                  style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: '#fff' }}
-                >
+                <select value={addUnit} onChange={e => setAddUnit(e.target.value)} style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: '#fff' }}>
                   {UNITS.map(u => <option key={u}>{u}</option>)}
                 </select>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: isVera ? '1fr 1fr 1fr' : '1fr 1fr', gap: 8, marginBottom: 10 }}>
                 <FieldInput value={addAmt} onChange={setAddAmt} placeholder="Menge pro Person" type="number" />
                 <FieldInput value={addPrice} onChange={setAddPrice} placeholder={isVera ? 'Preis BP (€)' : 'Preis / Stk (€)'} type="number" />
-                {isVera && (
-                  <FieldInput value={addKalk} onChange={setAddKalk} placeholder="Kalkulation (€)" type="number" />
-                )}
+                {isVera && <FieldInput value={addKalk} onChange={setAddKalk} placeholder="Kalkulation (€)" type="number" />}
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button
-                  onClick={addArtikel}
-                  disabled={saving || !addName.trim()}
-                  style={{
-                    padding: '6px 14px', background: addName.trim() ? 'var(--accent, #1a1a1a)' : '#e0e0e0',
-                    color: addName.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 6,
-                    fontSize: 13, cursor: addName.trim() ? 'pointer' : 'default', fontFamily: 'inherit',
-                    opacity: saving ? 0.6 : 1,
-                  }}
-                >
+                <button onClick={addArtikel} disabled={saving || !addName.trim()} style={{ padding: '6px 14px', background: addName.trim() ? 'var(--accent, #1a1a1a)' : '#e0e0e0', color: addName.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 6, fontSize: 13, cursor: addName.trim() ? 'pointer' : 'default', fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
                   {saving ? '…' : 'Hinzufügen'}
                 </button>
-                <button
-                  onClick={() => { setShowAddForm(false); setAddName(''); setAddAmt(''); setAddPrice(''); setAddKalk('') }}
-                  style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary, #666)' }}
-                >
+                <button onClick={() => { setShowAddForm(false); setAddName(''); setAddAmt(''); setAddPrice(''); setAddKalk('') }} style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary, #666)' }}>
                   Abbrechen
                 </button>
               </div>
             </div>
           ) : (
-            <button
-              onClick={() => setShowAddForm(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                width: '100%', padding: '9px 12px',
-                background: 'none', border: '1px dashed var(--border, #ddd)',
-                borderRadius: 8, fontSize: 13, color: 'var(--text-tertiary, #aaa)',
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >
+            <button onClick={() => setShowAddForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '9px 12px', background: 'none', border: '1px dashed var(--border, #ddd)', borderRadius: 8, fontSize: 13, color: 'var(--text-tertiary, #aaa)', cursor: 'pointer', fontFamily: 'inherit' }}>
               <Plus size={14} /> Artikel hinzufügen
             </button>
           )
@@ -571,8 +488,7 @@ function CocktailCard({ cocktail, canEdit, isVera, onChange, onDelete }: {
 
   async function save() {
     setSaving(true)
-    const supabase = createClient()
-    const { error } = await supabase.from('getraenke_cocktails').update({
+    const { error } = await createClient().from('getraenke_cocktails').update({
       name:              draft.name,
       description:       draft.description,
       is_alcoholic:      draft.is_alcoholic,
@@ -591,17 +507,11 @@ function CocktailCard({ cocktail, canEdit, isVera, onChange, onDelete }: {
     setNewIngr({ name: '', amount: '', unit: 'ml' })
   }
 
-  function removeIngr(i: number) {
-    setDraft(p => ({ ...p, ingredients: p.ingredients.filter((_, idx) => idx !== i) }))
-  }
-
-  const color         = cocktail.is_alcoholic ? '#8B2252' : '#2A9D8F'
-  const bpTotal       = (cocktail.price_per_unit ?? 0) > 0 && cocktail.planned_count > 0
-    ? (cocktail.price_per_unit ?? 0) * cocktail.planned_count : 0
-  const kalkTotal     = (cocktail.kalkulationspreis ?? 0) > 0 && cocktail.planned_count > 0
-    ? (cocktail.kalkulationspreis ?? 0) * cocktail.planned_count : 0
-  const displayTotal  = isVera ? kalkTotal : bpTotal
-  const displayPrice  = isVera ? (cocktail.kalkulationspreis ?? 0) : (cocktail.price_per_unit ?? 0)
+  const color        = cocktail.is_alcoholic ? '#8B2252' : '#2A9D8F'
+  const bpTotal      = (cocktail.price_per_unit ?? 0) * cocktail.planned_count
+  const kalkTotal    = (cocktail.kalkulationspreis ?? 0) * cocktail.planned_count
+  const displayTotal = isVera ? kalkTotal : bpTotal
+  const displayPrice = isVera ? (cocktail.kalkulationspreis ?? 0) : (cocktail.price_per_unit ?? 0)
 
   return (
     <div style={{ borderRadius: 10, border: '1px solid var(--border, #e8e8e8)', overflow: 'hidden', background: 'var(--surface, #fff)' }}>
@@ -620,10 +530,7 @@ function CocktailCard({ cocktail, canEdit, isVera, onChange, onDelete }: {
           <span style={{ fontSize: 11, fontWeight: 700, color }}>{cocktail.planned_count}×</span>
         ) : null}
         {!canEdit && cocktail.ingredients.length > 0 && (
-          <button
-            onClick={e => { e.stopPropagation(); setOpen(p => !p) }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, fontSize: 11, color: 'var(--text-tertiary, #aaa)' }}
-          >
+          <button onClick={e => { e.stopPropagation(); setOpen(p => !p) }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, fontSize: 11, color: 'var(--text-tertiary, #aaa)' }}>
             {open ? '▲' : '▼'}
           </button>
         )}
@@ -669,13 +576,8 @@ function CocktailCard({ cocktail, canEdit, isVera, onChange, onDelete }: {
 
               <div>
                 <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 5 }}>Beschreibung</label>
-                <textarea
-                  value={draft.description}
-                  onChange={e => setDraft(p => ({ ...p, description: e.target.value }))}
-                  rows={2}
-                  placeholder="Kurze Beschreibung oder Servierhinweis…"
-                  style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }}
-                />
+                <textarea value={draft.description} onChange={e => setDraft(p => ({ ...p, description: e.target.value }))} rows={2} placeholder="Kurze Beschreibung oder Servierhinweis…"
+                  style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -683,14 +585,13 @@ function CocktailCard({ cocktail, canEdit, isVera, onChange, onDelete }: {
                 <label htmlFor={`alc-${cocktail.id}`} style={{ fontSize: 13 }}>Enthält Alkohol</label>
               </div>
 
-              {/* Ingredients */}
               <div>
                 <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 8 }}>Zutaten</label>
                 {draft.ingredients.map((ingr, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <span style={{ fontSize: 12, flex: 1 }}>{ingr.name}</span>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary, #888)' }}>{ingr.amount} {ingr.unit}</span>
-                    <button onClick={() => removeIngr(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, padding: 2 }}>
+                    <button onClick={() => setDraft(p => ({ ...p, ingredients: p.ingredients.filter((_, idx) => idx !== i) }))} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, padding: 2 }}>
                       <X size={12} style={{ color: '#e05252' }} />
                     </button>
                   </div>
@@ -698,34 +599,19 @@ function CocktailCard({ cocktail, canEdit, isVera, onChange, onDelete }: {
                 <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                   <FieldInput value={newIngr.name} onChange={v => setNewIngr(p => ({ ...p, name: v }))} placeholder="Zutat" />
                   <FieldInput value={newIngr.amount} onChange={v => setNewIngr(p => ({ ...p, amount: v }))} placeholder="Menge" />
-                  <input
-                    value={newIngr.unit}
-                    onChange={e => setNewIngr(p => ({ ...p, unit: e.target.value }))}
-                    placeholder="ml"
-                    style={{ width: 54, padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
-                  />
-                  <button
-                    onClick={addIngr}
-                    disabled={!newIngr.name.trim()}
-                    style={{ padding: '6px 10px', background: newIngr.name.trim() ? color : '#eee', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                  >
+                  <input value={newIngr.unit} onChange={e => setNewIngr(p => ({ ...p, unit: e.target.value }))} placeholder="ml"
+                    style={{ width: 54, padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }} />
+                  <button onClick={addIngr} disabled={!newIngr.name.trim()} style={{ padding: '6px 10px', background: newIngr.name.trim() ? color : '#eee', border: 'none', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                     <Plus size={12} style={{ color: newIngr.name.trim() ? '#fff' : '#aaa' }} />
                   </button>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={save}
-                  disabled={saving}
-                  style={{ padding: '7px 16px', background: 'var(--accent, #1a1a1a)', color: '#fff', border: 'none', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
+                <button onClick={save} disabled={saving} style={{ padding: '7px 16px', background: 'var(--accent, #1a1a1a)', color: '#fff', border: 'none', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
                   {saving ? '…' : 'Speichern'}
                 </button>
-                <button
-                  onClick={() => { setDraft(cocktail); setOpen(false) }}
-                  style={{ padding: '7px 12px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
+                <button onClick={() => { setDraft(cocktail); setOpen(false) }} style={{ padding: '7px 12px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
                   Abbrechen
                 </button>
               </div>
@@ -758,14 +644,12 @@ function BudgetFooter({ mode, kategorien, artikel, cocktails }: {
   mode: Mode; kategorien: Kategorie[]; artikel: Artikel[]; cocktails: Cocktail[]
 }) {
   const isVera = mode === 'veranstalter'
-  const [includeBp, setIncludeBp] = useState(false)
 
-  // Per-category kalk and bp totals
   const katRows = kategorien.map(k => {
-    const items    = artikel.filter(a => a.kategorie_id === k.id)
-    const kalkSum  = items.reduce((s, a) => s + a.total_planned * a.kalkulationspreis, 0)
-    const bpSum    = items.reduce((s, a) => s + a.total_planned * a.price_per_unit, 0)
-    const count    = items.reduce((s, a) => s + a.total_planned, 0)
+    const items   = artikel.filter(a => a.kategorie_id === k.id)
+    const kalkSum = items.reduce((s, a) => s + a.total_planned * a.kalkulationspreis, 0)
+    const bpSum   = items.reduce((s, a) => s + a.total_planned * a.price_per_unit, 0)
+    const count   = items.reduce((s, a) => s + a.total_planned, 0)
     return { ...k, kalkSum, bpSum, count }
   }).filter(r => isVera ? (r.kalkSum > 0 || r.bpSum > 0) : r.bpSum > 0)
 
@@ -780,45 +664,20 @@ function BudgetFooter({ mode, kategorien, artikel, cocktails }: {
 
   const grandKalk = artikelKalk + cocktailKalk
   const grandBp   = artikelBp + cocktailBp
-  const grandBpForDisplay = (isVera && includeBp) ? grandBp : 0
-
-  // For non-veranstalter: use bp totals
-  const displayKalk   = isVera ? grandKalk : grandBp
-  const displayKalkCC = isVera ? cocktailKalk : cocktailBp
 
   if (isVera ? grandKalk === 0 && grandBp === 0 : grandBp === 0) return null
 
   return (
     <div style={{ background: 'var(--surface, #fff)', borderRadius: 12, border: '1px solid var(--border, #e8e8e8)', overflow: 'hidden', marginTop: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', borderBottom: '1px solid var(--border, #f0f0f0)', background: 'var(--bg, #f5f5f7)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Calculator size={14} style={{ color: 'var(--text-tertiary, #aaa)' }} />
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)' }}>
-            {isVera ? 'Kalkulation' : 'Budget-Übersicht'}
-          </span>
-        </div>
-        {isVera && (
-          <button
-            onClick={() => setIncludeBp(p => !p)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '4px 10px', fontSize: 11, fontFamily: 'inherit', cursor: 'pointer',
-              borderRadius: 6, border: '1px solid var(--border, #ddd)',
-              background: includeBp ? '#f0f7f0' : '#fff',
-              color: includeBp ? '#2d7a3a' : 'var(--text-secondary, #888)',
-            }}
-          >
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: includeBp ? '#2d7a3a' : '#ccc', display: 'inline-block' }} />
-            Brautpaarpreise einbeziehen
-          </button>
-        )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', borderBottom: '1px solid var(--border, #f0f0f0)', background: 'var(--bg, #f5f5f7)' }}>
+        <Calculator size={14} style={{ color: 'var(--text-tertiary, #aaa)' }} />
+        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)' }}>
+          {isVera ? 'Kalkulation' : 'Budget-Übersicht'}
+        </span>
       </div>
-
       <div style={{ padding: '4px 0' }}>
-        {/* Category rows */}
         {katRows.map(r => {
-          const rowKalk = isVera ? r.kalkSum : r.bpSum
-          const rowBp   = r.bpSum
+          const rowVal = isVera ? r.kalkSum : r.bpSum
           return (
             <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 16px', borderBottom: '1px solid var(--bg, #f8f8f8)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -826,53 +685,28 @@ function BudgetFooter({ mode, kategorien, artikel, cocktails }: {
                 <span style={{ fontSize: 13 }}>{r.name}</span>
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary, #bbb)' }}>({r.count} Stk.)</span>
               </div>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                {isVera && includeBp && rowBp > 0 && (
-                  <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)' }}>BP: {fmt(rowBp)} €</span>
-                )}
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(rowKalk)} €</span>
-              </div>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(rowVal)} €</span>
             </div>
           )
         })}
 
-        {/* Uncategorized */}
         {(isVera ? uncatKalk > 0 : uncatBp > 0) && (
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 16px', borderBottom: '1px solid var(--bg, #f8f8f8)' }}>
             <span style={{ fontSize: 13, color: 'var(--text-secondary, #888)' }}>Sonstige Getränke</span>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              {isVera && includeBp && uncatBp > 0 && (
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)' }}>BP: {fmt(uncatBp)} €</span>
-              )}
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(isVera ? uncatKalk : uncatBp)} €</span>
-            </div>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(isVera ? uncatKalk : uncatBp)} €</span>
           </div>
         )}
 
-        {/* Cocktails */}
-        {displayKalkCC > 0 && (
+        {(isVera ? cocktailKalk > 0 : cocktailBp > 0) && (
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 16px', borderBottom: '1px solid var(--bg, #f8f8f8)' }}>
             <span style={{ fontSize: 13, color: 'var(--text-secondary, #888)' }}>Cocktails</span>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              {isVera && includeBp && cocktailBp > 0 && (
-                <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)' }}>BP: {fmt(cocktailBp)} €</span>
-              )}
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(displayKalkCC)} €</span>
-            </div>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(isVera ? cocktailKalk : cocktailBp)} €</span>
           </div>
         )}
 
-        {/* Grand total */}
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 16px', background: 'var(--bg, #f5f5f7)' }}>
           <span style={{ fontSize: 14, fontWeight: 700 }}>Gesamt</span>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'baseline' }}>
-            {isVera && includeBp && grandBpForDisplay > 0 && (
-              <span style={{ fontSize: 12, color: 'var(--text-tertiary, #aaa)' }}>+ BP {fmt(grandBpForDisplay)} €</span>
-            )}
-            <span style={{ fontSize: 14, fontWeight: 700 }}>
-              {fmt(isVera ? displayKalk + grandBpForDisplay : displayKalk)} €
-            </span>
-          </div>
+          <span style={{ fontSize: 14, fontWeight: 700 }}>{fmt(isVera ? grandKalk : grandBp)} €</span>
         </div>
       </div>
     </div>
@@ -888,6 +722,13 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
   const [loading, setLoading]       = useState(true)
   const [tab, setTab]               = useState<'planung' | 'cocktails'>('planung')
 
+  // Catering plan state (Planzahl + billing mode)
+  const [cateringPlanId, setCateringPlanId]         = useState<string | null>(null)
+  const [planEnabled, setPlanEnabled]               = useState(false)
+  const [planCount, setPlanCount]                   = useState(0)
+  const [getränkeBilling, setGetränkeBilling]       = useState<'honorar' | 'einzeln'>('honorar')
+  const [savingPlan, setSavingPlan]                 = useState(false)
+
   const [newKatName, setNewKatName]           = useState('')
   const [newKatColor, setNewKatColor]         = useState(CATEGORY_COLORS[0])
   const [newKatAlcoholic, setNewKatAlcoholic] = useState(true)
@@ -900,6 +741,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
 
   const canEdit = mode !== 'dienstleister'
   const isVera  = mode === 'veranstalter'
+  const effectiveGuestCount = planEnabled && planCount > 0 ? planCount : guestCount
 
   useEffect(() => {
     const supabase = createClient()
@@ -907,7 +749,8 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
       supabase.from('getraenke_kategorien').select('*').eq('event_id', eventId).order('sort_order'),
       supabase.from('getraenke_artikel').select('*').eq('event_id', eventId).order('sort_order'),
       supabase.from('getraenke_cocktails').select('*').eq('event_id', eventId).order('sort_order'),
-    ]).then(([{ data: k }, { data: a }, { data: c }]) => {
+      supabase.from('catering_plans').select('id, plan_guest_count, plan_guest_count_enabled, getraenke_billing').eq('event_id', eventId).maybeSingle(),
+    ]).then(([{ data: k }, { data: a }, { data: c }, { data: plan }]) => {
       setKategorien((k ?? []).map(row => ({ ...row, is_alcoholic: row.is_alcoholic ?? true })))
       setArtikel((a ?? []).map(row => ({ ...row, kalkulationspreis: row.kalkulationspreis ?? 0 })))
       setCocktails((c ?? []).map(row => ({
@@ -916,9 +759,49 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
         kalkulationspreis: row.kalkulationspreis ?? 0,
         ingredients:       row.ingredients ?? [],
       })))
+      if (plan) {
+        setCateringPlanId(plan.id)
+        setPlanEnabled(plan.plan_guest_count_enabled ?? false)
+        setPlanCount(plan.plan_guest_count ?? 0)
+        setGetränkeBilling((plan.getraenke_billing as 'honorar' | 'einzeln') ?? 'honorar')
+      }
       setLoading(false)
     })
   }, [eventId])
+
+  async function saveCateringPlan(patch: Record<string, unknown>) {
+    setSavingPlan(true)
+    const supabase = createClient()
+    if (cateringPlanId) {
+      await supabase.from('catering_plans').update(patch).eq('id', cateringPlanId)
+    } else {
+      const { data } = await supabase.from('catering_plans').insert({ event_id: eventId, ...patch }).select('id').single()
+      if (data) setCateringPlanId(data.id)
+    }
+    setSavingPlan(false)
+  }
+
+  async function togglePlanEnabled() {
+    const next = !planEnabled
+    setPlanEnabled(next)
+    await saveCateringPlan({ plan_guest_count_enabled: next })
+  }
+
+  async function savePlanCount(val: number) {
+    setPlanCount(val)
+    await saveCateringPlan({ plan_guest_count: val, plan_guest_count_enabled: true })
+  }
+
+  async function saveGetränkeBilling(val: 'honorar' | 'einzeln') {
+    setGetränkeBilling(val)
+    await saveCateringPlan({ getraenke_billing: val })
+  }
+
+  async function toggleKatAlcoholic(kat: Kategorie) {
+    const next = !kat.is_alcoholic
+    await createClient().from('getraenke_kategorien').update({ is_alcoholic: next }).eq('id', kat.id)
+    setKategorien(prev => prev.map(k => k.id === kat.id ? { ...k, is_alcoholic: next } : k))
+  }
 
   async function addPresetKategorien() {
     const supabase = createClient()
@@ -932,8 +815,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
   async function addKategorie() {
     if (!newKatName.trim()) return
     setAddingKat(true)
-    const supabase = createClient()
-    const { data, error } = await supabase.from('getraenke_kategorien').insert({
+    const { data, error } = await createClient().from('getraenke_kategorien').insert({
       event_id: eventId, name: newKatName.trim(), color: newKatColor, is_alcoholic: newKatAlcoholic, sort_order: kategorien.length,
     }).select().single()
     setAddingKat(false)
@@ -956,16 +838,12 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
   async function addCocktail() {
     if (!newCocktailName.trim()) return
     setAddingCocktail(true)
-    const supabase = createClient()
-    const { data, error } = await supabase.from('getraenke_cocktails').insert({
+    const { data, error } = await createClient().from('getraenke_cocktails').insert({
       event_id: eventId, name: newCocktailName.trim(), is_alcoholic: newCocktailAlcoholic, sort_order: cocktails.length,
     }).select().single()
     setAddingCocktail(false)
     if (!error && data) {
-      setCocktails(prev => [...prev, {
-        ...(data as Omit<Cocktail, 'ingredients' | 'price_per_unit' | 'kalkulationspreis'>),
-        ingredients: [], price_per_unit: 0, kalkulationspreis: 0,
-      } as Cocktail])
+      setCocktails(prev => [...prev, { ...(data as Omit<Cocktail, 'ingredients' | 'price_per_unit' | 'kalkulationspreis'>), ingredients: [], price_per_unit: 0, kalkulationspreis: 0 } as Cocktail])
       setNewCocktailName('')
     }
   }
@@ -982,36 +860,97 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
   return (
     <div>
       {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', margin: 0 }}>Getränke</h1>
-        {guestCount > 0 && (
-          <span style={{ fontSize: 12, color: 'var(--text-secondary, #888)', background: 'var(--bg, #f5f5f7)', borderRadius: 20, padding: '4px 12px' }}>
-            {guestCount} Personen
-          </span>
-        )}
       </div>
+
+      {/* Planzahl + Billing widget */}
+      {canEdit && (
+        <div style={{ background: 'var(--surface, #fff)', borderRadius: 10, border: '1px solid var(--border, #e5e7eb)', padding: '12px 16px', marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+          {/* Planzahl */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 200 }}>
+            <Users size={14} style={{ color: 'var(--text-tertiary, #aaa)', flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 4 }}>Planzahl Gäste</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  onClick={togglePlanEnabled}
+                  disabled={savingPlan}
+                  style={{
+                    width: 34, height: 18, borderRadius: 9, border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0,
+                    background: planEnabled ? 'var(--accent, #1a1a1a)' : 'var(--border, #ddd)',
+                    transition: 'background 0.15s', position: 'relative',
+                  }}
+                >
+                  <span style={{
+                    display: 'block', width: 12, height: 12, borderRadius: '50%', background: '#fff',
+                    position: 'absolute', top: 3, left: planEnabled ? 19 : 3, transition: 'left 0.15s',
+                  }} />
+                </button>
+                {planEnabled ? (
+                  <input
+                    type="number" min={0}
+                    value={planCount || ''}
+                    onChange={e => savePlanCount(parseInt(e.target.value) || 0)}
+                    placeholder="Geplante Gästezahl"
+                    style={{ width: 110, padding: '4px 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none' }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary, #888)' }}>
+                    {guestCount > 0 ? `${guestCount} bestätigte Zusagen` : 'Noch keine Zusagen'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Getränke billing mode (veranstalter only) */}
+          {isVera && (
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 6 }}>Abrechnung Getränke</div>
+              <div style={{ display: 'flex', gap: 2, background: 'var(--bg, #f5f5f7)', borderRadius: 7, padding: 2, border: '1px solid var(--border, #e5e7eb)', width: 'fit-content' }}>
+                {([['honorar', 'Im Honorar'] as const, ['einzeln', 'Einzeln'] as const]).map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => saveGetränkeBilling(val)}
+                    style={{
+                      padding: '4px 12px', border: 'none', borderRadius: 5, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500,
+                      background: getränkeBilling === val ? '#fff' : 'transparent',
+                      color: getränkeBilling === val ? 'var(--text-primary, #1a1a1a)' : 'var(--text-secondary, #888)',
+                      boxShadow: getränkeBilling === val ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)', marginTop: 4 }}>
+                {getränkeBilling === 'honorar'
+                  ? 'Kalkulationskosten fließen negativ in die Veranstaltermarge'
+                  : 'Differenz BP-Preis − Kalkulation fließt positiv in die Marge'}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tab bar */}
       <div style={{ display: 'flex', gap: 2, marginBottom: 24, background: 'var(--bg, #f5f5f7)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', width: 'fit-content' }}>
         {TABS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            style={{
-              padding: '6px 14px', border: 'none', borderRadius: 6, fontSize: 13,
-              fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500,
-              background: tab === t.key ? '#fff' : 'transparent',
-              color: tab === t.key ? 'var(--text-primary, #1a1a1a)' : 'var(--text-secondary, #888)',
-              boxShadow: tab === t.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              transition: 'background 0.15s',
-            }}
-          >
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            padding: '6px 14px', border: 'none', borderRadius: 6, fontSize: 13,
+            fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500,
+            background: tab === t.key ? '#fff' : 'transparent',
+            color: tab === t.key ? 'var(--text-primary, #1a1a1a)' : 'var(--text-secondary, #888)',
+            boxShadow: tab === t.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+            transition: 'background 0.15s',
+          }}>
             {t.label}
           </button>
         ))}
       </div>
 
-      {/* ── Mengenplanung tab ── */}
+      {/* Mengenplanung tab */}
       {tab === 'planung' && (
         <div>
           {kategorien.length === 0 && !showKatForm ? (
@@ -1020,16 +959,10 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
               <p style={{ fontSize: 14, color: 'var(--text-secondary, #888)', marginBottom: 16 }}>Noch keine Getränkekategorien angelegt</p>
               {canEdit && (
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  <button
-                    onClick={addPresetKategorien}
-                    style={{ padding: '8px 16px', background: '#fff', color: '#B8943E', border: '1px solid #B8943E', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
+                  <button onClick={addPresetKategorien} style={{ padding: '8px 16px', background: '#fff', color: '#B8943E', border: '1px solid #B8943E', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
                     Standard-Kategorien laden
                   </button>
-                  <button
-                    onClick={() => setShowKatForm(true)}
-                    style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary, #666)' }}
-                  >
+                  <button onClick={() => setShowKatForm(true)} style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary, #666)' }}>
                     Manuell anlegen
                   </button>
                 </div>
@@ -1039,20 +972,18 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
             <>
               {kategorien.map(k => (
                 <KategorieSection
-                  key={k.id}
-                  kat={k}
+                  key={k.id} kat={k}
                   artikel={artikel.filter(a => a.kategorie_id === k.id)}
-                  canEdit={canEdit}
-                  isVera={isVera}
-                  guestCount={guestCount}
+                  canEdit={canEdit} isVera={isVera}
+                  effectiveGuestCount={effectiveGuestCount}
                   onArtikelChange={updated => setArtikel(prev => prev.map(a => a.id === updated.id ? updated : a))}
                   onArtikelDelete={deleteArtikel}
                   onArtikelAdd={a => setArtikel(prev => [...prev, a])}
                   onKatDelete={() => deleteKategorie(k.id)}
+                  onKatAlcoholicToggle={() => toggleKatAlcoholic(k)}
                 />
               ))}
 
-              {/* Uncategorized items */}
               {artikel.filter(a => !a.kategorie_id).length > 0 && (
                 <div style={{ marginTop: 8 }}>
                   {artikel.filter(a => !a.kategorie_id).map(a => (
@@ -1063,7 +994,6 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
                 </div>
               )}
 
-              {/* Add kategorie */}
               {canEdit && (
                 showKatForm ? (
                   <div style={{ background: 'var(--surface, #fff)', borderRadius: 10, border: '1px solid var(--border, #e5e7eb)', padding: '14px 16px', marginTop: 4 }}>
@@ -1072,11 +1002,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
                       <FieldInput value={newKatName} onChange={setNewKatName} placeholder="Kategoriename" />
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         {CATEGORY_COLORS.map(c => (
-                          <button
-                            key={c}
-                            onClick={() => setNewKatColor(c)}
-                            style={{ width: 18, height: 18, borderRadius: '50%', background: c, border: newKatColor === c ? '2px solid #333' : '1px solid #ddd', cursor: 'pointer', padding: 0 }}
-                          />
+                          <button key={c} onClick={() => setNewKatColor(c)} style={{ width: 18, height: 18, borderRadius: '50%', background: c, border: newKatColor === c ? '2px solid #333' : '1px solid #ddd', cursor: 'pointer', padding: 0 }} />
                         ))}
                       </div>
                     </div>
@@ -1085,31 +1011,16 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
                       <label htmlFor="new-kat-alcoholic" style={{ fontSize: 13, color: 'var(--text-secondary, #666)' }}>Enthält Alkohol</label>
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button
-                        onClick={addKategorie}
-                        disabled={addingKat || !newKatName.trim()}
-                        style={{ padding: '6px 14px', background: newKatColor, color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-                      >
+                      <button onClick={addKategorie} disabled={addingKat || !newKatName.trim()} style={{ padding: '6px 14px', background: newKatColor, color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
                         {addingKat ? '…' : 'Erstellen'}
                       </button>
-                      <button
-                        onClick={() => setShowKatForm(false)}
-                        style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-                      >
+                      <button onClick={() => setShowKatForm(false)} style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
                         Abbrechen
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setShowKatForm(true)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '9px 14px', background: 'none', border: '1px dashed var(--border, #ddd)',
-                      borderRadius: 8, fontSize: 13, color: 'var(--text-secondary, #888)',
-                      cursor: 'pointer', fontFamily: 'inherit', width: '100%', marginTop: 4,
-                    }}
-                  >
+                  <button onClick={() => setShowKatForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: 'none', border: '1px dashed var(--border, #ddd)', borderRadius: 8, fontSize: 13, color: 'var(--text-secondary, #888)', cursor: 'pointer', fontFamily: 'inherit', width: '100%', marginTop: 4 }}>
                     <Plus size={14} /> Kategorie hinzufügen
                   </button>
                 )
@@ -1119,7 +1030,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
         </div>
       )}
 
-      {/* ── Cocktailplanung tab ── */}
+      {/* Cocktailplanung tab */}
       {tab === 'cocktails' && (
         <div>
           {cocktails.length === 0 ? (
@@ -1130,14 +1041,9 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {cocktails.map(c => (
-                <CocktailCard
-                  key={c.id}
-                  cocktail={c}
-                  canEdit={canEdit}
-                  isVera={isVera}
+                <CocktailCard key={c.id} cocktail={c} canEdit={canEdit} isVera={isVera}
                   onChange={updated => setCocktails(prev => prev.map(x => x.id === updated.id ? updated : x))}
-                  onDelete={() => deleteCocktail(c.id)}
-                />
+                  onDelete={() => deleteCocktail(c.id)} />
               ))}
             </div>
           )}
@@ -1149,16 +1055,11 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
                 <input type="checkbox" checked={newCocktailAlcoholic} onChange={e => setNewCocktailAlcoholic(e.target.checked)} />
                 mit Alkohol
               </label>
-              <button
-                onClick={addCocktail}
-                disabled={addingCocktail || !newCocktailName.trim()}
-                style={{
-                  padding: '6px 14px',
-                  background: newCocktailName.trim() ? 'var(--accent, #1a1a1a)' : '#eee',
-                  color: newCocktailName.trim() ? '#fff' : '#aaa',
-                  border: 'none', borderRadius: 6, fontSize: 13, cursor: newCocktailName.trim() ? 'pointer' : 'default', fontFamily: 'inherit',
-                }}
-              >
+              <button onClick={addCocktail} disabled={addingCocktail || !newCocktailName.trim()} style={{
+                padding: '6px 14px', background: newCocktailName.trim() ? 'var(--accent, #1a1a1a)' : '#eee',
+                color: newCocktailName.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 6, fontSize: 13,
+                cursor: newCocktailName.trim() ? 'pointer' : 'default', fontFamily: 'inherit',
+              }}>
                 {addingCocktail ? '…' : 'Hinzufügen'}
               </button>
             </div>
