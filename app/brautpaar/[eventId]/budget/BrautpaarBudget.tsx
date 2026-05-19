@@ -34,6 +34,8 @@ interface Props {
   initialItems: BudgetItem[]
   cateringCosts: CateringCostItem[]
   effectiveGuestCount: number
+  getränkeBilling: 'honorar' | 'einzeln'
+  getränkeBpTotal: number
 }
 
 const CATEGORIES = ['Catering', 'Dekoration', 'Musik', 'Location', 'Fotografie', 'Kleidung', 'Transport', 'Sonstiges']
@@ -215,6 +217,24 @@ function CateringRow({ costs, effectiveGuestCount }: { costs: CateringCostItem[]
   )
 }
 
+function GetränkeRow({ total }: { total: number }) {
+  return (
+    <tr>
+      <td>
+        <div style={{ fontWeight: 500, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>Getränke</div>
+        <div style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>Einzeln abgerechnet</div>
+      </td>
+      <td><span className="bp-badge" style={{ color: 'var(--bp-gold-deep)', borderColor: 'var(--bp-gold)' }}>Getränke</span></td>
+      <td style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', fontWeight: 600 }}>
+        {formatCurrency(total)}
+      </td>
+      <td style={{ textAlign: 'right', color: 'var(--bp-ink-3)' }}>—</td>
+      <td></td>
+      <td></td>
+    </tr>
+  )
+}
+
 function AddItemForm({ eventId, onAdded }: { eventId: string; onAdded: (i: BudgetItem) => void }) {
   const [open, setOpen]           = useState(false)
   const [description, setDescription] = useState('')
@@ -280,7 +300,7 @@ function AddItemForm({ eventId, onAdded }: { eventId: string; onAdded: (i: Budge
   )
 }
 
-export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, initialItems, cateringCosts, effectiveGuestCount }: Props) {
+export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, initialItems, cateringCosts, effectiveGuestCount, getränkeBilling, getränkeBpTotal }: Props) {
   const [items, setItems] = useState<BudgetItem[]>(initialItems)
 
   async function deleteItem(id: string) {
@@ -289,12 +309,13 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
     if (!error) setItems(prev => prev.filter(i => i.id !== id))
   }
 
-  const visibleItems  = items.filter(i => i.category?.toLowerCase() !== 'catering')
-  const cateringTotal = cateringCosts.reduce((s, c) => s + (Number(c.price_per_person) || 0), 0) * effectiveGuestCount
-  const plannedTotal  = visibleItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)
-  const actualTotal   = visibleItems.reduce((s, i) => s + (Number(i.actual)  || 0), 0)
-  const totalWithFee  = plannedTotal + organizerFee + cateringTotal
-  const budgetUsed    = budgetLimit > 0 ? (totalWithFee / budgetLimit) * 100 : 0
+  const visibleItems    = items.filter(i => i.category?.toLowerCase() !== 'catering')
+  const cateringTotal   = cateringCosts.reduce((s, c) => s + (Number(c.price_per_person) || 0), 0) * effectiveGuestCount
+  const plannedTotal    = visibleItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)
+  const actualTotal     = visibleItems.reduce((s, i) => s + (Number(i.actual)  || 0), 0)
+  const getränkeInTotal = getränkeBilling === 'einzeln' ? getränkeBpTotal : 0
+  const totalWithFee    = plannedTotal + organizerFee + cateringTotal + getränkeInTotal
+  const budgetUsed      = budgetLimit > 0 ? (totalWithFee / budgetLimit) * 100 : 0
 
   return (
     <div className="bp-page">
@@ -370,6 +391,9 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
               </tr>
             )}
             <CateringRow costs={cateringCosts} effectiveGuestCount={effectiveGuestCount} />
+            {getränkeBilling === 'einzeln' && getränkeBpTotal > 0 && (
+              <GetränkeRow total={getränkeBpTotal} />
+            )}
             {visibleItems.map(item => (
               <ItemRow
                 key={item.id}
