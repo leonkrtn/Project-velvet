@@ -44,7 +44,7 @@ export async function GET(
       .eq('event_id', eventId),
   ])
 
-  const hotelRoomIds = [...new Set((guests ?? []).map(g => g.hotel_room_id).filter(Boolean))]
+  const hotelRoomIds = Array.from(new Set((guests ?? []).map(g => g.hotel_room_id).filter(Boolean)))
   let hotelRoomMap: Record<string, { room_type: string; room_number: string | null; hotel_name: string }> = {}
   if (hotelRoomIds.length > 0) {
     const { data: rooms } = await supabase
@@ -56,7 +56,7 @@ export async function GET(
         hotelRoomMap[r.id] = {
           room_type: r.room_type,
           room_number: r.room_number,
-          hotel_name: (r.hotels as { name: string } | null)?.name ?? '',
+          hotel_name: (r.hotels as unknown as { name: string } | null)?.name ?? '',
         }
       }
     }
@@ -65,7 +65,7 @@ export async function GET(
   const guestTableMap: Record<string, string> = {}
   const begleitTableMap: Record<string, string> = {}
   for (const sa of seatingAssignments ?? []) {
-    const tableName = (sa.seating_tables as { name: string } | null)?.name ?? ''
+    const tableName = (sa.seating_tables as unknown as { name: string } | null)?.name ?? ''
     if (sa.guest_id) guestTableMap[sa.guest_id] = tableName
     if (sa.begleitperson_id) begleitTableMap[sa.begleitperson_id] = tableName
   }
@@ -161,7 +161,7 @@ export async function GET(
   }
 
   const buffer = await wb.xlsx.writeBuffer()
-  return new NextResponse(buffer as Buffer, {
+  return new NextResponse(buffer as unknown as BodyInit, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': 'attachment; filename="gaesteliste.xlsx"',

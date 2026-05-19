@@ -117,7 +117,7 @@ export async function GET(
   sheet.mergeCells(`A4:Q4`)
 
   const buffer = await wb.xlsx.writeBuffer()
-  return new NextResponse(buffer as Buffer, {
+  return new NextResponse(buffer as unknown as BodyInit, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': 'attachment; filename="gaesteliste-vorlage.xlsx"',
