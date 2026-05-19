@@ -15,7 +15,7 @@ export default async function BudgetPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [eventRes, itemsRes, cateringCostsRes, cateringPlanRes, guestCountRes] = await Promise.all([
+  const [eventRes, itemsRes, cateringCostsRes, cateringPlanRes, guestCountRes, getraenkeArtikelRes, getraenkeCocktailsRes] = await Promise.all([
     supabase
       .from('events')
       .select('id, organizer_fee, organizer_fee_type, budget_total')
@@ -34,14 +34,22 @@ export default async function BudgetPage({ params }: Props) {
       .order('created_at', { ascending: true }),
     admin
       .from('catering_plans')
-      .select('plan_guest_count_enabled, plan_guest_count')
+      .select('plan_guest_count_enabled, plan_guest_count, getraenke_billing')
       .eq('event_id', eventId)
-      .single(),
+      .maybeSingle(),
     admin
       .from('guests')
       .select('id', { count: 'exact', head: true })
       .eq('event_id', eventId)
       .eq('status', 'zugesagt'),
+    supabase
+      .from('getraenke_artikel')
+      .select('total_planned, price_per_unit')
+      .eq('event_id', eventId),
+    supabase
+      .from('getraenke_cocktails')
+      .select('planned_count, price_per_unit')
+      .eq('event_id', eventId),
   ])
 
   if (!eventRes.data) redirect('/login')
@@ -52,6 +60,11 @@ export default async function BudgetPage({ params }: Props) {
     ? plan.plan_guest_count
     : confirmedCount
 
+  const getränkeBilling = (plan?.getraenke_billing ?? 'honorar') as 'honorar' | 'einzeln'
+  const getränkeBpTotal =
+    (getraenkeArtikelRes.data ?? []).reduce((s, a) => s + (a.total_planned ?? 0) * (a.price_per_unit ?? 0), 0) +
+    (getraenkeCocktailsRes.data ?? []).reduce((s, c) => s + (c.planned_count ?? 0) * (c.price_per_unit ?? 0), 0)
+
   return (
     <BrautpaarBudget
       eventId={eventId}
@@ -61,6 +74,8 @@ export default async function BudgetPage({ params }: Props) {
       initialItems={itemsRes.data ?? []}
       cateringCosts={cateringCostsRes.data ?? []}
       effectiveGuestCount={effectiveGuestCount}
+      getränkeBilling={getränkeBilling}
+      getränkeBpTotal={getränkeBpTotal}
     />
   )
 }
