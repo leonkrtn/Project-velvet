@@ -115,8 +115,8 @@ export default function RsvpPhotos({ token }: Props) {
         disabled={uploading}
         style={{
           width: '100%', padding: '14px 20px',
-          background: 'var(--gold, #b09057)', color: '#fff',
-          border: 'none', borderRadius: 12,
+          background: '#fff', color: '#b09057',
+          border: '1px solid rgba(176, 144, 87, 0.5)', borderRadius: 12,
           fontSize: 15, fontWeight: 600, cursor: uploading ? 'default' : 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           opacity: uploading ? 0.7 : 1, fontFamily: 'inherit',

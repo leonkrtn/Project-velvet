@@ -28,7 +28,7 @@ export default async function GetraenkePage({ params }: Props) {
   const attending = (guestStats ?? []).filter(g => g.status === 'zugesagt').length
 
   return (
-    <div style={{ padding: '32px 40px', maxWidth: 900 }}>
+    <div style={{ padding: '32px 40px' }}>
       <GetraenkeTabContent eventId={eventId} mode="veranstalter" guestCount={attending} />
     </div>
   )

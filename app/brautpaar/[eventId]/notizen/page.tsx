@@ -210,8 +210,8 @@ function NoteEditor({
             <button
               onClick={addItem}
               style={{
-                padding: '6px 10px', background: 'var(--bp-gold)', color: '#fff',
-                border: 'none', borderRadius: 6, cursor: 'pointer', flexShrink: 0,
+                padding: '6px 10px', background: '#fff', color: 'var(--bp-gold)',
+                border: '1px solid var(--bp-gold)', borderRadius: 6, cursor: 'pointer', flexShrink: 0,
               }}
             >
               <Plus size={13} />
@@ -321,7 +321,7 @@ export default function NotizenPage() {
           onClick={() => setAdding(v => !v)}
           style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px',
-            background: 'var(--bp-gold)', color: '#fff', border: 'none', borderRadius: 8,
+            background: '#fff', color: 'var(--bp-gold)', border: '1px solid var(--bp-gold)', borderRadius: 8,
             fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
           }}
         >
@@ -385,7 +385,7 @@ export default function NotizenPage() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={addNote}
-              style={{ padding: '8px 18px', background: 'var(--bp-gold)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ padding: '8px 18px', background: '#fff', color: 'var(--bp-gold)', border: '1px solid var(--bp-gold)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Erstellen
             </button>

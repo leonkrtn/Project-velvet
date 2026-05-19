@@ -136,6 +136,33 @@ export interface PdfDekoFlatRate {
   amount: number
 }
 
+export interface PdfGetraenkeKategorie {
+  id: string
+  name: string
+  color: string
+  is_alcoholic: boolean
+}
+
+export interface PdfGetraenkeArtikel {
+  id: string
+  kategorie_id: string | null
+  name: string
+  unit: string
+  amount_per_person: number
+  total_planned: number
+  price_per_unit: number
+}
+
+export interface PdfGetraenkeCocktail {
+  id: string
+  name: string
+  description: string
+  is_alcoholic: boolean
+  planned_count: number
+  price_per_unit: number
+  ingredients: Array<{ name: string; amount: string; unit: string }>
+}
+
 export interface PdfVendor {
   id: string
   name: string
@@ -258,6 +285,10 @@ export interface PdfEventData {
   mediaShotItems: PdfShotItem[]
 
   vendors: PdfVendor[]
+
+  getraenkeKategorien: PdfGetraenkeKategorie[]
+  getraenkeArtikel: PdfGetraenkeArtikel[]
+  getraenkeCocktails: PdfGetraenkeCocktail[]
 }
 
 export type PdfMode = 'intern' | 'extern'
@@ -268,6 +299,7 @@ export type PdfSection =
   | 'sitzplan'
   | 'ablaufplan'
   | 'catering'
+  | 'getraenke'
   | 'budget'
   | 'musik'
   | 'dekoration'
