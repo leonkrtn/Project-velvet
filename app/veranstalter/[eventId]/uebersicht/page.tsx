@@ -45,18 +45,29 @@ function daysUntil(dateStr: string | null): number | null {
 
 // ── Margin Table ───────────────────────────────────────────────────────────
 
-function MarginWaterfall({ einnahmen, veranstalterkosten, mitarbeiterkosten }: {
+interface GetränkeMarginRow {
+  label: string
+  value: number
+  sign: '+' | '−'
+  color: string
+  sub?: string
+}
+
+function MarginWaterfall({ einnahmen, veranstalterkosten, mitarbeiterkosten, getränkeRow }: {
   einnahmen: number
   veranstalterkosten: number
   mitarbeiterkosten: number
+  getränkeRow?: GetränkeMarginRow
 }) {
-  const marge = einnahmen - veranstalterkosten - mitarbeiterkosten
+  const margeAdjustment = getränkeRow ? (getränkeRow.sign === '+' ? getränkeRow.value : -getränkeRow.value) : 0
+  const marge = einnahmen - veranstalterkosten - mitarbeiterkosten + margeAdjustment
   const margePercent = einnahmen > 0 ? Math.round((marge / einnahmen) * 100) : 0
 
-  const rows = [
+  const rows: GetränkeMarginRow[] = [
     { label: 'Honorar (Einnahmen)', value: einnahmen,          sign: '+', color: 'var(--text-primary)' },
     { label: 'Veranstalterkosten',  value: veranstalterkosten, sign: '−', color: '#FF3B30' },
     { label: 'Mitarbeiterkosten',   value: mitarbeiterkosten,  sign: '−', color: '#FF3B30' },
+    ...(getränkeRow ? [getränkeRow] : []),
   ]
 
   return (
@@ -76,7 +87,10 @@ function MarginWaterfall({ einnahmen, veranstalterkosten, mitarbeiterkosten }: {
         <>
           {rows.map(r => (
             <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 22px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-              <span style={{ fontSize: 13.5, color: 'var(--text-secondary)' }}>{r.label}</span>
+              <div>
+                <span style={{ fontSize: 13.5, color: 'var(--text-secondary)' }}>{r.label}</span>
+                {r.sub && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 1 }}>{r.sub}</div>}
+              </div>
               <span style={{ fontSize: 13.5, fontWeight: 500, color: r.color }}>
                 {r.sign} {fmtMoney(r.value)}
               </span>
@@ -118,6 +132,8 @@ export default async function UebersichtPage({ params }: Props) {
     cateringPlanRes,
     staffRes,
     daysRes,
+    getraenkeArtikelRes,
+    getraenkeCocktailsRes,
   ] = await Promise.all([
     supabase.from('events').select('id, title, date, budget_total, projektphase, organizer_fee').eq('id', eventId).single(),
     supabase.from('event_members').select('id, role').eq('event_id', eventId),
@@ -130,9 +146,11 @@ export default async function UebersichtPage({ params }: Props) {
     supabase.from('organizer_todos').select('id, title, done').eq('event_id', eventId).eq('organizer_id', user.id).order('created_at'),
     supabase.from('event_organizer_costs').select('amount').eq('event_id', eventId),
     supabase.from('event_organizer_costs').select('id, category, price_per_person').eq('event_id', eventId).eq('source', 'catering').order('created_at', { ascending: true }),
-    supabase.from('catering_plans').select('plan_guest_count_enabled, plan_guest_count').eq('event_id', eventId).single(),
+    supabase.from('catering_plans').select('plan_guest_count_enabled, plan_guest_count, getraenke_billing').eq('event_id', eventId).maybeSingle(),
     supabase.from('organizer_staff').select('id, hourly_rate').eq('organizer_id', user.id),
     supabase.from('personalplanung_days').select('id').eq('event_id', eventId),
+    supabase.from('getraenke_artikel').select('total_planned, price_per_unit, kalkulationspreis').eq('event_id', eventId),
+    supabase.from('getraenke_cocktails').select('planned_count, price_per_unit, kalkulationspreis').eq('event_id', eventId),
   ])
 
   const event = eventRes.data
@@ -159,6 +177,35 @@ export default async function UebersichtPage({ params }: Props) {
   // Margin calculation
   const einnahmen = event.organizer_fee ?? 0
   const veranstalterkosten = (organizerCostsRes.data ?? []).reduce((s, c) => s + parseFloat(String(c.amount ?? 0)), 0)
+
+  // Getränke contribution to margin
+  const getraenkeArtikel   = getraenkeArtikelRes.data ?? []
+  const getraenkeCocktails = getraenkeCocktailsRes.data ?? []
+  const getränkeBilling    = cateringPlanRes.data?.getraenke_billing ?? 'honorar'
+  const getränkeKalkTotal  = getraenkeArtikel.reduce((s, a) => s + (a.total_planned ?? 0) * (a.kalkulationspreis ?? 0), 0)
+                           + getraenkeCocktails.reduce((s, c) => s + (c.planned_count ?? 0) * (c.kalkulationspreis ?? 0), 0)
+  const getränkeBpTotal    = getraenkeArtikel.reduce((s, a) => s + (a.total_planned ?? 0) * (a.price_per_unit ?? 0), 0)
+                           + getraenkeCocktails.reduce((s, c) => s + (c.planned_count ?? 0) * (c.price_per_unit ?? 0), 0)
+
+  let getränkeRow: GetränkeMarginRow | undefined
+  if (getränkeBilling === 'einzeln' && (getränkeBpTotal > 0 || getränkeKalkTotal > 0)) {
+    const net = getränkeBpTotal - getränkeKalkTotal
+    getränkeRow = {
+      label: 'Getränke-Marge',
+      value: Math.abs(net),
+      sign: net >= 0 ? '+' : '−',
+      color: net >= 0 ? '#15803D' : '#FF3B30',
+      sub: `BP ${fmtMoney(getränkeBpTotal)} − Kalk. ${fmtMoney(getränkeKalkTotal)}`,
+    }
+  } else if (getränkeBilling === 'honorar' && getränkeKalkTotal > 0) {
+    getränkeRow = {
+      label: 'Getränkekosten',
+      value: getränkeKalkTotal,
+      sign: '−',
+      color: '#FF3B30',
+      sub: 'Kalkulationskosten Getränke',
+    }
+  }
 
   // Staff costs: need shifts for this event's days
   const dayIds = (daysRes.data ?? []).map(d => d.id)
@@ -274,6 +321,7 @@ export default async function UebersichtPage({ params }: Props) {
           einnahmen={einnahmen}
           veranstalterkosten={veranstalterkosten}
           mitarbeiterkosten={mitarbeiterkosten}
+          getränkeRow={getränkeRow}
         />
       </div>
 
