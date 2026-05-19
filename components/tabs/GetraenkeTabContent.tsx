@@ -790,19 +790,18 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 24, background: 'var(--bg, #f5f5f7)', borderRadius: 8, padding: 3 }}>
+      <div style={{ display: 'flex', gap: 2, marginBottom: 24, background: 'var(--bg, #f5f5f7)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', width: 'fit-content' }}>
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             style={{
-              flex: 1, padding: '7px 12px', border: 'none', borderRadius: 6, fontSize: 13,
-              fontFamily: 'inherit', cursor: 'pointer',
-              fontWeight: tab === t.key ? 600 : 400,
+              padding: '6px 14px', border: 'none', borderRadius: 6, fontSize: 13,
+              fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500,
               background: tab === t.key ? '#fff' : 'transparent',
               color: tab === t.key ? 'var(--text-primary, #1a1a1a)' : 'var(--text-secondary, #888)',
               boxShadow: tab === t.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-              transition: 'all 0.15s',
+              transition: 'background 0.15s',
             }}
           >
             {t.label}
