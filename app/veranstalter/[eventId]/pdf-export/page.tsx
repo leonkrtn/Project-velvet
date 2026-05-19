@@ -267,6 +267,10 @@ export default async function PdfExportPage({ params }: Props) {
     mediaShotItems:  (shotsRes.data ?? []) as PdfEventData['mediaShotItems'],
 
     vendors: (vendorsRes.data ?? []) as PdfEventData['vendors'],
+
+    getraenkeKategorien: (getraenkeKatRes.data ?? []) as PdfEventData['getraenkeKategorien'],
+    getraenkeArtikel:    (getraenkeArtRes.data ?? []) as PdfEventData['getraenkeArtikel'],
+    getraenkeCocktails:  (getraenkeCocRes.data ?? []) as PdfEventData['getraenkeCocktails'],
   }
 
   return <PdfExportClient eventId={eventId} data={pdfData} />
