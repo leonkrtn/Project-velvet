@@ -99,10 +99,19 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const [showArchived, setShowArchived] = useState(false)
   const [archivedLoaded, setArchivedLoaded] = useState(false)
   const [loadingArchived, setLoadingArchived] = useState(false)
+  const [mobileShowChat, setMobileShowChat] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const activeConvIdRef = useRef<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
   const newChatTitleId = useId()
   const deleteConfirmTitleId = useId()
 
@@ -356,6 +365,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
         }
         setConversations(prev => [normalized, ...prev])
         setActiveConv(normalized)
+        setMobileShowChat(true)
       }
     }
 
@@ -469,11 +479,12 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
 
     return (
       <div
-        onClick={() => setActiveConv(conv)}
+        onClick={() => { setActiveConv(conv); setMobileShowChat(true) }}
         onMouseEnter={() => setHoveredConvId(conv.id)}
         onMouseLeave={() => setHoveredConvId(null)}
         style={{
           padding: '10px 14px', cursor: 'pointer',
+          touchAction: 'manipulation',
           background: isActive ? 'var(--surface-active, #EDEDEF)' : isHovered ? '#F5F5F7' : 'transparent',
           borderLeft: `3px solid ${isActive ? 'var(--accent)' : 'transparent'}`,
           display: 'flex', alignItems: 'center', gap: 11,
@@ -574,21 +585,24 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
 
       {/* ── Left panel ── */}
       <div style={{
-        width: 300, minWidth: 300, borderRight: '1px solid var(--border)',
-        display: 'flex', flexDirection: 'column', background: 'var(--surface)',
+        width: isMobile ? '100%' : 300,
+        minWidth: isMobile ? 0 : 300,
+        borderRight: isMobile ? 'none' : '1px solid var(--border)',
+        display: isMobile && mobileShowChat ? 'none' : 'flex',
+        flexDirection: 'column', background: 'var(--surface)',
       }}>
         {/* Header */}
-        <div style={{ padding: '18px 16px 10px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ padding: '18px 16px 10px', borderBottom: '1px solid var(--border)', position: 'sticky', top: isMobile ? 56 : 0, background: 'var(--surface)', zIndex: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>Chats</h2>
             <button
               onClick={() => { setShowNewChat(true); setChatCreationType(null) }}
               aria-label="Neuer Chat"
-              className="mob-touch"
               style={{
-                width: 32, height: 32, borderRadius: '50%', border: 'none',
+                width: 40, height: 40, minWidth: 40, borderRadius: '50%', border: 'none',
                 background: 'var(--accent)', color: '#fff', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, touchAction: 'manipulation',
               }}
             >
               <Plus size={16} />
@@ -662,7 +676,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
                     key={msg.id}
                     onClick={() => {
                       const c = conversations.find(x => x.id === msg.conversation_id)
-                      if (c) { setActiveConv(c); setSearchQuery('') }
+                      if (c) { setActiveConv(c); setSearchQuery(''); setMobileShowChat(true) }
                     }}
                     style={{
                       padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--border)',
@@ -739,7 +753,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
       </div>
 
       {/* ── Right panel ── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: isMobile && !mobileShowChat ? 'none' : 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         {activeConv ? (
           <>
             {/* Chat header */}
@@ -748,6 +762,15 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
               display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface)',
               flexShrink: 0,
             }}>
+              {isMobile && (
+                <button
+                  onClick={() => setMobileShowChat(false)}
+                  aria-label="Zurück zur Chatliste"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary)', display: 'flex', flexShrink: 0 }}
+                >
+                  <ArrowLeft size={22} />
+                </button>
+              )}
               <div style={{
                 width: 38, height: 38, borderRadius: '50%', background: '#E8E8EC',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,

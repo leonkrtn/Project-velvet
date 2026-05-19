@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Palette, Music, Camera, Wallet, CheckSquare, Settings,
-  MessageSquare, File, ChevronRight, X, Menu, LogOut,
+  MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
 } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 import { createClient } from '@/lib/supabase/client'
@@ -45,6 +45,7 @@ function buildNav(eventId: string): NavGroup[] {
       label: 'DETAILS',
       items: [
         b('catering', 'Catering & Menü', <UtensilsCrossed size={16} />),
+        b('getraenke', 'Getränke', <GlassWater size={16} />),
         b('dekoration', 'Dekoration', <Palette size={16} />),
         b('musik', 'Musik', <Music size={16} />),
         b('medien', 'Foto & Videograf', <Camera size={16} />),
@@ -55,6 +56,7 @@ function buildNav(eventId: string): NavGroup[] {
       items: [
         b('budget', 'Budget', <Wallet size={16} />),
         b('aufgaben', 'Aufgaben', <CheckSquare size={16} />),
+        b('notizen', 'Notizen', <NotebookPen size={16} />),
         b('allgemein', 'Allgemein', <Settings size={16} />),
       ],
     },
@@ -321,7 +323,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
               <span />
             </button>
             <span className="bp-font-wordmark" style={{ fontSize: '1rem', color: 'var(--bp-ink)' }}>
-              Velvet
+              {eventTitle}
             </span>
             <div style={{ width: 36 }} />
           </header>

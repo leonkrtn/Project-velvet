@@ -1,7 +1,7 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, Edit2, Check, X, Heart, Ban, ListMusic, Lightbulb } from 'lucide-react'
+import { Plus, Trash2, Edit2, Check, X, Heart, Ban, ListMusic, Lightbulb, Music2, Link, ExternalLink } from 'lucide-react'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -14,6 +14,15 @@ interface Song {
   sort_order: number
   source?: string
   suggested_by_guest_name?: string | null
+}
+
+interface Playlist {
+  id: string
+  event_id: string
+  title: string
+  url: string
+  platform: 'spotify' | 'youtube' | 'apple_music' | 'other'
+  sort_order: number
 }
 
 interface MusicSuggestion {
@@ -655,10 +664,265 @@ function VorschlaegeLightbox({
   )
 }
 
+// ── Playlist helpers ──────────────────────────────────────────────────────────
+
+function detectPlatform(url: string): Playlist['platform'] {
+  if (/open\.spotify\.com/i.test(url)) return 'spotify'
+  if (/youtube\.com|youtu\.be/i.test(url)) return 'youtube'
+  if (/music\.apple\.com/i.test(url)) return 'apple_music'
+  return 'other'
+}
+
+function buildEmbedUrl(url: string, platform: Playlist['platform']): string | null {
+  try {
+    if (platform === 'spotify') {
+      // https://open.spotify.com/(playlist|track|album)/ID → embed version
+      const m = url.match(/open\.spotify\.com\/(playlist|track|album)\/([A-Za-z0-9]+)/)
+      if (m) return `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator&theme=0`
+      return null
+    }
+    if (platform === 'youtube') {
+      // youtu.be shortlink
+      const short = url.match(/youtu\.be\/([A-Za-z0-9_-]+)/)
+      if (short) return `https://www.youtube.com/embed/${short[1]}`
+      // playlist
+      const pl = url.match(/[?&]list=([A-Za-z0-9_-]+)/)
+      if (pl) {
+        const v = url.match(/[?&]v=([A-Za-z0-9_-]+)/)
+        return `https://www.youtube.com/embed/${v ? v[1] : 'videoseries'}?list=${pl[1]}`
+      }
+      // single video
+      const v = url.match(/[?&]v=([A-Za-z0-9_-]+)/)
+      if (v) return `https://www.youtube.com/embed/${v[1]}`
+      return null
+    }
+    if (platform === 'apple_music') {
+      // https://music.apple.com/... → https://embed.music.apple.com/...
+      return url.replace('https://music.apple.com/', 'https://embed.music.apple.com/')
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
+const PLATFORM_LABELS: Record<Playlist['platform'], string> = {
+  spotify:     'Spotify',
+  youtube:     'YouTube',
+  apple_music: 'Apple Music',
+  other:       'Link',
+}
+
+const PLATFORM_COLORS: Record<Playlist['platform'], string> = {
+  spotify:     '#1DB954',
+  youtube:     '#FF0000',
+  apple_music: '#FC3C44',
+  other:       'var(--bp-ink-3, #9b8e85)',
+}
+
+function PlaylistCard({
+  pl, canEdit, onDelete,
+}: { pl: Playlist; canEdit: boolean; onDelete: () => void }) {
+  const embedUrl = buildEmbedUrl(pl.url, pl.platform)
+  const color    = PLATFORM_COLORS[pl.platform]
+
+  const defaultHeight = pl.platform === 'spotify' ? 352 : pl.platform === 'apple_music' ? 400 : 450
+  const [height, setHeight] = useState(defaultHeight)
+  const dragRef = useRef({ active: false, startY: 0, startH: 0 })
+
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!dragRef.current.active) return
+      const delta = e.clientY - dragRef.current.startY
+      setHeight(Math.max(120, dragRef.current.startH + delta))
+    }
+    function onMouseUp() {
+      dragRef.current.active = false
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
+
+  function onDragStart(e: React.MouseEvent) {
+    e.preventDefault()
+    dragRef.current = { active: true, startY: e.clientY, startH: height }
+  }
+
+  return (
+    <div style={{ borderRadius: 10, border: '1px solid var(--bp-rule, #ede5dc)', overflow: 'hidden', background: '#fff' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--bp-rule, #ede5dc)' }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--bp-ink-1, #3a3028)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {pl.title || PLATFORM_LABELS[pl.platform]}
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--bp-ink-3, #9b8e85)', flexShrink: 0 }}>{PLATFORM_LABELS[pl.platform]}</span>
+        <a
+          href={pl.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Im Browser öffnen"
+          style={{ display: 'flex', alignItems: 'center', padding: '2px 4px', opacity: 0.5, flexShrink: 0, color: 'var(--bp-ink-2, #6b5e54)' }}
+        >
+          <ExternalLink size={13} />
+        </a>
+        {canEdit && (
+          <button
+            onClick={onDelete}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px 4px', opacity: 0.45, flexShrink: 0 }}
+          >
+            <Trash2 size={13} style={{ color: '#e05252' }} />
+          </button>
+        )}
+      </div>
+
+      {/* Embed or fallback */}
+      {embedUrl ? (
+        <>
+          <div style={{ padding: pl.platform === 'spotify' ? 0 : 8 }}>
+            <iframe
+              src={embedUrl}
+              style={{ border: 'none', borderRadius: pl.platform === 'spotify' ? 0 : 8, width: '100%', height, display: 'block' }}
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              title={pl.title || PLATFORM_LABELS[pl.platform]}
+            />
+          </div>
+          {/* Resize handle */}
+          <div
+            onMouseDown={onDragStart}
+            style={{ height: 14, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.02)', borderTop: '1px solid var(--bp-rule, #ede5dc)' }}
+          >
+            <div style={{ width: 36, height: 3, borderRadius: 2, background: 'var(--bp-rule, #d6cdc5)' }} />
+          </div>
+        </>
+      ) : (
+        <div style={{ padding: '14px 16px' }}>
+          <a href={pl.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: color, textDecoration: 'none', wordBreak: 'break-all' }}>
+            <Link size={13} />
+            {pl.url}
+          </a>
+          <p style={{ fontSize: 11, color: 'var(--bp-ink-3, #9b8e85)', marginTop: 6 }}>Kein einbettbares Format erkannt – Link öffnet sich im Browser.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PlaylistSection({
+  eventId, playlists, setPlaylists, canEdit,
+}: {
+  eventId: string
+  playlists: Playlist[]
+  setPlaylists: React.Dispatch<React.SetStateAction<Playlist[]>>
+  canEdit: boolean
+}) {
+  const [url, setUrl]     = useState('')
+  const [title, setTitle] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [open, setOpen]   = useState(false)
+
+  async function add() {
+    const trimmed = url.trim()
+    if (!trimmed) return
+    setAdding(true)
+    const platform = detectPlatform(trimmed)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('musik_playlisten')
+      .insert({ event_id: eventId, url: trimmed, title: title.trim(), platform, sort_order: playlists.length })
+      .select().single()
+    setAdding(false)
+    if (!error && data) {
+      setPlaylists(prev => [...prev, data as Playlist])
+      setUrl(''); setTitle(''); setOpen(false)
+    }
+  }
+
+  async function del(id: string) {
+    const supabase = createClient()
+    const { error } = await supabase.from('musik_playlisten').delete().eq('id', id)
+    if (!error) setPlaylists(prev => prev.filter(p => p.id !== id))
+  }
+
+  const accentColor = 'var(--bp-gold, #B8943E)'
+
+  return (
+    <div style={{ borderRadius: 10, border: '1px solid var(--bp-rule, #ede5dc)', overflow: 'hidden', background: '#fff' }}>
+      {/* Section header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 16px 10px', borderBottom: playlists.length > 0 || open ? '1px solid rgba(184,148,62,0.15)' : undefined }}>
+        <span style={{ color: accentColor, display: 'flex', alignItems: 'center' }}><Music2 size={12} /></span>
+        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: accentColor }}>Playlisten</span>
+        <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 500, color: accentColor, opacity: 0.55 }}>{playlists.length}</span>
+      </div>
+
+      {/* Playlist cards */}
+      {playlists.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 12 }}>
+          {playlists.map(pl => (
+            <PlaylistCard key={pl.id} pl={pl} canEdit={canEdit} onDelete={() => del(pl.id)} />
+          ))}
+        </div>
+      )}
+
+      {/* Add row */}
+      {canEdit && (
+        <div style={{ borderTop: playlists.length > 0 ? '1px solid rgba(184,148,62,0.12)' : undefined, background: 'rgba(250,248,245,0.5)' }}>
+          {open ? (
+            <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <input
+                value={url}
+                onChange={e => setUrl(e.target.value)}
+                placeholder="Spotify-, YouTube- oder Apple-Music-Link einfügen…"
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') add(); if (e.key === 'Escape') setOpen(false) }}
+                style={{ padding: '7px 10px', border: `1px solid ${accentColor}`, borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: '#fff', color: 'var(--bp-ink, #3a3028)' }}
+              />
+              <input
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="Bezeichnung (optional)"
+                onKeyDown={e => { if (e.key === 'Enter') add() }}
+                style={{ padding: '7px 10px', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: '#fff', color: 'var(--bp-ink, #3a3028)' }}
+              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={add}
+                  disabled={adding || !url.trim()}
+                  style={{ padding: '6px 14px', background: url.trim() ? accentColor : 'transparent', color: url.trim() ? '#fff' : 'var(--bp-ink)', border: url.trim() ? 'none' : '1px solid var(--bp-rule)', borderRadius: 6, fontSize: 13, cursor: url.trim() ? 'pointer' : 'default', fontFamily: 'inherit', opacity: adding ? 0.6 : 1 }}
+                >
+                  {adding ? '…' : 'Hinzufügen'}
+                </button>
+                <button onClick={() => { setOpen(false); setUrl(''); setTitle('') }} style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 6, fontSize: 13, cursor: 'pointer' }}>Abbrechen</button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: 'transparent', border: 'none', fontSize: 13, color: 'var(--bp-ink-3, #9b8e85)', cursor: 'pointer', fontFamily: 'inherit', width: '100%', opacity: 0.7 }}
+            >
+              <Plus size={13} /> Playlist hinzufügen
+            </button>
+          )}
+        </div>
+      )}
+
+      {playlists.length === 0 && !open && (
+        <div style={{ padding: '12px 16px 13px', fontSize: 12.5, color: 'var(--bp-ink, #3a3028)', opacity: 0.35, fontStyle: 'italic' }}>
+          Noch keine Playlisten
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = true, tabAccess = 'write', sectionPerms, onPropose }: Props) {
   const [songs, setSongs]             = useState<Song[]>([])
+  const [playlists, setPlaylists]     = useState<Playlist[]>([])
   const [reqs, setReqs]               = useState<Requirements | null>(null)
   const [loading, setLoading]         = useState(true)
   const [filter, setFilter]           = useState<string>('all')
@@ -669,15 +933,23 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
   useEffect(() => {
     const supabase = createClient()
     if (mode === 'brautpaar') {
-      supabase.from('music_songs').select('*').eq('event_id', eventId).order('sort_order')
-        .then(({ data: s }) => { setSongs(s ?? []); setLoading(false) })
+      Promise.all([
+        supabase.from('music_songs').select('*').eq('event_id', eventId).order('sort_order'),
+        supabase.from('musik_playlisten').select('*').eq('event_id', eventId).order('sort_order'),
+      ]).then(([{ data: s }, { data: p }]) => {
+        setSongs(s ?? [])
+        setPlaylists(p ?? [])
+        setLoading(false)
+      })
     } else {
       Promise.all([
         supabase.from('music_songs').select('*').eq('event_id', eventId).order('sort_order'),
         supabase.from('music_requirements').select('*').eq('event_id', eventId).single(),
-      ]).then(([{ data: s }, { data: r }]) => {
+        supabase.from('musik_playlisten').select('*').eq('event_id', eventId).order('sort_order'),
+      ]).then(([{ data: s }, { data: r }, { data: p }]) => {
         setSongs(s ?? [])
         setReqs((r ?? null) as Requirements | null)
+        setPlaylists(p ?? [])
         setLoading(false)
       })
     }
@@ -766,7 +1038,15 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
         {loading ? (
           <div style={{ color: 'var(--bp-ink, #3a3028)', opacity: 0.5, fontSize: 14 }}>Wird geladen…</div>
         ) : (
-          <BrautpaarMusikView eventId={eventId} songs={songs} setSongs={setSongs} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <BrautpaarMusikView eventId={eventId} songs={songs} setSongs={setSongs} />
+            <PlaylistSection
+              eventId={eventId}
+              playlists={playlists}
+              setPlaylists={setPlaylists}
+              canEdit
+            />
+          </div>
         )}
         {showVorschlaege && (
           <VorschlaegeLightbox
@@ -854,6 +1134,17 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
             )}
           </div>
           )}
+
+          {/* Playlisten */}
+          <div style={{ marginTop: 24 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 12 }}>Playlisten</p>
+            <PlaylistSection
+              eventId={eventId}
+              playlists={playlists}
+              setPlaylists={setPlaylists}
+              canEdit={mode !== 'dienstleister'}
+            />
+          </div>
         </div>
       )}
       {showVorschlaege && (

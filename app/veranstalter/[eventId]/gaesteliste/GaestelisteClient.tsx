@@ -1,7 +1,8 @@
 'use client'
 import React, { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, Search, X, Edit2, ChevronDown, ChevronRight, Star } from 'lucide-react'
+import { Plus, Trash2, Search, X, Edit2, ChevronDown, ChevronRight, Star, Download, Upload, FileSpreadsheet } from 'lucide-react'
+import ImportModal from '@/components/gaesteliste/ImportModal'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -404,6 +405,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
   const [editId, setEditId] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showImport, setShowImport] = useState(false)
 
   const [form, setForm] = useState<Partial<Guest>>({})
 
@@ -564,14 +566,33 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
           <p style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{zugesagt} zugesagt · {guests.length} gesamt</p>
         </div>
         {activeTab === 'gaeste' && (
-          <button onClick={openAdd} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
-            <Plus size={15} /> Gast hinzufügen
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <a
+              href={`/api/veranstalter/${eventId}/guests/template`}
+              download
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: '#fff', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, textDecoration: 'none' }}
+            >
+              <FileSpreadsheet size={14} /> Vorlage
+            </a>
+            <a
+              href={`/api/veranstalter/${eventId}/guests/export`}
+              download
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: '#fff', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500, textDecoration: 'none' }}
+            >
+              <Download size={14} /> Exportieren
+            </a>
+            <button onClick={() => setShowImport(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: '#fff', color: 'var(--text-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
+              <Upload size={14} /> Importieren
+            </button>
+            <button onClick={openAdd} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
+              <Plus size={15} /> Gast hinzufügen
+            </button>
+          </div>
         )}
       </div>
 
       {/* Tabs */}
-      <div role="tablist" style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid var(--border)' }}>
+      <div role="tablist" style={{ display: 'flex', gap: 2, marginBottom: 24, background: 'var(--bg)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', width: 'fit-content' }}>
         {[
           { key: 'gaeste', label: 'Gästeliste' },
           { key: 'hotel', label: `Hotel (${initialHotels.length})` },
@@ -582,10 +603,12 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key as 'gaeste' | 'hotel')}
             style={{
-              padding: '9px 18px', background: 'none', border: 'none', borderBottom: `2px solid ${activeTab === tab.key ? 'var(--accent)' : 'transparent'}`,
-              marginBottom: -2, fontSize: 13, fontWeight: activeTab === tab.key ? 700 : 400,
-              color: activeTab === tab.key ? 'var(--accent)' : 'var(--text-secondary)',
-              cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+              padding: '6px 14px', border: 'none', borderRadius: 6, fontFamily: 'inherit',
+              fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              background: activeTab === tab.key ? '#fff' : 'transparent',
+              color: activeTab === tab.key ? 'var(--text)' : 'var(--text-secondary)',
+              boxShadow: activeTab === tab.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              transition: 'background 0.15s',
             }}
           >
             {tab.label}
@@ -640,6 +663,17 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
 
       {activeTab === 'hotel' && (
         <HotelTab eventId={eventId} initialHotels={initialHotels} />
+      )}
+
+      {showImport && (
+        <ImportModal
+          eventId={eventId}
+          onClose={() => setShowImport(false)}
+          onSuccess={() => {
+            setShowImport(false)
+            window.location.reload()
+          }}
+        />
       )}
     </div>
   )

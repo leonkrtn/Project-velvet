@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Settings, Users, MessageSquare,
   Calendar, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
   Music2, Flower2, Camera, FolderOpen, LogOut, UserCircle, SlidersHorizontal,
+  FileDown, GlassWater,
 } from 'lucide-react'
 
 interface Props {
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { key: 'uebersicht',      label: 'Übersicht',        icon: LayoutDashboard },
   { key: 'allgemein',       label: 'Allgemein',         icon: Settings },
   { key: 'catering',        label: 'Catering & Menü',   icon: UtensilsCrossed },
+  { key: 'getraenke',       label: 'Getränke',           icon: GlassWater },
   { key: 'mitglieder',      label: 'Beteiligte',        icon: Users },
   { key: 'chats',           label: 'Chats',             icon: MessageSquare },
   { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
@@ -34,6 +36,7 @@ const NAV_ITEMS = [
   { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
   { key: 'personalplanung', label: 'Personalplanung',   icon: UserCog },
   { key: 'dateien',         label: 'Dateien',           icon: FolderOpen },
+  { key: 'pdf-export',     label: 'PDF-Export',        icon: FileDown },
 ]
 
 function initials(name: string) {
@@ -59,7 +62,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
 
   const isChats = pathname === `${base}/chats` || pathname.startsWith(`${base}/chats/`)
   const isDeko = pathname === `${base}/dekoration` || pathname.startsWith(`${base}/dekoration/`)
-  const isFullscreen = isChats || isDeko
+  const isPdfExport = pathname === `${base}/pdf-export` || pathname.startsWith(`${base}/pdf-export/`)
+  const isFullscreen = isChats || isDeko || isPdfExport
 
   const sidebar = (
     <nav style={{
@@ -242,22 +246,17 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
 
   return (
     <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: 'var(--bg)' }}>
-      {/* Desktop sidebar */}
-      <div className="sidebar-desktop" style={{ display: 'none' }}>
+      {/* Sidebar — rendered ONCE, shown via CSS on desktop, via .sidebar-open class on mobile */}
+      <div className={`sidebar-wrapper${mobileOpen ? ' sidebar-open' : ''}`}>
         {sidebar}
       </div>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile backdrop (no second sidebar render) */}
       {mobileOpen && (
         <div
-          style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 199, background: 'rgba(0,0,0,0.4)' }}
           onClick={() => setMobileOpen(false)}
-        >
-          <div style={{ width: 220, height: '100%' }} onClick={e => e.stopPropagation()}>
-            {sidebar}
-          </div>
-          <div style={{ flex: 1, background: 'rgba(0,0,0,0.4)' }} />
-        </div>
+        />
       )}
 
       {/* Main content */}
@@ -292,12 +291,21 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
       </div>
 
       <style>{`
+        /* Desktop: sidebar always visible */
+        .sidebar-wrapper { display: none; }
         @media (min-width: 768px) {
-          .sidebar-desktop { display: block !important; }
+          .sidebar-wrapper { display: block !important; }
         }
+        /* Mobile: sidebar slides in as fixed overlay when open */
         @media (max-width: 767px) {
           .mobile-topbar { display: flex !important; }
           main { padding: 20px 16px !important; }
+          .sidebar-open {
+            display: block !important;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            z-index: 200;
+          }
         }
         .nav-item-link:hover { background: rgba(0,0,0,0.06) !important; }
         .back-btn-link:hover { background: rgba(0,0,0,0.06) !important; color: var(--text-primary) !important; }

@@ -386,11 +386,13 @@
   background: rgba(44, 40, 37, 0.5);
   z-index: 35;
   opacity: 0;
+  pointer-events: none;
   transition: opacity var(--bp-transition);
 }
 
 .bp-mobile-overlay.open {
   opacity: 1;
+  pointer-events: auto;
 }
 
 @media (max-width: 768px) {
@@ -408,6 +410,7 @@
   .bp-content-offset,
   .bp-content-offset[data-expanded="true"] {
     padding-left: 0;
+    padding-top: 56px;
   }
 
   .bp-sidebar-toggle {
@@ -433,8 +436,10 @@
   padding: 0 1rem;
   align-items: center;
   justify-content: space-between;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 30;
 }
 
@@ -1059,4 +1064,43 @@
   clip: rect(0,0,0,0);
   white-space: nowrap;
   border-width: 0;
+}
+
+
+/* ── Mobile: horizontal-scrollable tab nav ── */
+@media (max-width: 640px) {
+  .bp-step-tabs {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .bp-step-tabs::-webkit-scrollbar { display: none; }
+  .bp-step-tab { flex-shrink: 0; }
+}
+
+/* ── Mobile visibility helpers ── */
+@media (max-width: 640px) {
+  .bp-hide-mobile { display: none !important; }
+}
+@media (min-width: 641px) {
+  .bp-mobile-only { display: none !important; }
+}
+
+/* ── Desktop-only helpers (for complex tools: sitzplan, deko) ── */
+@media (max-width: 899px) {
+  .bp-desktop-only { display: none !important; }
+}
+@media (min-width: 900px) {
+  .bp-below-desktop { display: none !important; }
+}
+
+/* ── Date/time inputs: prevent iOS from overriding font & colour ── */
+.bp-input[type="date"],
+.bp-input[type="time"],
+.bp-input[type="datetime-local"] {
+  -webkit-appearance: none;
+  appearance: none;
+  color: var(--bp-ink);
+  font-family: 'DM Sans', system-ui, sans-serif;
 }

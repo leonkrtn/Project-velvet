@@ -5,6 +5,13 @@
 
 ---
 
+## UI Conventions
+
+- **No emojis** — use Lucide React icons everywhere instead (already a dependency)
+- Icons are the only decorative elements in UI; never use emoji as icons, bullets, or decorations
+
+---
+
 ## Stack
 
 | Layer | Technology |
@@ -44,8 +51,9 @@
     gaesteliste/           → Guest list
     sitzplan/              → Seating plan
     catering/              → Catering
+    getraenke/             → Getränkeplanung (Mengenplanung, Budget, Cocktails)
     ablaufplan/            → Timeline
-    musik/                 → Music
+    musik/                 → Music (incl. playlist embeds: Spotify/YouTube/Apple Music)
     dekoration/            → Decor
     patisserie/            → Patisserie / cake
     medien/                → Media / shots
@@ -62,6 +70,9 @@
 
 /brautpaar/[eventId]/     → Couple portal
   dateien/                → File management (R2-backed)
+  getraenke/              → Getränkeplanung (same component as veranstalter, mode="brautpaar")
+  notizen/                → Notizen (auto-save notes, text/checklist, categories)
+  musik/                  → Musik (incl. playlist embeds)
 ⛔ /trauzeuge/            → Role exists in DB but no frontend portal implemented
 /vendor/dashboard/[eventId]/ → Vendor portal (tab-gated by permissions)
   uebersicht/              → Overview: event details, contacts, permission-gated module shortcuts
@@ -146,6 +157,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `seating_tables` / `seating_assignments` | Seating plan (v2 — supports guests, begleitpersonen, brautpaar slots) |
 | `catering_plans` | Catering configuration |
 | `music_songs` / `music_requirements` | Music tab |
+| `musik_playlisten` | Playlist links with embedded player (platform: spotify/youtube/apple_music/other) |
 | `deko_areas` | Decor areas (per event, ordered) |
 | `deko_canvases` | Canvases per area (main + variants + standalone moodboards) |
 | `deko_items` | Free-canvas items (19 types, JSONB data, x/y/w/h) |
@@ -179,6 +191,10 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `event_organizer_costs` | Organizer's own cost items |
 | `feature_toggles` | Per-event feature flags — columns: `event_id`, `key`, `enabled`, `value TEXT` (optional text metadata, e.g. ISO date for `gaeste-fotos-unlock-at`) |
 | `organizer_settings` | Per-organizer config (migration 0078). Currently: `staff_chat_enabled BOOLEAN DEFAULT FALSE`. RLS: organizer full access; staff read-only. |
+| `brautpaar_notes` | Brautpaar notes (category, title, content, note_type text/checklist, checklist_items JSONB). |
+| `getraenke_kategorien` | Drink categories per event (name, color, sort_order). |
+| `getraenke_artikel` | Drink items (kategorie_id, name, unit, amount_per_person, total_planned, price_per_unit). |
+| `getraenke_cocktails` | Cocktails (name, is_alcoholic, planned_count, ingredients JSONB [{name,amount,unit}]). |
 
 ---
 
@@ -327,6 +343,13 @@ supabase/migrations/
   0077_profile_avatar.sql              Adds avatar_r2_key TEXT to profiles (R2 object key, NOT a public URL).
                                        Display URL generated on-demand via Worker requestDownloadUrl (1h presigned GET).
   0078_staff_to_staff_chat.sql         Creates organizer_settings (staff_chat_enabled toggle). RLS: organizer all; staff read-only.
+  0079_event_type.sql                  Adds event_type TEXT NOT NULL DEFAULT 'hochzeit' CHECK (IN 'hochzeit','firmenevent','intern') to events.
+  0080_brautpaar_notes.sql             Creates brautpaar_notes (id, event_id, category, title, content, note_type text|checklist, checklist_items JSONB, sort_order).
+                                       RLS: brautpaar + veranstalter via is_event_member.
+  0081_musik_playlisten.sql            Creates musik_playlisten (id, event_id, title, url, platform spotify|youtube|apple_music|other, sort_order).
+                                       Embedded players in MusikTabContent (Spotify/YouTube/Apple Music iframe detection).
+  0082_getraenke.sql                   Creates getraenke_kategorien, getraenke_artikel (Mengenplanung), getraenke_cocktails (ingredients JSONB).
+                                       RLS: veranstalter/brautpaar full access; dl needs dl_has_tab_access('getraenke','read').
 
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)
