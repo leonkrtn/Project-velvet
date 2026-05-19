@@ -60,11 +60,15 @@ export async function POST(
           if (row.allergy_tags.length > 0) updateObj.allergy_tags = row.allergy_tags
           if (row.allergy_custom !== null) updateObj.allergy_custom = row.allergy_custom
           if (row.trink_alkohol !== null) updateObj.trink_alkohol = row.trink_alkohol
-          if (row.notes !== null) updateObj.message = row.notes
+          if (row.notes !== null) updateObj.notes = row.notes
 
-          await supabase.from('guests').update(updateObj).eq('id', row.id)
-          newGuestMap[row.name] = row.id
-          updated++
+          const { error: updateErr } = await supabase.from('guests').update(updateObj).eq('id', row.id)
+          if (updateErr) {
+            importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: updateErr.message })
+          } else {
+            newGuestMap[row.name] = row.id
+            updated++
+          }
           continue
         }
       }
@@ -81,15 +85,17 @@ export async function POST(
       if (row.allergy_tags.length > 0) insertObj.allergy_tags = row.allergy_tags
       if (row.allergy_custom !== null) insertObj.allergy_custom = row.allergy_custom
       if (row.trink_alkohol !== null) insertObj.trink_alkohol = row.trink_alkohol
-      if (row.notes !== null) insertObj.message = row.notes
+      if (row.notes !== null) insertObj.notes = row.notes
 
-      const { data: inserted } = await supabase
+      const { data: inserted, error: insertErr } = await supabase
         .from('guests')
         .insert(insertObj)
         .select('id')
         .single()
 
-      if (inserted) {
+      if (insertErr) {
+        importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: insertErr.message })
+      } else if (inserted) {
         newGuestMap[row.name] = inserted.id
         added++
       }
@@ -137,8 +143,12 @@ export async function POST(
           if (row.trink_alkohol !== null) updateObj.trink_alkohol = row.trink_alkohol
           if (row.age_category !== null) updateObj.age_category = row.age_category
 
-          await supabase.from('begleitpersonen').update(updateObj).eq('id', row.id)
-          updated++
+          const { error: bpUpdateErr } = await supabase.from('begleitpersonen').update(updateObj).eq('id', row.id)
+          if (bpUpdateErr) {
+            importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: bpUpdateErr.message })
+          } else {
+            updated++
+          }
           continue
         }
       }
@@ -153,8 +163,12 @@ export async function POST(
       if (row.trink_alkohol !== null) insertObj.trink_alkohol = row.trink_alkohol
       if (row.age_category !== null) insertObj.age_category = row.age_category
 
-      await supabase.from('begleitpersonen').insert(insertObj)
-      added++
+      const { error: bpInsertErr } = await supabase.from('begleitpersonen').insert(insertObj)
+      if (bpInsertErr) {
+        importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: bpInsertErr.message })
+      } else {
+        added++
+      }
     } catch {
       importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: 'Datenbankfehler beim Verarbeiten der Begleitperson' })
     }
