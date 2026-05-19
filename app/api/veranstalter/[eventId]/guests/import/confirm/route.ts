@@ -76,6 +76,7 @@ export async function POST(
       const insertObj: Record<string, unknown> = {
         event_id: eventId,
         name: row.name,
+        created_by: user.id,
       }
       if (row.email !== null) insertObj.email = row.email
       if (row.phone !== null) insertObj.phone = row.phone
