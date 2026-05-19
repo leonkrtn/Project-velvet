@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useRef } from 'react'
-import { X, Upload, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { X, Upload, AlertCircle, CheckCircle2, Copy, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { ParsedRow } from '@/app/api/veranstalter/[eventId]/guests/import/route'
 
@@ -35,7 +35,31 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
   const [stats, setStats] = useState<ParseStats | null>(null)
   const [progress, setProgress] = useState({ done: 0, total: 0 })
   const [result, setResult] = useState<{ added: number; updated: number; errors: ConfirmError[] } | null>(null)
+  const [importLog, setImportLog] = useState<string[]>([])
+  const [copied, setCopied] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const logRef = useRef<HTMLPreElement>(null)
+
+  function addLog(line: string) {
+    setImportLog(prev => [...prev, line])
+  }
+
+  async function copyLog() {
+    const text = importLog.join('\n')
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // fallback: select text in pre
+      if (logRef.current) {
+        const range = document.createRange()
+        range.selectNodeContents(logRef.current)
+        window.getSelection()?.removeAllRanges()
+        window.getSelection()?.addRange(range)
+      }
+    }
+  }
 
   async function handleFile(file: File) {
     if (!file.name.endsWith('.xlsx')) {
@@ -83,12 +107,23 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
     const validRows = rows.filter(r => r.action !== 'error')
     if (validRows.length === 0) return
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setError('Nicht angemeldet.'); return }
+    setImportLog([])
+    setCopied(false)
+
+    const { data: authData, error: authError } = await supabase.auth.getUser()
+    if (authError || !authData.user) {
+      setError('Nicht angemeldet.')
+      addLog(`[AUTH] FEHLER: ${authError?.message ?? 'Kein Benutzer'}`)
+      return
+    }
+    const user = authData.user
+    addLog(`[AUTH] Benutzer: ${user.id} (${user.email ?? '–'})`)
 
     const guestRows = validRows.filter(r => r.typ === 'Gast')
     const begleitRows = validRows.filter(r => r.typ === 'Begleitperson')
     const total = validRows.length
+
+    addLog(`[START] ${guestRows.length} Gäste, ${begleitRows.length} Begleitpersonen`)
 
     setStep('importing')
     setProgress({ done: 0, total })
@@ -100,6 +135,7 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
 
     for (const row of guestRows) {
       if (row.action === 'update' && row.id) {
+        addLog(`[GAST] Zeile ${row.rowIndex} · "${row.name}" → UPDATE id=${row.id}`)
         const payload: Record<string, unknown> = {}
         if (row.name) payload.name = row.name
         if (row.email !== null) payload.email = row.email
@@ -112,15 +148,19 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
         if (row.trink_alkohol !== null) payload.trink_alkohol = row.trink_alkohol
         if (row.notes !== null) payload.notes = row.notes
 
+        addLog(`  payload: ${JSON.stringify(payload)}`)
         const { error } = await supabase.from('guests').update(payload).eq('id', row.id)
         if (error) {
+          addLog(`  FEHLER: ${error.message} (code=${error.code}, details=${error.details})`)
           importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: error.message })
         } else {
+          addLog(`  OK`)
           newGuestMap[row.name] = row.id
           updated++
         }
       } else {
-        const { data, error } = await supabase.from('guests').insert({
+        addLog(`[GAST] Zeile ${row.rowIndex} · "${row.name}" → INSERT (neu)`)
+        const insertPayload = {
           event_id: eventId,
           name: row.name,
           created_by: user.id,
@@ -133,13 +173,21 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
           notes: row.notes ?? null,
           email: row.email ?? null,
           phone: row.phone ?? null,
-        }).select('id').single()
+        }
+        addLog(`  payload: ${JSON.stringify(insertPayload)}`)
+
+        const { data, error } = await supabase.from('guests').insert(insertPayload).select('id').single()
 
         if (error) {
+          addLog(`  FEHLER: ${error.message} (code=${error.code}, hint=${error.hint ?? '–'}, details=${error.details ?? '–'})`)
           importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: error.message })
         } else if (data) {
+          addLog(`  OK id=${data.id}`)
           newGuestMap[row.name] = data.id
           added++
+        } else {
+          addLog(`  FEHLER: Keine Daten zurückgegeben (kein Fehler-Objekt)`)
+          importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: 'Kein Datensatz zurückgegeben' })
         }
       }
       setProgress(p => ({ ...p, done: p.done + 1 }))
@@ -147,24 +195,32 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
 
     for (const row of begleitRows) {
       let parentId: string | null = newGuestMap[row.hauptgast ?? ''] ?? null
+      addLog(`[BP] Zeile ${row.rowIndex} · "${row.name}" → Hauptgast: "${row.hauptgast ?? '–'}"`)
 
       if (!parentId && row.hauptgast) {
-        const { data } = await supabase
+        addLog(`  Suche Hauptgast in DB…`)
+        const { data, error: lookupErr } = await supabase
           .from('guests')
           .select('id')
           .eq('event_id', eventId)
           .eq('name', row.hauptgast)
           .single()
-        if (data) parentId = data.id
+        if (lookupErr) addLog(`  Lookup-Fehler: ${lookupErr.message}`)
+        if (data) { parentId = data.id; addLog(`  Hauptgast gefunden: id=${data.id}`) }
+        else addLog(`  Hauptgast NICHT gefunden`)
+      } else if (parentId) {
+        addLog(`  Hauptgast aus aktuellem Import: id=${parentId}`)
       }
 
       if (!parentId) {
+        addLog(`  FEHLER: Hauptgast nicht vorhanden`)
         importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: `Hauptgast "${row.hauptgast}" nicht gefunden` })
         setProgress(p => ({ ...p, done: p.done + 1 }))
         continue
       }
 
       if (row.action === 'update' && row.id) {
+        addLog(`  UPDATE id=${row.id}`)
         const payload: Record<string, unknown> = {}
         if (row.name) payload.name = row.name
         if (row.meal_choice !== null) payload.meal_choice = row.meal_choice
@@ -173,14 +229,18 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
         if (row.trink_alkohol !== null) payload.trink_alkohol = row.trink_alkohol
         if (row.age_category !== null) payload.age_category = row.age_category
 
+        addLog(`  payload: ${JSON.stringify(payload)}`)
         const { error } = await supabase.from('begleitpersonen').update(payload).eq('id', row.id)
         if (error) {
+          addLog(`  FEHLER: ${error.message} (code=${error.code})`)
           importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: error.message })
         } else {
+          addLog(`  OK`)
           updated++
         }
       } else {
-        const { error } = await supabase.from('begleitpersonen').insert({
+        addLog(`  INSERT (neu)`)
+        const bpPayload = {
           guest_id: parentId,
           name: row.name,
           meal_choice: row.meal_choice ?? null,
@@ -188,17 +248,22 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
           allergy_custom: row.allergy_custom ?? null,
           trink_alkohol: row.trink_alkohol ?? null,
           age_category: row.age_category ?? null,
-        })
+        }
+        addLog(`  payload: ${JSON.stringify(bpPayload)}`)
+        const { error } = await supabase.from('begleitpersonen').insert(bpPayload)
 
         if (error) {
+          addLog(`  FEHLER: ${error.message} (code=${error.code}, hint=${error.hint ?? '–'})`)
           importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: error.message })
         } else {
+          addLog(`  OK`)
           added++
         }
       }
       setProgress(p => ({ ...p, done: p.done + 1 }))
     }
 
+    addLog(`[ENDE] hinzugefügt=${added}, aktualisiert=${updated}, fehler=${importErrors.length}`)
     setResult({ added, updated, errors: importErrors })
     setStep('done')
   }
@@ -214,7 +279,7 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
       onClick={step === 'importing' ? undefined : onClose}
     >
       <div
-        style={{ background: '#fff', borderRadius: 'var(--radius)', width: '100%', maxWidth: step === 'preview' ? 860 : 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+        style={{ background: '#fff', borderRadius: 'var(--radius)', width: '100%', maxWidth: step === 'preview' ? 860 : step === 'done' ? 560 : 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
         onClick={e => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
@@ -334,11 +399,11 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
               </div>
 
               {result.errors.length > 0 && (
-                <div style={{ marginBottom: 20 }}>
+                <div style={{ marginBottom: 16 }}>
                   <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#DC2626', marginBottom: 8 }}>
                     {result.errors.length} Fehler
                   </p>
-                  <div style={{ maxHeight: 160, overflowY: 'auto', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 'var(--radius-sm)' }}>
+                  <div style={{ maxHeight: 120, overflowY: 'auto', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 'var(--radius-sm)' }}>
                     {result.errors.map((e, i) => (
                       <div key={i} style={{ padding: '7px 12px', borderBottom: i < result.errors.length - 1 ? '1px solid rgba(220,38,38,0.1)' : undefined, fontSize: 12 }}>
                         <span style={{ fontWeight: 600 }}>Zeile {e.rowIndex} · {e.name || '—'}: </span>
@@ -348,6 +413,27 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
                   </div>
                 </div>
               )}
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: 'var(--text-tertiary)', margin: 0 }}>
+                    Protokoll
+                  </p>
+                  <button
+                    onClick={copyLog}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: copied ? '#EAF5EE' : '#F5F5F7', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', color: copied ? '#3D7A56' : 'var(--text-secondary)', fontWeight: 500 }}
+                  >
+                    {copied ? <Check size={12} /> : <Copy size={12} />}
+                    {copied ? 'Kopiert' : 'Kopieren'}
+                  </button>
+                </div>
+                <pre
+                  ref={logRef}
+                  style={{ margin: 0, padding: '10px 12px', background: '#0F172A', color: '#94A3B8', fontSize: 11, fontFamily: 'monospace', borderRadius: 'var(--radius-sm)', maxHeight: 200, overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6 }}
+                >
+                  {importLog.join('\n')}
+                </pre>
+              </div>
 
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <button
