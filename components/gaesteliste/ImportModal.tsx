@@ -83,6 +83,9 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
     const validRows = rows.filter(r => r.action !== 'error')
     if (validRows.length === 0) return
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setError('Nicht angemeldet.'); return }
+
     const guestRows = validRows.filter(r => r.typ === 'Gast')
     const begleitRows = validRows.filter(r => r.typ === 'Begleitperson')
     const total = validRows.length
@@ -120,6 +123,7 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
         const { data, error } = await supabase.from('guests').insert({
           event_id: eventId,
           name: row.name,
+          created_by: user.id,
           status: row.status ?? 'angelegt',
           side: row.side ?? null,
           meal_choice: row.meal_choice ?? null,
