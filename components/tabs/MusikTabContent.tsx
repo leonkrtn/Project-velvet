@@ -1,7 +1,7 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, Edit2, Check, X, Heart, Ban, ListMusic, Lightbulb, Music2, Link } from 'lucide-react'
+import { Plus, Trash2, Edit2, Check, X, Heart, Ban, ListMusic, Lightbulb, Music2, Link, ExternalLink } from 'lucide-react'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -724,10 +724,30 @@ function PlaylistCard({
   const embedUrl = buildEmbedUrl(pl.url, pl.platform)
   const color    = PLATFORM_COLORS[pl.platform]
 
-  const iframeStyle: React.CSSProperties = {
-    border: 'none', borderRadius: 8, width: '100%',
-    height: pl.platform === 'spotify' ? 152 : pl.platform === 'apple_music' ? 175 : 200,
-    display: 'block',
+  const defaultHeight = pl.platform === 'spotify' ? 352 : pl.platform === 'apple_music' ? 400 : 450
+  const [height, setHeight] = useState(defaultHeight)
+  const dragRef = useRef({ active: false, startY: 0, startH: 0 })
+
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!dragRef.current.active) return
+      const delta = e.clientY - dragRef.current.startY
+      setHeight(Math.max(120, dragRef.current.startH + delta))
+    }
+    function onMouseUp() {
+      dragRef.current.active = false
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [])
+
+  function onDragStart(e: React.MouseEvent) {
+    e.preventDefault()
+    dragRef.current = { active: true, startY: e.clientY, startH: height }
   }
 
   return (
@@ -739,6 +759,15 @@ function PlaylistCard({
           {pl.title || PLATFORM_LABELS[pl.platform]}
         </span>
         <span style={{ fontSize: 11, color: 'var(--bp-ink-3, #9b8e85)', flexShrink: 0 }}>{PLATFORM_LABELS[pl.platform]}</span>
+        <a
+          href={pl.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Im Browser öffnen"
+          style={{ display: 'flex', alignItems: 'center', padding: '2px 4px', opacity: 0.5, flexShrink: 0, color: 'var(--bp-ink-2, #6b5e54)' }}
+        >
+          <ExternalLink size={13} />
+        </a>
         {canEdit && (
           <button
             onClick={onDelete}
@@ -751,15 +780,24 @@ function PlaylistCard({
 
       {/* Embed or fallback */}
       {embedUrl ? (
-        <div style={{ padding: pl.platform === 'spotify' ? 0 : 8 }}>
-          <iframe
-            src={embedUrl}
-            style={iframeStyle}
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-            title={pl.title || PLATFORM_LABELS[pl.platform]}
-          />
-        </div>
+        <>
+          <div style={{ padding: pl.platform === 'spotify' ? 0 : 8 }}>
+            <iframe
+              src={embedUrl}
+              style={{ border: 'none', borderRadius: pl.platform === 'spotify' ? 0 : 8, width: '100%', height, display: 'block' }}
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+              title={pl.title || PLATFORM_LABELS[pl.platform]}
+            />
+          </div>
+          {/* Resize handle */}
+          <div
+            onMouseDown={onDragStart}
+            style={{ height: 14, cursor: 'ns-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.02)', borderTop: '1px solid var(--bp-rule, #ede5dc)' }}
+          >
+            <div style={{ width: 36, height: 3, borderRadius: 2, background: 'var(--bp-rule, #d6cdc5)' }} />
+          </div>
+        </>
       ) : (
         <div style={{ padding: '14px 16px' }}>
           <a href={pl.url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: color, textDecoration: 'none', wordBreak: 'break-all' }}>
