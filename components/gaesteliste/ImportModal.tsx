@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useRef } from 'react'
 import { X, Upload, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 import type { ParsedRow } from '@/app/api/veranstalter/[eventId]/guests/import/route'
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
   onSuccess: (result: { added: number; updated: number }) => void
 }
 
-type Step = 'upload' | 'preview' | 'done'
+type Step = 'upload' | 'preview' | 'importing' | 'done'
 
 interface ParseStats {
   total: number
@@ -18,15 +19,22 @@ interface ParseStats {
   errors: number
 }
 
+interface ConfirmError {
+  rowIndex: number
+  name: string
+  reason: string
+}
+
 export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
+  const supabase = createClient()
   const [step, setStep] = useState<Step>('upload')
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [stats, setStats] = useState<ParseStats | null>(null)
-  const [result, setResult] = useState<{ added: number; updated: number; errors: { rowIndex: number; name: string; reason: string }[] } | null>(null)
-  const [confirming, setConfirming] = useState(false)
+  const [progress, setProgress] = useState({ done: 0, total: 0 })
+  const [result, setResult] = useState<{ added: number; updated: number; errors: ConfirmError[] } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleFile(file: File) {
@@ -36,7 +44,6 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
     }
     setError(null)
     setLoading(true)
-
     try {
       const form = new FormData()
       form.append('file', file)
@@ -47,7 +54,6 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
       const json = await res.json()
       if (!res.ok) {
         setError(json.error ?? 'Fehler beim Verarbeiten der Datei.')
-        setLoading(false)
         return
       }
       setRows(json.rows)
@@ -63,6 +69,7 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
   function onFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) handleFile(file)
+    e.target.value = ''
   }
 
   function onDrop(e: React.DragEvent) {
@@ -75,26 +82,121 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
   async function confirmImport() {
     const validRows = rows.filter(r => r.action !== 'error')
     if (validRows.length === 0) return
-    setConfirming(true)
-    setError(null)
-    try {
-      const res = await fetch(`/api/veranstalter/${eventId}/guests/import/confirm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: validRows }),
-      })
-      const json = await res.json()
-      if (!res.ok) {
-        setError(json.error ?? 'Fehler beim Importieren.')
-        return
+
+    const guestRows = validRows.filter(r => r.typ === 'Gast')
+    const begleitRows = validRows.filter(r => r.typ === 'Begleitperson')
+    const total = validRows.length
+
+    setStep('importing')
+    setProgress({ done: 0, total })
+
+    let added = 0
+    let updated = 0
+    const importErrors: ConfirmError[] = []
+    const newGuestMap: Record<string, string> = {}
+
+    for (const row of guestRows) {
+      if (row.action === 'update' && row.id) {
+        const payload: Record<string, unknown> = {}
+        if (row.name) payload.name = row.name
+        if (row.email !== null) payload.email = row.email
+        if (row.phone !== null) payload.phone = row.phone
+        if (row.status !== null) payload.status = row.status
+        if (row.side !== null) payload.side = row.side
+        if (row.meal_choice !== null) payload.meal_choice = row.meal_choice
+        if (row.allergy_tags.length > 0) payload.allergy_tags = row.allergy_tags
+        if (row.allergy_custom !== null) payload.allergy_custom = row.allergy_custom
+        if (row.trink_alkohol !== null) payload.trink_alkohol = row.trink_alkohol
+        if (row.notes !== null) payload.notes = row.notes
+
+        const { error } = await supabase.from('guests').update(payload).eq('id', row.id)
+        if (error) {
+          importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: error.message })
+        } else {
+          newGuestMap[row.name] = row.id
+          updated++
+        }
+      } else {
+        const { data, error } = await supabase.from('guests').insert({
+          event_id: eventId,
+          name: row.name,
+          status: row.status ?? 'angelegt',
+          side: row.side ?? null,
+          meal_choice: row.meal_choice ?? null,
+          allergy_tags: row.allergy_tags.length > 0 ? row.allergy_tags : [],
+          allergy_custom: row.allergy_custom ?? null,
+          trink_alkohol: row.trink_alkohol ?? null,
+          notes: row.notes ?? null,
+          email: row.email ?? null,
+          phone: row.phone ?? null,
+        }).select('id').single()
+
+        if (error) {
+          importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: error.message })
+        } else if (data) {
+          newGuestMap[row.name] = data.id
+          added++
+        }
       }
-      setResult({ added: json.added ?? 0, updated: json.updated ?? 0, errors: json.errors ?? [] })
-      setStep('done')
-    } catch {
-      setError('Netzwerkfehler beim Importieren.')
-    } finally {
-      setConfirming(false)
+      setProgress(p => ({ ...p, done: p.done + 1 }))
     }
+
+    for (const row of begleitRows) {
+      let parentId: string | null = newGuestMap[row.hauptgast ?? ''] ?? null
+
+      if (!parentId && row.hauptgast) {
+        const { data } = await supabase
+          .from('guests')
+          .select('id')
+          .eq('event_id', eventId)
+          .eq('name', row.hauptgast)
+          .single()
+        if (data) parentId = data.id
+      }
+
+      if (!parentId) {
+        importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: `Hauptgast "${row.hauptgast}" nicht gefunden` })
+        setProgress(p => ({ ...p, done: p.done + 1 }))
+        continue
+      }
+
+      if (row.action === 'update' && row.id) {
+        const payload: Record<string, unknown> = {}
+        if (row.name) payload.name = row.name
+        if (row.meal_choice !== null) payload.meal_choice = row.meal_choice
+        if (row.allergy_tags.length > 0) payload.allergy_tags = row.allergy_tags
+        if (row.allergy_custom !== null) payload.allergy_custom = row.allergy_custom
+        if (row.trink_alkohol !== null) payload.trink_alkohol = row.trink_alkohol
+        if (row.age_category !== null) payload.age_category = row.age_category
+
+        const { error } = await supabase.from('begleitpersonen').update(payload).eq('id', row.id)
+        if (error) {
+          importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: error.message })
+        } else {
+          updated++
+        }
+      } else {
+        const { error } = await supabase.from('begleitpersonen').insert({
+          guest_id: parentId,
+          name: row.name,
+          meal_choice: row.meal_choice ?? null,
+          allergy_tags: row.allergy_tags.length > 0 ? row.allergy_tags : [],
+          allergy_custom: row.allergy_custom ?? null,
+          trink_alkohol: row.trink_alkohol ?? null,
+          age_category: row.age_category ?? null,
+        })
+
+        if (error) {
+          importErrors.push({ rowIndex: row.rowIndex, name: row.name, reason: error.message })
+        } else {
+          added++
+        }
+      }
+      setProgress(p => ({ ...p, done: p.done + 1 }))
+    }
+
+    setResult({ added, updated, errors: importErrors })
+    setStep('done')
   }
 
   const hasValidRows = rows.some(r => r.action !== 'error')
@@ -104,79 +206,48 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label="Gäste importieren"
-      style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-        zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-      }}
-      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={step === 'importing' ? undefined : onClose}
     >
       <div
-        style={{
-          background: '#fff', borderRadius: 'var(--radius)', width: '100%',
-          maxWidth: step === 'preview' ? 860 : 480,
-          maxHeight: '90vh', overflowY: 'auto',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-        }}
+        style={{ background: '#fff', borderRadius: 'var(--radius)', width: '100%', maxWidth: step === 'preview' ? 860 : 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
         onClick={e => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
             {step === 'upload' && 'Gäste importieren'}
             {step === 'preview' && 'Importvorschau'}
+            {step === 'importing' && 'Import läuft…'}
             {step === 'done' && 'Import abgeschlossen'}
           </h3>
-          <button
-            onClick={onClose}
-            aria-label="Schließen"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', padding: 4 }}
-          >
-            <X size={16} />
-          </button>
+          {step !== 'importing' && (
+            <button onClick={onClose} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex', padding: 4 }}>
+              <X size={16} />
+            </button>
+          )}
         </div>
 
         <div style={{ padding: 20 }}>
+
+          {/* ── Upload ── */}
           {step === 'upload' && (
             <div>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
-                Lade eine .xlsx-Datei hoch (z.B. die heruntergeladene Vorlage oder einen Export).
-                Leere Zellen werden ignoriert und behalten den bestehenden Wert.
+                Lade eine .xlsx-Datei hoch (Export oder Vorlage). Leere Zellen behalten den bestehenden Wert.
               </p>
-
               <div
                 onDragOver={e => { e.preventDefault(); setDragging(true) }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={onDrop}
                 onClick={() => fileInputRef.current?.click()}
-                style={{
-                  border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border)'}`,
-                  borderRadius: 'var(--radius)',
-                  padding: '40px 24px',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  background: dragging ? 'rgba(0,0,0,0.02)' : 'var(--surface)',
-                  transition: 'border-color 0.15s, background 0.15s',
-                }}
+                style={{ border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 'var(--radius)', padding: '40px 24px', textAlign: 'center', cursor: 'pointer', background: dragging ? 'rgba(0,0,0,0.02)' : 'var(--surface)', transition: 'border-color 0.15s, background 0.15s' }}
               >
                 <Upload size={32} style={{ color: 'var(--text-tertiary)', marginBottom: 12 }} />
-                <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>
-                  Datei hierher ziehen oder klicken
-                </p>
+                <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Datei hierher ziehen oder klicken</p>
                 <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Nur .xlsx-Dateien</p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".xlsx"
-                  style={{ display: 'none' }}
-                  onChange={onFileInput}
-                />
+                <input ref={fileInputRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={onFileInput} />
               </div>
-
-              {loading && (
-                <p style={{ marginTop: 12, fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center' }}>
-                  Datei wird verarbeitet…
-                </p>
-              )}
-
+              {loading && <p style={{ marginTop: 12, fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center' }}>Datei wird analysiert…</p>}
               {error && (
                 <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#FEF2F2', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(220,38,38,0.2)' }}>
                   <AlertCircle size={14} style={{ color: '#DC2626', flexShrink: 0 }} />
@@ -186,65 +257,38 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
             </div>
           )}
 
+          {/* ── Preview ── */}
           {step === 'preview' && stats && (
             <div>
               <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 20, background: '#EAF5EE', color: '#3D7A56', fontWeight: 600 }}>
-                  {stats.toCreate} neu
-                </span>
-                <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 20, background: '#EFF6FF', color: '#2563EB', fontWeight: 600 }}>
-                  {stats.toUpdate} aktualisieren
-                </span>
-                {stats.errors > 0 && (
-                  <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 20, background: '#FEF2F2', color: '#DC2626', fontWeight: 600 }}>
-                    {stats.errors} Fehler
-                  </span>
-                )}
+                <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 20, background: '#EAF5EE', color: '#3D7A56', fontWeight: 600 }}>{stats.toCreate} neu</span>
+                <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 20, background: '#EFF6FF', color: '#2563EB', fontWeight: 600 }}>{stats.toUpdate} aktualisieren</span>
+                {stats.errors > 0 && <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 20, background: '#FEF2F2', color: '#DC2626', fontWeight: 600 }}>{stats.errors} Fehler</span>}
               </div>
 
-              {error && (
-                <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#FEF2F2', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(220,38,38,0.2)' }}>
-                  <AlertCircle size={14} style={{ color: '#DC2626', flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: '#DC2626' }}>{error}</span>
-                </div>
-              )}
-
-              <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+              <div style={{ overflowX: 'auto', marginBottom: 16, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: '#F5F5F7' }}>
-                      {['Zeile', 'Typ', 'Hauptgast', 'Name', 'Status', 'Aktion', 'Fehler'].map(h => (
-                        <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>
-                          {h}
-                        </th>
+                      {['Zeile', 'Typ', 'Hauptgast', 'Name', 'Status', 'Aktion', 'Hinweis'].map(h => (
+                        <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map(row => (
-                      <tr
-                        key={row.rowIndex}
-                        style={{ background: row.errors.length > 0 ? '#FEF2F2' : 'transparent', borderBottom: '1px solid var(--border)' }}
-                      >
+                      <tr key={row.rowIndex} style={{ background: row.errors.length > 0 ? '#FEF2F2' : 'transparent', borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '7px 10px', color: 'var(--text-secondary)' }}>{row.rowIndex}</td>
                         <td style={{ padding: '7px 10px' }}>{row.typ}</td>
                         <td style={{ padding: '7px 10px', color: 'var(--text-secondary)' }}>{row.hauptgast ?? '—'}</td>
                         <td style={{ padding: '7px 10px', fontWeight: 500 }}>{row.name || <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>leer</span>}</td>
                         <td style={{ padding: '7px 10px', color: 'var(--text-secondary)' }}>{row.status ?? '—'}</td>
                         <td style={{ padding: '7px 10px' }}>
-                          {row.action === 'create' && (
-                            <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#EAF5EE', color: '#3D7A56', fontWeight: 600 }}>Neu</span>
-                          )}
-                          {row.action === 'update' && (
-                            <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#EFF6FF', color: '#2563EB', fontWeight: 600 }}>Aktualisieren</span>
-                          )}
-                          {row.action === 'error' && (
-                            <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FEF2F2', color: '#DC2626', fontWeight: 600 }}>Fehler</span>
-                          )}
+                          {row.action === 'create' && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#EAF5EE', color: '#3D7A56', fontWeight: 600 }}>Neu</span>}
+                          {row.action === 'update' && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#EFF6FF', color: '#2563EB', fontWeight: 600 }}>Aktualisieren</span>}
+                          {row.action === 'error' && <span style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: '#FEF2F2', color: '#DC2626', fontWeight: 600 }}>Fehler</span>}
                         </td>
-                        <td style={{ padding: '7px 10px', color: '#DC2626', fontSize: 11 }}>
-                          {row.errors.join(', ') || '—'}
-                        </td>
+                        <td style={{ padding: '7px 10px', color: '#DC2626', fontSize: 11 }}>{row.errors.join(', ') || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -252,44 +296,43 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
               </div>
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => { setStep('upload'); setRows([]); setStats(null); setError(null) }}
-                  style={{ padding: '8px 14px', background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}
-                >
-                  Zurück
-                </button>
-                <button
-                  onClick={confirmImport}
-                  disabled={!hasValidRows || confirming}
-                  style={{
-                    padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none',
-                    borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: !hasValidRows || confirming ? 'not-allowed' : 'pointer',
-                    fontFamily: 'inherit', fontWeight: 500, opacity: !hasValidRows || confirming ? 0.6 : 1,
-                  }}
-                >
-                  {confirming ? 'Wird importiert…' : 'Import bestätigen'}
+                <button onClick={() => { setStep('upload'); setRows([]); setStats(null); setError(null) }} style={{ padding: '8px 14px', background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Zurück</button>
+                <button onClick={confirmImport} disabled={!hasValidRows} style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: !hasValidRows ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontWeight: 500, opacity: !hasValidRows ? 0.6 : 1 }}>
+                  Import bestätigen
                 </button>
               </div>
             </div>
           )}
 
+          {/* ── Importing ── */}
+          {step === 'importing' && (
+            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+              <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 12 }}>Wird importiert…</p>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{progress.done} / {progress.total}</p>
+              <div style={{ marginTop: 16, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: '100%', background: 'var(--accent)', borderRadius: 2, width: `${progress.total > 0 ? (progress.done / progress.total) * 100 : 0}%`, transition: 'width 0.2s' }} />
+              </div>
+            </div>
+          )}
+
+          {/* ── Done ── */}
           {step === 'done' && result && (
             <div style={{ padding: '8px 0' }}>
-              <div style={{ textAlign: 'center', marginBottom: result.errors.length > 0 ? 20 : 0 }}>
+              <div style={{ textAlign: 'center', marginBottom: result.errors.length > 0 ? 20 : 24 }}>
                 <CheckCircle2 size={36} style={{ color: '#3D7A56', marginBottom: 12 }} />
                 <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Import abgeschlossen</p>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                   {result.added > 0 && `${result.added} hinzugefügt`}
                   {result.added > 0 && result.updated > 0 && ' · '}
                   {result.updated > 0 && `${result.updated} aktualisiert`}
-                  {result.added === 0 && result.updated === 0 && result.errors.length === 0 && 'Keine Änderungen'}
+                  {result.added === 0 && result.updated === 0 && 'Keine Änderungen'}
                 </p>
               </div>
 
               {result.errors.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 20 }}>
                   <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#DC2626', marginBottom: 8 }}>
-                    {result.errors.length} Fehler beim Speichern
+                    {result.errors.length} Fehler
                   </p>
                   <div style={{ maxHeight: 160, overflowY: 'auto', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 'var(--radius-sm)' }}>
                     {result.errors.map((e, i) => (
@@ -312,6 +355,7 @@ export default function ImportModal({ eventId, onClose, onSuccess }: Props) {
               </div>
             </div>
           )}
+
         </div>
       </div>
     </div>
