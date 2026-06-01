@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Velvet — Vollständige Funktionsübersicht</title>
+  <style>
+    :root {
+      --gold: #b8943e;
+      --gold-light: #d4af6a;
+      --gold-dim: #b8943e22;
+      --bg: #0f0f0f;
+      --bg2: #161616;
+      --bg3: #1e1e1e;
+      --border: #2a2a2a;
+      --text: #e8e8e8;
+      --text-dim: #888;
+      --text-muted: #555;
+      --green: #4caf7d;
+      --red: #e05555;
+      --blue: #5b9cf6;
+      --purple: #a78bfa;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #111 0%, #1a1508 100%);
+      border-bottom: 1px solid var(--gold);
+      padding: 48px 40px 40px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 28px;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      color: var(--gold-light);
+    }
+    header p {
+      color: var(--text-dim);
+      font-size: 13px;
+      margin-top: 6px;
+    }
+    .header-badges {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .badge-gold   { background: var(--gold-dim); color: var(--gold-light); border: 1px solid var(--gold); }
+    .badge-green  { background: #4caf7d18; color: var(--green); border: 1px solid #4caf7d44; }
+    .badge-blue   { background: #5b9cf618; color: var(--blue); border: 1px solid #5b9cf644; }
+    .badge-purple { background: #a78bfa18; color: var(--purple); border: 1px solid #a78bfa44; }
+    .badge-red    { background: #e0555518; color: var(--red); border: 1px solid #e0555544; }
+
+    /* ── LAYOUT ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: calc(100vh - 130px);
+    }
+
+    /* ── SIDEBAR ── */
+    nav {
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky;
+      top: 130px;
+      height: calc(100vh - 130px);
+      overflow-y: auto;
+      background: var(--bg);
+    }
+    nav::-webkit-scrollbar { width: 4px; }
+    nav::-webkit-scrollbar-track { background: transparent; }
+    nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 16px 20px 6px;
+    }
+    nav a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 20px;
+      text-decoration: none;
+      color: var(--text-dim);
+      font-size: 13px;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    nav a:hover {
+      color: var(--text);
+      background: var(--bg2);
+      border-left-color: var(--gold);
+    }
+    nav a .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    /* ── CONTENT ── */
+    main {
+      padding: 40px 48px;
+      max-width: 960px;
+    }
+
+    /* ── SECTIONS ── */
+    .section {
+      margin-bottom: 64px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: var(--gold-dim);
+      border: 1px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--gold-light);
+    }
+    .section-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── SUB-SECTIONS ── */
+    .sub-section {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    .sub-section + .sub-section { margin-top: 0; }
+    .sub-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sub-title .route {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-muted);
+      font-family: 'Courier New', monospace;
+      background: var(--bg3);
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    /* ── FEATURE GRID ── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .feature-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 13px;
+    }
+    .feature-card strong {
+      display: block;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .feature-card span {
+      color: var(--text-dim);
+      font-size: 12px;
+    }
+
+    /* ── LISTS ── */
+    ul.feature-list {
+      list-style: none;
+      padding: 0;
+      margin-top: 10px;
+    }
+    ul.feature-list li {
+      padding: 5px 0 5px 18px;
+      position: relative;
+      color: var(--text-dim);
+      font-size: 13px;
+      border-bottom: 1px solid #1f1f1f;
+    }
+    ul.feature-list li:last-child { border-bottom: none; }
+    ul.feature-list li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: var(--gold);
+    }
+    ul.feature-list li strong { color: var(--text); }
+
+    /* ── TABLES ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--bg3);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid #1a1a1a;
+      color: var(--text-dim);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #1a1a1a; }
+    td strong { color: var(--text); }
+    td code {
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      background: var(--bg3);
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: var(--gold-light);
+    }
+
+    /* ── ACCESS BADGES ── */
+    .access-none   { color: var(--text-muted); }
+    .access-read   { color: var(--blue); }
+    .access-write  { color: var(--green); }
+    .access-full   { color: var(--gold-light); }
+
+    /* ── TAGS ── */
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin: 2px;
+    }
+    .tag-gold   { background: var(--gold-dim); color: var(--gold-light); }
+    .tag-green  { background: #4caf7d18; color: var(--green); }
+    .tag-blue   { background: #5b9cf618; color: var(--blue); }
+    .tag-red    { background: #e0555518; color: var(--red); }
+    .tag-gray   { background: #2a2a2a; color: var(--text-dim); }
+
+    /* ── CALLOUTS ── */
+    .callout {
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 14px 0;
+      font-size: 13px;
+      display: flex;
+      gap: 10px;
+    }
+    .callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .callout-warn { background: #e0555512; border: 1px solid #e0555540; }
+    .callout-warn .callout-icon { color: var(--red); }
+    .callout-info { background: #5b9cf612; border: 1px solid #5b9cf640; }
+    .callout-info .callout-icon { color: var(--blue); }
+    .callout-tip  { background: #b8943e12; border: 1px solid #b8943e40; }
+    .callout-tip .callout-icon { color: var(--gold-light); }
+    .callout-body { color: var(--text-dim); }
+    .callout-body strong { color: var(--text); }
+
+    /* ── STEP FLOW ── */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 12px;
+    }
+    .step {
+      display: flex;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--gold-dim);
+      border: 1px solid var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold-light);
+      flex-shrink: 0;
+    }
+    .step-body strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+    .step-body span { color: var(--text-dim); font-size: 12px; }
+
+    /* ── ROLES OVERVIEW ── */
+    .role-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .role-card {
+      border-radius: 10px;
+      padding: 18px;
+      border: 1px solid var(--border);
+    }
+    .role-card-icon { font-size: 22px; margin-bottom: 8px; }
+    .role-card-name { font-weight: 700; font-size: 14px; color: var(--text); margin-bottom: 4px; }
+    .role-card-desc { font-size: 12px; color: var(--text-dim); }
+    .role-veranstalter { background: linear-gradient(135deg, #b8943e18, #b8943e08); border-color: #b8943e44; }
+    .role-brautpaar    { background: linear-gradient(135deg, #e879a418, #e879a408); border-color: #e879a444; }
+    .role-dienstleister{ background: linear-gradient(135deg, #5b9cf618, #5b9cf608); border-color: #5b9cf644; }
+    .role-mitarbeiter  { background: linear-gradient(135deg, #4caf7d18, #4caf7d08); border-color: #4caf7d44; }
+
+    /* ── CODE BLOCK ── */
+    pre {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      color: #ccc;
+      margin-top: 12px;
+      line-height: 1.6;
+    }
+    pre .key   { color: var(--gold-light); }
+    pre .val   { color: var(--green); }
+    pre .comment { color: var(--text-muted); }
+
+    /* ── TOGGLE TABLE ── */
+    .toggle-row td:first-child code { color: var(--blue); }
+
+    /* ── ARCH DIAGRAM ── */
+    .arch {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-top: 12px;
+      text-align: center;
+    }
+    .arch-layer {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 20px;
+      margin: 8px auto;
+      max-width: 380px;
+      font-size: 13px;
+    }
+    .arch-layer strong { color: var(--text); display: block; font-size: 14px; }
+    .arch-layer span   { color: var(--text-dim); font-size: 12px; }
+    .arch-arrow { color: var(--gold); font-size: 20px; line-height: 1; }
+
+    /* ── BUG SECTION ── */
+    .bug-card {
+      background: #e0555510;
+      border: 1px solid #e0555550;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 14px;
+    }
+    .bug-title {
+      color: var(--red);
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bug-body { color: var(--text-dim); font-size: 13px; }
+    .bug-body strong { color: var(--text); }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Velvet — Vollständige Funktionsübersicht</h1>
+  <p>Next.js 15 · Supabase · Cloudflare R2 · TypeScript · Tailwind CSS</p>
+  <div class="header-badges">
+    <span class="badge badge-gold">Veranstalter-Portal</span>
+    <span class="badge badge-purple">Brautpaar-Portal</span>
+    <span class="badge badge-blue">Dienstleister-Portal</span>
+    <span class="badge badge-green">Mitarbeiter-Portal</span>
+    <span class="badge badge-red">2 bekannte Bugs</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ── NAV ── -->
+  <nav>
+    <div class="nav-section-label">Übersicht</div>
+    <a href="#rollen"><span class="dot"></span> Rollen & Portale</a>
+    <a href="#auth"><span class="dot"></span> Login & Signup</a>
+
+    <div class="nav-section-label">Veranstalter</div>
+    <a href="#v-events"><span class="dot"></span> Events verwalten</a>
+    <a href="#v-gaeste"><span class="dot"></span> Gästeliste</a>
+    <a href="#v-sitzplan"><span class="dot"></span> Sitzplan</a>
+    <a href="#v-ablauf"><span class="dot"></span> Ablaufplan</a>
+    <a href="#v-catering"><span class="dot"></span> Catering</a>
+    <a href="#v-deko"><span class="dot"></span> Dekoration</a>
+    <a href="#v-getraenke"><span class="dot"></span> Getränke</a>
+    <a href="#v-musik"><span class="dot"></span> Musik</a>
+    <a href="#v-patisserie"><span class="dot"></span> Patisserie</a>
+    <a href="#v-medien"><span class="dot"></span> Medien</a>
+    <a href="#v-budget"><span class="dot"></span> Budget</a>
+    <a href="#v-personal"><span class="dot"></span> Personalplanung</a>
+    <a href="#v-chats"><span class="dot"></span> Chats</a>
+    <a href="#v-dateien"><span class="dot"></span> Dateien</a>
+    <a href="#v-rechte"><span class="dot"></span> Berechtigungen</a>
+    <a href="#v-dashboard"><span class="dot"></span> Dashboard KPIs</a>
+    <a href="#v-config"><span class="dot"></span> Konfiguration</a>
+
+    <div class="nav-section-label">Brautpaar</div>
+    <a href="#b-portal"><span class="dot"></span> Alle Module</a>
+
+    <div class="nav-section-label">Dienstleister</div>
+    <a href="#d-portal"><span class="dot"></span> Portal & Tabs</a>
+
+    <div class="nav-section-label">Mitarbeiter</div>
+    <a href="#m-portal"><span class="dot"></span> Schichtplan & Chat</a>
+
+    <div class="nav-section-label">Gäste</div>
+    <a href="#rsvp"><span class="dot"></span> RSVP-Flow</a>
+
+    <div class="nav-section-label">System</div>
+    <a href="#toggles"><span class="dot"></span> Feature-Toggles</a>
+    <a href="#dateien-sys"><span class="dot"></span> Datei-System (R2)</a>
+    <a href="#realtime"><span class="dot"></span> Realtime</a>
+    <a href="#architektur"><span class="dot"></span> Architektur</a>
+    <a href="#bugs"><span class="dot"></span> Bekannte Bugs</a>
+  </nav>
+
+  <!-- ── MAIN ── -->
+  <main>
+
+    <!-- ════════════════════════════════ ROLLEN ════════════════════════════ -->
+    <div class="section" id="rollen">
+      <div class="section-header">
+        <div class="section-icon">👥</div>
+        <div>
+          <div class="section-title">Rollen & Portale</div>
+          <div class="section-subtitle">Vier getrennte Nutzerwelten mit unterschiedlichen Rechten</div>
+        </div>
+      </div>
+
+      <div class="role-cards">
+        <div class="role-card role-veranstalter">
+          <div class="role-card-icon">🏛</div>
+          <div class="role-card-name">Veranstalter</div>
+          <div class="role-card-desc">Hochzeitsplaner. Volle Kontrolle über alle Events. Kann Mitarbeiter und Dienstleister verwalten.</div>
+        </div>
+        <div class="role-card role-brautpaar">
+          <div class="role-card-icon">💍</div>
+          <div class="role-card-name">Brautpaar</div>
+          <div class="role-card-desc">Das Hochzeitspaar. Eigenes Portal mit ausgewählten Rechten (Gäste, Deko, Notizen, etc.).</div>
+        </div>
+        <div class="role-card role-dienstleister">
+          <div class="role-card-icon">🔧</div>
+          <div class="role-card-name">Dienstleister</div>
+          <div class="role-card-desc">Caterer, Fotograf, DJ etc. Sieht nur vom Veranstalter freigeschaltete Module.</div>
+        </div>
+        <div class="role-card role-mitarbeiter">
+          <div class="role-card-icon">👷</div>
+          <div class="role-card-name">Mitarbeiter</div>
+          <div class="role-card-desc">Servicekräfte, Barkeeper etc. Sieht Schichtplan, kann ein-/ausstempeln und chatten.</div>
+        </div>
+      </div>
+
+      <div class="callout callout-info" style="margin-top:16px;">
+        <div class="callout-icon">ℹ</div>
+        <div class="callout-body"><strong>Trauzeuge</strong> existiert als Rolle in der DB, hat aber <strong>kein eigenes Frontend-Portal</strong>. Die Rolle ist damit aktuell ohne Funktion.</div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ AUTH ════════════════════════════ -->
+    <div class="section" id="auth">
+      <div class="section-header">
+        <div class="section-icon">🔐</div>
+        <div>
+          <div class="section-title">Landing Page & Authentifizierung</div>
+          <div class="section-subtitle">Öffentliche Seiten, Login, Registrierung</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Landing Page <span class="route">/</span></div>
+        <ul class="feature-list">
+          <li><strong>Animierter Hero</strong> mit Typewriter-Effekt ("Einfach unvergesslich", "Gemeinsam organisiert"…)</li>
+          <li><strong>Parallax-Scrolling</strong> mit Scroll-Fortschrittsbalken</li>
+          <li>6 Feature-Cards mit Tilt-Animation bei Hover</li>
+          <li>Foto-Band, Testimonials-Karussell, FAQ mit ausklappbaren Items</li>
+          <li>CTA-Buttons leiten rollenbasiert weiter: nicht eingeloggt → Login / Veranstalter → Dashboard / Brautpaar → ihr Portal / Dienstleister → ihr Event</li>
+        </ul>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Login <span class="route">/login</span></div>
+        <ul class="feature-list">
+          <li>E-Mail + Passwort via Supabase Auth</li>
+          <li>Nach Login automatische Weiterleitung je nach Rolle</li>
+        </ul>
+        <table>
+          <tr><th>Rolle</th><th>Weiterleitung nach Login</th></tr>
+          <tr><td><strong>Veranstalter</strong> (approved)</td><td><code>/veranstalter/events</code></td></tr>
+          <tr><td><strong>Mitarbeiter</strong></td><td><code>/mitarbeiter</code></td></tr>
+          <tr><td><strong>Brautpaar / Dienstleister</strong></td><td>Event-spezifisches Portal</td></tr>
+          <tr><td>Keine Mitgliedschaft</td><td><code>/signup</code></td></tr>
+        </table>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Signup <span class="route">/signup</span></div>
+        <ul class="feature-list">
+          <li>Registrierung <strong>nur mit Einladungscode</strong> möglich</li>
+          <li>Codes gibt es für Brautpaar oder Dienstleister</li>
+          <li>Live-Code-Preview: zeigt Event-Name, Paar, Ablaufdatum <em>vor</em> der Registrierung</li>
+          <li>Nach Registrierung: Code automatisch eingelöst, User dem Event zugewiesen</li>
+          <li>Passwort-Validierung (mind. 8 Zeichen)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — EVENTS ════════════════════════ -->
+    <div class="section" id="v-events">
+      <div class="section-header">
+        <div class="section-icon">📅</div>
+        <div>
+          <div class="section-title">Veranstalter — Events verwalten</div>
+          <div class="section-subtitle">/veranstalter/events · /veranstalter/[eventId]/allgemein</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Events-Übersicht</div>
+        <ul class="feature-list">
+          <li>Liste aller verwalteten Events mit Suchfunktion</li>
+          <li>Event-Löschung mit Bestätigung</li>
+          <li>Event-Code für Einladungen automatisch generiert</li>
+        </ul>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">4-Schritt Event-Erstellungsassistent</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <strong>Basisdaten</strong>
+              <span>Event-Typ (Hochzeit / Firmenevent / Intern), Name, Datum, Uhrzeit, Location</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <strong>Details</strong>
+              <span>Adresse, Dresscode, Kinderregelung (ja/nein + optionaler Hinweistext), max. Begleitpersonen pro Gast</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <strong>Menüoptionen</strong>
+              <span>Welche Essenswahl-Optionen es geben soll: Fleisch / Fisch / Vegetarisch / Vegan</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <strong>Zusammenfassung</strong>
+              <span>Alle Eingaben reviewen vor dem finalen Erstellen</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Allgemein / Event-Einstellungen <span class="route">/veranstalter/[eventId]/allgemein</span></div>
+        <ul class="feature-list">
+          <li>Kerninfos bearbeiten: Paarnamen, Datum, Uhrzeit, Location, Adresse</li>
+          <li>Dresscode, Kinderregelung, max. Begleitpersonen</li>
+          <li>Menüoptionen aktivieren/deaktivieren</li>
+          <li>Event-Typ nachträglich ändern</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — GÄSTE ════════════════════════ -->
+    <div class="section" id="v-gaeste">
+      <div class="section-header">
+        <div class="section-icon">👤</div>
+        <div>
+          <div class="section-title">Veranstalter — Gästeliste</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/gaesteliste</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Was der Veranstalter sieht & kann</div>
+        <ul class="feature-list">
+          <li>Alle Gäste mit <strong>Status</strong>: <span class="tag tag-green">Zugesagt</span> <span class="tag tag-red">Abgesagt</span> <span class="tag tag-gray">Ausstehend</span> <span class="tag tag-blue">Angelegt</span></li>
+          <li>Gäste manuell hinzufügen, bearbeiten, löschen</li>
+          <li>Bulk-Import aus CSV-Datei</li>
+          <li>Filter nach Status, Essenwahl, Allergien, Transport</li>
+          <li>RSVP-Einladung erneut senden</li>
+          <li><strong>Hotel-Zimmerzuweisung</strong> direkt aus der Liste</li>
+          <li><strong>Begleitpersonen</strong> pro Gast verwalten (eigene Datensätze)</li>
+          <li><strong>Allergien-Aggregation</strong>: Übersicht Essenwahl-Verteilung + alle Allergien</li>
+        </ul>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Gast-Datensatz (Felder)</div>
+        <div class="feature-grid">
+          <div class="feature-card"><strong>Name</strong><span>Vor- und Nachname</span></div>
+          <div class="feature-card"><strong>Status</strong><span>zugesagt / abgesagt / ausstehend / angelegt</span></div>
+          <div class="feature-card"><strong>Seite</strong><span>Braut / Bräutigam / Neutral</span></div>
+          <div class="feature-card"><strong>Essenwahl</strong><span>Fleisch / Fisch / Veggie / Vegan</span></div>
+          <div class="feature-card"><strong>Allergien</strong><span>Tags + Custom-Freitext</span></div>
+          <div class="feature-card"><strong>E-Mail / Telefon</strong><span>Kontaktdaten</span></div>
+          <div class="feature-card"><strong>Hotel</strong><span>Zimmerzuweisung</span></div>
+          <div class="feature-card"><strong>Anreise</strong><span>Datum, Uhrzeit, Transportmittel</span></div>
+          <div class="feature-card"><strong>Alkohol</strong><span>trinkt Alkohol ja/nein</span></div>
+          <div class="feature-card"><strong>Notizen</strong><span>Freies Textfeld</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — SITZPLAN ════════════════════ -->
+    <div class="section" id="v-sitzplan">
+      <div class="section-header">
+        <div class="section-icon">🪑</div>
+        <div>
+          <div class="section-title">Veranstalter — Sitzplan</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/sitzplan</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Raumkonfigurator (3 Schritte)</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <strong>Grundriss</strong>
+              <span>Wände, Türen, Fenster auf Canvas zeichnen</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <strong>Raumdetails</strong>
+              <span>Dekoelemente platzieren: Säulen, Bar, Bühne, etc.</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <strong>Tische</strong>
+              <span>Tischtypen definieren (rund/rechteckig mit Maßen), Kapazität wird berechnet, Tische auf Canvas platzieren & rotieren</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Live Sitzplan-Editor</div>
+        <ul class="feature-list">
+          <li>Visuelle Darstellung des Raums mit allen Tischen</li>
+          <li>Gäste per <strong>Drag-and-Drop</strong> Tischen zuweisen</li>
+          <li>Live-Anzeige: Wer sitzt wo, wie viele Plätze noch frei</li>
+          <li>Liste nicht zugeordneter Gäste immer sichtbar</li>
+          <li>Brautpaar-Slots auf Tischen unterstützt</li>
+        </ul>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Sitzplan-Konzepte (Vorlagen)</div>
+        <ul class="feature-list">
+          <li>Raumlayouts als <strong>wiederverwendbare Vorlagen</strong> speichern</li>
+          <li><strong>Ersetzen</strong>: kompletter Ersatz von Raum + Tischpool</li>
+          <li><strong>Zusammenführen</strong>: nur Tischtypen ergänzen, bestehender Raum bleibt</li>
+          <li>Gespeichert wird: Wandpunkte, Dekoelemente, Tischpool, Tischpositionen</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — ABLAUF ════════════════════════ -->
+    <div class="section" id="v-ablauf">
+      <div class="section-header">
+        <div class="section-icon">🕐</div>
+        <div>
+          <div class="section-title">Veranstalter — Ablaufplan</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/ablaufplan</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Was es ist</div>
+        <p style="color:var(--text-dim); font-size:13px;">Der geplante Tagesablauf der Hochzeit als visueller Kalender im Apple-Calendar-Stil. Pro Tag eine eigene Spalte, unterstützt mehrtägige Events.</p>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Features</div>
+        <ul class="feature-list">
+          <li>Einträge per <strong>Drag-to-Create</strong> direkt im Kalender anlegen (Maus über Stundenraster ziehen)</li>
+          <li><strong>Drag-to-Move</strong>: Einträge verschieben</li>
+          <li>Kategorien: <span class="tag tag-gold">Zeremonie</span> <span class="tag tag-blue">Empfang</span> <span class="tag tag-green">Feier</span> <span class="tag tag-gray">Logistik</span></li>
+          <li>Mitarbeiter, Dienstleister, Mitglieder pro Eintrag zuweisen</li>
+          <li>Checkliste pro Eintrag (Auto-Save beim Abhaken)</li>
+          <li>Tages-Konfiguration: Name, Startzeit, Endzeit pro Tag</li>
+          <li>NowLine zeigt aktuelle Uhrzeit live</li>
+          <li>HOUR_HEIGHT = 80px/Stunde</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — CATERING ════════════════════ -->
+    <div class="section" id="v-catering">
+      <div class="section-header">
+        <div class="section-icon">🍽</div>
+        <div>
+          <div class="section-title">Veranstalter — Catering</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/catering</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Konfiguration</div>
+        <ul class="feature-list">
+          <li><strong>Service-Stil</strong>: Klassisch / Buffet / Family-Style / Food Truck / Live-Cooking</li>
+          <li>Küchenausstattung vorhanden: ja/nein</li>
+          <li><strong>Menügänge</strong>: Pro Essenwahl (Fleisch/Fisch/etc.) Gänge mit Beschreibungen definieren</li>
+          <li>Getränke-Setup: Wein / Bier / Softdrinks / Cocktails / Longdrinks</li>
+          <li><strong>Abrechnungsmodell</strong>: Pauschale oder Einzelabrechnung (beeinflusst Margenkalkulation!)</li>
+          <li>Midnight-Snack, Servicepersonal, Equipment-Checkliste</li>
+          <li>Budget pro Person</li>
+        </ul>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Live-Aggregation</div>
+        <ul class="feature-list">
+          <li>Wie viele Gäste haben welche Essenwahl getroffen?</li>
+          <li>Allergieverteilung</li>
+          <li>Gesamtkosten = Budget/Person × bestätigte Gäste</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — DEKO ════════════════════════ -->
+    <div class="section" id="v-deko">
+      <div class="section-header">
+        <div class="section-icon">🎨</div>
+        <div>
+          <div class="section-title">Veranstalter — Dekoration</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/dekoration · Nur Desktop</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Hierarchie & Struktur</div>
+        <div class="callout callout-tip">
+          <div class="callout-icon">📐</div>
+          <div class="callout-body"><strong>Event</strong> → <strong>Bereiche</strong> (Eingang, Tische, Tanzfläche…) → <strong>Canvases</strong> (1× Haupt + N Varianten + freie Moodboards) → <strong>Items</strong> (frei positioniert, 3200×2264px Canvas)</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">19 Item-Typen in 6 Gruppen</div>
+        <div class="feature-grid">
+          <div class="feature-card"><strong>Medien</strong><span>Bild-Upload, Bild-URL, Link-Karte</span></div>
+          <div class="feature-card"><strong>Text</strong><span>Textblock, Sticky Note, Überschrift</span></div>
+          <div class="feature-card"><strong>Farbe</strong><span>Farbpalette, Farbfeld</span></div>
+          <div class="feature-card"><strong>Artikel</strong><span>Artikel, Pauschalpreis-Artikel, Stoff</span></div>
+          <div class="feature-card"><strong>Layout</strong><span>Rahmen, Trennlinie, Bereichsbezeichnung</span></div>
+          <div class="feature-card"><strong>Event-Info</strong><span>Abstimmungskarte, Checkliste, Tischreferenz, Rauminfo, Gästezahl</span></div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Canvas-Features</div>
+        <ul class="feature-list">
+          <li>Pan / Zoom via Ctrl+Scroll</li>
+          <li><strong>Presence-Cursors</strong>: Mehrere User sehen sich gegenseitig live im Canvas (20fps via Supabase Realtime)</li>
+          <li><strong>Kommentar-System</strong>: 2-Level-Kommentare pro Item / Canvas / Bereich (Realtime)</li>
+          <li><strong>Abstimmungen</strong>: Daumen hoch/runter auf vote_card Items</li>
+          <li><strong>Budget-Bar</strong>: Kollabierbare Budget-Übersicht unter dem Canvas</li>
+        </ul>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Freeze-Workflow</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <strong>Brautpaar klickt "Absenden"</strong>
+              <span>2-Schritt-Bestätigung — muss "ABSENDEN" eintippen</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <strong>Alle Haupt-Canvases werden eingefroren</strong>
+              <span>is_frozen = true → Canvas ist für alle read-only</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <strong>Budget-Items werden automatisch erstellt</strong>
+              <span>In Kategorie "Dekoration" mit deko_budget_links-Verknüpfung</span>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <strong>Nur Veranstalter kann entfrieren</strong>
+              <span>Kehrt die Budget-Item-Erstellung um</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Organizer-Vorlagen <span class="route">/veranstalter/konfiguration/dekoration</span></div>
+        <ul class="feature-list">
+          <li>Globale Deko-Vorlagen erstellen / umbenennen / löschen</li>
+          <li>Pauschalsätze pro Vorlage</li>
+          <li>Werden beim Anwenden <strong>event-spezifisch kopiert</strong> (kein Live-Sync)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — GETR ════════════════════════ -->
+    <div class="section" id="v-getraenke">
+      <div class="section-header">
+        <div class="section-icon">🍷</div>
+        <div>
+          <div class="section-title">Veranstalter — Getränke</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/getraenke</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">3 Bereiche</div>
+        <table>
+          <tr><th>Bereich</th><th>Inhalt</th></tr>
+          <tr><td><strong>Mengenplanung</strong></td><td>Getränkekategorien + Artikel mit Einheit, Menge/Person, Preis</td></tr>
+          <tr><td><strong>Budget</strong></td><td>Geplante vs. tatsächliche Getränkekosten</td></tr>
+          <tr><td><strong>Cocktails</strong></td><td>Cocktailrezepte (Zutaten als JSONB), alkoholisch/nicht-alkoholisch, geplante Anzahl</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — MUSIK ════════════════════════ -->
+    <div class="section" id="v-musik">
+      <div class="section-header">
+        <div class="section-icon">🎵</div>
+        <div>
+          <div class="section-title">Veranstalter — Musik</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/musik</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Features</div>
+        <ul class="feature-list">
+          <li>Musikwünsche der Gäste einsehen (kommen via RSVP-Formular)</li>
+          <li>DJ/Band-Koordination & technische Anforderungen</li>
+          <li><strong>Playlisten anlegen</strong> mit Links zu Spotify / YouTube / Apple Music / Sonstige</li>
+          <li>Eingebettete Player direkt in der App (iframes)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — PATISSERIE ══════════════════ -->
+    <div class="section" id="v-patisserie">
+      <div class="section-header">
+        <div class="section-icon">🎂</div>
+        <div>
+          <div class="section-title">Veranstalter — Patisserie</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/patisserie</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Features</div>
+        <ul class="feature-list">
+          <li>Hochzeitstorte / Dessert-Planung</li>
+          <li>Tortendesign, Etagen, Geschmacksrichtungen</li>
+          <li>Lieferant-Koordination</li>
+          <li>Budget und Lieferzeitpunkt</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — MEDIEN ══════════════════════ -->
+    <div class="section" id="v-medien">
+      <div class="section-header">
+        <div class="section-icon">📷</div>
+        <div>
+          <div class="section-title">Veranstalter — Medien</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/medien</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Features</div>
+        <ul class="feature-list">
+          <li>Foto-/Videograf-Koordination</li>
+          <li>Shot-List erstellen</li>
+          <li>Zeitplan für Fotos (Zeremonie, Empfang, …)</li>
+          <li>Inspirationsbilder teilen</li>
+          <li><strong>Gästefoto-Galerie</strong>: Gäste laden nach dem Event Fotos hoch (R2-backed, token-basiert, kein Login nötig)</li>
+          <li>Masonry-Galerie mit Lightbox</li>
+          <li>Brautpaar-Exklusiv: <strong>Alle Fotos herunterladen</strong>, "Fotoalbum bestellen" (Platzhalter)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — BUDGET ══════════════════════ -->
+    <div class="section" id="v-budget">
+      <div class="section-header">
+        <div class="section-icon">💰</div>
+        <div>
+          <div class="section-title">Veranstalter — Budget</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/budget</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Features</div>
+        <ul class="feature-list">
+          <li>Budget-Posten mit Kategorie, Geplant, Tatsächlich</li>
+          <li>Zahlungsstatus: <span class="tag tag-red">Offen</span> <span class="tag tag-gold">Angezahlt</span> <span class="tag tag-green">Bezahlt</span></li>
+          <li>Kategoriesummen + Geplant vs. Tatsächlich Vergleich</li>
+          <li><strong>Automatische Verknüpfung</strong>: Deko-Freeze erstellt automatisch Budget-Posten in Kategorie "Dekoration"</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — PERSONAL ════════════════════ -->
+    <div class="section" id="v-personal">
+      <div class="section-header">
+        <div class="section-icon">🧑‍💼</div>
+        <div>
+          <div class="section-title">Veranstalter — Personalplanung</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/personalplanung</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Was der Veranstalter hier macht</div>
+        <ul class="feature-list">
+          <li><strong>Event-Tage</strong> anlegen: Vortag / Hochzeitstag / Abreisetag / etc.</li>
+          <li><strong>Mitarbeiter</strong> verwalten mit Rolle und Stundenlohn</li>
+          <li><strong>Schichten planen</strong>: Start-/Endzeit, Aufgabe, Backup-Mitarbeiter — unterstützt bis 04:00 Uhr (intern: 28:00)</li>
+          <li><strong>Schichttausch</strong> verwalten: Anfragen bestätigen/ablehnen</li>
+          <li><strong>Zeiterfassung</strong>: Tatsächliche Arbeitszeiten eintragen</li>
+          <li>Stundenlohn-Kalkulation fließt in die <strong>Margenkalkulation</strong> auf dem Dashboard</li>
+        </ul>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Mitarbeiter-Rollen</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+          <span class="tag tag-gray">Service</span>
+          <span class="tag tag-gray">Küche</span>
+          <span class="tag tag-gray">Bar</span>
+          <span class="tag tag-gray">Technik</span>
+          <span class="tag tag-gray">Deko</span>
+          <span class="tag tag-gray">Security</span>
+          <span class="tag tag-gray">Fahrer</span>
+          <span class="tag tag-gray">Runner</span>
+          <span class="tag tag-gray">Spüler</span>
+          <span class="tag tag-gray">Empfang</span>
+          <span class="tag tag-gray">Sonstiges</span>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Schichttausch-Workflow</div>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Mitarbeiter stellt Tauschantrag</strong><span>Wählt Schicht + gewünschten Tauschpartner</span></div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Ziel-Mitarbeiter akzeptiert</strong><span>Status: pending → accepted</span></div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Veranstalter genehmigt</strong><span>Status: accepted → approved</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — CHATS ═══════════════════════ -->
+    <div class="section" id="v-chats">
+      <div class="section-header">
+        <div class="section-icon">💬</div>
+        <div>
+          <div class="section-title">Veranstalter — Chats</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/chats</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <ul class="feature-list">
+          <li>1:1-Chats mit Dienstleistern</li>
+          <li>1:1-Chats mit Mitarbeitern</li>
+          <li>Gruppen-Gespräche</li>
+          <li>Echtzeit-Messaging via Supabase Realtime</li>
+          <li>Lesebestätigungen (<code>read_at</code> — definiert, aktuell nicht befüllt)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — DATEIEN ═════════════════════ -->
+    <div class="section" id="v-dateien">
+      <div class="section-header">
+        <div class="section-icon">📁</div>
+        <div>
+          <div class="section-title">Veranstalter — Dateien</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/dateien</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <ul class="feature-list">
+          <li>Dokumente hochladen und teilen (R2-backed)</li>
+          <li>Sichtbarkeit steuerbar: <code>visible_to_roles</code> — NULL = alle Rollen, gesetzt = nur bestimmte</li>
+          <li>Soft-Delete: DB-Eintrag bleibt, R2-Objekt wird gelöscht</li>
+          <li>Download nur via <strong>Presigned URLs</strong> (1 Stunde gültig, nie direkt öffentlich)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — RECHTE ══════════════════════ -->
+    <div class="section" id="v-rechte">
+      <div class="section-header">
+        <div class="section-icon">🔑</div>
+        <div>
+          <div class="section-title">Veranstalter — Berechtigungen für Dienstleister</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/berechtigungen/[dienstleisterId]</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Tab-Zugänge pro Dienstleister</div>
+        <table>
+          <tr><th>Modul</th><th>Kein Zugriff</th><th>Lesen</th><th>Schreiben</th></tr>
+          <tr><td>Catering</td><td class="access-none">–</td><td class="access-read">✓</td><td class="access-write">✓</td></tr>
+          <tr><td>Chats</td><td class="access-none">–</td><td class="access-read">✓</td><td class="access-write">✓</td></tr>
+          <tr><td>Ablaufplan</td><td class="access-none">–</td><td class="access-read">✓</td><td class="access-write">✓</td></tr>
+          <tr><td>Gästeliste</td><td class="access-none">–</td><td class="access-read">✓</td><td class="access-write">✓</td></tr>
+          <tr><td>Musik</td><td class="access-none">–</td><td class="access-read">✓</td><td class="access-write">✓</td></tr>
+          <tr><td>Dekoration</td><td class="access-none">–</td><td class="access-read">✓</td><td class="access-write">✓</td></tr>
+          <tr><td>Medien</td><td class="access-none">–</td><td class="access-read">✓</td><td class="access-write">✓</td></tr>
+          <tr><td>Sitzplan</td><td class="access-none">–</td><td class="access-read">✓</td><td>–</td></tr>
+          <tr><td><del>Allgemein</del></td><td colspan="3" style="color:var(--text-muted)">Explizit gesperrt (DB CHECK Constraint)</td></tr>
+        </table>
+      </div>
+
+      <div class="callout callout-warn">
+        <div class="callout-icon">⚠</div>
+        <div class="callout-body"><strong>Bekannter Bug:</strong> Die UI schreibt in das <em>neue</em> Berechtigungssystem (<code>dienstleister_permissions</code>), aber das Vendor-Portal liest Tab-Sichtbarkeit noch aus dem <em>alten</em> System (<code>permissions</code>). Konfigurierte Rechte haben derzeit <strong>keinen Effekt</strong> auf das was der Dienstleister sieht.</div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — DASHBOARD ═══════════════════ -->
+    <div class="section" id="v-dashboard">
+      <div class="section-header">
+        <div class="section-icon">📊</div>
+        <div>
+          <div class="section-title">Veranstalter — Dashboard & KPIs</div>
+          <div class="section-subtitle">/veranstalter/[eventId]/uebersicht</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Angezeigt wird</div>
+        <ul class="feature-list">
+          <li>Gesamtgäste / Bestätigt / Ausstehend / Tage bis zum Event</li>
+          <li>Budget: Gesamt / Ausgegeben / Fortschrittsbalken</li>
+          <li>Offene Todos-Liste</li>
+        </ul>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Margenkalkulation (Waterfall)</div>
+        <table>
+          <tr><th>Position</th><th>Richtung</th></tr>
+          <tr><td><strong>Honorar</strong> (Organizer-Einnahme)</td><td class="access-write">+ Einnahme</td></tr>
+          <tr><td>Veranstalterkosten</td><td class="access-read">− Kosten</td></tr>
+          <tr><td>Mitarbeiterkosten (Schichten × Stundenlohn)</td><td class="access-read">− Kosten</td></tr>
+          <tr><td>Getränkekosten (je nach Abrechnungsmodell)</td><td class="access-read">− / +</td></tr>
+          <tr><td><strong>Netto-Marge</strong></td><td><span class="tag tag-green">Grün wenn positiv</span> <span class="tag tag-red">Rot wenn negativ</span></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ V — CONFIG ═══════════════════════ -->
+    <div class="section" id="v-config">
+      <div class="section-header">
+        <div class="section-icon">⚙️</div>
+        <div>
+          <div class="section-title">Veranstalter — Konfiguration</div>
+          <div class="section-subtitle">/veranstalter/konfiguration</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <ul class="feature-list">
+          <li>Globale Raumkonfiguration (Standard-Grundriss für neue Events)</li>
+          <li>Sitzplan-Konzepte (Vorlagen)</li>
+          <li>Dekorationsvorlagen</li>
+          <li><strong>Staff-Chat</strong> aktivieren: Mitarbeiter dürfen untereinander chatten</li>
+          <li>Organizer-Profil: Name, E-Mail, Passwort, Profilbild (R2-backed)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ BRAUTPAAR ═══════════════════════ -->
+    <div class="section" id="b-portal">
+      <div class="section-header">
+        <div class="section-icon">💍</div>
+        <div>
+          <div class="section-title">Brautpaar-Portal</div>
+          <div class="section-subtitle">/brautpaar/[eventId]/…</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Dashboard</div>
+        <ul class="feature-list">
+          <li>Countdown-Tage bis zum Event</li>
+          <li>Schnellstats: Gäste / Budget / Aufgaben-Fortschritt</li>
+          <li>Navigation zu allen Bereichen</li>
+        </ul>
+      </div>
+
+      <table>
+        <tr><th>Modul</th><th>Was das Brautpaar kann</th></tr>
+        <tr><td><strong>Gäste</strong></td><td>Eigene Gästeliste verwalten, Begleitpersonen, Hotel-Zuweisung, CSV-Import, RSVP-Status einsehen</td></tr>
+        <tr><td><strong>Sitzplan</strong></td><td>Identischer Editor wie Veranstalter (kann read-only sein)</td></tr>
+        <tr><td><strong>Ablaufplan</strong></td><td>Tagesablauf einsehen und bearbeiten, Checklisten abhaken</td></tr>
+        <tr><td><strong>Aufgaben</strong></td><td>Phasenbasiertes To-Do-System (12+ Monate bis Hochzeitstag), abhaken, eigene Aufgaben hinzufügen</td></tr>
+        <tr><td><strong>Notizen</strong></td><td>Text- oder Checklisten-Notizen mit Kategorien, Auto-Save</td></tr>
+        <tr><td><strong>Getränke</strong></td><td>Gleicher Planer wie Veranstalter (Modus: brautpaar)</td></tr>
+        <tr><td><strong>Musik</strong></td><td>Musikwünsche ansehen, Playlisten einsehen, Gästewünsche aus RSVP</td></tr>
+        <tr><td><strong>Dekoration</strong></td><td>Voller Deko-Editor, kann Freeze einleiten</td></tr>
+        <tr><td><strong>Budget</strong></td><td>Budget-Posten verwalten, Zahlungsstatus aktualisieren</td></tr>
+        <tr><td><strong>Catering</strong></td><td>Catering-Plan einsehen</td></tr>
+        <tr><td><strong>Medien</strong></td><td>Shot-List, Gästefoto-Galerie, alle Fotos auf einmal herunterladen</td></tr>
+        <tr><td><strong>Dateien</strong></td><td>Vom Veranstalter geteilte Dokumente herunterladen</td></tr>
+        <tr><td><strong>Nachrichten</strong></td><td>Chat mit Veranstalter und Dienstleistern</td></tr>
+      </table>
+
+      <div class="sub-section" style="margin-top:16px;">
+        <div class="sub-title">Aufgaben-Phasen</div>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><div class="step-body"><strong>12+ Monate vorher</strong><span>Location, Fotograf, DJ buchen, etc.</span></div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-body"><strong>6–12 Monate vorher</strong><span>Einladungen, Catering, Kleid, etc.</span></div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-body"><strong>3–6 Monate vorher</strong><span>Hotel, Transport, Sitzplan, etc.</span></div></div>
+          <div class="step"><div class="step-num">4</div><div class="step-body"><strong>1–3 Monate vorher</strong><span>Finale RSVP-Bestätigungen, Ablaufplan finalisieren</span></div></div>
+          <div class="step"><div class="step-num">5</div><div class="step-body"><strong>Letzte Woche</strong><span>Übergabegespräche, Equipment-Check</span></div></div>
+          <div class="step"><div class="step-num">6</div><div class="step-body"><strong>Hochzeitstag</strong><span>Tag-of Checklisten</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ DIENSTLEISTER ═══════════════════ -->
+    <div class="section" id="d-portal">
+      <div class="section-header">
+        <div class="section-icon">🔧</div>
+        <div>
+          <div class="section-title">Dienstleister-Portal</div>
+          <div class="section-subtitle">/vendor/dashboard/[eventId]/…</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Übersichts-Dashboard</div>
+        <ul class="feature-list">
+          <li>Event-Details: Paarnamen, Datum, Location, Gästeanzahl</li>
+          <li>Kontaktinfos des Veranstalters und Brautpaars</li>
+          <li>Freigeschaltete Module als Karten mit Zugangslevel-Badge</li>
+          <li>Direkter Chat-Link zum Veranstalter</li>
+        </ul>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Verfügbare Tabs (je nach freigeschalteten Berechtigungen)</div>
+        <table>
+          <tr><th>Tab</th><th>Was der Dienstleister sieht</th></tr>
+          <tr><td><strong>Catering</strong></td><td>Menü einsehen, ggf. bearbeiten</td></tr>
+          <tr><td><strong>Ablaufplan</strong></td><td>Tagesablauf einsehen, ggf. bearbeiten</td></tr>
+          <tr><td><strong>Gästeliste</strong></td><td>Gäste einsehen, ggf. bearbeiten</td></tr>
+          <tr><td><strong>Musik</strong></td><td>Musikwünsche, Anforderungen</td></tr>
+          <tr><td><strong>Dekoration</strong></td><td>Canvas lesen oder eigene Items hinzufügen</td></tr>
+          <tr><td><strong>Medien</strong></td><td>Shot-List, Fotos</td></tr>
+          <tr><td><strong>Sitzplan</strong></td><td>Read-only: Tischkarten + Gästenamen</td></tr>
+          <tr><td><strong>Dateien</strong></td><td>Geteilte Dokumente herunterladen</td></tr>
+          <tr><td><strong>Chats</strong></td><td>Gespräch mit Veranstalter</td></tr>
+        </table>
+      </div>
+
+      <div class="callout callout-warn">
+        <div class="callout-icon">⚠</div>
+        <div class="callout-body"><strong>Hinweis:</strong> Wegen des bekannten Berechtigungs-Bugs sieht das Portal derzeit die Tabs basierend auf dem <em>alten</em> Permissions-System, nicht basierend auf dem was der Veranstalter im neuen Editor konfiguriert hat.</div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ MITARBEITER ═════════════════════ -->
+    <div class="section" id="m-portal">
+      <div class="section-header">
+        <div class="section-icon">👷</div>
+        <div>
+          <div class="section-title">Mitarbeiter-Portal</div>
+          <div class="section-subtitle">/mitarbeiter/[eventId]/schichtplan</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">3-Tab-Ansicht (Mobile-First)</div>
+        <table>
+          <tr><th>Tab</th><th>Inhalt</th></tr>
+          <tr>
+            <td><strong>Meine Schichten</strong></td>
+            <td>
+              Eigene Schichten mit Uhrzeit, Aufgabe, Backup-Kollege<br>
+              <strong>Einstempeln / Ausstempeln</strong>-Button direkt auf der Schicht<br>
+              Schichttausch-Anfragen stellen + Status verfolgen
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Team</strong></td>
+            <td>Alle Schichten aller Kollegen pro Wahl-Tag — hilft beim Koordinieren</td>
+          </tr>
+          <tr>
+            <td><strong>Chat</strong></td>
+            <td>
+              1:1-Chat mit dem Veranstalter<br>
+              Optional: 1:1-Chats mit anderen Mitarbeitern (wenn vom Veranstalter aktiviert)
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Zeiterfassung (Einstempeln)</div>
+        <ul class="feature-list">
+          <li>Mitarbeiter drückt "Einstempeln" → Uhrzeit wird in <code>shift_time_logs</code> gespeichert</li>
+          <li>Mitarbeiter drückt "Ausstempeln" → Ende wird gespeichert</li>
+          <li>Veranstalter kann tatsächliche Zeiten vs. geplante Zeiten einsehen</li>
+        </ul>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Erster Login</div>
+        <ul class="feature-list">
+          <li>Veranstalter erstellt Mitarbeiter-Account (API setzt Supabase Auth Account an)</li>
+          <li><code>must_change_password = true</code> erzwingt Passwortänderung beim ersten Login</li>
+          <li>Nach Änderung: Flag wird zurückgesetzt, normaler Betrieb</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ RSVP ════════════════════════════ -->
+    <div class="section" id="rsvp">
+      <div class="section-header">
+        <div class="section-icon">✉️</div>
+        <div>
+          <div class="section-title">RSVP-Flow (Gäste-Perspektive)</div>
+          <div class="section-subtitle">/rsvp/[token] — kein Login nötig</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Bis zu 8 Schritte (feature-gesteuert)</div>
+        <table>
+          <tr><th>#</th><th>Schritt</th><th>Feature-Toggle</th></tr>
+          <tr><td>1</td><td><strong>Intro</strong> — Willkommen, Event-Details (Paarnamen, Datum, Location, Dresscode)</td><td><span class="tag tag-green">immer</span></td></tr>
+          <tr><td>2</td><td><strong>Zu-/Absage</strong> — komme ich oder nicht</td><td><span class="tag tag-green">immer</span></td></tr>
+          <tr><td>3</td><td><strong>Details</strong> — Name, Essenwahl, Allergien, Alkohol, Begleitpersonen (je mit gleichen Feldern)</td><td><code>rsvp-begleitpersonen</code></td></tr>
+          <tr><td>4</td><td><strong>Hotel</strong> — verfügbare Zimmer buchen</td><td><code>rsvp-hotel</code></td></tr>
+          <tr><td>5</td><td><strong>Musikwunsch</strong> — Lieblingssong / Interpret eintragen</td><td><code>rsvp-musikwunsch</code></td></tr>
+          <tr><td>6</td><td><strong>Geschenke</strong> — Wunschliste einsehen, Items beanspruchen, Geldpool beitragen</td><td><code>rsvp-geschenke</code></td></tr>
+          <tr><td>7</td><td><strong>Fotos</strong> — Hochzeitsfotos hochladen (R2, token-auth)</td><td><code>gaeste-fotos</code></td></tr>
+          <tr><td>8</td><td><strong>Bestätigung</strong> — Zusammenfassung & Danke</td><td><span class="tag tag-green">immer</span></td></tr>
+        </table>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Server-seitige Validierungen</div>
+        <ul class="feature-list">
+          <li><strong>Freeze-Datum</strong>: <code>events.data_freeze_at</code> — keine RSVP-Änderungen nach Freeze</li>
+          <li><strong>RSVP-Deadline</strong>: aus <code>rsvp_settings.rsvp_deadline</code></li>
+          <li>Essenwahl muss zu den aktivierten Event-Optionen passen</li>
+          <li>Hotel-Kapazität wird atomar geprüft (<code>booked_rooms</code> inkrementiert/dekrementiert)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ TOGGLES ═════════════════════════ -->
+    <div class="section" id="toggles">
+      <div class="section-header">
+        <div class="section-icon">🔘</div>
+        <div>
+          <div class="section-title">Feature-Toggles System</div>
+          <div class="section-subtitle">Tabelle feature_toggles — pro Event individuell schaltbar</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <table class="toggle-row">
+          <tr><th>Toggle-Key</th><th>Was es steuert</th></tr>
+          <tr><td><code>rsvp-begleitpersonen</code></td><td>Begleitpersonen-Schritt im RSVP</td></tr>
+          <tr><td><code>rsvp-hotel</code></td><td>Hotel-Buchungsschritt im RSVP</td></tr>
+          <tr><td><code>rsvp-musikwunsch</code></td><td>Musikwunsch-Schritt im RSVP</td></tr>
+          <tr><td><code>rsvp-geschenke</code></td><td>Wunschliste im RSVP</td></tr>
+          <tr><td><code>gaeste-fotos</code></td><td>Foto-Upload durch Gäste</td></tr>
+          <tr><td><code>gaeste-fotos-unlock-at</code></td><td>ISO-Datum wann Galerie freigeschaltet wird (value TEXT)</td></tr>
+          <tr><td><code>staff-chat</code></td><td>Mitarbeiter dürfen untereinander chatten</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ DATEIEN ═════════════════════════ -->
+    <div class="section" id="dateien-sys">
+      <div class="section-header">
+        <div class="section-icon">☁️</div>
+        <div>
+          <div class="section-title">Datei-System (Cloudflare R2)</div>
+          <div class="section-subtitle">Alle Dateien nie direkt öffentlich — immer via Presigned URLs</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Upload-Flow (3 Schritte)</div>
+        <div class="steps">
+          <div class="step"><div class="step-num">1</div><div class="step-body"><strong>Frontend fordert Upload-URL an</strong><span><code>/api/files/request-upload</code> → Cloudflare Worker → presigned PUT URL zurück</span></div></div>
+          <div class="step"><div class="step-num">2</div><div class="step-body"><strong>Browser lädt direkt zu R2 hoch</strong><span>Kein Umweg über den Next.js-Server — spart Bandbreite und Kosten</span></div></div>
+          <div class="step"><div class="step-num">3</div><div class="step-body"><strong>Frontend bestätigt Upload</strong><span><code>/api/files/[fileId]/confirm</code> → Datei wird in DB als aktiv markiert</span></div></div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <div class="sub-title">Wichtige Besonderheit: EU-Jurisdiction</div>
+        <div class="callout callout-warn">
+          <div class="callout-icon">⚠</div>
+          <div class="callout-body">
+            Der Bucket <code>velvet-files</code> wurde mit <strong>EU-Jurisdiction (WEUR)</strong> erstellt.<br>
+            S3-Endpoint: <code>https://&lt;account_id&gt;<strong>.eu</strong>.r2.cloudflarestorage.com</code> (nicht ohne .eu!)<br>
+            Wrangler braucht <code>jurisdiction = "eu"</code> in der wrangler.toml, sonst schlägt Deploy fehl.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ REALTIME ═════════════════════════ -->
+    <div class="section" id="realtime">
+      <div class="section-header">
+        <div class="section-icon">⚡</div>
+        <div>
+          <div class="section-title">Realtime-Funktionen</div>
+          <div class="section-subtitle">Supabase Realtime Channels</div>
+        </div>
+      </div>
+
+      <div class="sub-section">
+        <table>
+          <tr><th>Bereich</th><th>Was live aktualisiert wird</th></tr>
+          <tr><td><strong>Messaging</strong></td><td>Neue Nachrichten erscheinen sofort (Channels auf <code>messages</code>)</td></tr>
+          <tr><td><strong>Dekoration</strong></td><td>Item-Updates live für alle User + Presence-Cursors wer im Canvas ist (20fps gedrosselt)</td></tr>
+          <tr><td><strong>Gästeliste</strong></td><td>Statusänderungen live sichtbar</td></tr>
+          <tr><td><strong>Ablaufplan</strong></td><td>Änderungen werden live synchronisiert</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ ARCHITEKTUR ══════════════════════ -->
+    <div class="section" id="architektur">
+      <div class="section-header">
+        <div class="section-icon">🏗</div>
+        <div>
+          <div class="section-title">Architektur-Übersicht</div>
+          <div class="section-subtitle">Stack, Auth-Flow, Sicherheitsfunktionen</div>
+        </div>
+      </div>
+
+      <div class="arch">
+        <div class="arch-layer"><strong>Browser</strong><span>Next.js Client Components · Supabase JS · Tailwind · Lucide Icons</span></div>
+        <div class="arch-arrow">↓ HTTPS</div>
+        <div class="arch-layer"><strong>Next.js 15 (Vercel)</strong><span>App Router · Server Components · API Routes · Middleware</span></div>
+        <div class="arch-arrow">↓ Supabase JS / Server Client</div>
+        <div class="arch-layer"><strong>Supabase</strong><span>PostgreSQL · Auth (JWTs) · Realtime · RLS-Policies</span></div>
+        <div class="arch-arrow">↓ Nur Datei-Operationen (Worker Secret)</div>
+        <div class="arch-layer"><strong>Cloudflare Worker + R2 (EU)</strong><span>Presigned URLs · Niemals direkt öffentlich</span></div>
+      </div>
+
+      <div class="sub-section" style="margin-top:16px;">
+        <div class="sub-title">SECURITY DEFINER Funktionen (umgehen RLS kontrolliert)</div>
+        <table>
+          <tr><th>Funktion</th><th>Was sie prüft</th></tr>
+          <tr><td><code>is_event_member()</code></td><td>Ist User Mitglied dieses Events?</td></tr>
+          <tr><td><code>dl_has_tab_access()</code></td><td>Hat Dienstleister Zugriff auf diesen Tab + Zugangslevel?</td></tr>
+          <tr><td><code>is_event_frozen()</code></td><td>Ist das Event eingefroren?</td></tr>
+          <tr><td><code>join_event_by_code()</code></td><td>Beitritt zum Event per Code (atomar)</td></tr>
+          <tr><td><code>has_permission()</code></td><td>Altes Berechtigungssystem (deprecated)</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════ BUGS ════════════════════════════ -->
+    <div class="section" id="bugs">
+      <div class="section-header">
+        <div class="section-icon">🐛</div>
+        <div>
+          <div class="section-title">Bekannte Bugs (dokumentiert)</div>
+          <div class="section-subtitle">Beide sind im CLAUDE.md als bekannt markiert</div>
+        </div>
+      </div>
+
+      <div class="bug-card">
+        <div class="bug-title">Bug 1 — Berechtigungen ohne Wirkung</div>
+        <div class="bug-body">
+          <p>Der Veranstalter konfiguriert Rechte für Dienstleister in der UI. Die UI schreibt in die <strong>neue</strong> Tabelle <code>dienstleister_permissions</code>.</p>
+          <p style="margin-top:8px;">Aber: Das Vendor-Portal (<code>VendorDashboardClient.tsx</code>) liest Tab-Sichtbarkeit noch aus der <strong>alten</strong> Tabelle <code>permissions</code>.</p>
+          <p style="margin-top:8px;"><strong>Folge:</strong> Was der Veranstalter im Berechtigungs-Editor einstellt, hat <em>keinen sichtbaren Effekt</em> auf das was der Dienstleister im Portal sieht.</p>
+        </div>
+      </div>
+
+      <div class="bug-card">
+        <div class="bug-title">Bug 2 — Middleware-Check für Veranstalter-Routes immer false</div>
+        <div class="bug-body">
+          <p>In <code>middleware.ts</code> steht:</p>
+          <pre><span class="key">if</span> (isOrganizerRoute && isApproved === <span class="val">false</span> && isApproved !== <span class="val">undefined</span>)</pre>
+          <p style="margin-top:8px;">Diese Bedingung ist <strong>immer false</strong>, weil ein Wert nicht gleichzeitig <code>=== false</code> UND <code>!== undefined</code> sein kann — <code>false !== undefined</code> ist zwar wahr, aber dann müsste der erste Teil auch wahr sein, was nur geht wenn isApproved genau <code>false</code> ist.</p>
+          <p style="margin-top:8px;"><strong>Folge:</strong> Jeder eingeloggte User könnte technisch Veranstalter-Routen aufrufen (sofern kein anderer Schutz greift). Die eigentliche Zugriffskontrolle läuft über <code>profiles.is_approved_organizer</code> in der DB via RLS.</p>
+        </div>
+      </div>
+
+      <div class="callout callout-info">
+        <div class="callout-icon">ℹ</div>
+        <div class="callout-body">Beide Bugs sind im <code>CLAUDE.md</code> unter "⚠️ CRITICAL" dokumentiert und bekannt. Sie sind nicht durch Versehen entstanden, sondern stellen technische Schulden aus der Migration von alt zu neu dar.</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Highlight active nav link based on scroll
+  const sections = document.querySelectorAll('.section[id]');
+  const navLinks = document.querySelectorAll('nav a');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(link => {
+          link.style.color = '';
+          link.style.borderLeftColor = '';
+          link.style.background = '';
+        });
+        const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+        if (active) {
+          active.style.color = '#d4af6a';
+          active.style.borderLeftColor = '#b8943e';
+          active.style.background = '#b8943e10';
+        }
+      }
+    });
+  }, { rootMargin: '-30% 0px -60% 0px', threshold: 0 });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
