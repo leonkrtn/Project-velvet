@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Copy, Check, UserPlus, Briefcase } from 'lucide-react'
 
 interface Props {
@@ -27,8 +27,8 @@ export default function SoloInviteSection({ eventId }: Props) {
     brautpaar_solo: { ...EMPTY },
   })
 
-  const patch = (target: InviteTarget, p: Partial<InviteState>) =>
-    setStates(prev => ({ ...prev, [target]: { ...prev[target], ...p } }))
+  const patch = useCallback((target: InviteTarget, p: Partial<InviteState>) =>
+    setStates(prev => ({ ...prev, [target]: { ...prev[target], ...p } })), [])
 
   async function createCode(target: InviteTarget) {
     patch(target, { loading: true, error: null })
