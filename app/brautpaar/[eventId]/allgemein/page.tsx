@@ -13,6 +13,13 @@ export default async function AllgemeinPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const { data: member } = await supabase
+    .from('event_members')
+    .select('role')
+    .eq('event_id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
   const { data: event } = await supabase
     .from('events')
     .select(`
@@ -32,6 +39,7 @@ export default async function AllgemeinPage({ params }: Props) {
     <BrautpaarAllgemein
       eventId={eventId}
       initialData={event}
+      isSolo={member?.role === 'brautpaar_solo'}
     />
   )
 }

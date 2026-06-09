@@ -285,7 +285,11 @@ function SignupForm() {
             )}
           </form>
 
-          <div style={{ marginTop: 20, textAlign: 'center' }}>
+          <div style={{ marginTop: 20, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+              Keinen Code? Plant eure Hochzeit selbst:{' '}
+              <a href="/signup/brautpaar" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Als Brautpaar starten</a>
+            </p>
             <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
               Bereits registriert?{' '}
               <a href="/login" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Anmelden</a>

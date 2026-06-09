@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/', '/login', '/signup', '/auth/callback', '/join']
+const PUBLIC_ROUTES = ['/', '/login', '/signup', '/signup/brautpaar', '/auth/callback', '/join']
 
 type Membership = { event_id: string; role: string }
 
@@ -11,8 +11,9 @@ function resolvePortal(user: { app_metadata?: Record<string, unknown> }, members
   const nonVendor = memberships.find(m => m.role !== 'dienstleister')
   if (nonVendor) {
     switch (nonVendor.role) {
-      case 'veranstalter': return '/veranstalter/events'
-      case 'brautpaar':    return '/brautpaar'
+      case 'veranstalter':   return '/veranstalter/events'
+      case 'brautpaar':      return '/brautpaar'
+      case 'brautpaar_solo': return '/brautpaar'
     }
   }
   if (memberships.some(m => m.role === 'dienstleister')) return '/vendor/dashboard'
@@ -105,7 +106,7 @@ export async function middleware(request: NextRequest) {
 
     const roles = (memberships ?? []).map(m => m.role)
 
-    if (isBrautpaarRoute && !roles.includes('brautpaar')) {
+    if (isBrautpaarRoute && !roles.includes('brautpaar') && !roles.includes('brautpaar_solo')) {
       return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? []), request.url))
     }
     if (isVendorRoute && !roles.includes('dienstleister')) {

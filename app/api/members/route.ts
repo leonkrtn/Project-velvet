@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!caller || !['veranstalter', 'brautpaar'].includes(caller.role as string)) {
+  if (!caller || !['veranstalter', 'brautpaar', 'brautpaar_solo'].includes(caller.role as string)) {
     return NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 })
   }
 

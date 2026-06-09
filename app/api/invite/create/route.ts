@@ -1,6 +1,9 @@
 // app/api/invite/create/route.ts
-// Erstellt Invite-Codes für Brautpaar
-// Nur Veranstalter kann Brautpaar einladen
+// Erstellt Invite-Codes für Brautpaar / Veranstalter / Solo-Partner
+// Erlaubte Kombinationen (Caller-Rolle → Ziel-Rolle):
+//   veranstalter   → brautpaar       (klassischer Flow)
+//   brautpaar_solo → veranstalter    (Veranstalter nachträglich "dazuschalten")
+//   brautpaar_solo → brautpaar_solo  (Partner / Partnerin einladen)
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
@@ -20,11 +23,12 @@ export async function POST(request: Request) {
   const body = await request.json()
   const { eventId, targetRole } = body as {
     eventId: string
-    targetRole: 'brautpaar'
+    targetRole: 'brautpaar' | 'veranstalter' | 'brautpaar_solo'
   }
 
-  if (!eventId || targetRole !== 'brautpaar') {
-    return NextResponse.json({ error: 'eventId und targetRole="brautpaar" erforderlich' }, { status: 400 })
+  const validTargets = ['brautpaar', 'veranstalter', 'brautpaar_solo']
+  if (!eventId || !validTargets.includes(targetRole)) {
+    return NextResponse.json({ error: 'eventId und gültige targetRole erforderlich' }, { status: 400 })
   }
 
   const admin = getServiceClient()
@@ -40,8 +44,12 @@ export async function POST(request: Request) {
   if (!member) return NextResponse.json({ error: 'Kein Zugriff auf dieses Event' }, { status: 403 })
 
   const callerRole = member.role as string
-  if (callerRole !== 'veranstalter') {
-    return NextResponse.json({ error: 'Nur Veranstalter kann Brautpaar einladen' }, { status: 403 })
+  const allowed =
+    (callerRole === 'veranstalter' && targetRole === 'brautpaar') ||
+    (callerRole === 'brautpaar_solo' && (targetRole === 'veranstalter' || targetRole === 'brautpaar_solo'))
+
+  if (!allowed) {
+    return NextResponse.json({ error: 'Keine Berechtigung für diese Einladung' }, { status: 403 })
   }
 
   const code = crypto.randomUUID()

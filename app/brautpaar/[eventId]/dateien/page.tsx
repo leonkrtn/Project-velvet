@@ -18,7 +18,7 @@ export default async function BrautpaarDateienPage({ params }: Props) {
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!member || (member.role !== 'brautpaar' && member.role !== 'veranstalter')) {
+  if (!member || !['brautpaar', 'brautpaar_solo', 'veranstalter'].includes(member.role)) {
     redirect('/login')
   }
 
@@ -30,9 +30,9 @@ export default async function BrautpaarDateienPage({ params }: Props) {
       </div>
       <FilesSection
         eventId={eventId}
-        canUpload={member.role === 'brautpaar' || member.role === 'veranstalter'}
+        canUpload={['brautpaar', 'brautpaar_solo', 'veranstalter'].includes(member.role)}
         userId={user.id}
-        isVeranstalter={member.role === 'veranstalter'}
+        isVeranstalter={member.role === 'veranstalter' || member.role === 'brautpaar_solo'}
         userRole={member.role}
       />
     </div>

@@ -2,6 +2,7 @@
 import React, { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { ensureSoloEvent, isSoloSignup } from '@/lib/brautpaar-solo'
 
 function LoginForm() {
   const router = useRouter()
@@ -50,6 +51,15 @@ function LoginForm() {
           router.push('/vendor/dashboard')
         } else if (nonVendor) {
           router.push('/brautpaar?event=' + nonVendor.event_id)
+        } else if (isSoloSignup(session?.user)) {
+          // Solo-Brautpaar ohne Event: Signup lief ohne Session (E-Mail-
+          // Bestätigung) — Event jetzt anhand der Signup-Metadaten erstellen.
+          try {
+            const eventId = await ensureSoloEvent(supabase, session!.user.user_metadata)
+            router.push(`/brautpaar/${eventId}/uebersicht`)
+          } catch {
+            router.push('/signup/brautpaar')
+          }
         } else {
           // Fallback: check organizer_staff table directly (covers cases where
           // app_metadata.role was not yet set, e.g. after a password reset)

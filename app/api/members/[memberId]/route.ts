@@ -51,6 +51,7 @@ export async function DELETE(
   // 3. Rollen-Guard (spiegelt can_manage_member() wider)
   const allowed =
     callerRole === 'veranstalter' ||
+    callerRole === 'brautpaar_solo' ||
     (callerRole === 'brautpaar' && targetRole === 'trauzeuge')
 
   if (!allowed) {

@@ -31,8 +31,19 @@
 |---|---|
 | `veranstalter` | Event organizer — full admin over their events |
 | `brautpaar` | Couple — curated subset of editing rights |
+| `brautpaar_solo` | Standalone couple without organizer — `is_event_member()` maps it to veranstalter AND brautpaar (full RLS cascade, migrations 0086–0088) |
 | `trauzeuge` | Best man/maid of honor — limited read + some edit |
 | `dienstleister` | Vendor/service provider — permission-gated access |
+
+### Solo-Brautpaar Flow (App ohne Veranstalter)
+
+- **Signup:** `/signup/brautpaar` (public, no invite code) → `supabase.auth.signUp` with `user_metadata.signup_role='brautpaar_solo'` → RPC `create_event_as_brautpaar_solo()` creates exactly ONE event (idempotent — returns existing event if the user already has a brautpaar_solo membership). Helper: `lib/brautpaar-solo.ts` (`ensureSoloEvent`).
+- **E-Mail-Confirmation fallback:** if no session after signUp, event creation happens later via login fallback (`app/login/page.tsx`) or the `/brautpaar` root page (both call `ensureSoloEvent` from user metadata).
+- **Portal:** solo couples use the regular Brautpaar portal (`/brautpaar/[eventId]/`); layout/middleware/pages accept role `brautpaar_solo`.
+- **Veranstalter nachträglich dazuschalten:** Brautpaar generiert unter Allgemein → "Personen einladen" (`SoloInviteSection`) einen Code via `POST /api/invite/create {targetRole:'veranstalter'}`; ein registrierter (approved) Veranstalter löst ihn unter `/join` ein (`redeem_invite_code` RPC) und sieht das Event danach in seinem Dashboard. Gleiches UI erlaubt den Partner-Invite (`targetRole:'brautpaar_solo'`).
+- **Invite-Matrix** in `/api/invite/create`: veranstalter→brautpaar, brautpaar_solo→veranstalter, brautpaar_solo→brautpaar_solo.
+- **Vendors & Deko:** brautpaar_solo darf Dienstleister einladen (`/api/invite/dienstleister`, `/api/vendor/invite`) und Deko freezen UND unfreezen (`/api/deko/freeze`).
+- `/join` (public route) — generic `invite_codes` redemption page for logged-in users; logged-out users are sent to login/signup with the code preserved.
 
 ---
 
@@ -41,7 +52,8 @@
 ```
 /                          → Landing page (public)
 /login, /signup            → Auth (public)
-/join                      → Join event by code (public)
+/signup/brautpaar          → Solo-Brautpaar signup, no code needed (public)
+/join                      → Join event by code — invite_codes redemption for logged-in users (public)
 /auth/callback             → Supabase OAuth callback (public)
 
 /veranstalter/             → Organizer hub (requires is_approved_organizer)

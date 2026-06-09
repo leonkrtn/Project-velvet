@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     .update({ onboarding_completed_at: new Date().toISOString() })
     .eq('event_id', eventId)
     .eq('user_id', user.id)
-    .eq('role', 'brautpaar')
+    .in('role', ['brautpaar', 'brautpaar_solo'])
 
   return NextResponse.json({ ok: true })
 }

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { FileModule } from './types'
 
-export type EventRole = 'veranstalter' | 'brautpaar' | 'dienstleister'
+export type EventRole = 'veranstalter' | 'brautpaar' | 'brautpaar_solo' | 'dienstleister'
 
 export async function getEventRole(
   supabase: SupabaseClient,
@@ -42,7 +42,7 @@ export async function canReadFiles(
 ): Promise<boolean> {
   const role = await getEventRole(supabase, userId, eventId)
   if (!role) return false
-  if (role === 'veranstalter' || role === 'brautpaar') return true
+  if (role === 'veranstalter' || role === 'brautpaar' || role === 'brautpaar_solo') return true
   if (role === 'dienstleister') {
     const access = await getDlAccess(supabase, userId, eventId, module)
     return access === 'read' || access === 'write'
@@ -58,8 +58,8 @@ export async function canUploadFiles(
 ): Promise<boolean> {
   const role = await getEventRole(supabase, userId, eventId)
   if (!role) return false
-  // Veranstalter + Brautpaar: full upload rights
-  if (role === 'veranstalter' || role === 'brautpaar') return true
+  // Veranstalter + Brautpaar (inkl. solo): full upload rights
+  if (role === 'veranstalter' || role === 'brautpaar' || role === 'brautpaar_solo') return true
   // Dienstleister: write permission on the target module required
   if (role === 'dienstleister') {
     const access = await getDlAccess(supabase, userId, eventId, module)
@@ -76,8 +76,8 @@ export async function canDeleteFile(
 ): Promise<boolean> {
   const role = await getEventRole(supabase, userId, eventId)
   if (!role) return false
-  // Veranstalter can delete any file
-  if (role === 'veranstalter') return true
+  // Veranstalter (und Solo-Brautpaar als Event-Admin) can delete any file
+  if (role === 'veranstalter' || role === 'brautpaar_solo') return true
   // Others can only delete their own uploads
   return uploadedBy === userId
 }

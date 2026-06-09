@@ -40,10 +40,11 @@ export default function LandingPage() {
 
     const { event_id, role } = memberships[0]
     switch (role) {
-      case 'veranstalter':  return '/veranstalter/events'
-      case 'brautpaar':     return '/brautpaar'
-      case 'dienstleister': return `/vendor/dashboard/${event_id}/uebersicht`
-      default:              return '/brautpaar'
+      case 'veranstalter':   return '/veranstalter/events'
+      case 'brautpaar':      return '/brautpaar'
+      case 'brautpaar_solo': return '/brautpaar'
+      case 'dienstleister':  return `/vendor/dashboard/${event_id}/uebersicht`
+      default:               return '/brautpaar'
     }
   }, [])
 
