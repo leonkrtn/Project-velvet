@@ -1,33 +1,38 @@
 -- 0089_redeem_invite_hardening.sql
 -- ════════════════════════════════════════════════════════════════════════════
--- Härtung von redeem_invite_code() für den Solo-Brautpaar-Flow
+-- Härtung von redeem_invite_code() für den Brautpaar-Flow
 -- ════════════════════════════════════════════════════════════════════════════
 -- Baut auf 0086 (ENUM brautpaar_solo), 0087/0088 (Solo-Funktionen) auf.
 --
--- Zwei Probleme der bisherigen Version (setup.sql):
+-- Ein Problem der bisherigen Version (setup.sql):
 --
 -- 1. VERANSTALTER-CODES OHNE FREISCHALTUNGS-CHECK
---    Solo-Brautpaare können Veranstalter-Invite-Codes erzeugen
---    (/api/invite/create, brautpaar_solo → veranstalter). Bisher konnte
---    JEDER eingeloggte User so einen Code einlösen und wurde veranstalter-
---    Mitglied — ohne is_approved_organizer. Ergebnis: Mitgliedschaft mit
---    Rolle veranstalter, aber kein Zugriff aufs Portal (Middleware blockt).
+--    Ein Veranstalter-Invite-Code konnte von JEDEM eingeloggt-User eingelöst
+--    werden und würde ihn zur Veranstalter-Mitgliedschaft machen — ohne
+--    is_approved_organizer-Check. Resultat: Mitgliedschaft mit Rolle
+--    veranstalter, aber kein Zugriff auf /veranstalter/* (Middleware blockt
+--    unapproved users).
 --    NEU: Veranstalter-Codes erfordern profiles.is_approved_organizer = true,
 --    sonst Fehler 'NOT_APPROVED_ORGANIZER' (Code bleibt offen und kann vom
---    richtigen Veranstalter weiterhin eingelöst werden).
+--    richtigen Veranstalter eingelöst werden). Server-side Prüfung statt
+--    erst-beim-Routing-feststellen.
 --
--- 2. VERSEHENTLICHE ROLLEN-DEGRADIERUNG
+-- 2. VERSEHENTLICHE ROLLEN-DEGRADIERUNG (brautpaar_solo → brautpaar_solo)
 --    Bisher überschrieb das Einlösen eines Codes die Rolle eines bereits
---    existierenden Mitglieds. Gefahr im Solo-Flow: Partner A (brautpaar_solo)
---    erstellt einen Veranstalter-Code, Partner B (ebenfalls brautpaar_solo)
---    klickt versehentlich auf den Link → B würde zum veranstalter und
---    verlöre das Brautpaar-Portal.
+--    existierenden Mitglieds. Wenn Partner A (brautpaar_solo) den Partner B
+--    (ebenfalls brautpaar_solo) mit falschem Link einlädt, könnte B's Rolle
+--    verändert werden.
 --    NEU: Admin-Rollen (veranstalter, brautpaar_solo) werden nie durch
 --    Code-Einlösung verändert. Der Code wird dabei NICHT konsumiert und
 --    bleibt für die richtige Person gültig; der Aufruf gibt idempotent
 --    Erfolg mit der bestehenden Rolle zurück.
 --    Upgrades für Nicht-Admin-Rollen (z. B. trauzeuge → brautpaar)
 --    funktionieren weiterhin wie bisher.
+--
+-- NOTE: brautpaar_solo → veranstalter ist auf API-Ebene blockiert
+--       (/api/invite/create gibt 403). Migration 0089 hadelt dies auf
+--       RPC-Ebene, aber bei aktivem brautpaar_solo-Flow ist das Szenario
+--       nicht mehr relevant.
 -- ════════════════════════════════════════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION public.redeem_invite_code(p_code TEXT)
