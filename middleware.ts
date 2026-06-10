@@ -71,6 +71,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Layer 2b: /admin/* — only admins (profiles.is_admin)
+  if (pathname.startsWith('/admin')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (!profile?.is_admin) {
+      const { data: memberships } = await supabase
+        .from('event_members')
+        .select('event_id, role')
+        .eq('user_id', user.id)
+      return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? []), request.url))
+    }
+    return supabaseResponse
+  }
+
   // Layer 3: /veranstalter/* — only approved organizers allowed
   if (pathname.startsWith('/veranstalter/') && pathname !== '/veranstalter/pending') {
     // Fast path: mitarbeiter can never be a veranstalter
