@@ -25,6 +25,18 @@
   --bp-rule:        #E8E8E6;
   --bp-rule-gold:   #D4BC9A;
 
+  /* Status colors */
+  --bp-red:         #B91C1C;
+  --bp-red-pale:    #FEF2F2;
+  --bp-green:       #15803D;
+  --bp-green-pale:  #F0FDF4;
+
+  /* Aliases — referenced by some components, keep in sync with base tokens */
+  --bp-ink-1:       #2C2825;   /* = --bp-ink */
+  --bp-ink-4:       #8C8076;   /* = --bp-ink-3 */
+  --bp-border:      #E8E8E6;   /* = --bp-rule */
+  --bp-surface-2:   #F0F0EE;   /* = --bp-ivory-2 */
+
   /* Shadows */
   --bp-shadow-card: 0 1px 2px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.04);
   --bp-shadow-elevated: 0 4px 16px rgba(0,0,0,0.08);
@@ -117,6 +129,62 @@
   background: var(--bp-ivory);
   font-family: 'DM Sans', system-ui, sans-serif;
   color: var(--bp-ink);
+}
+
+/* ── Theme Bridge ───────────────────────────────────────────────────────────
+   Shared Veranstalter components (ChatsClient, AblaufplanClient, CateringForm,
+   GetraenkeTabContent, MusikTabContent, FilesSection, …) style themselves with
+   the global tokens from globals.css. Inside the Brautpaar shell (and on the
+   bp-themed auth pages) we re-map those tokens onto the bp palette so reused
+   components inherit the Ivory/Gold look without per-component refactoring. */
+.bp-shell,
+.bp-auth {
+  --bg:             var(--bp-ivory);
+  --surface:        var(--bp-paper);
+  --surface2:       var(--bp-ivory-2);
+  --border:         var(--bp-rule);
+  --border2:        #D8D8D6;
+  --accent:         var(--bp-ink);
+  --accent-light:   var(--bp-gold-pale);
+  --text:           var(--bp-ink);
+  --text-primary:   var(--bp-ink);
+  --text-secondary: var(--bp-ink-2);
+  --text-tertiary:  var(--bp-ink-3);
+  --text-light:     var(--bp-ink-2);
+  --text-dim:       var(--bp-ink-3);
+  --text-mid:       var(--bp-ink);
+  --grey3:          var(--bp-ink-2);
+  --grey4:          var(--bp-ink);
+  --gold:           var(--bp-gold);
+  --gold-lt:        rgba(184, 153, 104, 0.35);
+  --gold-pale:      var(--bp-gold-pale);
+  --gold-pale2:     var(--bp-gold-mist);
+  --red:            var(--bp-red);
+  --red-pale:       var(--bp-red-pale);
+  --green:          var(--bp-green);
+  --green-pale:     var(--bp-green-pale);
+  --radius:         var(--bp-r-md);
+  --radius-sm:      var(--bp-r-sm);
+  --r-sm:           var(--bp-r-sm);
+  --r-md:           var(--bp-r-md);
+}
+
+/* Neutralize the aggressive global button hover (#333 + lift) from globals.css
+   for gold/accent-styled inline buttons inside the bp theme. */
+.bp-shell button[style*="var(--gold)"]:hover:not(:disabled):not(.tab-btn):not([data-sel]),
+.bp-auth  button[style*="var(--gold)"]:hover:not(:disabled):not(.tab-btn):not([data-sel]) {
+  background: var(--bp-gold-deep) !important;
+  color: #fff !important;
+  transform: none;
+  box-shadow: 0 4px 12px rgba(156, 127, 79, 0.25);
+}
+
+.bp-shell button[style*="var(--accent)"]:hover:not(:disabled):not(.tab-btn):not([data-sel]),
+.bp-auth  button[style*="var(--accent)"]:hover:not(:disabled):not(.tab-btn):not([data-sel]) {
+  background: var(--bp-ink) !important;
+  color: #fff !important;
+  transform: none;
+  box-shadow: 0 4px 12px rgba(44, 40, 37, 0.2);
 }
 
 .bp-main {
@@ -550,14 +618,12 @@
 }
 
 .bp-btn-primary {
-  background: #fff;
-  color: var(--bp-ink);
-  border-color: var(--bp-rule-gold);
+  background: var(--bp-gold);
+  color: #fff;
 }
 
 .bp-btn-primary:hover {
-  background: var(--bp-ivory-2);
-  border-color: var(--bp-gold);
+  background: var(--bp-gold-deep);
 }
 
 .bp-btn-secondary {
@@ -1094,6 +1160,180 @@
 @media (min-width: 900px) {
   .bp-below-desktop { display: none !important; }
 }
+
+/* ── Auth Pages (Login / Signup / Join / Passwort) ──────────────────────── */
+.bp-auth {
+  min-height: 100dvh;
+  background: var(--bp-ivory);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--bp-ink);
+}
+
+.bp-auth-inner {
+  width: 100%;
+  max-width: 420px;
+}
+
+.bp-auth-inner-wide {
+  max-width: 460px;
+}
+
+.bp-auth-logo {
+  text-align: center;
+  margin-bottom: 2.25rem;
+}
+
+.bp-auth-wordmark {
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 2.5rem;
+  color: var(--bp-gold-deep);
+  letter-spacing: -1px;
+  line-height: 1;
+  margin: 0;
+}
+
+.bp-auth-tagline {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 1.125rem;
+  color: var(--bp-ink-2);
+  margin: 0.5rem 0 0;
+}
+
+.bp-auth-card {
+  background: var(--bp-paper);
+  border: 1px solid var(--bp-rule);
+  border-radius: var(--bp-r-lg);
+  padding: 1.75rem;
+  box-shadow: var(--bp-shadow-card);
+}
+
+.bp-auth-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--bp-ink);
+  text-align: center;
+  letter-spacing: -0.01em;
+  margin: 0 0 1.5rem;
+}
+
+.bp-auth-error {
+  font-size: 0.8125rem;
+  color: var(--bp-red);
+  background: var(--bp-red-pale);
+  border: 1px solid #FCA5A5;
+  padding: 0.625rem 0.875rem;
+  border-radius: var(--bp-r-sm);
+  margin: 0;
+}
+
+.bp-auth-footer {
+  margin-top: 1.25rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.bp-auth-footer p {
+  font-size: 0.8125rem;
+  color: var(--bp-ink-3);
+  margin: 0;
+}
+
+.bp-auth-link {
+  color: var(--bp-gold-deep);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.bp-auth-link:hover {
+  color: var(--bp-gold);
+}
+
+/* Password input with visibility toggle */
+.bp-input-wrap {
+  position: relative;
+}
+
+.bp-input-wrap .bp-input {
+  padding-right: 2.5rem;
+}
+
+.bp-input-eye {
+  position: absolute;
+  right: 0.375rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--bp-ink-3);
+  border-radius: var(--bp-r-xs);
+}
+
+.bp-input-eye:hover {
+  color: var(--bp-ink);
+}
+
+
+/* ── Toast ──────────────────────────────────────────────────────────────── */
+.bp-toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.bp-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bp-ink);
+  color: #fff;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.625rem 1.125rem;
+  border-radius: var(--bp-r-pill);
+  box-shadow: var(--bp-shadow-elevated);
+  pointer-events: auto;
+  animation: bp-toast-in 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bp-toast-error {
+  background: #7F1D1D;
+}
+
+.bp-toast svg {
+  flex-shrink: 0;
+  color: var(--bp-gold);
+}
+
+.bp-toast-error svg {
+  color: #FCA5A5;
+}
+
+@keyframes bp-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 
 /* ── Date/time inputs: prevent iOS from overriding font & colour ── */
 .bp-input[type="date"],

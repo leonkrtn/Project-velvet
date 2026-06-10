@@ -4,8 +4,10 @@ export const dynamic = 'force-dynamic'
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ensureSoloEvent } from '@/lib/brautpaar-solo'
+import '@/app/brautpaar/brautpaar.css'
 
 // Signup für Solo-Brautpaare: kein Einladungscode nötig.
 // Beim Registrieren wird automatisch genau ein Event erstellt
@@ -20,21 +22,10 @@ export default function BrautpaarSignupPage() {
   const [weddingDate, setWeddingDate] = useState('')
   const [email, setEmail]             = useState('')
   const [password, setPassword]       = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState('')
   const [confirmEmail, setConfirmEmail] = useState(false)
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '13px 16px', fontSize: 15,
-    border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
-    background: '#fff', fontFamily: 'inherit', outline: 'none',
-    boxSizing: 'border-box', color: 'var(--text)',
-  }
-
-  const fieldLabel: React.CSSProperties = {
-    display: 'block', fontSize: 12, fontWeight: 600,
-    color: 'var(--text-dim)', marginBottom: 6,
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -77,116 +68,106 @@ export default function BrautpaarSignupPage() {
 
   if (confirmEmail) {
     return (
-      <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ textAlign: 'center', maxWidth: 420 }}>
-          <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 40, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1, marginBottom: 24 }}>Velvet.</p>
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Fast geschafft!</h2>
-          <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>
+      <div className="bp-auth">
+        <div className="bp-auth-inner" style={{ textAlign: 'center' }}>
+          <p className="bp-auth-wordmark" style={{ marginBottom: 24 }}>Velvet.</p>
+          <h2 className="bp-h2" style={{ marginBottom: 8 }}>Fast geschafft!</h2>
+          <p className="bp-body">
             Bitte bestätigt eure E-Mail-Adresse über den Link, den wir euch geschickt haben.
             Nach der Anmeldung wird euer Hochzeits-Event automatisch erstellt.
           </p>
-          <a href="/login" style={{ display: 'inline-block', marginTop: 20, color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Zur Anmeldung</a>
+          <a href="/login" className="bp-auth-link" style={{ display: 'inline-block', marginTop: 20 }}>Zur Anmeldung</a>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 440 }}>
+    <div className="bp-auth">
+      <div className="bp-auth-inner bp-auth-inner-wide">
 
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 40, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1 }}>Velvet.</p>
-          <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 8 }}>
-            Eure Hochzeit, selbst geplant — ohne Veranstalter starten
-          </p>
+        <div className="bp-auth-logo">
+          <p className="bp-auth-wordmark">Velvet.</p>
+          <p className="bp-auth-tagline">Eure Hochzeit, selbst geplant.</p>
         </div>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 28 }}>
+        <div className="bp-auth-card">
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             <div>
-              <label style={fieldLabel}>Dein Name <span style={{ color: 'var(--gold)' }}>*</span></label>
+              <label className="bp-label-text">Dein Name <span className="bp-text-gold-deep">*</span></label>
               <input
                 required autoComplete="name"
+                className="bp-input"
                 value={name} onChange={e => setName(e.target.value)}
-                placeholder="Anna Beispiel" style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                placeholder="Anna Beispiel"
               />
             </div>
 
             <div>
-              <label style={fieldLabel}>Name deines Partners / deiner Partnerin</label>
+              <label className="bp-label-text">Name deines Partners / deiner Partnerin</label>
               <input
+                className="bp-input"
                 value={partnerName} onChange={e => setPartnerName(e.target.value)}
-                placeholder="Max Beispiel" style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                placeholder="Max Beispiel"
               />
             </div>
 
             <div>
-              <label style={fieldLabel}>Hochzeitsdatum (falls schon bekannt)</label>
+              <label className="bp-label-text">Hochzeitsdatum (falls schon bekannt)</label>
               <input
                 type="date"
+                className="bp-input"
                 value={weddingDate} onChange={e => setWeddingDate(e.target.value)}
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
               />
             </div>
 
             <div>
-              <label style={fieldLabel}>E-Mail-Adresse <span style={{ color: 'var(--gold)' }}>*</span></label>
+              <label className="bp-label-text">E-Mail-Adresse <span className="bp-text-gold-deep">*</span></label>
               <input
                 type="email" required autoComplete="email"
+                className="bp-input"
                 value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="eure@email.de" style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+                placeholder="eure@email.de"
               />
             </div>
 
             <div>
-              <label style={fieldLabel}>Passwort (mind. 8 Zeichen) <span style={{ color: 'var(--gold)' }}>*</span></label>
-              <input
-                type="password" required autoComplete="new-password"
-                value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••" style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-              />
+              <label className="bp-label-text">Passwort (mind. 8 Zeichen) <span className="bp-text-gold-deep">*</span></label>
+              <div className="bp-input-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'} required autoComplete="new-password"
+                  className="bp-input"
+                  value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="bp-input-eye"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
-            {error && (
-              <p style={{ fontSize: 13, color: 'var(--red)', background: 'rgba(160,64,64,0.08)', padding: '10px 14px', borderRadius: 8 }}>{error}</p>
-            )}
+            {error && <p className="bp-auth-error">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                padding: '14px', borderRadius: 'var(--r-sm)', border: 'none',
-                background: 'var(--gold)', color: '#fff',
-                fontSize: 15, fontWeight: 600, fontFamily: 'inherit',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.6 : 1, transition: 'opacity 0.15s',
-              }}
-            >
+            <button type="submit" disabled={loading} className="bp-btn bp-btn-primary bp-btn-lg" style={{ width: '100%' }}>
               {loading ? 'Wird erstellt …' : 'Kostenlos starten'}
             </button>
           </form>
 
-          <div style={{ marginTop: 20, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+          <div className="bp-auth-footer">
+            <p>
               Du hast einen Einladungscode?{' '}
-              <a href="/signup" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Mit Code registrieren</a>
+              <a href="/signup" className="bp-auth-link">Mit Code registrieren</a>
             </p>
-            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+            <p>
               Bereits registriert?{' '}
-              <a href="/login" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Anmelden</a>
+              <a href="/login" className="bp-auth-link">Anmelden</a>
             </p>
           </div>
         </div>

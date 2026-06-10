@@ -652,7 +652,7 @@ const AGE_LABELS: Record<string, string> = {
 function InfoSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--bp-ink-4)', margin: '0 0 0.5rem' }}>{title}</p>
+      <p style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--bp-ink-3)', margin: '0 0 0.5rem' }}>{title}</p>
       <div style={{ background: 'var(--bp-bg)', borderRadius: 'var(--bp-r-md)', padding: '0.75rem 1rem', border: '1px solid var(--bp-rule)' }}>
         {children}
       </div>
@@ -757,7 +757,7 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <AttendingBadge status={guest.status} />
                 {guest.side && <span style={{ fontSize: '0.8rem', color: 'var(--bp-ink-3)' }}>{guest.side}</span>}
-                {respondedLabel && <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-4)' }}>· Geantwortet {respondedLabel}</span>}
+                {respondedLabel && <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>· Geantwortet {respondedLabel}</span>}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.375rem', flexShrink: 0 }}>
@@ -1476,7 +1476,7 @@ function RsvpTab({ guests, onUpdateGuest }: { guests: Guest[]; onUpdateGuest: (g
                             : <p style={{ fontSize: '0.8125rem', color: '#B91C1C', margin: 0 }}>Keine E-Mail hinterlegt</p>
                           }
                           {url && (
-                            <p style={{ fontSize: '0.75rem', color: 'var(--bp-ink-4)', fontFamily: 'monospace', margin: '0.25rem 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)', fontFamily: 'monospace', margin: '0.25rem 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {url}
                             </p>
                           )}
@@ -1565,8 +1565,9 @@ function EinstellungenTab({ eventId, rsvpSettings: initialSettings }: { eventId:
           Begleitperson-Option anzeigen
         </label>
       </div>
-      <button className="bp-btn bp-btn-primary" onClick={save} disabled={saving}>
-        {saving ? 'Speichert…' : saved ? 'Gespeichert ✓' : 'Einstellungen speichern'}
+      <button className="bp-btn bp-btn-primary" onClick={save} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+        {saved && <Check size={16} />}
+        {saving ? 'Speichert…' : saved ? 'Gespeichert' : 'Einstellungen speichern'}
       </button>
     </div>
   )

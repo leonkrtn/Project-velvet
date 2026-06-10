@@ -96,17 +96,19 @@ function WishCard({ item, onEdit, onDelete }: { item: WishItem; onEdit: () => vo
                 fontSize: '0.625rem', fontWeight: 700, padding: '2px 7px',
                 borderRadius: 4, background: 'var(--bp-ivory-2)', color: 'var(--bp-ink-3)',
                 textTransform: 'uppercase', letterSpacing: '0.08em',
+                display: 'inline-flex', alignItems: 'center', gap: 3,
               }}>
-                Vergeben ✓
+                Vergeben <Check size={10} strokeWidth={3} />
               </span>
             )}
             {isFullyFunded && (
               <span style={{
                 fontSize: '0.625rem', fontWeight: 700, padding: '2px 7px',
-                borderRadius: 4, background: '#F0FDF4', color: '#15803D',
+                borderRadius: 4, background: 'var(--bp-green-pale)', color: 'var(--bp-green)',
                 textTransform: 'uppercase', letterSpacing: '0.08em',
+                display: 'inline-flex', alignItems: 'center', gap: 3,
               }}>
-                Vollständig finanziert ✓
+                Vollständig finanziert <Check size={10} strokeWidth={3} />
               </span>
             )}
           </div>

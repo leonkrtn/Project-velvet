@@ -4,7 +4,9 @@ export const dynamic = 'force-dynamic'
 
 import React, { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Check, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import '@/app/brautpaar/brautpaar.css'
 
 type CodeType = 'event' | 'vendor' | null
 
@@ -24,6 +26,7 @@ function SignupForm() {
   const [name, setName]               = useState('')
   const [email, setEmail]             = useState('')
   const [password, setPassword]       = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState('')
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -34,13 +37,6 @@ function SignupForm() {
   const [pendingCode, setPendingCode] = useState('')
 
   const getSupabase = () => createClient()
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '13px 16px', fontSize: 15,
-    border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
-    background: '#fff', fontFamily: 'inherit', outline: 'none',
-    boxSizing: 'border-box', color: 'var(--text)',
-  }
 
   const handleCodeBlur = async () => {
     const code = inviteCode.trim()
@@ -146,128 +142,127 @@ function SignupForm() {
 
   if (success) {
     return (
-      <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 40, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1, marginBottom: 24 }}>Velvet.</p>
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Account erstellt!</h2>
-          <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>Du wirst zum Login weitergeleitet…</p>
+      <div className="bp-auth">
+        <div className="bp-auth-inner" style={{ textAlign: 'center' }}>
+          <p className="bp-auth-wordmark" style={{ marginBottom: 24 }}>Velvet.</p>
+          <h2 className="bp-h2" style={{ marginBottom: 8 }}>Account erstellt!</h2>
+          <p className="bp-body">Du wirst zum Login weitergeleitet…</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 440 }}>
+    <div className="bp-auth">
+      <div className="bp-auth-inner bp-auth-inner-wide">
 
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 40, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1 }}>Velvet.</p>
-          <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 8 }}>Konto erstellen</p>
+        <div className="bp-auth-logo">
+          <p className="bp-auth-wordmark">Velvet.</p>
+          <p className="bp-auth-tagline">Konto erstellen</p>
         </div>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 28 }}>
+        <div className="bp-auth-card">
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Invite Code */}
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>
-                Einladungscode <span style={{ color: 'var(--gold)' }}>*</span>
+              <label className="bp-label-text">
+                Einladungscode <span className="bp-text-gold-deep">*</span>
               </label>
               <input
                 required
+                className="bp-input"
                 value={inviteCode}
                 onChange={e => { setInviteCode(e.target.value); setCodeType(null); setEventPreview(null) }}
                 onBlur={handleCodeBlur}
                 placeholder="Dein Einladungscode"
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
               />
               {previewLoading && (
-                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5 }}>Prüfe Code …</p>
+                <p className="bp-caption" style={{ marginTop: 5 }}>Prüfe Code …</p>
               )}
               {codeType === 'vendor' && (
-                <p style={{ fontSize: 12, color: 'var(--gold)', marginTop: 5, fontWeight: 600 }}>
-                  Dienstleister-Code gültig ✓
+                <p className="bp-caption" style={{ marginTop: 5, fontWeight: 600, color: 'var(--bp-gold-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Check size={13} /> Dienstleister-Code gültig
                 </p>
               )}
               {codeType === 'event' && eventPreview && (
-                <p style={{ fontSize: 12, color: 'var(--gold)', marginTop: 5, fontWeight: 600 }}>
-                  Einladung gefunden · Rolle: {eventPreview.role}
+                <p className="bp-caption" style={{ marginTop: 5, fontWeight: 600, color: 'var(--bp-gold-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Check size={13} /> Einladung gefunden · Rolle: {eventPreview.role}
                 </p>
               )}
               {!previewLoading && inviteCode.trim() && !codeType && (
-                <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5 }}>Code nicht gefunden oder abgelaufen</p>
+                <p className="bp-caption" style={{ marginTop: 5 }}>Code nicht gefunden oder abgelaufen</p>
               )}
             </div>
 
             {/* Name */}
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>
-                Dein Name <span style={{ color: 'var(--gold)' }}>*</span>
+              <label className="bp-label-text">
+                Dein Name <span className="bp-text-gold-deep">*</span>
               </label>
               <input
                 required
                 autoComplete="name"
+                className="bp-input"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Max Mustermann"
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
               />
             </div>
 
             {/* Email */}
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>
-                E-Mail-Adresse <span style={{ color: 'var(--gold)' }}>*</span>
+              <label className="bp-label-text">
+                E-Mail-Adresse <span className="bp-text-gold-deep">*</span>
               </label>
               <input
                 type="email"
                 required
                 autoComplete="email"
+                className="bp-input"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="deine@email.de"
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
               />
             </div>
 
             {/* Password */}
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>
-                Passwort (mind. 8 Zeichen) <span style={{ color: 'var(--gold)' }}>*</span>
+              <label className="bp-label-text">
+                Passwort (mind. 8 Zeichen) <span className="bp-text-gold-deep">*</span>
               </label>
-              <input
-                type="password"
-                required
-                autoComplete="new-password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-              />
+              <div className="bp-input-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="new-password"
+                  className="bp-input"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="bp-input-eye"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             {error && (
-              <div style={{ fontSize: 13, color: 'var(--red)', background: 'rgba(160,64,64,0.08)', padding: '10px 14px', borderRadius: 8 }}>
-                <p>{error}</p>
+              <div className="bp-auth-error">
+                <p style={{ margin: 0 }}>{error}</p>
                 {pendingRedeem && (
                   <button
                     type="button"
                     onClick={handleRetryRedeem}
                     disabled={loading}
-                    style={{
-                      marginTop: 10, padding: '8px 16px', borderRadius: 'var(--r-sm)',
-                      border: '1px solid var(--red)', background: 'none',
-                      color: 'var(--red)', cursor: 'pointer', fontSize: 13,
-                      fontFamily: 'inherit', fontWeight: 600,
-                    }}
+                    className="bp-btn bp-btn-danger bp-btn-sm"
+                    style={{ marginTop: 10 }}
                   >
                     {loading ? 'Wird versucht …' : 'Erneut versuchen'}
                   </button>
@@ -276,30 +271,20 @@ function SignupForm() {
             )}
 
             {!pendingRedeem && (
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  padding: '14px', borderRadius: 'var(--r-sm)', border: 'none',
-                  background: 'var(--gold)', color: '#fff',
-                  fontSize: 15, fontWeight: 600, fontFamily: 'inherit',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.6 : 1, transition: 'opacity 0.15s',
-                }}
-              >
+              <button type="submit" disabled={loading} className="bp-btn bp-btn-primary bp-btn-lg" style={{ width: '100%' }}>
                 {loading ? 'Wird erstellt …' : 'Konto erstellen'}
               </button>
             )}
           </form>
 
-          <div style={{ marginTop: 20, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+          <div className="bp-auth-footer">
+            <p>
               Keinen Code? Plant eure Hochzeit selbst:{' '}
-              <a href="/signup/brautpaar" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Als Brautpaar starten</a>
+              <a href="/signup/brautpaar" className="bp-auth-link">Als Brautpaar starten</a>
             </p>
-            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+            <p>
               Bereits registriert?{' '}
-              <a href="/login" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Anmelden</a>
+              <a href="/login" className="bp-auth-link">Anmelden</a>
             </p>
           </div>
         </div>
@@ -317,7 +302,7 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100dvh', background: 'var(--bg)' }} />}>
+    <Suspense fallback={<div className="bp-auth" />}>
       <SignupForm />
     </Suspense>
   )

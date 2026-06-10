@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/', '/login', '/signup', '/signup/brautpaar', '/signup/veranstalter', '/auth/callback', '/join']
+const PUBLIC_ROUTES = ['/', '/login', '/signup', '/signup/brautpaar', '/signup/veranstalter', '/auth/callback', '/join', '/password-reset']
 
 type Membership = { event_id: string; role: string }
 

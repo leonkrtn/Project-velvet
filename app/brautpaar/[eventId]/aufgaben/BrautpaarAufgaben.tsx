@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Check, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Check, Trash2, ChevronDown, ChevronRight, X } from 'lucide-react'
 
 interface Task {
   id: string
@@ -48,6 +48,7 @@ function TaskItem({ task, onUpdate, onDelete }: {
   onDelete: () => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [delConfirm, setDelConfirm] = useState(false)
 
   async function toggleDone() {
     setSaving(true)
@@ -90,13 +91,21 @@ function TaskItem({ task, onUpdate, onDelete }: {
       }}>
         {task.title}
       </span>
+      {delConfirm && (
+        <button
+          className="bp-btn bp-btn-danger bp-btn-sm"
+          onClick={() => { setDelConfirm(false); onDelete() }}
+        >
+          Löschen
+        </button>
+      )}
       <button
         className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon"
-        onClick={onDelete}
-        style={{ opacity: 0.5 }}
-        title="Aufgabe löschen"
+        onClick={() => setDelConfirm(v => !v)}
+        style={{ opacity: delConfirm ? 1 : 0.5, color: delConfirm ? 'var(--bp-red)' : undefined }}
+        title={delConfirm ? 'Löschen abbrechen' : 'Aufgabe löschen'}
       >
-        <Trash2 size={14} />
+        {delConfirm ? <X size={14} /> : <Trash2 size={14} />}
       </button>
     </div>
   )
@@ -195,8 +204,12 @@ function PhaseSection({ phaseKey, label, tasks, eventId, userId, onUpdate, onDel
                 <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={addTask} disabled={saving || !newTitle.trim()}>
                   {saving ? '…' : 'OK'}
                 </button>
-                <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={() => { setAdding(false); setNewTitle('') }}>
-                  ✕
+                <button
+                  className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon"
+                  onClick={() => { setAdding(false); setNewTitle('') }}
+                  aria-label="Abbrechen"
+                >
+                  <X size={14} />
                 </button>
               </div>
             ) : (
