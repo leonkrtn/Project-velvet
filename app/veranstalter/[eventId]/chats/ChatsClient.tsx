@@ -141,7 +141,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const chatableMembers = useMemo(() =>
     members.filter(m =>
       m.user_id !== currentUserId &&
-      (m.role === 'dienstleister' || m.role === 'brautpaar')
+      ['dienstleister', 'brautpaar', 'brautpaar_solo', 'veranstalter'].includes(m.role)
     ),
     [members, currentUserId]
   )

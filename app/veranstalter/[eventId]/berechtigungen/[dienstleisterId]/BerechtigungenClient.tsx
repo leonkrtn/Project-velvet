@@ -116,6 +116,9 @@ interface Props {
   dienstleisterName: string
   dienstleisterEmail: string
   initialPerms: DienstleisterPermRow[]
+  /** Zurück-Link — Default: Veranstalter-Beteiligte. Wird vom Brautpaar-Portal (Solo) überschrieben. */
+  backHref?: string
+  backLabel?: string
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -218,6 +221,8 @@ export default function BerechtigungenDLClient({
   dienstleisterName,
   dienstleisterEmail,
   initialPerms,
+  backHref,
+  backLabel,
 }: Props) {
   const supabase = createClient()
   const [tabPerms, setTabPerms] = useState<Record<string, Access>>(buildInitialTabPerms(initialPerms))
@@ -393,7 +398,7 @@ export default function BerechtigungenDLClient({
       `}</style>
 
       <Link
-        href={`/veranstalter/${eventId}/mitglieder`}
+        href={backHref ?? `/veranstalter/${eventId}/mitglieder`}
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none',
@@ -401,7 +406,7 @@ export default function BerechtigungenDLClient({
         }}
       >
         <ArrowLeft size={15} />
-        Zurück zu Beteiligte
+        {backLabel ?? 'Zurück zu Beteiligte'}
       </Link>
 
       <div className="dl-perm-grid">

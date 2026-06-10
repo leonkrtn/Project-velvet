@@ -26,7 +26,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (!file) return NextResponse.json({ error: 'Datei nicht gefunden' }, { status: 404 })
 
     const role = await getEventRole(supabase, user.id, file.event_id)
-    if (role !== 'veranstalter') return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+    if (role !== 'veranstalter' && role !== 'brautpaar_solo') {
+      return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+    }
 
     await admin.from('file_metadata').update({ visible_to_roles }).eq('id', fileId)
 

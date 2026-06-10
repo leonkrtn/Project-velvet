@@ -57,7 +57,7 @@ export async function DELETE(
   const member = await getAuthedMember(eventId)
   if (!member) return NextResponse.json({ error: 'Nicht berechtigt' }, { status: 401 })
 
-  if (member.role !== 'veranstalter' && member.role !== 'brautpaar') {
+  if (!['veranstalter', 'brautpaar', 'brautpaar_solo'].includes(member.role)) {
     return NextResponse.json({ error: 'Keine Lösch-Berechtigung' }, { status: 403 })
   }
 

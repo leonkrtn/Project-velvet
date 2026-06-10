@@ -56,7 +56,7 @@ export async function GET(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const isPublic = toggleRow?.enabled ?? true
-  const canDeleteAll = member.role === 'veranstalter' || member.role === 'brautpaar'
+  const canDeleteAll = ['veranstalter', 'brautpaar', 'brautpaar_solo'].includes(member.role)
   const photos = await Promise.all(
     (rows ?? []).map(async p => {
       const url = p.r2_key ? await requestDownloadUrl(p.r2_key).catch(() => null) : null
@@ -70,7 +70,7 @@ export async function GET(
     })
   )
 
-  return NextResponse.json({ photos, isPublic, isBrautpaar: member.role === 'brautpaar' })
+  return NextResponse.json({ photos, isPublic, isBrautpaar: member.role === 'brautpaar' || member.role === 'brautpaar_solo' })
 }
 
 // ── PATCH (toggle public visibility — brautpaar only) ─────────────────────────
@@ -81,7 +81,7 @@ export async function PATCH(
   const { eventId } = await params
   const member = await getAuthedMember(eventId)
   if (!member) return NextResponse.json({ error: 'Nicht berechtigt' }, { status: 401 })
-  if (member.role !== 'brautpaar' && member.role !== 'veranstalter') {
+  if (!['brautpaar', 'brautpaar_solo', 'veranstalter'].includes(member.role)) {
     return NextResponse.json({ error: 'Nur Brautpaar oder Veranstalter' }, { status: 403 })
   }
 

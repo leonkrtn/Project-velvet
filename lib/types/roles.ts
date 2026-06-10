@@ -1,4 +1,4 @@
-export type UserRole = 'veranstalter' | 'brautpaar' | 'dienstleister'
+export type UserRole = 'veranstalter' | 'brautpaar' | 'brautpaar_solo' | 'dienstleister'
 
 export type DienstleisterCategory =
   | 'Catering' | 'DJ' | 'Fotografie' | 'Videografie' | 'Floristik'

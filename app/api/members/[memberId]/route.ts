@@ -51,20 +51,31 @@ export async function DELETE(
   // 3. Rollen-Guard (spiegelt can_manage_member() wider)
   const allowed =
     callerRole === 'veranstalter' ||
+    callerRole === 'brautpaar_solo' ||
     (callerRole === 'brautpaar' && targetRole === 'trauzeuge')
 
   if (!allowed) {
     return NextResponse.json({ error: 'Keine Berechtigung für diese Rolle' }, { status: 403 })
   }
 
-  // 4. Letzter Veranstalter darf nicht entfernt werden
+  // 4. Das Event darf nicht ohne Admin zurückbleiben: der letzte Veranstalter
+  //    ist nur dann entfernbar, wenn ein brautpaar_solo-Mitglied (Event-Admin
+  //    im Solo-Flow) existiert — z. B. wenn das Solo-Paar seinen nachträglich
+  //    dazugeschalteten Veranstalter wieder entfernt.
   if (targetRole === 'veranstalter') {
-    const { count } = await admin
-      .from('event_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', target.event_id)
-      .eq('role', 'veranstalter')
-    if ((count ?? 0) <= 1) {
+    const [{ count: organizerCount }, { count: soloCount }] = await Promise.all([
+      admin
+        .from('event_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', target.event_id)
+        .eq('role', 'veranstalter'),
+      admin
+        .from('event_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', target.event_id)
+        .eq('role', 'brautpaar_solo'),
+    ])
+    if ((organizerCount ?? 0) <= 1 && (soloCount ?? 0) === 0) {
       return NextResponse.json(
         { error: 'Letzter Veranstalter kann nicht entfernt werden' },
         { status: 400 },

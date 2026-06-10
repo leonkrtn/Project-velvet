@@ -31,8 +31,24 @@
 |---|---|
 | `veranstalter` | Event organizer — full admin over their events |
 | `brautpaar` | Couple — curated subset of editing rights |
+| `brautpaar_solo` | Standalone couple without organizer — `is_event_member()` maps it to veranstalter AND brautpaar (full RLS cascade, migrations 0086–0089) |
 | `trauzeuge` | Best man/maid of honor — limited read + some edit |
 | `dienstleister` | Vendor/service provider — permission-gated access |
+
+### Solo-Brautpaar Flow (App ohne Veranstalter)
+
+- **Signup:** `/signup/brautpaar` (public, no invite code) → `supabase.auth.signUp` with `user_metadata.signup_role='brautpaar_solo'` → RPC `create_event_as_brautpaar_solo()` creates exactly ONE event (idempotent — returns existing event if the user already has a brautpaar_solo membership). Helper: `lib/brautpaar-solo.ts` (`ensureSoloEvent`).
+- **E-Mail-Confirmation fallback:** if no session after signUp, event creation happens later via login fallback (`app/login/page.tsx`) or the `/brautpaar` root page (both call `ensureSoloEvent` from user metadata).
+- **Portal:** solo couples use the regular Brautpaar portal (`/brautpaar/[eventId]/`); layout/middleware/pages accept role `brautpaar_solo`.
+- **Personen einladen (Allgemein → `SoloInviteSection`):** zeigt verbundene Personen (Partner, Veranstalter via `GET /api/members`) und generiert Codes via `POST /api/invite/create`. Partner-Invite (`targetRole:'brautpaar_solo'`) gibt vollen Admin-Zugriff. Veranstalter-Onboarding (`targetRole:'veranstalter'`): ein registrierter UND freigeschalteter Veranstalter löst den Code unter `/join` ein (`redeem_invite_code` verlangt `is_approved_organizer`, Migration 0089) und sieht das Event danach in seinem Dashboard. Das Solo-Paar kann den Veranstalter wieder entfernen (`DELETE /api/members/[memberId]` — der Letzter-Veranstalter-Schutz greift nicht, solange ein brautpaar_solo-Admin existiert).
+- **Invite-Matrix** in `/api/invite/create`: veranstalter→brautpaar, brautpaar_solo→veranstalter, brautpaar_solo→brautpaar_solo.
+- **Vendors & Deko:** brautpaar_solo darf Dienstleister einladen (`/api/invite/dienstleister`, `/api/vendor/invite`, `/api/vendor/signup-code`) und Deko freezen UND unfreezen (`/api/deko/freeze`). Deko-Freeze heißt bei Solo "Planung abschließen" (`DekoFreezeDialog isSolo` — einfacher Confirm statt ABSENDEN-Tippen).
+- **Dienstleister-Verwaltung (nur Solo):** `/brautpaar/[eventId]/dienstleister/` — Vendor-Liste + Einladung (`VendorInviteSection`) + Berechtigungs-Editor unter `[dienstleisterId]/` (re-used `BerechtigungenDLClient` mit `backHref`-Prop). Nav-Eintrag erscheint nur für brautpaar_solo (`BrautpaarShell isSolo`).
+- **Sitzplan (Solo):** Solo-Paare können die Raumkonfiguration selbst bearbeiten (`RaumKonfigurator` in `/brautpaar/[eventId]/sitzplan`, RLS via 0090); normales Brautpaar bleibt read-only.
+- **API-Parität:** brautpaar_solo ist zusätzlich erlaubt in: `PATCH /api/events/[eventId]`, `PATCH /api/files/[fileId]` (Sichtbarkeit), `/api/veranstalter/[eventId]/guests/{export,import,template}`.
+- **Migration 0090** (`0090_brautpaar_solo_parity.sql`): event_room_configs-Write + dienstleister_permissions-Manage über `is_event_member()` (matcht solo), organizer_room_configs-Read inkl. brautpaar_solo, `create_event_as_brautpaar_solo()` v3 mit Advisory-Lock + feature_toggles-Defaults (Spiegel von `DEFAULT_FEATURE_TOGGLES` in `lib/store.ts` — bei Änderung dort nachziehen!) + Backfill für bestehende Solo-Events.
+- `/join` (public route) — generic `invite_codes` redemption page for logged-in users; logged-out users are sent to login/signup with the code preserved.
+- `/signup/veranstalter` (public) — Self-Service-Registrierung für Veranstalter (Footer-Link auf Landing Page); startet mit `is_approved_organizer=false` → `/veranstalter/pending` bis zur Freischaltung.
 
 ---
 
@@ -41,7 +57,8 @@
 ```
 /                          → Landing page (public)
 /login, /signup            → Auth (public)
-/join                      → Join event by code (public)
+/signup/brautpaar          → Solo-Brautpaar signup, no code needed (public)
+/join                      → Join event by code — invite_codes redemption for logged-in users (public)
 /auth/callback             → Supabase OAuth callback (public)
 
 /veranstalter/             → Organizer hub (requires is_approved_organizer)
@@ -350,6 +367,15 @@ supabase/migrations/
                                        Embedded players in MusikTabContent (Spotify/YouTube/Apple Music iframe detection).
   0082_getraenke.sql                   Creates getraenke_kategorien, getraenke_artikel (Mengenplanung), getraenke_cocktails (ingredients JSONB).
                                        RLS: veranstalter/brautpaar full access; dl needs dl_has_tab_access('getraenke','read').
+  0086_brautpaar_solo_role.sql         Adds ENUM value 'brautpaar_solo' to user_role (separate transaction required before use).
+  0087_brautpaar_solo_functions.sql    is_event_member() maps brautpaar_solo → veranstalter|brautpaar (full RLS cascade);
+                                       can_manage_member() solo = admin; create_event_as_brautpaar_solo() (no approval needed).
+  0088_brautpaar_solo_onboarding.sql   create_event_as_brautpaar_solo() v2: IDEMPOTENT (returns existing solo event),
+                                       p_date nullable, p_couple_name param. Drops old 0087 signature (PostgREST overload).
+  0089_redeem_invite_hardening.sql     redeem_invite_code() hardening: (1) veranstalter codes require
+                                       profiles.is_approved_organizer (error NOT_APPROVED_ORGANIZER, code stays open);
+                                       (2) existing admin members (veranstalter, brautpaar_solo) are never re-roled by
+                                       redeeming a code — idempotent success with existing role, code stays open.
 
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)

@@ -1,12 +1,18 @@
 'use client'
+
+export const dynamic = 'force-dynamic'
 import React, { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { ensureSoloEvent, isSoloSignup } from '@/lib/brautpaar-solo'
 
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const nextUrl = searchParams.get('next')
+  // Nur interne Pfade als Redirect-Ziel akzeptieren (kein Open Redirect):
+  // "//evil.com" wäre eine protokoll-relative externe URL
+  const rawNext = searchParams.get('next')
+  const nextUrl = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : null
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -41,15 +47,27 @@ function LoginForm() {
           .from('event_members')
           .select('event_id, role')
           .eq('user_id', session!.user.id)
-          .limit(5)
 
-        const isVendor = memberships?.some(m => m.role === 'dienstleister')
-        const nonVendor = memberships?.find(m => m.role !== 'dienstleister')
+        // Feste Rollen-Priorität (deterministisch, unabhängig von DB-Reihenfolge):
+        // Paar-Portal → Vendor-Portal → Veranstalter-Warteseite
+        const roles = (memberships ?? []).map(m => m.role)
 
-        if (isVendor) {
+        if (roles.includes('brautpaar') || roles.includes('brautpaar_solo')) {
+          router.push('/brautpaar')
+        } else if (roles.includes('dienstleister')) {
           router.push('/vendor/dashboard')
-        } else if (nonVendor) {
-          router.push('/brautpaar?event=' + nonVendor.event_id)
+        } else if (roles.includes('veranstalter')) {
+          // Veranstalter-Mitgliedschaft ohne Freischaltung (isOrganizer war false)
+          router.push('/veranstalter/pending')
+        } else if (isSoloSignup(session?.user)) {
+          // Solo-Brautpaar ohne Event: Signup lief ohne Session (E-Mail-
+          // Bestätigung) — Event jetzt anhand der Signup-Metadaten erstellen.
+          try {
+            const eventId = await ensureSoloEvent(supabase, session!.user.user_metadata)
+            router.push(`/brautpaar/${eventId}/uebersicht`)
+          } catch {
+            router.push('/signup/brautpaar')
+          }
         } else {
           // Fallback: check organizer_staff table directly (covers cases where
           // app_metadata.role was not yet set, e.g. after a password reset)

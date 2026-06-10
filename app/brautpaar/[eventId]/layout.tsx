@@ -22,7 +22,7 @@ export default async function BrautpaarLayout({ children, params }: Props) {
     .eq('user_id', user.id)
     .single()
 
-  if (!member || (member.role !== 'brautpaar' && member.role !== 'veranstalter')) {
+  if (!member || !['brautpaar', 'brautpaar_solo', 'veranstalter'].includes(member.role)) {
     redirect('/login')
   }
 
@@ -35,7 +35,7 @@ export default async function BrautpaarLayout({ children, params }: Props) {
   if (!event) redirect('/login')
 
   const showWelcome =
-    member.role === 'brautpaar' && !member.onboarding_completed_at
+    ['brautpaar', 'brautpaar_solo'].includes(member.role) && !member.onboarding_completed_at
 
   return (
     <BrautpaarShell
@@ -44,6 +44,7 @@ export default async function BrautpaarLayout({ children, params }: Props) {
       eventDate={event.date ?? null}
       userId={user.id}
       showWelcome={showWelcome}
+      isSolo={member.role === 'brautpaar_solo'}
     >
       {children}
     </BrautpaarShell>

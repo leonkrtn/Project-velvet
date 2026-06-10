@@ -8,6 +8,8 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })
 
+    // Erlaubt: freigeschaltete Veranstalter ODER Solo-Brautpaare (sie sind
+    // Admin ihres eigenen Events und dürfen Dienstleister onboarden)
     const { data: profile } = await supabase
       .from('profiles')
       .select('is_approved_organizer')
@@ -15,7 +17,17 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (!profile?.is_approved_organizer) {
-      return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+      const { data: soloMembership } = await supabase
+        .from('event_members')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('role', 'brautpaar_solo')
+        .limit(1)
+        .maybeSingle()
+
+      if (!soloMembership) {
+        return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+      }
     }
 
     const admin = createAdminClient()

@@ -6,9 +6,13 @@ interface Props {
   onConfirm: () => Promise<void>
   onClose: () => void
   isFreezing: boolean
+  /** Solo-Brautpaar: kein Veranstalter — Freeze ist "Planung abschließen",
+   *  kein Einreichen. Einfacher Bestätigen-Schritt statt ABSENDEN-Tippen,
+   *  und das Paar kann den Freeze selbst wieder aufheben. */
+  isSolo?: boolean
 }
 
-export default function DekoFreezeDialog({ onConfirm, onClose, isFreezing }: Props) {
+export default function DekoFreezeDialog({ onConfirm, onClose, isFreezing, isSolo = false }: Props) {
   const [step, setStep] = useState<'warn' | 'confirm'>('warn')
   const [typed, setTyped] = useState('')
   const CONFIRMATION = 'ABSENDEN'
@@ -27,18 +31,30 @@ export default function DekoFreezeDialog({ onConfirm, onClose, isFreezing }: Pro
                 <AlertTriangle size={22} color="#856404" />
               </div>
               <div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>Konzept einreichen</h2>
-                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Das kann nicht leicht rückgängig gemacht werden.</p>
+                <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>{isSolo ? 'Planung abschließen' : 'Konzept einreichen'}</h2>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  {isSolo ? 'Eure Deko-Planung wird festgeschrieben.' : 'Das kann nicht leicht rückgängig gemacht werden.'}
+                </p>
               </div>
             </div>
 
             <div style={{ background: '#FFF8F0', border: '1px solid #F4C36A', borderRadius: 8, padding: '14px 16px', marginBottom: 20 }}>
               <p style={{ fontSize: 13, lineHeight: 1.7, color: '#7a5200' }}>
                 <strong>Was bedeutet das?</strong><br />
-                • Alle Bereiche werden eingefroren — kein Bearbeiten mehr möglich<br />
-                • Der aktuelle Stand wird als finales Dekorationskonzept übermittelt<br />
-                • Budget-Einträge werden automatisch erstellt<br />
-                • Nur der Veranstalter kann den Freeze wieder aufheben
+                {isSolo ? (
+                  <>
+                    • Alle Bereiche werden eingefroren — kein Bearbeiten mehr möglich<br />
+                    • Die Deko-Kosten werden automatisch in euer Budget übernommen<br />
+                    • Ihr könnt den Abschluss jederzeit wieder aufheben, um weiter zu planen
+                  </>
+                ) : (
+                  <>
+                    • Alle Bereiche werden eingefroren — kein Bearbeiten mehr möglich<br />
+                    • Der aktuelle Stand wird als finales Dekorationskonzept übermittelt<br />
+                    • Budget-Einträge werden automatisch erstellt<br />
+                    • Nur der Veranstalter kann den Freeze wieder aufheben
+                  </>
+                )}
               </p>
             </div>
 
@@ -47,10 +63,20 @@ export default function DekoFreezeDialog({ onConfirm, onClose, isFreezing }: Pro
                 style={{ flex: 1, padding: '10px 0', border: '1px solid var(--border)', borderRadius: 8, background: 'none', cursor: 'pointer', fontSize: 14, fontFamily: 'inherit' }}>
                 Abbrechen
               </button>
-              <button onClick={() => setStep('confirm')}
-                style={{ flex: 1, padding: '10px 0', background: '#C9B99A', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
-                Weiter →
-              </button>
+              {isSolo ? (
+                <button
+                  disabled={isFreezing}
+                  onClick={onConfirm}
+                  style={{ flex: 1, padding: '10px 0', background: '#28a745', border: 'none', borderRadius: 8, color: '#fff', cursor: isFreezing ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: isFreezing ? 0.7 : 1 }}>
+                  <Lock size={14} />
+                  {isFreezing ? 'Wird abgeschlossen…' : 'Jetzt abschließen'}
+                </button>
+              ) : (
+                <button onClick={() => setStep('confirm')}
+                  style={{ flex: 1, padding: '10px 0', background: '#C9B99A', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
+                  Weiter →
+                </button>
+              )}
             </div>
           </>
         ) : (
@@ -81,8 +107,9 @@ export default function DekoFreezeDialog({ onConfirm, onClose, isFreezing }: Pro
               <button
                 disabled={typed !== CONFIRMATION || isFreezing}
                 onClick={onConfirm}
-                style={{ flex: 1, padding: '10px 0', background: typed === CONFIRMATION ? '#28a745' : '#ccc', border: 'none', borderRadius: 8, color: '#fff', cursor: typed === CONFIRMATION ? 'pointer' : 'not-allowed', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', transition: 'background .15s' }}>
-                {isFreezing ? 'Wird eingereicht…' : '🔒 Jetzt einreichen'}
+                style={{ flex: 1, padding: '10px 0', background: typed === CONFIRMATION ? '#28a745' : '#ccc', border: 'none', borderRadius: 8, color: '#fff', cursor: typed === CONFIRMATION ? 'pointer' : 'not-allowed', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', transition: 'background .15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <Lock size={14} />
+                {isFreezing ? 'Wird eingereicht…' : 'Jetzt einreichen'}
               </button>
             </div>
           </>

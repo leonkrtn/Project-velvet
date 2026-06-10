@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Save, Plus, X } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
+import SoloInviteSection from './SoloInviteSection'
 
 interface EventData {
   id: string
@@ -32,6 +33,10 @@ interface EventData {
 interface Props {
   eventId: string
   initialData: EventData
+  /** true für brautpaar_solo: zeigt die Invite-Sektion (Partner / Veranstalter) */
+  isSolo?: boolean
+  /** Eigene User-ID — von SoloInviteSection benötigt (Partner vs. eigener Eintrag) */
+  currentUserId?: string
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -56,7 +61,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
+export default function BrautpaarAllgemein({ eventId, initialData, isSolo, currentUserId }: Props) {
   const [data, setData] = useState<EventData>(initialData)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
@@ -295,6 +300,8 @@ export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
           Das Gesamtbudget dient als Richtwert in eurer Budget-Übersicht.
         </p>
       </Section>
+
+      {isSolo && currentUserId && <SoloInviteSection eventId={eventId} currentUserId={currentUserId} />}
 
       {/* Save footer */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '0.5rem', paddingBottom: '2rem' }}>

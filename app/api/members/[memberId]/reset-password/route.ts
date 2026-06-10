@@ -53,6 +53,7 @@ export async function POST(
   const targetRole = target.role as string
   const allowed =
     callerRole === 'veranstalter' ||
+    callerRole === 'brautpaar_solo' ||
     (callerRole === 'brautpaar' && targetRole === 'trauzeuge')
 
   if (!allowed) {

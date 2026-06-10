@@ -423,7 +423,7 @@ function UploadPanel({
               ))}
             </div>
             {!visibleBp && !visibleDl && (
-              <p style={{ fontSize: 11, color: '#D97706', marginTop: 6 }}>Datei ist nur für dich als Veranstalter sichtbar.</p>
+              <p style={{ fontSize: 11, color: '#D97706', marginTop: 6 }}>Datei ist aktuell nur für dich sichtbar.</p>
             )}
           </div>
         )}

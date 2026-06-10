@@ -1,21 +1,30 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/', '/login', '/signup', '/auth/callback', '/join']
+const PUBLIC_ROUTES = ['/', '/login', '/signup', '/signup/brautpaar', '/signup/veranstalter', '/auth/callback', '/join']
 
 type Membership = { event_id: string; role: string }
 
-function resolvePortal(user: { app_metadata?: Record<string, unknown> }, memberships: Membership[]): string {
-  if (user.app_metadata?.is_approved_organizer === true) return '/veranstalter/events'
-  if (user.app_metadata?.role === 'mitarbeiter') return '/mitarbeiter'
-  const nonVendor = memberships.find(m => m.role !== 'dienstleister')
-  if (nonVendor) {
-    switch (nonVendor.role) {
-      case 'veranstalter': return '/veranstalter/events'
-      case 'brautpaar':    return '/brautpaar'
-    }
+// Deterministische Portal-Auflösung mit fester Rollen-Priorität
+// (brautpaar/brautpaar_solo → veranstalter → dienstleister).
+// organizerKnownUnapproved = true, wenn der profiles-Check bereits fehlschlug:
+// dann nie auf /veranstalter/events zeigen (sonst Redirect-Loop mit Layer 3),
+// sondern auf die Warteseite /veranstalter/pending.
+function resolvePortal(
+  user: { app_metadata?: Record<string, unknown> },
+  memberships: Membership[],
+  organizerKnownUnapproved = false,
+): string {
+  if (!organizerKnownUnapproved && user.app_metadata?.is_approved_organizer === true) {
+    return '/veranstalter/events'
   }
-  if (memberships.some(m => m.role === 'dienstleister')) return '/vendor/dashboard'
+  if (user.app_metadata?.role === 'mitarbeiter') return '/mitarbeiter'
+  const roles = memberships.map(m => m.role)
+  if (roles.includes('brautpaar_solo') || roles.includes('brautpaar')) return '/brautpaar'
+  if (roles.includes('veranstalter')) {
+    return organizerKnownUnapproved ? '/veranstalter/pending' : '/veranstalter/events'
+  }
+  if (roles.includes('dienstleister')) return '/vendor/dashboard'
   return '/signup'
 }
 
@@ -78,7 +87,7 @@ export async function middleware(request: NextRequest) {
         .from('event_members')
         .select('event_id, role')
         .eq('user_id', user.id)
-      return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? []), request.url))
+      return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? [], true), request.url))
     }
   }
 
@@ -105,7 +114,7 @@ export async function middleware(request: NextRequest) {
 
     const roles = (memberships ?? []).map(m => m.role)
 
-    if (isBrautpaarRoute && !roles.includes('brautpaar')) {
+    if (isBrautpaarRoute && !roles.includes('brautpaar') && !roles.includes('brautpaar_solo')) {
       return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? []), request.url))
     }
     if (isVendorRoute && !roles.includes('dienstleister')) {

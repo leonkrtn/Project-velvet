@@ -18,7 +18,7 @@ export default async function BrautpaarGetraenkePage({ params }: Props) {
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!member || (member.role !== 'brautpaar' && member.role !== 'veranstalter')) {
+  if (!member || !['brautpaar', 'brautpaar_solo', 'veranstalter'].includes(member.role)) {
     redirect('/login')
   }
 

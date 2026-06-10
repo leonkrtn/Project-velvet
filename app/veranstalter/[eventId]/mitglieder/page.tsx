@@ -1,8 +1,9 @@
+export const dynamic = 'force-dynamic'
+
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import MitgliederClient from './MitgliederClient'
 
-export const dynamic = 'force-dynamic'
 
 interface Props {
   params: Promise<{ eventId: string }>

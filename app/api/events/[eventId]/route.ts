@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Verify veranstalter role
+  // Verify event admin role (veranstalter or autonomous solo couple)
   const { data: member } = await supabase
     .from('event_members')
     .select('role')
@@ -34,7 +34,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .eq('user_id', user.id)
     .single()
 
-  if (!member || member.role !== 'veranstalter') {
+  if (!member || !['veranstalter', 'brautpaar_solo'].includes(member.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

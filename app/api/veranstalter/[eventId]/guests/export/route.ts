@@ -18,7 +18,7 @@ export async function GET(
     .eq('user_id', user.id)
     .single()
 
-  if (!member || member.role !== 'veranstalter') {
+  if (!member || !['veranstalter', 'brautpaar_solo'].includes(member.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
