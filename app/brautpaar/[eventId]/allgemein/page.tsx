@@ -40,6 +40,7 @@ export default async function AllgemeinPage({ params }: Props) {
       eventId={eventId}
       initialData={event}
       isSolo={member?.role === 'brautpaar_solo'}
+      currentUserId={user.id}
     />
   )
 }

@@ -35,6 +35,8 @@ interface Props {
   initialData: EventData
   /** true für brautpaar_solo: zeigt die Invite-Sektion (Partner / Veranstalter) */
   isSolo?: boolean
+  /** Eigene User-ID — von SoloInviteSection benötigt (Partner vs. eigener Eintrag) */
+  currentUserId?: string
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -59,7 +61,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export default function BrautpaarAllgemein({ eventId, initialData, isSolo }: Props) {
+export default function BrautpaarAllgemein({ eventId, initialData, isSolo, currentUserId }: Props) {
   const [data, setData] = useState<EventData>(initialData)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
@@ -299,7 +301,7 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo }: Pro
         </p>
       </Section>
 
-      {isSolo && <SoloInviteSection eventId={eventId} />}
+      {isSolo && currentUserId && <SoloInviteSection eventId={eventId} currentUserId={currentUserId} />}
 
       {/* Save footer */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '0.5rem', paddingBottom: '2rem' }}>
