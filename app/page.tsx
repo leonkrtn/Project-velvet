@@ -29,23 +29,22 @@ export default function LandingPage() {
     }
     if (isOrganizer) return '/veranstalter/events'
 
-    // Check event membership + role
+    // Check event membership + role — feste Priorität statt erstem DB-Treffer
     const { data: memberships } = await supabase
       .from('event_members')
       .select('event_id, role')
       .eq('user_id', session.user.id)
-      .limit(1)
 
     if (!memberships?.length) return '/signup'
 
-    const { event_id, role } = memberships[0]
-    switch (role) {
-      case 'veranstalter':   return '/veranstalter/events'
-      case 'brautpaar':      return '/brautpaar'
-      case 'brautpaar_solo': return '/brautpaar'
-      case 'dienstleister':  return `/vendor/dashboard/${event_id}/uebersicht`
-      default:               return '/brautpaar'
-    }
+    const roles = memberships.map(m => m.role)
+    if (roles.includes('brautpaar_solo') || roles.includes('brautpaar')) return '/brautpaar'
+    const vendor = memberships.find(m => m.role === 'dienstleister')
+    if (vendor) return `/vendor/dashboard/${vendor.event_id}/uebersicht`
+    // Veranstalter-Mitgliedschaft, aber nicht freigegeben (isOrganizer war false)
+    // → Warteseite, nicht /veranstalter/events (Middleware würde dort blocken)
+    if (roles.includes('veranstalter')) return '/veranstalter/pending'
+    return '/brautpaar'
   }, [])
 
   const handleCtaClick = useCallback(async (e: React.MouseEvent) => {

@@ -23,6 +23,16 @@ function portalForRole(role: string, eventId: string): string {
   }
 }
 
+// Fehler-Codes aus redeem_invite_code() → verständliche Meldungen
+const REDEEM_ERRORS: Record<string, string> = {
+  NOT_AUTHENTICATED:        'Bitte melde dich zuerst an.',
+  CODE_NOT_FOUND_OR_LOCKED: 'Code nicht gefunden — bitte prüfe den Link.',
+  CODE_ALREADY_USED:        'Dieser Code wurde bereits eingelöst.',
+  CODE_EXPIRED:             'Dieser Code ist abgelaufen. Bitte lass dir einen neuen Link schicken.',
+  EVENT_NOT_FOUND:          'Das zugehörige Event existiert nicht mehr.',
+  NOT_APPROVED_ORGANIZER:   'Nur freigeschaltete Veranstalter-Konten können diese Einladung annehmen. Bitte registriere dich zuerst als Veranstalter und warte auf die Freischaltung.',
+}
+
 function JoinForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -70,7 +80,9 @@ function JoinForm() {
       const { data, error: rpcErr } = await supabase.rpc('redeem_invite_code', { p_code: code.trim() })
       if (rpcErr) throw new Error(rpcErr.message)
       const result = data as { success: boolean; error?: string; event_id?: string; role?: string }
-      if (!result.success) throw new Error(result.error ?? 'Code konnte nicht eingelöst werden.')
+      if (!result.success) {
+        throw new Error(REDEEM_ERRORS[result.error ?? ''] ?? result.error ?? 'Code konnte nicht eingelöst werden.')
+      }
       router.push(portalForRole(result.role ?? 'brautpaar', result.event_id!))
       router.refresh()
     } catch (err: unknown) {

@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       .select('role')
       .eq('event_id', eventId)
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
     if (!member || !['veranstalter', 'brautpaar_solo'].includes(member.role as string)) {
       return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })

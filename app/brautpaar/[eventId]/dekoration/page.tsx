@@ -13,8 +13,20 @@ export default async function BrautpaarDekorationPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('profiles').select('display_name').eq('id', user.id).single()
+  const [{ data: member }, { data: profile }] = await Promise.all([
+    supabase
+      .from('event_members')
+      .select('role')
+      .eq('event_id', eventId)
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('profiles').select('name').eq('id', user.id).maybeSingle(),
+  ])
+
+  if (!member || !['brautpaar', 'brautpaar_solo', 'veranstalter'].includes(member.role)) {
+    redirect('/login')
+  }
 
   const [
     { data: areasRaw },
@@ -65,14 +77,14 @@ export default async function BrautpaarDekorationPage({ params }: Props) {
         eventId={eventId}
         role="brautpaar"
         userId={user.id}
-        userName={profile?.display_name ?? 'Brautpaar'}
+        userName={profile?.name ?? 'Brautpaar'}
         initialAreas={areas}
         initialMoodboards={moodboards}
         initialCatalog={(catalog ?? []) as DekoCatalogItem[]}
         initialFlatRates={(flatRates ?? []) as DekoFlatRate[]}
         initialItemsByCanvas={itemsByCanvas}
         allFrozen={allFrozen}
-        isVeranstalter={false}
+        isVeranstalter={member.role === 'brautpaar_solo'}
       />
       </div>
     </div>

@@ -31,7 +31,7 @@
 |---|---|
 | `veranstalter` | Event organizer — full admin over their events |
 | `brautpaar` | Couple — curated subset of editing rights |
-| `brautpaar_solo` | Standalone couple without organizer — `is_event_member()` maps it to veranstalter AND brautpaar (full RLS cascade, migrations 0086–0088) |
+| `brautpaar_solo` | Standalone couple without organizer — `is_event_member()` maps it to veranstalter AND brautpaar (full RLS cascade, migrations 0086–0089) |
 | `trauzeuge` | Best man/maid of honor — limited read + some edit |
 | `dienstleister` | Vendor/service provider — permission-gated access |
 
@@ -362,6 +362,15 @@ supabase/migrations/
                                        Embedded players in MusikTabContent (Spotify/YouTube/Apple Music iframe detection).
   0082_getraenke.sql                   Creates getraenke_kategorien, getraenke_artikel (Mengenplanung), getraenke_cocktails (ingredients JSONB).
                                        RLS: veranstalter/brautpaar full access; dl needs dl_has_tab_access('getraenke','read').
+  0086_brautpaar_solo_role.sql         Adds ENUM value 'brautpaar_solo' to user_role (separate transaction required before use).
+  0087_brautpaar_solo_functions.sql    is_event_member() maps brautpaar_solo → veranstalter|brautpaar (full RLS cascade);
+                                       can_manage_member() solo = admin; create_event_as_brautpaar_solo() (no approval needed).
+  0088_brautpaar_solo_onboarding.sql   create_event_as_brautpaar_solo() v2: IDEMPOTENT (returns existing solo event),
+                                       p_date nullable, p_couple_name param. Drops old 0087 signature (PostgREST overload).
+  0089_redeem_invite_hardening.sql     redeem_invite_code() hardening: (1) veranstalter codes require
+                                       profiles.is_approved_organizer (error NOT_APPROVED_ORGANIZER, code stays open);
+                                       (2) existing admin members (veranstalter, brautpaar_solo) are never re-roled by
+                                       redeeming a code — idempotent success with existing role, code stays open.
 
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)

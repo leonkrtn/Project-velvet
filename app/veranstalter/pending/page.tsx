@@ -1,15 +1,17 @@
 'use client'
-import React, { useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { Hourglass } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function VeranstalterPendingPage() {
   const router = useRouter()
-  const supabase = createClient()
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const checkApproval = async () => {
+  const checkApproval = useCallback(async () => {
     try {
+      // Client erst hier erzeugen — beim Build-Prerender fehlen die Env-Vars
+      const supabase = createClient()
       const { data: { session } } = await supabase.auth.refreshSession()
       if (session?.user?.app_metadata?.is_approved_organizer === true) {
         router.push('/veranstalter/events')
@@ -29,15 +31,14 @@ export default function VeranstalterPendingPage() {
     } catch {
       // ignore — will retry
     }
-  }
+  }, [router])
 
   useEffect(() => {
     intervalRef.current = setInterval(checkApproval, 5000)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [checkApproval])
 
   return (
     <div style={{
@@ -53,7 +54,9 @@ export default function VeranstalterPendingPage() {
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 'var(--radius)', padding: 32,
         }}>
-          <div style={{ fontSize: 32, marginBottom: 16 }}>⏳</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <Hourglass size={32} style={{ color: 'var(--accent)' }} />
+          </div>
           <h1 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', marginBottom: 12 }}>
             Zugang noch nicht freigeschaltet
           </h1>

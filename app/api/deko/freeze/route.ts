@@ -12,11 +12,11 @@ export async function POST(req: NextRequest) {
 
   // Verify role
   const { data: member } = await supabase
-    .from('event_members').select('role').eq('event_id', eventId).eq('user_id', user.id).single()
+    .from('event_members').select('role').eq('event_id', eventId).eq('user_id', user.id).maybeSingle()
 
   if (!member) return NextResponse.json({ error: 'Not a member' }, { status: 403 })
   if (action === 'unfreeze' && !['veranstalter', 'brautpaar_solo'].includes(member.role))
-    return NextResponse.json({ error: 'Only veranstalter can unfreeze' }, { status: 403 })
+    return NextResponse.json({ error: 'Nur Veranstalter oder Solo-Brautpaar können den Freeze aufheben' }, { status: 403 })
   if (action === 'freeze' && !['brautpaar', 'brautpaar_solo', 'veranstalter'].includes(member.role))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
