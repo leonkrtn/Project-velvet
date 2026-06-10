@@ -1,13 +1,14 @@
 'use client'
+export const dynamic = 'force-dynamic'
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
-import dynamic from 'next/dynamic'
+import dynamicImport from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { X } from 'lucide-react'
 import type { RaumPoint, RaumElement, RaumTablePool, PlacedTablePreview, ConceptPlacedTable } from '@/components/room/RaumKonfigurator'
 
-const RaumKonfigurator = dynamic(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
-const SitzplanEditor   = dynamic(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
+const RaumKonfigurator = dynamicImport(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
+const SitzplanEditor   = dynamicImport(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
 
 type SeatingConcept = {
   id: string; name: string

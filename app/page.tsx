@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -573,7 +575,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="lp-footer-bottom">
-          <span className="lp-footer-copy">© 2026 Velvet. Alle Rechte vorbehalten.</span>
+          <span className="lp-footer-copy">© 2026 Velvet. Alle Rechte vorbehalten. <a href="/signup/veranstalter" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Veranstalter</a></span>
           <div className="lp-footer-legal">
             <a href="#">Impressum</a>
             <a href="#">Datenschutz</a>

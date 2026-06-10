@@ -1,4 +1,7 @@
 'use client'
+
+export const dynamic = 'force-dynamic'
+
 import React, { useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Hourglass } from 'lucide-react'

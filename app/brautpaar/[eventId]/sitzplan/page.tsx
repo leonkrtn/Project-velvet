@@ -1,13 +1,15 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import dynamic from 'next/dynamic'
+import dynamicImport from 'next/dynamic'
 import { Monitor } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { RaumPoint, RaumElement, RaumTablePool } from '@/components/room/RaumKonfigurator'
 
-const SitzplanEditor = dynamic(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
+const SitzplanEditor = dynamicImport(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
 
 const EMPTY_POOL: RaumTablePool = { types: [] }
 

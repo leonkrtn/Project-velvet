@@ -1,4 +1,6 @@
 'use client'
+
+export const dynamic = 'force-dynamic'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { v4 as uuid } from 'uuid'

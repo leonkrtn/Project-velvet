@@ -5,23 +5,19 @@ export const dynamic = 'force-dynamic'
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ensureSoloEvent } from '@/lib/brautpaar-solo'
 
-// Signup für Solo-Brautpaare: kein Einladungscode nötig.
-// Beim Registrieren wird automatisch genau ein Event erstellt
-// (create_event_as_brautpaar_solo ist idempotent). Falls die Supabase-Instanz
-// E-Mail-Bestätigung verlangt (keine Session direkt nach signUp), übernimmt
-// der Login-Fallback die Event-Erstellung anhand der Signup-Metadaten.
-export default function BrautpaarSignupPage() {
+// Signup für Veranstalter: Selbstregistrierung ohne Einladungscode.
+// Nach erfolgreicher Registrierung erhält der Organizer den Status
+// is_approved_organizer=false und sieht die Warteseite /veranstalter/pending,
+// bis ein Admin die Freischaltung durchgeführt hat.
+export default function VeranstalterSignupPage() {
   const router = useRouter()
 
-  const [name, setName]               = useState('')
-  const [partnerName, setPartnerName] = useState('')
-  const [weddingDate, setWeddingDate] = useState('')
-  const [email, setEmail]             = useState('')
-  const [password, setPassword]       = useState('')
-  const [loading, setLoading]         = useState(false)
-  const [error, setError]             = useState('')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [confirmEmail, setConfirmEmail] = useState(false)
 
   const inputStyle: React.CSSProperties = {
@@ -42,13 +38,10 @@ export default function BrautpaarSignupPage() {
     setLoading(true); setError('')
 
     try {
-      // Client erst hier erzeugen — beim Build-Prerender fehlen die Env-Vars
       const supabase = createClient()
       const meta = {
         name: name.trim(),
-        partner_name: partnerName.trim() || undefined,
-        wedding_date: weddingDate || undefined,
-        signup_role: 'brautpaar_solo' as const,
+        signup_role: 'veranstalter' as const,
       }
 
       const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
@@ -58,15 +51,12 @@ export default function BrautpaarSignupPage() {
       })
       if (signUpErr) throw signUpErr
 
-      // Ohne Session (E-Mail-Bestätigung aktiv) kann das Event noch nicht
-      // erstellt werden — das erledigt der Login-Fallback nach Bestätigung.
       if (!signUpData.session) {
         setConfirmEmail(true)
         return
       }
 
-      const eventId = await ensureSoloEvent(supabase, meta)
-      router.push(`/brautpaar/${eventId}/uebersicht`)
+      router.push('/veranstalter/pending')
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
@@ -83,7 +73,7 @@ export default function BrautpaarSignupPage() {
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Fast geschafft!</h2>
           <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>
             Bitte bestätigt eure E-Mail-Adresse über den Link, den wir euch geschickt haben.
-            Nach der Anmeldung wird euer Hochzeits-Event automatisch erstellt.
+            Nach der Bestätigung müsst ihr noch auf die Freischaltung durch unser Team warten.
           </p>
           <a href="/login" style={{ display: 'inline-block', marginTop: 20, color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Zur Anmeldung</a>
         </div>
@@ -98,7 +88,7 @@ export default function BrautpaarSignupPage() {
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 40, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1 }}>Velvet.</p>
           <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 8 }}>
-            Eure Hochzeit, selbst geplant — ohne Veranstalter starten
+            Wird Veranstalter und verwalte deine Hochzeitsveranstaltungen
           </p>
         </div>
 
@@ -111,28 +101,7 @@ export default function BrautpaarSignupPage() {
               <input
                 required autoComplete="name"
                 value={name} onChange={e => setName(e.target.value)}
-                placeholder="Anna Beispiel" style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-              />
-            </div>
-
-            <div>
-              <label style={fieldLabel}>Name deines Partners / deiner Partnerin</label>
-              <input
-                value={partnerName} onChange={e => setPartnerName(e.target.value)}
                 placeholder="Max Beispiel" style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-              />
-            </div>
-
-            <div>
-              <label style={fieldLabel}>Hochzeitsdatum (falls schon bekannt)</label>
-              <input
-                type="date"
-                value={weddingDate} onChange={e => setWeddingDate(e.target.value)}
-                style={inputStyle}
                 onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
                 onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
               />
@@ -143,7 +112,7 @@ export default function BrautpaarSignupPage() {
               <input
                 type="email" required autoComplete="email"
                 value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="eure@email.de" style={inputStyle}
+                placeholder="deine@email.de" style={inputStyle}
                 onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
                 onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
               />
@@ -175,18 +144,18 @@ export default function BrautpaarSignupPage() {
                 opacity: loading ? 0.6 : 1, transition: 'opacity 0.15s',
               }}
             >
-              {loading ? 'Wird erstellt …' : 'Kostenlos starten'}
+              {loading ? 'Wird erstellt …' : 'Veranstalter-Konto erstellen'}
             </button>
           </form>
 
           <div style={{ marginTop: 20, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-              Du hast einen Einladungscode?{' '}
-              <a href="/signup" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Mit Code registrieren</a>
-            </p>
-            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
               Bereits registriert?{' '}
               <a href="/login" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Anmelden</a>
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+              Deine Hochzeit selbst planen?{' '}
+              <a href="/signup/brautpaar" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Als Brautpaar registrieren</a>
             </p>
           </div>
         </div>

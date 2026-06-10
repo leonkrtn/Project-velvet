@@ -1,4 +1,7 @@
 'use client'
+
+export const dynamic = 'force-dynamic'
+
 import React, { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -14,7 +17,6 @@ type EventPreview = {
 function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClient()
 
   const [inviteCode, setInviteCode]   = useState(searchParams.get('code') ?? '')
   const [codeType, setCodeType]       = useState<CodeType>(null)
@@ -31,6 +33,8 @@ function SignupForm() {
   const [pendingRedeem, setPendingRedeem] = useState(false)
   const [pendingCode, setPendingCode] = useState('')
 
+  const getSupabase = () => createClient()
+
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '13px 16px', fontSize: 15,
     border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
@@ -45,6 +49,7 @@ function SignupForm() {
     setCodeType(null)
     setEventPreview(null)
     try {
+      const supabase = getSupabase()
       // Try vendor code first
       const { data: vendorData } = await supabase.rpc('preview_vendor_signup_code', { p_code: code })
       if (vendorData && !vendorData.error) {
@@ -66,6 +71,7 @@ function SignupForm() {
   }
 
   const doRedeem = async (code: string): Promise<string> => {
+    const supabase = getSupabase()
     const result = await supabase.rpc('redeem_invite_code', { p_code: code })
     if (result.error) throw new Error(result.error.message)
     const data = result.data as { success: boolean; error?: string; event_id?: string }
@@ -112,6 +118,7 @@ function SignupForm() {
 
     // Event invite code flow
     try {
+      const supabase = getSupabase()
       const { error: signUpErr } = await supabase.auth.signUp({
         email,
         password,
