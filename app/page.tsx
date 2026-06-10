@@ -265,7 +265,7 @@ export default function LandingPage() {
             </p>
             <div className="lp-hero-actions">
               <a href="#" onClick={handleCtaClick} className="lp-btn-primary">Zum Brautpaar-Dashboard</a>
-              <a href="#lp-features" className="lp-btn-ghost">Mehr erfahren</a>
+              <a href="/signup/brautpaar" className="lp-btn-ghost">Selbst planen — kostenlos starten</a>
             </div>
           </div>
           <div className="lp-hero-aside">
@@ -417,12 +417,12 @@ export default function LandingPage() {
         <h2 className="lp-section-title">
           <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">In <em>drei Schritten</em> zum Dashboard</span></span>
         </h2>
-        <p className="lp-section-sub lp-reveal lp-reveal-d2">Euer Veranstalter hat bereits alles für euch vorbereitet. Ihr müsst nur noch einsteigen.</p>
+        <p className="lp-section-sub lp-reveal lp-reveal-d2">Mit Einladung eures Veranstalters — oder komplett eigenständig. Beides dauert nur wenige Minuten.</p>
         <div className="lp-steps-grid">
           <div className="lp-step lp-reveal">
             <div className="lp-step-num">01</div>
-            <h3 className="lp-step-title">Einladung erhalten</h3>
-            <p className="lp-step-desc">Ihr habt von eurem Veranstalter einen persönlichen Einladungslink bekommen. Dieser Link führt euch direkt zu eurem eigenen Velvet-Konto — individuell für euren Hochzeitstag eingerichtet.</p>
+            <h3 className="lp-step-title">Einstieg wählen</h3>
+            <p className="lp-step-desc">Ihr habt einen Einladungslink von eurem Veranstalter? Dann seid ihr mit einem Klick drin. Ihr plant ohne Veranstalter? Registriert euch direkt — euer Hochzeits-Dashboard wird automatisch für euch eingerichtet, einen Veranstalter könnt ihr später jederzeit dazuholen.</p>
           </div>
           <div className="lp-step lp-reveal lp-reveal-d2">
             <div className="lp-step-num">02</div>
@@ -500,11 +500,11 @@ export default function LandingPage() {
             </h2>
           </div>
           {([
-            { q: 'Wie bekomme ich Zugang zu meinem Dashboard?', a: 'Euer Veranstalter hat euch einen persönlichen Einladungslink per E-Mail geschickt. Klickt einfach darauf und richtet euren Zugang in wenigen Minuten ein. Kein separates Passwort nötig — der Link ist bereits für euch personalisiert.' },
+            { q: 'Wie bekomme ich Zugang zu meinem Dashboard?', a: 'Entweder über den persönlichen Einladungslink eures Veranstalters — oder ihr registriert euch direkt selbst und plant eure Hochzeit eigenständig. In beiden Fällen ist euer Dashboard in wenigen Minuten eingerichtet.' },
             { q: 'Können wir beide gemeinsam auf das Dashboard zugreifen?', a: 'Ja! Das Dashboard ist für beide Partner gleichzeitig zugänglich. Ihr könnt von verschiedenen Geräten aus gleichzeitig arbeiten. Änderungen werden in Echtzeit synchronisiert — so seid ihr immer auf dem gleichen Stand.' },
-            { q: 'Sind unsere Daten sicher?', a: 'Eure Daten sind ausschließlich für euch und euren Veranstalter sichtbar. Velvet verwendet eine sichere, verschlüsselte Verbindung. Eure Gästeliste, Sitzpläne und persönlichen Informationen werden vertraulich behandelt und nicht an Dritte weitergegeben.' },
+            { q: 'Sind unsere Daten sicher?', a: 'Eure Daten sind ausschließlich für euch und die Personen sichtbar, die ihr zu eurer Planung einladet. Velvet verwendet eine sichere, verschlüsselte Verbindung. Eure Gästeliste, Sitzpläne und persönlichen Informationen werden vertraulich behandelt und nicht an Dritte weitergegeben.' },
             { q: 'Auf welchen Geräten funktioniert Velvet?', a: 'Velvet funktioniert auf allen Geräten — Smartphone, Tablet und Desktop. Kein App-Download nötig: Das Dashboard öffnet sich direkt im Browser, genau so schön wie ihr es hier seht. Optimiert für iOS, Android, Windows und Mac.' },
-            { q: 'Was passiert, wenn wir Hilfe brauchen?', a: 'Über die Kommunikationsfunktion in eurem Dashboard könnt ihr jederzeit direkt mit eurem Veranstalter in Kontakt treten. Alle Nachrichten werden gespeichert und sind für beide Seiten nachlesbar. Schnell, einfach, stressfrei.' },
+            { q: 'Können wir auch ohne Veranstalter planen?', a: 'Ja! Registriert euch einfach direkt als Brautpaar — ihr bekommt das volle Dashboard mit Gästeliste, Sitzplan, Budget und allen Tools. Und falls ihr euch später professionelle Unterstützung holt, könnt ihr einen Veranstalter mit einem Einladungscode zu eurer Planung dazuschalten.' },
           ] as const).map(({ q, a }, i) => (
             <div key={i} className={`lp-faq-item lp-reveal${i > 0 ? ` lp-reveal-d${i}` : ''}`}>
               <button
@@ -533,10 +533,10 @@ export default function LandingPage() {
         <div className="lp-cta-content">
           <p className="lp-cta-eyebrow">Euer Einstieg</p>
           <h2 className="lp-cta-title">Bereit für <em>euren großen Tag?</em></h2>
-          <p className="lp-cta-sub">Euer Dashboard wartet bereits auf euch. Euer Veranstalter hat alles vorbereitet — ihr müsst nur noch einsteigen.</p>
+          <p className="lp-cta-sub">Euer Dashboard wartet auf euch — mit Einladung eures Veranstalters oder komplett eigenständig.</p>
           <div className="lp-cta-actions">
             <a href="#" onClick={handleCtaClick} className="lp-btn-gold">Zum Anmeldeportal →</a>
-            <a href="#lp-faq" className="lp-btn-outline-light">Noch Fragen?</a>
+            <a href="/signup/brautpaar" className="lp-btn-outline-light">Selbst planen — kostenlos starten</a>
           </div>
         </div>
       </div>
@@ -554,6 +554,7 @@ export default function LandingPage() {
               <li><a href="#lp-features">Funktionen</a></li>
               <li><a href="#lp-steps">So funktioniert&apos;s</a></li>
               <li><a href="#lp-faq">FAQ</a></li>
+              <li><a href="/signup/brautpaar">Als Brautpaar starten</a></li>
               <li><a href="#lp-register">Anmelden</a></li>
             </ul>
           </div>

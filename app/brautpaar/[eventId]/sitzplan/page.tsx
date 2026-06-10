@@ -2,14 +2,15 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import dynamicImport from 'next/dynamic'
-import { Monitor } from 'lucide-react'
+import { Monitor, LayoutGrid } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import type { RaumPoint, RaumElement, RaumTablePool } from '@/components/room/RaumKonfigurator'
+import type { RaumPoint, RaumElement, RaumTablePool, PlacedTablePreview, ConceptPlacedTable } from '@/components/room/RaumKonfigurator'
 
-const SitzplanEditor = dynamicImport(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
+const SitzplanEditor   = dynamicImport(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
+const RaumKonfigurator = dynamicImport(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
 
 const EMPTY_POOL: RaumTablePool = { types: [] }
 
@@ -117,6 +118,15 @@ export default function BrautpaarSitzplanPage() {
   const [isMobile, setIsMobile]         = useState(false)
   const [sitzplanData, setSitzplanData] = useState<{ tables: SitzTable[], assignments: SitzAssignment[], guests: SitzGuest[] } | null>(null)
 
+  // Solo-Brautpaar: darf die Raumkonfiguration selbst bearbeiten
+  // (RLS via Migration 0090: event_room_configs über is_event_member)
+  const [isSolo, setIsSolo]   = useState(false)
+  const [userId, setUserId]   = useState<string | null>(null)
+  const [showConfigurator, setShowConfigurator] = useState(false)
+  const [configSaving, setConfigSaving] = useState(false)
+  const [configSaved,  setConfigSaved]  = useState(false)
+  const [placedTables, setPlacedTables] = useState<PlacedTablePreview[]>([])
+
   // Resize listener
   useEffect(() => {
     function handleResize() {
@@ -133,11 +143,14 @@ export default function BrautpaarSitzplanPage() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
+        setUserId(user.id)
 
-        const [{ data: globalRow }, { data: eventRow }, { data: eventData }] = await Promise.all([
+        const [{ data: globalRow }, { data: eventRow }, { data: eventData }, { data: memberRow }, { data: tablesData }] = await Promise.all([
           supabase.from('organizer_room_configs').select('*').eq('user_id', user.id).single(),
           supabase.from('event_room_configs').select('*').eq('event_id', eventId).single(),
           supabase.from('events').select('couple_name').eq('id', eventId).single(),
+          supabase.from('event_members').select('role').eq('event_id', eventId).eq('user_id', user.id).maybeSingle(),
+          supabase.from('seating_tables').select('pos_x,pos_y,rotation,shape,table_length,table_width,name').eq('event_id', eventId),
         ])
 
         const hasEvent = Boolean(eventRow)
@@ -149,6 +162,8 @@ export default function BrautpaarSitzplanPage() {
         setRoomElements(elms)
         setTablePool(pool)
         if (eventData) setCoupleName(eventData.couple_name ?? '')
+        setIsSolo(memberRow?.role === 'brautpaar_solo')
+        if (tablesData) setPlacedTables(tablesData as PlacedTablePreview[])
 
         // Mobile-only: load seating data
         if (isMobile) {
@@ -183,6 +198,26 @@ export default function BrautpaarSitzplanPage() {
     load()
   }, [eventId, isMobile]) // eslint-disable-line
 
+  const handleSaveRoomConfig = useCallback(async (
+    points: RaumPoint[], elements: RaumElement[], pool: RaumTablePool, _placed: ConceptPlacedTable[]
+  ) => {
+    if (!userId) return
+    setConfigSaving(true)
+    try {
+      await supabase.from('event_room_configs').upsert(
+        { event_id: eventId, user_id: userId, points, elements, table_pool: pool, updated_at: new Date().toISOString() },
+        { onConflict: 'event_id' }
+      )
+      setRoomPoints(points)
+      setRoomElements(elements)
+      setTablePool(pool)
+      setConfigSaved(true); setTimeout(() => setConfigSaved(false), 3000)
+      setShowConfigurator(false)
+    } finally {
+      setConfigSaving(false)
+    }
+  }, [userId, eventId, supabase])
+
   if (loading) return (
     <div className="bp-page">
       {/* Page header: title + subtitle */}
@@ -197,21 +232,66 @@ export default function BrautpaarSitzplanPage() {
 
   return (
     <div className="bp-page">
-      <div className="bp-page-header">
-        <h1 className="bp-page-title">Sitzplan</h1>
-        <p className="bp-page-subtitle">Tischpositionen festlegen und Gäste zuweisen</p>
+      <div className="bp-page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <h1 className="bp-page-title">Sitzplan</h1>
+          <p className="bp-page-subtitle">Tischpositionen festlegen und Gäste zuweisen</p>
+        </div>
+        {isSolo && !isMobile && (
+          <button
+            type="button"
+            className="bp-btn"
+            onClick={() => setShowConfigurator(v => !v)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <LayoutGrid size={14} />
+            {showConfigurator ? 'Zum Sitzplan' : 'Raum konfigurieren'}
+          </button>
+        )}
       </div>
       {isMobile ? (
         <MobileSitzplanView data={sitzplanData} />
+      ) : isSolo && showConfigurator ? (
+        <div className="bp-card" style={{ padding: '1.5rem' }}>
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 2px' }}>Raumkonfiguration</p>
+            <p style={{ fontSize: 12, margin: 0, opacity: 0.65 }}>
+              Legt den Grundriss eurer Location, Raumelemente und euren Tischpool fest — danach könnt ihr im Sitzplan Tische platzieren und Gäste zuweisen.
+            </p>
+          </div>
+          <RaumKonfigurator
+            initialPoints={roomPoints}
+            initialElements={roomElements}
+            initialTablePool={tablePool}
+            placedTables={placedTables}
+            onSave={handleSaveRoomConfig}
+            saving={configSaving}
+            saved={configSaved}
+          />
+        </div>
       ) : (
-        <SitzplanEditor
-          eventId={eventId}
-          canEditRoom={false}
-          roomPoints={roomPoints}
-          roomElements={roomElements}
-          tablePool={tablePool}
-          coupleName={coupleName}
-        />
+        <>
+          {isSolo && roomPoints.length === 0 && (
+            <div style={{
+              background: 'var(--bp-gold-pale, #faf5ea)', border: '1px solid var(--bp-rule-gold, #e5d5b5)',
+              borderRadius: 'var(--bp-r-md, 12px)', padding: '0.875rem 1rem', marginBottom: '1.5rem',
+              display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
+            }}>
+              <LayoutGrid size={16} style={{ color: 'var(--bp-gold-deep, #8a6d3b)', flexShrink: 0, marginTop: 2 }} />
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--bp-gold-deep, #8a6d3b)', lineHeight: 1.5 }}>
+                Noch kein Raum eingerichtet. Klickt oben auf „Raum konfigurieren", um Grundriss und Tischpool anzulegen.
+              </p>
+            </div>
+          )}
+          <SitzplanEditor
+            eventId={eventId}
+            canEditRoom={isSolo}
+            roomPoints={roomPoints}
+            roomElements={roomElements}
+            tablePool={tablePool}
+            coupleName={coupleName}
+          />
+        </>
       )}
     </div>
   )

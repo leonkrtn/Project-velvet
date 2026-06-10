@@ -7,6 +7,7 @@ import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Palette, Music, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
+  Briefcase,
 } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 import { createClient } from '@/lib/supabase/client'
@@ -24,7 +25,7 @@ interface NavGroup {
   items: NavItem[]
 }
 
-function buildNav(eventId: string): NavGroup[] {
+function buildNav(eventId: string, isSolo: boolean): NavGroup[] {
   const b = (key: string, label: string, icon: React.ReactNode, disabled?: boolean): NavItem => ({
     key, label, href: `/brautpaar/${eventId}/${key}`, icon, disabled,
   })
@@ -57,6 +58,8 @@ function buildNav(eventId: string): NavGroup[] {
         b('budget', 'Budget', <Wallet size={16} />),
         b('aufgaben', 'Aufgaben', <CheckSquare size={16} />),
         b('notizen', 'Notizen', <NotebookPen size={16} />),
+        // Solo-Paare verwalten Dienstleister-Zugriffsrechte selbst (kein Veranstalter)
+        ...(isSolo ? [b('dienstleister', 'Dienstleister', <Briefcase size={16} />)] : []),
         b('allgemein', 'Allgemein', <Settings size={16} />),
       ],
     },
@@ -138,9 +141,10 @@ interface Props {
   eventDate: string | null
   userId: string
   showWelcome: boolean
+  isSolo?: boolean
 }
 
-export default function BrautpaarShell({ children, eventId, eventTitle, userId, showWelcome }: Props) {
+export default function BrautpaarShell({ children, eventId, eventTitle, userId, showWelcome, isSolo = false }: Props) {
   const pathname = usePathname()
   const [expanded, setExpanded] = useState(true)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -164,11 +168,11 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   }, [eventId])
 
   // Filter nav: uebersicht and allgemein always shown; others follow bp-* toggles
-  const fullNav = buildNav(eventId)
+  const fullNav = buildNav(eventId, isSolo)
   const nav = fullNav.map(group => ({
     ...group,
     items: group.items.filter(item =>
-      item.key === 'uebersicht' || item.key === 'allgemein'
+      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister'
         ? true
         : (bpToggles[`bp-${item.key}`] ?? true)
     ),

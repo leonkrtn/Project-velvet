@@ -42,8 +42,13 @@
 - **Portal:** solo couples use the regular Brautpaar portal (`/brautpaar/[eventId]/`); layout/middleware/pages accept role `brautpaar_solo`.
 - **Personen einladen (Allgemein → `SoloInviteSection`):** zeigt verbundene Personen (Partner, Veranstalter via `GET /api/members`) und generiert Codes via `POST /api/invite/create`. Partner-Invite (`targetRole:'brautpaar_solo'`) gibt vollen Admin-Zugriff. Veranstalter-Onboarding (`targetRole:'veranstalter'`): ein registrierter UND freigeschalteter Veranstalter löst den Code unter `/join` ein (`redeem_invite_code` verlangt `is_approved_organizer`, Migration 0089) und sieht das Event danach in seinem Dashboard. Das Solo-Paar kann den Veranstalter wieder entfernen (`DELETE /api/members/[memberId]` — der Letzter-Veranstalter-Schutz greift nicht, solange ein brautpaar_solo-Admin existiert).
 - **Invite-Matrix** in `/api/invite/create`: veranstalter→brautpaar, brautpaar_solo→veranstalter, brautpaar_solo→brautpaar_solo.
-- **Vendors & Deko:** brautpaar_solo darf Dienstleister einladen (`/api/invite/dienstleister`, `/api/vendor/invite`) und Deko freezen UND unfreezen (`/api/deko/freeze`).
+- **Vendors & Deko:** brautpaar_solo darf Dienstleister einladen (`/api/invite/dienstleister`, `/api/vendor/invite`, `/api/vendor/signup-code`) und Deko freezen UND unfreezen (`/api/deko/freeze`). Deko-Freeze heißt bei Solo "Planung abschließen" (`DekoFreezeDialog isSolo` — einfacher Confirm statt ABSENDEN-Tippen).
+- **Dienstleister-Verwaltung (nur Solo):** `/brautpaar/[eventId]/dienstleister/` — Vendor-Liste + Einladung (`VendorInviteSection`) + Berechtigungs-Editor unter `[dienstleisterId]/` (re-used `BerechtigungenDLClient` mit `backHref`-Prop). Nav-Eintrag erscheint nur für brautpaar_solo (`BrautpaarShell isSolo`).
+- **Sitzplan (Solo):** Solo-Paare können die Raumkonfiguration selbst bearbeiten (`RaumKonfigurator` in `/brautpaar/[eventId]/sitzplan`, RLS via 0090); normales Brautpaar bleibt read-only.
+- **API-Parität:** brautpaar_solo ist zusätzlich erlaubt in: `PATCH /api/events/[eventId]`, `PATCH /api/files/[fileId]` (Sichtbarkeit), `/api/veranstalter/[eventId]/guests/{export,import,template}`.
+- **Migration 0090** (`0090_brautpaar_solo_parity.sql`): event_room_configs-Write + dienstleister_permissions-Manage über `is_event_member()` (matcht solo), organizer_room_configs-Read inkl. brautpaar_solo, `create_event_as_brautpaar_solo()` v3 mit Advisory-Lock + feature_toggles-Defaults (Spiegel von `DEFAULT_FEATURE_TOGGLES` in `lib/store.ts` — bei Änderung dort nachziehen!) + Backfill für bestehende Solo-Events.
 - `/join` (public route) — generic `invite_codes` redemption page for logged-in users; logged-out users are sent to login/signup with the code preserved.
+- `/signup/veranstalter` (public) — Self-Service-Registrierung für Veranstalter (Footer-Link auf Landing Page); startet mit `is_approved_organizer=false` → `/veranstalter/pending` bis zur Freischaltung.
 
 ---
 

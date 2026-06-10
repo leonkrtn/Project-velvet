@@ -343,7 +343,7 @@ export default function SitzplanReadOnlyView({ eventId }: { eventId: string }) {
       {noRoom ? (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '48px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
           <p style={{ fontWeight: 600, marginBottom: 6 }}>Kein Raum konfiguriert</p>
-          <p style={{ fontSize: 13 }}>Der Veranstalter hat noch keinen Raum eingerichtet.</p>
+          <p style={{ fontSize: 13 }}>Es wurde noch kein Raum eingerichtet.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>

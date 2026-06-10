@@ -179,7 +179,7 @@ function SignupForm() {
                 value={inviteCode}
                 onChange={e => { setInviteCode(e.target.value); setCodeType(null); setEventPreview(null) }}
                 onBlur={handleCodeBlur}
-                placeholder="Von deinem Veranstalter"
+                placeholder="Dein Einladungscode"
                 style={inputStyle}
                 onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
               />

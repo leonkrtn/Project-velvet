@@ -39,6 +39,9 @@ export default function DekoPageClient({
   initialItemsByCanvas, allFrozen, isVeranstalter, dlReadOnly = false,
 }: Props) {
   const canEdit = !dlReadOnly
+  // Solo-Brautpaar: Brautpaar-Ansicht MIT Veranstalter-Rechten (kann selbst
+  // unfreezen) — Freeze ist dann "Planung abschließen", kein Einreichen.
+  const isSolo = role === 'brautpaar' && isVeranstalter
   const [areas, setAreas] = useState<DekoArea[]>(initialAreas)
   const [moodboards, setMoodboards] = useState<DekoCanvasType[]>(initialMoodboards)
   const [catalog, setCatalog] = useState<DekoCatalogItem[]>(initialCatalog)
@@ -195,12 +198,12 @@ export default function DekoPageClient({
           {role === 'brautpaar' && !frozen && (
             <button onClick={() => setShowFreeze(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: '#C9B99A', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
-              <Lock size={14} /> Konzept einreichen
+              <Lock size={14} /> {isSolo ? 'Planung abschließen' : 'Konzept einreichen'}
             </button>
           )}
           {role === 'brautpaar' && frozen && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', background: '#D4EDDA', border: '1px solid #28a745', borderRadius: 8, fontSize: 12, color: '#155724', fontWeight: 600 }}>
-              <Lock size={13} /> Eingereicht
+              <Lock size={13} /> {isSolo ? 'Abgeschlossen' : 'Eingereicht'}
             </div>
           )}
           {isVeranstalter && frozen && (
@@ -276,6 +279,7 @@ export default function DekoPageClient({
           onConfirm={handleFreeze}
           onClose={() => setShowFreeze(false)}
           isFreezing={freezing}
+          isSolo={isSolo}
         />
       )}
     </div>

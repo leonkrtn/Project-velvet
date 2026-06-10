@@ -44,6 +44,7 @@ export default async function BrautpaarLayout({ children, params }: Props) {
       eventDate={event.date ?? null}
       userId={user.id}
       showWelcome={showWelcome}
+      isSolo={member.role === 'brautpaar_solo'}
     >
       {children}
     </BrautpaarShell>
