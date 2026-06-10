@@ -6,6 +6,20 @@ interface Props {
   params: Promise<{ eventId: string }>
 }
 
+// Aktive Planungsphase — gleiche Logik wie in BrautpaarAufgaben
+function getActivePhase(weddingDate: string | null): string | null {
+  if (!weddingDate) return null
+  const daysLeft = (new Date(weddingDate).getTime() - Date.now()) / 86400000
+  if (daysLeft < 0) return 'after'
+  if (daysLeft < 1) return 'day'
+  if (daysLeft < 7) return '1w'
+  const monthsLeft = daysLeft / 30
+  if (monthsLeft < 3)  return '1m'
+  if (monthsLeft < 6)  return '3m'
+  if (monthsLeft < 12) return '6m'
+  return '12m'
+}
+
 export default async function UebersichtPage({ params }: Props) {
   const { eventId } = await params
   const supabase = await createClient()
@@ -13,7 +27,7 @@ export default async function UebersichtPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [eventRes, guestsRes, budgetRes, tasksRes] = await Promise.all([
+  const [eventRes, guestsRes, budgetRes, tasksRes, seatingRes, songsRes] = await Promise.all([
     supabase
       .from('events')
       .select('id, title, date, couple_name, venue, organizer_fee, organizer_fee_type')
@@ -21,7 +35,7 @@ export default async function UebersichtPage({ params }: Props) {
       .single(),
     supabase
       .from('guests')
-      .select('id, status')
+      .select('id, status, invited_at, pending_approval')
       .eq('event_id', eventId),
     supabase
       .from('budget_items')
@@ -29,17 +43,32 @@ export default async function UebersichtPage({ params }: Props) {
       .eq('event_id', eventId),
     supabase
       .from('brautpaar_tasks')
-      .select('id, done')
+      .select('id, title, done, phase')
+      .eq('event_id', eventId)
+      .order('sort_order'),
+    supabase
+      .from('seating_assignments')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId),
+    supabase
+      .from('music_songs')
+      .select('id', { count: 'exact', head: true })
       .eq('event_id', eventId),
   ])
 
   const event = eventRes.data
   if (!event) redirect('/login')
 
-  const guests = guestsRes.data ?? []
+  // pending_approval-Gäste (Sammel-Link, noch unbestätigt) zählen nicht mit
+  const allGuests = guestsRes.data ?? []
+  const guests = allGuests.filter(g => !g.pending_approval)
   const guestTotal = guests.length
   const guestConfirmed = guests.filter(g => g.status === 'zugesagt').length
-  const guestPending = guests.filter(g => g.status === 'ausstehend').length
+  const guestDeclined = guests.filter(g => g.status === 'abgesagt').length
+  // "Ausstehend" = eingeladen aber noch ohne Antwort (inkl. vielleicht)
+  const guestPending = guests.filter(g => ['angelegt', 'eingeladen', 'vielleicht'].includes(g.status as string)).length
+  const guestNotInvited = guests.filter(g => g.status === 'angelegt' && !g.invited_at).length
+  const guestApprovalPending = allGuests.length - guests.length
 
   const budgetItems = budgetRes.data ?? []
   const budgetTotal = budgetItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)
@@ -48,6 +77,14 @@ export default async function UebersichtPage({ params }: Props) {
   const tasks = tasksRes.data ?? []
   const tasksDone  = tasks.filter(t => t.done).length
   const tasksTotal = tasks.length
+
+  // Top 3 offene Aufgaben: zuerst aus der aktiven Phase, dann restliche
+  const activePhase = getActivePhase(event.date ?? null)
+  const openTasks = tasks.filter(t => !t.done)
+  const nextTasks = [
+    ...openTasks.filter(t => t.phase === activePhase),
+    ...openTasks.filter(t => t.phase !== activePhase),
+  ].slice(0, 3).map(t => ({ id: t.id, title: t.title }))
 
   const daysLeft = event.date
     ? Math.ceil((new Date(event.date).getTime() - Date.now()) / 86400000)
@@ -63,11 +100,17 @@ export default async function UebersichtPage({ params }: Props) {
       daysLeft={daysLeft}
       guestTotal={guestTotal}
       guestConfirmed={guestConfirmed}
+      guestDeclined={guestDeclined}
       guestPending={guestPending}
+      guestNotInvited={guestNotInvited}
+      guestApprovalPending={guestApprovalPending}
       budgetTotal={budgetTotal}
       budgetPaid={budgetPaid}
       tasksDone={tasksDone}
       tasksTotal={tasksTotal}
+      nextTasks={nextTasks}
+      seatedCount={seatingRes.count ?? 0}
+      songCount={songsRes.count ?? 0}
     />
   )
 }

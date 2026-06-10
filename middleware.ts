@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/', '/login', '/signup', '/signup/brautpaar', '/signup/veranstalter', '/auth/callback', '/join']
+const PUBLIC_ROUTES = ['/', '/login', '/signup', '/signup/brautpaar', '/signup/veranstalter', '/auth/callback', '/join', '/password-reset']
 
 type Membership = { event_id: string; role: string }
 
@@ -59,6 +59,7 @@ export async function middleware(request: NextRequest) {
   const isPublic =
     PUBLIC_ROUTES.some(r => pathname === r) ||
     pathname.startsWith('/rsvp/') ||
+    pathname.startsWith('/einladung/') ||
     pathname.startsWith('/api/')
   if (isPublic) return supabaseResponse
 
@@ -127,6 +128,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // manifest.json/robots/sitemap ausgenommen: der Browser fordert das
+    // Manifest ohne Auth-Cookies an — ein Login-Redirect liefert sonst HTML
+    // statt JSON ("manifest is not valid JSON data").
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }

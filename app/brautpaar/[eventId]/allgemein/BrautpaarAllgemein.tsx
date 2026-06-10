@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Save, Plus, X } from 'lucide-react'
+import { Save, Plus, X, Check } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
 import SoloInviteSection from './SoloInviteSection'
 
@@ -139,8 +139,8 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
           disabled={saving}
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
-          <Save size={16} />
-          {saving ? 'Speichert…' : saved ? 'Gespeichert ✓' : 'Speichern'}
+          {saved ? <Check size={16} /> : <Save size={16} />}
+          {saving ? 'Speichert…' : saved ? 'Gespeichert' : 'Speichern'}
         </button>
       </div>
 
@@ -311,8 +311,8 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
           disabled={saving}
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
-          <Save size={16} />
-          {saving ? 'Speichert…' : saved ? 'Gespeichert ✓' : 'Änderungen speichern'}
+          {saved ? <Check size={16} /> : <Save size={16} />}
+          {saving ? 'Speichert…' : saved ? 'Gespeichert' : 'Änderungen speichern'}
         </button>
       </div>
     </div>

@@ -3,8 +3,10 @@
 export const dynamic = 'force-dynamic'
 import React, { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ensureSoloEvent, isSoloSignup } from '@/lib/brautpaar-solo'
+import '@/app/brautpaar/brautpaar.css'
 
 function LoginForm() {
   const router = useRouter()
@@ -15,6 +17,7 @@ function LoginForm() {
   const nextUrl = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : null
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -100,79 +103,68 @@ function LoginForm() {
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '13px 16px', fontSize: 15,
-    border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
-    background: '#fff', fontFamily: 'inherit', outline: 'none',
-    boxSizing: 'border-box', color: 'var(--text)',
-  }
-
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 400 }}>
+    <div className="bp-auth">
+      <div className="bp-auth-inner">
 
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 40, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1 }}>Velvet.</p>
-          <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 8 }}>Euer schönster Tag.</p>
+        <div className="bp-auth-logo">
+          <p className="bp-auth-wordmark">Velvet.</p>
+          <p className="bp-auth-tagline">Euer schönster Tag.</p>
         </div>
 
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 28 }}>
-            <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', marginBottom: 24, textAlign: 'center' }}>Anmelden</h1>
+        <div className="bp-auth-card">
+          <h1 className="bp-auth-title">Anmelden</h1>
 
-            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>E-Mail-Adresse</label>
-                <input
-                  type="email" required autoComplete="email"
-                  value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="deine@email.de"
-                  style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>Passwort</label>
-                <input
-                  type="password" required autoComplete="current-password"
-                  value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  style={inputStyle}
-                  onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-                  onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-                />
-              </div>
-
-              {error && (
-                <p style={{ fontSize: 13, color: 'var(--red)', background: 'rgba(160,64,64,0.08)', padding: '10px 14px', borderRadius: 8 }}>{error}</p>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  padding: '14px', borderRadius: 'var(--r-sm)', border: 'none',
-                  background: 'var(--text)', color: '#fff',
-                  fontSize: 15, fontWeight: 600, fontFamily: 'inherit',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.6 : 1,
-                  transition: 'opacity 0.15s',
-                }}
-              >
-                {loading ? 'Wird geladen …' : 'Anmelden'}
-              </button>
-            </form>
-
-            <div style={{ marginTop: 20, textAlign: 'center' }}>
-              <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-                Noch kein Konto?{' '}
-                <a href="/signup" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Registrieren</a>
-              </p>
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label className="bp-label-text">E-Mail-Adresse</label>
+              <input
+                type="email" required autoComplete="email"
+                className="bp-input"
+                value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="deine@email.de"
+              />
             </div>
 
+            <div>
+              <label className="bp-label-text">Passwort</label>
+              <div className="bp-input-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'} required autoComplete="current-password"
+                  className="bp-input"
+                  value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="bp-input-eye"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <div style={{ textAlign: 'right', marginTop: 6 }}>
+                <a href="/password-reset" className="bp-auth-link" style={{ fontSize: '0.8125rem', fontWeight: 500 }}>
+                  Passwort vergessen?
+                </a>
+              </div>
+            </div>
+
+            {error && <p className="bp-auth-error">{error}</p>}
+
+            <button type="submit" disabled={loading} className="bp-btn bp-btn-primary bp-btn-lg" style={{ width: '100%' }}>
+              {loading ? 'Wird geladen …' : 'Anmelden'}
+            </button>
+          </form>
+
+          <div className="bp-auth-footer">
+            <p>
+              Noch kein Konto?{' '}
+              <a href="/signup" className="bp-auth-link">Registrieren</a>
+            </p>
           </div>
+        </div>
       </div>
     </div>
   )
@@ -180,7 +172,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100dvh', background: 'var(--bg)' }} />}>
+    <Suspense fallback={<div className="bp-auth" />}>
       <LoginForm />
     </Suspense>
   )

@@ -2,8 +2,8 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Plus, X, ChevronDown, ChevronUp, Users, TrendingUp,
-  AlertTriangle, UtensilsCrossed,
+  Plus, X, ChevronDown, ChevronUp, ChevronRight, Users, TrendingUp,
+  AlertTriangle, UtensilsCrossed, Baby,
 } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -149,11 +149,11 @@ function SectionWrap({ title, children, defaultOpen = true }: {
   )
 }
 
-function Toggle({ checked, onChange, label: lbl }: {
-  checked: boolean; onChange: (v: boolean) => void; label: string
+function Toggle({ checked, onChange, label: lbl, noMargin = false }: {
+  checked: boolean; onChange: (v: boolean) => void; label: string; noMargin?: boolean
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: noMargin ? 0 : 8 }}>
       <button
         type="button"
         onClick={() => onChange(!checked)}
@@ -172,6 +172,34 @@ function Toggle({ checked, onChange, label: lbl }: {
       </button>
       <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{lbl}</span>
     </div>
+  )
+}
+
+// Einheitliche Toggle-Zeile: Toggle + Label, darunter (eingerückt) das Notizfeld nur wenn aktiv.
+function ToggleRow({ checked, onChange, label, children }: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Toggle checked={checked} onChange={onChange} label={label} noMargin />
+      {checked && children && (
+        <div style={{ marginLeft: 28 }}>{children}</div>
+      )}
+    </div>
+  )
+}
+
+function SummaryChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      background: 'var(--surface)', border: '1px solid var(--border)',
+      borderRadius: 999, padding: '4px 12px', fontSize: 12,
+      color: 'var(--text-secondary)', whiteSpace: 'nowrap',
+    }}>{children}</span>
   )
 }
 
@@ -272,6 +300,8 @@ export default function CateringForm({
   const [customCostLabel, setCustomCostLabel] = useState('')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [statsOpen, setStatsOpen] = useState(false)
+  const [showAllAllergies, setShowAllAllergies] = useState(false)
 
   const eventRef = useRef(event)
   eventRef.current = event
@@ -441,9 +471,19 @@ export default function CateringForm({
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>
         Catering & Menü
       </h1>
-      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 28 }}>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>
         Menükonzept, Service, Getränke und Kostenplanung
       </p>
+
+      {/* ── Zusammenfassung ─────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
+        {event.menu_type && <SummaryChip>Menüart: {event.menu_type}</SummaryChip>}
+        <SummaryChip>{mealOptions.length} Essensoption{mealOptions.length === 1 ? '' : 'en'}</SummaryChip>
+        <SummaryChip>{confirmedGuestCount} Gäste zugesagt</SummaryChip>
+        {Object.keys(allergyCounts).length > 0 && (
+          <SummaryChip>{Object.keys(allergyCounts).length} Allergie{Object.keys(allergyCounts).length === 1 ? '' : 'n'}</SummaryChip>
+        )}
+      </div>
 
       {/* ── 1. Menü & Essenskonzept ────────────────────────────────────────── */}
       <SectionWrap title="Menü & Essenskonzept">
@@ -497,8 +537,13 @@ export default function CateringForm({
         </div>
 
         {event.children_allowed && (
-          <div>
-            <label style={labelStyle}>Kindermenü-Optionen</label>
+          <div style={{
+            background: 'var(--bg)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)', padding: 16,
+          }}>
+            <label style={{ ...labelStyle, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Baby size={13} /> Kindermenü-Optionen
+            </label>
             <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8, marginTop: -2 }}>
               Separate Auswahl für Kinder{event.children_note ? ` (${event.children_note})` : ''}
             </p>
@@ -528,7 +573,7 @@ export default function CateringForm({
                 onKeyDown={e => e.key === 'Enter' && addKinderOption()}
                 placeholder="z.B. Kinderpasta, Schnitzel…" />
               <button type="button" onClick={addKinderOption}
-                style={{ padding: '10px 14px', background: '#C2410C', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500 }}>
+                style={{ padding: '10px 14px', background: '#fff', color: 'var(--text)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500 }}>
                 <Plus size={14} /> Hinzufügen
               </button>
             </div>
@@ -542,73 +587,98 @@ export default function CateringForm({
         const posLabel = isMultiCourse ? 'Gang' : 'Position'
         const sectionTitle = isMultiCourse ? 'Menügänge je Essensoption' : 'Menüpositionen je Essensoption'
         const addPlaceholder = isMultiCourse ? 'Neuer Gang (z.B. Suppe, Käsegang…)' : 'Neue Position (z.B. Hauptgericht, Beilage…)'
-        const cols = `160px repeat(${mealOptions.length}, 1fr) 32px`
         return (
           <SectionWrap title={sectionTitle}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -4 }}>
-              Lege für jede Essensoption das konkrete Gericht fest. Mit „Von … übernehmen" kannst du eine Spalte kopieren und nur das Abweichende ändern.
+              Lege für jede Essensoption das konkrete Gericht fest. Mit „Übernehmen von…" kannst du eine andere Option kopieren und nur das Abweichende ändern.
             </p>
 
-            <div style={{ overflowX: 'auto' }}>
-            {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, marginBottom: 4, minWidth: 160 + mealOptions.length * 148 + 40 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', padding: '0 2px' }}>
-                {posLabel}
-              </div>
-              {mealOptions.map(opt => (
-                <div key={opt} style={{ minWidth: 140 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>{opt}</div>
-                  {mealOptions.length > 1 && (
-                    <select
-                      value=""
-                      onChange={e => { if (e.target.value) copyOptionFrom(opt, e.target.value) }}
+            {/* Globale Gang-/Positions-Verwaltung (eine Zeile pro Gang über alle Karten) */}
+            {plan.menu_courses.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {plan.menu_courses.map((course, i) => (
+                  <span key={course.id} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    background: 'var(--surface)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)', padding: '5px 8px 5px 10px',
+                  }}>
+                    <input
                       style={{
-                        width: '100%', fontSize: 11, padding: '3px 6px',
-                        border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)',
-                        background: '#fff', color: 'var(--text-tertiary)', cursor: 'pointer',
-                        fontFamily: 'inherit', outline: 'none',
+                        border: 'none', outline: 'none', background: 'transparent',
+                        fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+                        fontFamily: 'inherit', width: `${Math.max(8, (course.name.length || (`${posLabel} ${i + 1}`).length)) + 1}ch`,
                       }}
-                    >
-                      <option value="">Von … übernehmen</option>
-                      {mealOptions.filter(o => o !== opt).map(o => (
-                        <option key={o} value={o}>Von {o}</option>
+                      value={course.name}
+                      onChange={e => updateCourseName(course.id, e.target.value)}
+                      placeholder={`${posLabel} ${i + 1}`}
+                    />
+                    <button type="button" onClick={() => removeCourse(course.id)}
+                      title={`${posLabel} entfernen`}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-tertiary)' }}>
+                      <X size={13} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Eine Karte pro Essensoption */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: 14, marginBottom: 16,
+            }}>
+              {mealOptions.map(opt => (
+                <div key={opt} style={{
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)', padding: 16,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{opt}</span>
+                    {mealOptions.length > 1 && (
+                      <select
+                        value=""
+                        onChange={e => { if (e.target.value) copyOptionFrom(opt, e.target.value) }}
+                        style={{
+                          fontSize: 11, padding: '3px 6px',
+                          border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)',
+                          background: '#fff', color: 'var(--text-tertiary)', cursor: 'pointer',
+                          fontFamily: 'inherit', outline: 'none', maxWidth: 160,
+                        }}
+                      >
+                        <option value="">Übernehmen von…</option>
+                        {mealOptions.filter(o => o !== opt).map(o => (
+                          <option key={o} value={o}>Von {o}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  {plan.menu_courses.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic', margin: 0 }}>
+                      Noch keine {isMultiCourse ? 'Gänge' : 'Positionen'} angelegt.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {plan.menu_courses.map((course, i) => (
+                        <div key={course.id}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary)', marginBottom: 4 }}>
+                            {course.name || `${posLabel} ${i + 1}`}
+                          </div>
+                          <input
+                            style={{ ...input, fontSize: 13 }}
+                            value={course.descriptions[opt] ?? ''}
+                            onChange={e => updateCourseDescription(course.id, opt, e.target.value)}
+                            placeholder="Gericht…"
+                          />
+                        </div>
                       ))}
-                    </select>
+                    </div>
                   )}
                 </div>
               ))}
-              <div />
             </div>
 
-            {/* Rows */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-              {plan.menu_courses.map((course, i) => (
-                <div key={course.id} style={{ display: 'grid', gridTemplateColumns: cols, gap: 8, alignItems: 'center', minWidth: 160 + mealOptions.length * 148 + 40 }}>
-                  <input
-                    style={{ ...input, fontSize: 13 }}
-                    value={course.name}
-                    onChange={e => updateCourseName(course.id, e.target.value)}
-                    placeholder={`${posLabel} ${i + 1}`}
-                  />
-                  {mealOptions.map(opt => (
-                    <input
-                      key={opt}
-                      style={{ ...input, fontSize: 13, minWidth: 140 }}
-                      value={course.descriptions[opt] ?? ''}
-                      onChange={e => updateCourseDescription(course.id, opt, e.target.value)}
-                      placeholder="Gericht…"
-                    />
-                  ))}
-                  <button type="button" onClick={() => removeCourse(course.id)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-            </div>
-
-            {/* Add row */}
+            {/* Add row (global — fügt einen Gang in allen Karten hinzu) */}
             <div style={{ display: 'flex', gap: 8 }}>
               <input style={{ ...input, flex: 1 }} value={newCourseName}
                 onChange={e => setNewCourseName(e.target.value)}
@@ -646,24 +716,22 @@ export default function CateringForm({
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 8 }}>
-          <Toggle checked={plan.location_has_kitchen} onChange={v => updatePlan({ location_has_kitchen: v })} label="Küche an Location vorhanden" />
-          <Toggle checked={plan.service_staff} onChange={v => updatePlan({ service_staff: v })} label="Servicepersonal benötigt" />
-        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <ToggleRow checked={plan.location_has_kitchen} onChange={v => updatePlan({ location_has_kitchen: v })} label="Küche an Location vorhanden" />
+          <ToggleRow checked={plan.service_staff} onChange={v => updatePlan({ service_staff: v })} label="Servicepersonal benötigt" />
 
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, marginTop: 6 }}>
-          <Toggle checked={plan.sektempfang} onChange={v => updatePlan({ sektempfang: v })} label="Sektempfang / Aperitif" />
-          {plan.sektempfang && (
-            <input style={{ ...input, marginBottom: 12 }} value={plan.sektempfang_note}
-              onChange={e => updatePlan({ sektempfang_note: e.target.value })}
-              placeholder="z.B. Sekt, Orangensaft, Häppchen direkt nach der Trauung…" />
-          )}
-          <Toggle checked={plan.midnight_snack} onChange={v => updatePlan({ midnight_snack: v })} label="Mitternachtssnack" />
-          {plan.midnight_snack && (
-            <input style={{ ...input }} value={plan.midnight_snack_note}
-              onChange={e => updatePlan({ midnight_snack_note: e.target.value })}
-              placeholder="z.B. Currywurst, Käseplatte, Pizza…" />
-          )}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <ToggleRow checked={plan.sektempfang} onChange={v => updatePlan({ sektempfang: v })} label="Sektempfang / Aperitif">
+              <input style={input} value={plan.sektempfang_note}
+                onChange={e => updatePlan({ sektempfang_note: e.target.value })}
+                placeholder="z.B. Sekt, Orangensaft, Häppchen direkt nach der Trauung…" />
+            </ToggleRow>
+            <ToggleRow checked={plan.midnight_snack} onChange={v => updatePlan({ midnight_snack: v })} label="Mitternachtssnack">
+              <input style={input} value={plan.midnight_snack_note}
+                onChange={e => updatePlan({ midnight_snack_note: e.target.value })}
+                placeholder="z.B. Currywurst, Käseplatte, Pizza…" />
+            </ToggleRow>
+          </div>
         </div>
       </SectionWrap>
 
@@ -696,19 +764,17 @@ export default function CateringForm({
             onChange={v => updatePlan({ drinks_selection: v })} />
         </div>
 
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-          <Toggle checked={plan.champagne_finger_food} onChange={v => updatePlan({ champagne_finger_food: v })} label="Häppchen zum Sektempfang" />
-          {plan.champagne_finger_food && (
-            <input style={{ ...input, marginBottom: 12 }} value={plan.champagne_finger_food_note}
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <ToggleRow checked={plan.champagne_finger_food} onChange={v => updatePlan({ champagne_finger_food: v })} label="Häppchen zum Sektempfang">
+            <input style={input} value={plan.champagne_finger_food_note}
               onChange={e => updatePlan({ champagne_finger_food_note: e.target.value })}
               placeholder="Welche Häppchen? (optional)" />
-          )}
-          <Toggle checked={plan.weinbegleitung} onChange={v => updatePlan({ weinbegleitung: v })} label="Weinbegleitung zum Menü" />
-          {plan.weinbegleitung && (
-            <input style={{ ...input }} value={plan.weinbegleitung_note}
+          </ToggleRow>
+          <ToggleRow checked={plan.weinbegleitung} onChange={v => updatePlan({ weinbegleitung: v })} label="Weinbegleitung zum Menü">
+            <input style={input} value={plan.weinbegleitung_note}
               onChange={e => updatePlan({ weinbegleitung_note: e.target.value })}
               placeholder="z.B. Weißwein zur Vorspeise, Rotwein zum Hauptgang…" />
-          )}
+          </ToggleRow>
         </div>
       </SectionWrap>
 
@@ -754,45 +820,75 @@ export default function CateringForm({
         </div>
       </SectionWrap>
 
-      {/* ── 7. Gäste-Statistik ───────────────────────────────────────────── */}
-      <SectionWrap title="Gäste-Statistik" defaultOpen={confirmedGuestCount > 0}>
-        {confirmedGuestCount === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-tertiary)', fontSize: 14 }}>
-            <Users size={16} style={{ opacity: 0.4 }} />
-            Noch keine bestätigten Zusagen vorhanden.
-          </div>
-        ) : (
-          <>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
-              <StatBadge label="Bestätigte Zusagen" value={confirmedGuestCount} sub="Personen" />
-              {Object.entries(mealCounts).map(([key, n]) => (
-                <StatBadge key={key} label={key.charAt(0).toUpperCase() + key.slice(1)} value={n}
-                  sub={`${Math.round((n / confirmedGuestCount) * 100)} %`} />
-              ))}
-            </div>
-
-            {Object.keys(allergyCounts).length > 0 && (
-              <div>
-                <label style={labelStyle}>Allergien & Unverträglichkeiten</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-                  {Object.entries(allergyCounts)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([tag, n]) => (
-                      <span key={tag} style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        background: '#FEF2F2', border: '1px solid rgba(220,38,38,0.2)',
-                        borderRadius: 20, padding: '4px 10px', fontSize: 12, color: '#DC2626',
-                      }}>
-                        <AlertTriangle size={11} />
-                        {tag} · {n}×
-                      </span>
-                    ))}
-                </div>
+      {/* ── 7. Gäste-Statistik (Accordion) ───────────────────────────────── */}
+      <div style={sectionStyle}>
+        <div style={sectionHeadStyle} onClick={() => setStatsOpen(o => !o)}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 15 }}>
+            {statsOpen
+              ? <ChevronDown size={16} color="var(--text-tertiary)" />
+              : <ChevronRight size={16} color="var(--text-tertiary)" />}
+            Gäste-Statistik
+          </span>
+          <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
+            {confirmedGuestCount} zugesagt
+          </span>
+        </div>
+        {statsOpen && (
+          <div style={sectionBodyStyle}>
+            {confirmedGuestCount === 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-tertiary)', fontSize: 14 }}>
+                <Users size={16} style={{ opacity: 0.4 }} />
+                Noch keine bestätigten Zusagen vorhanden.
               </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+                  <StatBadge label="Bestätigte Zusagen" value={confirmedGuestCount} sub="Personen" />
+                  {Object.entries(mealCounts).map(([key, n]) => (
+                    <StatBadge key={key} label={key.charAt(0).toUpperCase() + key.slice(1)} value={n}
+                      sub={`${Math.round((n / confirmedGuestCount) * 100)} %`} />
+                  ))}
+                </div>
+
+                {Object.keys(allergyCounts).length > 0 && (() => {
+                  const sorted = Object.entries(allergyCounts).sort((a, b) => b[1] - a[1])
+                  const visible = showAllAllergies ? sorted : sorted.slice(0, 6)
+                  const hidden = sorted.length - visible.length
+                  return (
+                    <div>
+                      <label style={labelStyle}>Allergien & Unverträglichkeiten</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                        {visible.map(([tag, n]) => (
+                          <span key={tag} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            background: '#FEF2F2', border: '1px solid rgba(220,38,38,0.2)',
+                            borderRadius: 20, padding: '4px 10px', fontSize: 12, color: '#DC2626',
+                          }}>
+                            <AlertTriangle size={11} />
+                            {tag} · {n}×
+                          </span>
+                        ))}
+                        {hidden > 0 && (
+                          <button type="button" onClick={() => setShowAllAllergies(true)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+                            +{hidden} weitere
+                          </button>
+                        )}
+                        {showAllAllergies && sorted.length > 6 && (
+                          <button type="button" onClick={() => setShowAllAllergies(false)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+                            weniger anzeigen
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
+              </>
             )}
-          </>
+          </div>
         )}
-      </SectionWrap>
+      </div>
 
       {/* ── 8. Catering-Kosten ───────────────────────────────────────────── */}
       {!hideCosts && <SectionWrap title="Catering-Kosten">

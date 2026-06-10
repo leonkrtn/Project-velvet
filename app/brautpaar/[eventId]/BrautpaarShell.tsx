@@ -7,10 +7,11 @@ import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Palette, Music, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
-  Briefcase,
+  Briefcase, Heart,
 } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 import { createClient } from '@/lib/supabase/client'
+import { BpToastProvider } from '@/components/ui/BpToast'
 
 interface NavItem {
   key: string
@@ -107,11 +108,17 @@ function WelcomeOverlay({ eventTitle, eventId, userId, onDone }: WelcomeOverlayP
       textAlign: 'center',
     }}>
       <div style={{ maxWidth: 480 }}>
-        <div style={{ marginBottom: '1.5rem' }}>
-          <svg width="56" height="56" viewBox="0 0 56 56" fill="none" aria-hidden>
-            <circle cx="28" cy="28" r="28" fill="var(--bp-gold-pale)" />
-            <path d="M28 16c-3 0-5.5 2-6.5 4.5C18 21.5 16 24 16 27c0 4.4 3.6 8 8 8h8c4.4 0 8-3.6 8-8 0-3-2-5.5-5.5-6.5C33.5 18 30.9 16 28 16z" fill="var(--bp-gold)" />
-          </svg>
+        <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+          <span
+            aria-hidden
+            style={{
+              width: 56, height: 56, borderRadius: '50%',
+              background: 'var(--bp-gold-pale)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <Heart size={26} fill="var(--bp-gold)" color="var(--bp-gold)" />
+          </span>
         </div>
         <h1 className="bp-h1" style={{ marginBottom: '0.5rem' }}>
           Willkommen bei Velvet
@@ -259,11 +266,9 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
         ))}
       </nav>
 
-      {/* Footer links */}
+      {/* Footer — tote Platzhalter-Links (Support/AGB/Datenschutz) entfernt,
+          bis echte Zielseiten existieren */}
       <div className="bp-sidebar-footer">
-        <a href="#" className="bp-sidebar-footer-link"><span>Support</span></a>
-        <a href="#" className="bp-sidebar-footer-link"><span>AGB</span></a>
-        <a href="#" className="bp-sidebar-footer-link"><span>Datenschutz</span></a>
         <button
           onClick={async () => {
             const supabase = createClient()
@@ -281,7 +286,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   )
 
   return (
-    <>
+    <BpToastProvider>
       {welcomeVisible && (
         <WelcomeOverlay
           eventTitle={eventTitle}
@@ -343,6 +348,6 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
           )}
         </div>
       </div>
-    </>
+    </BpToastProvider>
   )
 }

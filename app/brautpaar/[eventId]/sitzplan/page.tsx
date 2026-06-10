@@ -146,8 +146,8 @@ export default function BrautpaarSitzplanPage() {
         setUserId(user.id)
 
         const [{ data: globalRow }, { data: eventRow }, { data: eventData }, { data: memberRow }, { data: tablesData }] = await Promise.all([
-          supabase.from('organizer_room_configs').select('*').eq('user_id', user.id).single(),
-          supabase.from('event_room_configs').select('*').eq('event_id', eventId).single(),
+          supabase.from('organizer_room_configs').select('*').eq('user_id', user.id).maybeSingle(),
+          supabase.from('event_room_configs').select('*').eq('event_id', eventId).maybeSingle(),
           supabase.from('events').select('couple_name').eq('id', eventId).single(),
           supabase.from('event_members').select('role').eq('event_id', eventId).eq('user_id', user.id).maybeSingle(),
           supabase.from('seating_tables').select('pos_x,pos_y,rotation,shape,table_length,table_width,name').eq('event_id', eventId),

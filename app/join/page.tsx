@@ -3,7 +3,9 @@
 export const dynamic = 'force-dynamic'
 import React, { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import '@/app/brautpaar/brautpaar.css'
 
 // Einlösen von invite_codes für bereits registrierte Nutzer.
 // Genutzt vor allem für: Solo-Brautpaar lädt einen Veranstalter oder
@@ -93,72 +95,56 @@ function JoinForm() {
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '13px 16px', fontSize: 15,
-    border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
-    background: '#fff', fontFamily: 'inherit', outline: 'none',
-    boxSizing: 'border-box', color: 'var(--text)',
-  }
-
   const loginNext = `/join${code ? `?code=${encodeURIComponent(code)}` : ''}`
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div style={{ width: '100%', maxWidth: 440 }}>
+    <div className="bp-auth">
+      <div className="bp-auth-inner bp-auth-inner-wide">
 
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 40, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1 }}>Velvet.</p>
-          <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 8 }}>Event beitreten</p>
+        <div className="bp-auth-logo">
+          <p className="bp-auth-wordmark">Velvet.</p>
+          <p className="bp-auth-tagline">Event beitreten</p>
         </div>
 
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 28 }}>
+        <div className="bp-auth-card">
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 6 }}>
-              Einladungscode
-            </label>
+            <label className="bp-label-text">Einladungscode</label>
             <input
+              className="bp-input"
               value={code}
               onChange={e => { setCode(e.target.value); setRole(null); setChecked(false); setError('') }}
               onBlur={() => checkCode(code)}
               placeholder="Code eingeben"
-              style={inputStyle}
-              onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
             />
-            {checking && <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 5 }}>Prüfe Code …</p>}
+            {checking && <p className="bp-caption" style={{ marginTop: 5 }}>Prüfe Code …</p>}
             {role && (
-              <p style={{ fontSize: 12, color: 'var(--gold)', marginTop: 5, fontWeight: 600 }}>
-                Einladung gefunden · Rolle: {ROLE_LABELS[role] ?? role}
+              <p className="bp-caption" style={{ marginTop: 5, fontWeight: 600, color: 'var(--bp-gold-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Check size={13} /> Einladung gefunden · Rolle: {ROLE_LABELS[role] ?? role}
               </p>
             )}
           </div>
 
           {error && (
-            <p style={{ fontSize: 13, color: 'var(--red)', background: 'rgba(160,64,64,0.08)', padding: '10px 14px', borderRadius: 8, marginBottom: 16 }}>{error}</p>
+            <p className="bp-auth-error" style={{ marginBottom: 16 }}>{error}</p>
           )}
 
           {loggedIn === false ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+              <p className="bp-caption">
                 Bitte melde dich an oder erstelle ein Konto, um die Einladung anzunehmen.
               </p>
               <a
                 href={`/login?next=${encodeURIComponent(loginNext)}`}
-                style={{
-                  padding: '14px', borderRadius: 'var(--r-sm)', textAlign: 'center',
-                  background: 'var(--text)', color: '#fff', fontSize: 15, fontWeight: 600,
-                  textDecoration: 'none',
-                }}
+                className="bp-btn bp-btn-primary bp-btn-lg"
+                style={{ width: '100%' }}
               >
                 Anmelden
               </a>
               <a
                 href={`/signup${code ? `?code=${encodeURIComponent(code)}` : ''}`}
-                style={{
-                  padding: '14px', borderRadius: 'var(--r-sm)', textAlign: 'center',
-                  border: '1px solid var(--border)', color: 'var(--text)',
-                  fontSize: 15, fontWeight: 600, textDecoration: 'none',
-                }}
+                className="bp-btn bp-btn-secondary bp-btn-lg"
+                style={{ width: '100%' }}
               >
                 Neues Konto erstellen
               </a>
@@ -167,13 +153,8 @@ function JoinForm() {
             <button
               onClick={handleJoin}
               disabled={joining || !role}
-              style={{
-                width: '100%', padding: '14px', borderRadius: 'var(--r-sm)', border: 'none',
-                background: 'var(--gold)', color: '#fff',
-                fontSize: 15, fontWeight: 600, fontFamily: 'inherit',
-                cursor: joining || !role ? 'not-allowed' : 'pointer',
-                opacity: joining || !role ? 0.6 : 1, transition: 'opacity 0.15s',
-              }}
+              className="bp-btn bp-btn-primary bp-btn-lg"
+              style={{ width: '100%' }}
             >
               {joining ? 'Trete bei …' : 'Event beitreten'}
             </button>
@@ -186,7 +167,7 @@ function JoinForm() {
 
 export default function JoinPage() {
   return (
-    <Suspense fallback={<div style={{ minHeight: '100dvh', background: 'var(--bg)' }} />}>
+    <Suspense fallback={<div className="bp-auth" />}>
       <JoinForm />
     </Suspense>
   )

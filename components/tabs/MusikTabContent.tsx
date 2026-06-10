@@ -176,7 +176,7 @@ function RequirementsForm({ reqs, eventId, canEdit, onSaved }: { reqs: Requireme
   return (
     <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--gold)', padding: '18px 20px', marginBottom: 24 }}>
       <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 16 }}>Technische Anforderungen bearbeiten</p>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 12 }}>
         {row('Soundcheck Datum', 'soundcheck_date', 'z.B. 12.06.2025')}
         {row('Soundcheck Uhrzeit', 'soundcheck_time', 'z.B. 14:00')}
         {row('Bühnenmaße', 'stage_dimensions', 'z.B. 5m × 4m')}
@@ -262,7 +262,7 @@ function SongRow({
   if (editing) {
     return (
       <div style={{ padding: '12px 14px', background: 'rgba(255,215,0,0.04)', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 8 }}>
           <div>
             <Label>Titel</Label>
             <FieldInput value={draft.title} onChange={v => setDraft(p => ({ ...p, title: v }))} placeholder="Songtitel" />
@@ -363,7 +363,7 @@ function AddSongForm({ eventId, onAdded }: { eventId: string; onAdded: (s: Song)
 
   return (
     <div style={{ padding: '12px 14px', border: '1px solid var(--gold)', borderRadius: 'var(--radius-sm)', marginTop: 4 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 8 }}>
         <div>
           <Label>Titel *</Label>
           <FieldInput value={title} onChange={setTitle} placeholder="Songtitel" />
@@ -404,7 +404,7 @@ function AddSongForm({ eventId, onAdded }: { eventId: string; onAdded: (s: Song)
 const BP_SECTION_CFG: Record<string, { icon: React.ReactNode; label: string; accentColor: string; dividerColor: string }> = {
   wish:     { icon: <Heart size={12} />,     label: 'Wünsche',  accentColor: '#C4717A', dividerColor: 'rgba(196,113,122,0.12)' },
   no_go:    { icon: <Ban size={12} />,       label: 'No-Gos',   accentColor: '#e05252', dividerColor: 'rgba(224,82,82,0.12)'   },
-  playlist: { icon: <ListMusic size={12} />, label: 'Playlist', accentColor: 'var(--bp-gold, #B8943E)', dividerColor: 'rgba(184,148,62,0.15)' },
+  playlist: { icon: <ListMusic size={12} />, label: 'Playlist', accentColor: 'var(--bp-gold, #B89968)', dividerColor: 'rgba(184,148,62,0.15)' },
 }
 
 function BrautpaarSongSection({
@@ -715,7 +715,7 @@ const PLATFORM_COLORS: Record<Playlist['platform'], string> = {
   spotify:     '#1DB954',
   youtube:     '#FF0000',
   apple_music: '#FC3C44',
-  other:       'var(--bp-ink-3, #9b8e85)',
+  other:       'var(--bp-ink-3, #8C8076)',
 }
 
 function PlaylistCard({
@@ -755,10 +755,10 @@ function PlaylistCard({
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: '1px solid var(--bp-rule, #ede5dc)' }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--bp-ink-1, #3a3028)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--bp-ink, #2C2825)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {pl.title || PLATFORM_LABELS[pl.platform]}
         </span>
-        <span style={{ fontSize: 11, color: 'var(--bp-ink-3, #9b8e85)', flexShrink: 0 }}>{PLATFORM_LABELS[pl.platform]}</span>
+        <span style={{ fontSize: 11, color: 'var(--bp-ink-3, #8C8076)', flexShrink: 0 }}>{PLATFORM_LABELS[pl.platform]}</span>
         <a
           href={pl.url}
           target="_blank"
@@ -804,7 +804,7 @@ function PlaylistCard({
             <Link size={13} />
             {pl.url}
           </a>
-          <p style={{ fontSize: 11, color: 'var(--bp-ink-3, #9b8e85)', marginTop: 6 }}>Kein einbettbares Format erkannt – Link öffnet sich im Browser.</p>
+          <p style={{ fontSize: 11, color: 'var(--bp-ink-3, #8C8076)', marginTop: 6 }}>Kein einbettbares Format erkannt – Link öffnet sich im Browser.</p>
         </div>
       )}
     </div>
@@ -847,7 +847,7 @@ function PlaylistSection({
     if (!error) setPlaylists(prev => prev.filter(p => p.id !== id))
   }
 
-  const accentColor = 'var(--bp-gold, #B8943E)'
+  const accentColor = 'var(--bp-gold, #B89968)'
 
   return (
     <div style={{ borderRadius: 10, border: '1px solid var(--bp-rule, #ede5dc)', overflow: 'hidden', background: '#fff' }}>
@@ -901,7 +901,7 @@ function PlaylistSection({
           ) : (
             <button
               onClick={() => setOpen(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: 'transparent', border: 'none', fontSize: 13, color: 'var(--bp-ink-3, #9b8e85)', cursor: 'pointer', fontFamily: 'inherit', width: '100%', opacity: 0.7 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: 'transparent', border: 'none', fontSize: 13, color: 'var(--bp-ink-3, #8C8076)', cursor: 'pointer', fontFamily: 'inherit', width: '100%', opacity: 0.7 }}
             >
               <Plus size={13} /> Playlist hinzufügen
             </button>

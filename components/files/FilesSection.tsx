@@ -27,7 +27,7 @@ function FileIcon({ mime, size = 16 }: { mime: string; size?: number }) {
     : type === 'pdf'    ? '#ef4444'
     : type === 'sheet'  ? '#22c55e'
     : type === 'doc'    ? '#3b82f6'
-    : 'var(--accent)'
+    : 'var(--gold, #B89968)'
   const Icon = type === 'image' ? Image
     : type === 'video'  ? Video
     : type === 'pdf' || type === 'doc' ? FileText
@@ -63,6 +63,8 @@ interface Props {
   isVeranstalter?: boolean
   /** Role of the current user — used to filter files by visible_to_roles */
   userRole?: string
+  /** Hide the built-in "Dateien" title (page renders its own header); upload button stays */
+  hideTitle?: boolean
 }
 
 // ─── Row component ───────────────────────────────────────────────────────────
@@ -151,7 +153,7 @@ function FileRow({
     }}>
       <div style={{
         width: 36, height: 36, borderRadius: 8,
-        background: 'var(--accent-light, #F0F0FF)',
+        background: 'var(--gold-pale, #F5F0E8)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         flexShrink: 0,
       }}>
@@ -263,6 +265,7 @@ function UploadPanel({
   onClose: () => void
 }) {
   const { upload, uploading, progress, error, reset } = useFileUpload()
+  const [fileError, setFileError] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [module, setModule] = useState<FileModule>(uploadModule)
   const [category, setCategory] = useState('sonstiges')
@@ -275,13 +278,14 @@ function UploadPanel({
     if (!files || files.length === 0) return
     const f = files[0]
     if (!ALLOWED_MIME_TYPES.has(f.type) && f.type !== '') {
-      alert('Dateityp nicht unterstützt.')
+      setFileError('Dateityp nicht unterstützt.')
       return
     }
     if (f.size > MAX_FILE_BYTES) {
-      alert('Datei zu groß (max. 500 MB).')
+      setFileError('Datei zu groß (max. 500 MB).')
       return
     }
+    setFileError(null)
     setSelectedFile(f)
     reset()
   }
@@ -328,10 +332,10 @@ function UploadPanel({
           onClick={() => inputRef.current?.click()}
           onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && inputRef.current?.click()}
           style={{
-            border: `2px dashed ${dragOver ? 'var(--accent, #6366f1)' : 'var(--border, #e5e5e5)'}`,
+            border: `2px dashed ${dragOver ? 'var(--gold, #B89968)' : 'var(--border, #e5e5e5)'}`,
             borderRadius: 10, padding: '28px 20px', textAlign: 'center',
             cursor: 'pointer', marginBottom: 16, transition: 'border-color 0.15s',
-            background: dragOver ? 'var(--accent-light, #F0F0FF)' : 'transparent',
+            background: dragOver ? 'var(--gold-pale, #F5F0E8)' : 'transparent',
           }}
         >
           <input
@@ -357,7 +361,7 @@ function UploadPanel({
             <>
               <Upload size={24} style={{ color: 'var(--text-tertiary)', marginBottom: 8 }} />
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-                Datei hierher ziehen oder <span style={{ color: 'var(--accent, #6366f1)', fontWeight: 500 }}>auswählen</span>
+                Datei hierher ziehen oder <span style={{ color: 'var(--gold, #9C7F4F)', fontWeight: 500 }}>auswählen</span>
               </p>
               <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
                 PDF, Bilder, Videos, Excel, Word · max. 500 MB
@@ -416,7 +420,7 @@ function UploadPanel({
                     type="checkbox"
                     checked={checked}
                     onChange={toggle}
-                    style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--accent, #6366f1)' }}
+                    style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--gold, #9C7F4F)' }}
                   />
                   {label}
                 </label>
@@ -436,15 +440,15 @@ function UploadPanel({
               <span>{progress}%</span>
             </div>
             <div style={{ height: 4, borderRadius: 4, background: 'var(--border)', overflow: 'hidden' }}>
-              <div style={{ height: '100%', background: 'var(--accent, #6366f1)', width: `${progress}%`, transition: 'width 0.2s' }} />
+              <div style={{ height: '100%', background: 'var(--gold, #B89968)', width: `${progress}%`, transition: 'width 0.2s' }} />
             </div>
           </div>
         )}
 
-        {error && (
+        {(error || fileError) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#ef4444', fontSize: 12, marginBottom: 12 }}>
             <AlertCircle size={13} />
-            {error}
+            {error ?? fileError}
           </div>
         )}
 
@@ -459,10 +463,11 @@ function UploadPanel({
             onClick={handleUpload}
             disabled={!selectedFile || uploading}
             style={{
-              padding: '8px 20px', borderRadius: 8, border: 'none',
-              background: !selectedFile || uploading ? 'var(--border)' : 'var(--accent, #6366f1)',
-              color: !selectedFile || uploading ? 'var(--text-tertiary)' : '#fff',
-              fontSize: 13, fontWeight: 500, cursor: !selectedFile || uploading ? 'not-allowed' : 'pointer',
+              padding: '8px 20px', borderRadius: 8,
+              border: `1px solid ${!selectedFile || uploading ? 'var(--border)' : 'var(--gold, #B89968)'}`,
+              background: '#fff',
+              color: !selectedFile || uploading ? 'var(--text-tertiary)' : 'var(--gold, #9C7F4F)',
+              fontSize: 13, fontWeight: 600, cursor: !selectedFile || uploading ? 'not-allowed' : 'pointer',
             }}
           >
             {uploading ? 'Wird hochgeladen…' : 'Hochladen'}
@@ -483,11 +488,13 @@ export default function FilesSection({
   userId,
   isVeranstalter = false,
   userRole,
+  hideTitle = false,
 }: Props) {
   const [files, setFiles] = useState<FileMetadata[]>([])
   const [legacyFiles, setLegacyFiles] = useState<LegacyEventFile[]>([])
   const [loading, setLoading] = useState(true)
   const [showUpload, setShowUpload] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const effectiveUploadModule: FileModule = uploadModule ?? module ?? 'files'
 
@@ -547,7 +554,8 @@ export default function FilesSection({
     const res = await fetch(`/api/files/${fileId}`, { method: 'DELETE' })
     if (!res.ok) {
       const { error } = await res.json().catch(() => ({ error: 'Löschen fehlgeschlagen' }))
-      alert(error)
+      setActionError(typeof error === 'string' ? error : 'Löschen fehlgeschlagen')
+      setTimeout(() => setActionError(null), 5000)
       return
     }
     setFiles(prev => prev.filter(f => f.id !== fileId))
@@ -578,22 +586,24 @@ export default function FilesSection({
     <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', margin: 0, marginBottom: 4 }}>
-            Dateien
-          </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
-            {totalCount} {totalCount !== 1 ? 'Dateien' : 'Datei'}
-          </p>
-        </div>
+        {hideTitle ? <div /> : (
+          <div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', margin: 0, marginBottom: 4 }}>
+              Dateien
+            </h1>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>
+              {totalCount} {totalCount !== 1 ? 'Dateien' : 'Datei'}
+            </p>
+          </div>
+        )}
         {canUpload && (
           <button
             onClick={() => setShowUpload(true)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '9px 16px', borderRadius: 8,
-              background: 'var(--accent, #6366f1)', color: '#fff',
-              border: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              background: '#fff', color: 'var(--gold, #9C7F4F)',
+              border: '1px solid var(--gold, #B89968)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
               flexShrink: 0,
             }}
           >
@@ -602,6 +612,18 @@ export default function FilesSection({
           </button>
         )}
       </div>
+
+      {actionError && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          color: '#B91C1C', background: 'var(--red-pale, #FEF2F2)',
+          border: '1px solid #FCA5A5', borderRadius: 8,
+          padding: '8px 12px', fontSize: 13, marginBottom: 16,
+        }}>
+          <AlertCircle size={14} />
+          {actionError}
+        </div>
+      )}
 
       {/* Content */}
       {loading ? (

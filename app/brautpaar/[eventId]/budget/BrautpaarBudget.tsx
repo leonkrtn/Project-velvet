@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, Pencil, Settings, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Pencil, Settings, ChevronDown, ChevronRight, X } from 'lucide-react'
 
 type PaymentStatus = 'offen' | 'angezahlt' | 'bezahlt'
 
@@ -62,6 +62,7 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState(item)
   const [saving, setSaving]   = useState(false)
+  const [delConfirm, setDelConfirm] = useState(false)
 
   async function save() {
     setSaving(true)
@@ -146,13 +147,26 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
       </td>
       <td><StatusBadge status={item.payment_status} /></td>
       <td style={{ textAlign: 'right' }}>
-        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
-          <button className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon" onClick={() => setEditing(true)}>
-            <Pencil size={14} />
-          </button>
-          <button className="bp-btn bp-btn-danger bp-btn-sm bp-btn-icon" onClick={onDelete}>
-            <Trash2 size={14} />
-          </button>
+        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+          {delConfirm ? (
+            <>
+              <button className="bp-btn bp-btn-danger bp-btn-sm" onClick={() => { setDelConfirm(false); onDelete() }}>
+                Löschen
+              </button>
+              <button className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon" onClick={() => setDelConfirm(false)} aria-label="Abbrechen">
+                <X size={14} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon" onClick={() => setEditing(true)}>
+                <Pencil size={14} />
+              </button>
+              <button className="bp-btn bp-btn-danger bp-btn-sm bp-btn-icon" onClick={() => setDelConfirm(true)} aria-label="Eintrag löschen">
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
         </div>
       </td>
     </tr>

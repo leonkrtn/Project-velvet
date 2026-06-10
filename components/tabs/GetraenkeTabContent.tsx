@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Plus, Trash2, X, GlassWater, Wine, Calculator, Users,
+  Plus, Trash2, X, GlassWater, Wine, Calculator, Users, RotateCcw, ChevronDown, ChevronUp,
 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -105,12 +105,22 @@ function FieldInput({
       placeholder={placeholder}
       type={type}
       style={{
-        width: '100%', padding: '6px 8px',
+        width: '100%', height: 40, padding: '0 10px',
         border: '1px solid var(--border, #e5e7eb)',
         borderRadius: 6, fontSize: 13, fontFamily: 'inherit',
         outline: 'none', background: '#fff', boxSizing: 'border-box',
       }}
     />
+  )
+}
+
+// Small label-over-field wrapper for inline add forms
+function AddField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <label style={{ display: 'block', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 4 }}>{label}</label>
+      {children}
+    </div>
   )
 }
 
@@ -179,6 +189,35 @@ function ArtikelCard({
   const bpLineTotal   = draft.total_planned * draft.price_per_unit
   const kalkLineTotal = draft.total_planned * draft.kalkulationspreis
 
+  // ── Berechnung sichtbar machen ───────────────────────────────────────────
+  const hasCalc      = draft.amount_per_person > 0 && effectiveGuestCount > 0
+  const computedTotal = hasCalc ? Math.ceil(draft.amount_per_person * effectiveGuestCount) : 0
+  const isManual      = hasCalc && draft.total_planned !== computedTotal
+  const isAutoTotal   = hasCalc && draft.total_planned === computedTotal
+  const totalStyleColor = isAutoTotal ? 'var(--text-tertiary, #999)' : 'var(--text-primary, #1a1a1a)'
+
+  function resetTotal() {
+    setField('total_planned', computedTotal)
+  }
+
+  // Hint line shown under the "Pro Person" input
+  const perPersonHint = hasCalc ? (
+    <div style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)', marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      {fmt(draft.amount_per_person, draft.amount_per_person % 1 === 0 ? 0 : 2)} × {effectiveGuestCount} Gäste = {computedTotal} {draft.unit}
+    </div>
+  ) : null
+
+  // Manual badge + reset button shown under the "Gesamt" input
+  const manualBadge = (canEdit && isManual) ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
+      <span style={{ fontSize: 10, color: 'var(--text-tertiary, #bbb)' }}>manuell angepasst</span>
+      <button onClick={resetTotal} title={`Auf berechneten Wert (${computedTotal}) zurücksetzen`}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', opacity: 0.6 }}>
+        <RotateCcw size={11} style={{ color: 'var(--text-tertiary, #999)' }} />
+      </button>
+    </div>
+  ) : null
+
   return (
     <div style={{
       background: 'var(--surface, #fff)',
@@ -220,10 +259,10 @@ function ArtikelCard({
                 value={draft.total_planned || ''}
                 onChange={e => setField('total_planned', parseInt(e.target.value) || 0)}
                 placeholder="0"
-                style={{ width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }}
+                style={{ width: '100%', fontSize: 17, fontWeight: 700, color: totalStyleColor, border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }}
               />
             ) : (
-              <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.total_planned || <span style={{ color: '#ccc' }}>—</span>}</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: totalStyleColor }}>{draft.total_planned || <span style={{ color: '#ccc' }}>—</span>}</div>
             )}
             {canEdit ? (
               <select value={draft.unit} onChange={e => setField('unit', e.target.value)} style={{ fontSize: 11, color: 'var(--text-secondary, #888)', border: 'none', background: 'transparent', padding: 0, marginTop: 3, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', width: '100%' }}>
@@ -232,6 +271,7 @@ function ArtikelCard({
             ) : (
               <div style={{ fontSize: 11, color: 'var(--text-secondary, #888)', marginTop: 3 }}>{draft.unit}</div>
             )}
+            {manualBadge}
           </InfoBlock>
 
           {/* Pro Person */}
@@ -242,6 +282,7 @@ function ArtikelCard({
             ) : (
               <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.amount_per_person || '—'}</div>
             )}
+            {perPersonHint}
           </InfoBlock>
 
           {/* Preis BP */}
@@ -278,9 +319,9 @@ function ArtikelCard({
           <InfoBlock label="Gesamt">
             {canEdit ? (
               <input type="number" value={draft.total_planned || ''} onChange={e => setField('total_planned', parseInt(e.target.value) || 0)} placeholder="0"
-                style={{ width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
+                style={{ width: '100%', fontSize: 17, fontWeight: 700, color: totalStyleColor, border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
             ) : (
-              <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.total_planned || <span style={{ color: '#ccc' }}>—</span>}</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: totalStyleColor }}>{draft.total_planned || <span style={{ color: '#ccc' }}>—</span>}</div>
             )}
             {canEdit ? (
               <select value={draft.unit} onChange={e => setField('unit', e.target.value)} style={{ fontSize: 11, color: 'var(--text-secondary, #888)', border: 'none', background: 'transparent', padding: 0, marginTop: 3, fontFamily: 'inherit', cursor: 'pointer', outline: 'none', width: '100%' }}>
@@ -289,6 +330,7 @@ function ArtikelCard({
             ) : (
               <div style={{ fontSize: 11, color: 'var(--text-secondary, #888)', marginTop: 3 }}>{draft.unit}</div>
             )}
+            {manualBadge}
           </InfoBlock>
 
           <InfoBlock label="Pro Person">
@@ -298,6 +340,7 @@ function ArtikelCard({
             ) : (
               <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.amount_per_person || '—'}</div>
             )}
+            {perPersonHint}
           </InfoBlock>
 
           <InfoBlock label="Preis / Stk">
@@ -321,7 +364,7 @@ function ArtikelCard({
 // ── Kategorie section ─────────────────────────────────────────────────────────
 
 function KategorieSection({
-  kat, artikel, canEdit, isVera, effectiveGuestCount,
+  kat, artikel, canEdit, isVera, effectiveGuestCount, grandTotal,
   onArtikelChange, onArtikelDelete, onArtikelAdd, onKatDelete, onKatAlcoholicToggle,
 }: {
   kat: Kategorie
@@ -329,6 +372,7 @@ function KategorieSection({
   canEdit: boolean
   isVera: boolean
   effectiveGuestCount: number
+  grandTotal: number
   onArtikelChange: (a: Artikel) => void
   onArtikelDelete: (id: string) => void
   onArtikelAdd: (a: Artikel) => void
@@ -346,6 +390,7 @@ function KategorieSection({
   const bpTotal   = artikel.reduce((s, a) => s + a.total_planned * a.price_per_unit, 0)
   const kalkTotal = artikel.reduce((s, a) => s + a.total_planned * a.kalkulationspreis, 0)
   const displayTotal = isVera ? kalkTotal : bpTotal
+  const sharePct = grandTotal > 0 ? Math.min(100, (displayTotal / grandTotal) * 100) : 0
 
   async function addArtikel() {
     if (!addName.trim()) return
@@ -382,39 +427,53 @@ function KategorieSection({
     }}>
       {/* Category header */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
         padding: '13px 16px',
         borderBottom: artikel.length > 0 || canEdit ? '1px solid var(--border, #f0f0f0)' : undefined,
       }}>
-        {/* Clickable is_alcoholic icon */}
-        {canEdit ? (
-          <button
-            onClick={onKatAlcoholicToggle}
-            title={kat.is_alcoholic ? 'Alkoholisch (klicken zum Ändern)' : 'Alkoholfrei (klicken zum Ändern)'}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0 }}
-          >
-            {kat.is_alcoholic
-              ? <Wine size={15} style={{ color: kat.color }} />
-              : <GlassWater size={15} style={{ color: kat.color }} />
-            }
-          </button>
-        ) : (
-          kat.is_alcoholic
-            ? <Wine size={15} style={{ color: kat.color, flexShrink: 0 }} />
-            : <GlassWater size={15} style={{ color: kat.color, flexShrink: 0 }} />
-        )}
-        <span style={{ fontSize: 15, fontWeight: 700, flex: 1, color: 'var(--text-primary, #1a1a1a)' }}>
-          {kat.name}
-        </span>
-        {(artikel.length > 0 || displayTotal > 0) && (
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary, #aaa)' }}>
-            {artikel.length} Artikel{displayTotal > 0 ? ` · ${fmt(displayTotal)} €` : ''}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Clickable is_alcoholic icon */}
+          {canEdit ? (
+            <button
+              onClick={onKatAlcoholicToggle}
+              title={kat.is_alcoholic ? 'Alkoholisch (klicken zum Ändern)' : 'Alkoholfrei (klicken zum Ändern)'}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0 }}
+            >
+              {kat.is_alcoholic
+                ? <Wine size={15} style={{ color: kat.color }} />
+                : <GlassWater size={15} style={{ color: kat.color }} />
+              }
+            </button>
+          ) : (
+            kat.is_alcoholic
+              ? <Wine size={15} style={{ color: kat.color, flexShrink: 0 }} />
+              : <GlassWater size={15} style={{ color: kat.color, flexShrink: 0 }} />
+          )}
+          <span style={{ fontSize: 15, fontWeight: 700, flex: 1, color: 'var(--text-primary, #1a1a1a)' }}>
+            {kat.name}
           </span>
-        )}
-        {canEdit && (
-          <button onClick={e => { e.stopPropagation(); onKatDelete() }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.35, padding: '2px 4px', display: 'flex', alignItems: 'center' }} title="Kategorie löschen">
-            <Trash2 size={13} style={{ color: '#e05252' }} />
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+            {displayTotal > 0 && (
+              <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text, #1a1a1a)', lineHeight: 1.1 }}>
+                {fmt(displayTotal)} €
+              </span>
+            )}
+            {(artikel.length > 0 || displayTotal > 0) && (
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)' }}>
+                {artikel.length} Artikel
+              </span>
+            )}
+          </div>
+          {canEdit && (
+            <button onClick={e => { e.stopPropagation(); onKatDelete() }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.35, padding: '2px 4px', display: 'flex', alignItems: 'center' }} title="Kategorie löschen">
+              <Trash2 size={13} style={{ color: '#e05252' }} />
+            </button>
+          )}
+        </div>
+        {/* Share-of-total bar */}
+        {displayTotal > 0 && (
+          <div style={{ height: 4, borderRadius: 999, background: 'var(--border, #eee)', overflow: 'hidden', marginTop: 9 }}>
+            <div style={{ width: `${sharePct}%`, height: '100%', background: kat.color, borderRadius: 999, transition: 'width 0.2s' }} />
+          </div>
         )}
       </div>
 
@@ -445,25 +504,37 @@ function KategorieSection({
           showAddForm ? (
             <div style={{ background: 'var(--bg, #f5f5f7)', borderRadius: 8, border: '1px dashed var(--border, #ddd)', padding: '12px 14px' }}>
               <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', margin: '0 0 10px' }}>Neuer Artikel</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: 8, marginBottom: 8 }}>
-                <FieldInput value={addName} onChange={setAddName} placeholder="Bezeichnung" />
-                <select value={addUnit} onChange={e => setAddUnit(e.target.value)} style={{ padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: '#fff' }}>
-                  {UNITS.map(u => <option key={u}>{u}</option>)}
-                </select>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isVera ? '1fr 1fr 1fr' : '1fr 1fr', gap: 8, marginBottom: 10 }}>
-                <FieldInput value={addAmt} onChange={setAddAmt} placeholder="Menge pro Person" type="number" />
-                <FieldInput value={addPrice} onChange={setAddPrice} placeholder={isVera ? 'Preis BP (€)' : 'Preis / Stk (€)'} type="number" />
-                {isVera && <FieldInput value={addKalk} onChange={setAddKalk} placeholder="Kalkulation (€)" type="number" />}
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button onClick={addArtikel} disabled={saving || !addName.trim()} style={{ padding: '6px 14px', background: addName.trim() ? 'var(--accent, #1a1a1a)' : '#e0e0e0', color: addName.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 6, fontSize: 13, cursor: addName.trim() ? 'pointer' : 'default', fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                gap: 10, alignItems: 'end',
+              }}>
+                <AddField label="Name">
+                  <FieldInput value={addName} onChange={setAddName} placeholder="Bezeichnung" />
+                </AddField>
+                <AddField label="Einheit">
+                  <select value={addUnit} onChange={e => setAddUnit(e.target.value)} style={{ width: '100%', height: 40, padding: '0 8px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
+                    {UNITS.map(u => <option key={u}>{u}</option>)}
+                  </select>
+                </AddField>
+                <AddField label="Pro Person">
+                  <FieldInput value={addAmt} onChange={setAddAmt} placeholder="0" type="number" />
+                </AddField>
+                <AddField label={isVera ? 'Preis BP (€)' : 'Preis / Einheit (€)'}>
+                  <FieldInput value={addPrice} onChange={setAddPrice} placeholder="0,00" type="number" />
+                </AddField>
+                {isVera && (
+                  <AddField label="Kalk-Preis (€)">
+                    <FieldInput value={addKalk} onChange={setAddKalk} placeholder="0,00" type="number" />
+                  </AddField>
+                )}
+                <button onClick={addArtikel} disabled={saving || !addName.trim()} style={{ height: 40, padding: '0 16px', background: '#fff', color: addName.trim() ? 'var(--gold, #B89968)' : '#bbb', border: `1px solid ${addName.trim() ? 'var(--gold, #B89968)' : 'var(--border, #ddd)'}`, borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: addName.trim() ? 'pointer' : 'default', fontFamily: 'inherit', opacity: saving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                   {saving ? '…' : 'Hinzufügen'}
                 </button>
-                <button onClick={() => { setShowAddForm(false); setAddName(''); setAddAmt(''); setAddPrice(''); setAddKalk('') }} style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary, #666)' }}>
-                  Abbrechen
-                </button>
               </div>
+              <button onClick={() => { setShowAddForm(false); setAddName(''); setAddAmt(''); setAddPrice(''); setAddKalk('') }} style={{ marginTop: 10, padding: '6px 10px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary, #666)' }}>
+                Abbrechen
+              </button>
             </div>
           ) : (
             <button onClick={() => setShowAddForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '9px 12px', background: 'none', border: '1px dashed var(--border, #ddd)', borderRadius: 8, fontSize: 13, color: 'var(--text-tertiary, #aaa)', cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -644,6 +715,7 @@ function BudgetFooter({ mode, kategorien, artikel, cocktails }: {
   mode: Mode; kategorien: Kategorie[]; artikel: Artikel[]; cocktails: Cocktail[]
 }) {
   const isVera = mode === 'veranstalter'
+  const [showDetails, setShowDetails] = useState(false)
 
   const katRows = kategorien.map(k => {
     const items   = artikel.filter(a => a.kategorie_id === k.id)
@@ -667,6 +739,19 @@ function BudgetFooter({ mode, kategorien, artikel, cocktails }: {
 
   if (isVera ? grandKalk === 0 && grandBp === 0 : grandBp === 0) return null
 
+  const grandTotal = isVera ? grandKalk : grandBp
+
+  // Stacked-bar / legend segments (categories + sonstige + cocktails)
+  const segments: { key: string; name: string; color: string; value: number }[] = [
+    ...katRows.map(r => ({ key: r.id, name: r.name, color: r.color, value: isVera ? r.kalkSum : r.bpSum })),
+  ]
+  if (isVera ? uncatKalk > 0 : uncatBp > 0) {
+    segments.push({ key: 'uncat', name: 'Sonstige Getränke', color: '#9aa0a6', value: isVera ? uncatKalk : uncatBp })
+  }
+  if (isVera ? cocktailKalk > 0 : cocktailBp > 0) {
+    segments.push({ key: 'cocktails', name: 'Cocktails', color: '#8B2252', value: isVera ? cocktailKalk : cocktailBp })
+  }
+
   return (
     <div style={{ background: 'var(--surface, #fff)', borderRadius: 12, border: '1px solid var(--border, #e8e8e8)', overflow: 'hidden', marginTop: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px', borderBottom: '1px solid var(--border, #f0f0f0)', background: 'var(--bg, #f5f5f7)' }}>
@@ -675,7 +760,39 @@ function BudgetFooter({ mode, kategorien, artikel, cocktails }: {
           {isVera ? 'Kalkulation' : 'Budget-Übersicht'}
         </span>
       </div>
-      <div style={{ padding: '4px 0' }}>
+
+      {/* Prominent total + stacked bar + legend */}
+      <div style={{ padding: '16px 16px 14px' }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text, #1a1a1a)', marginBottom: 12 }}>
+          {fmt(grandTotal)} €
+        </div>
+        <div style={{ display: 'flex', height: 10, borderRadius: 999, overflow: 'hidden', background: 'var(--border, #eee)', marginBottom: 12 }}>
+          {segments.map(s => (
+            <div key={s.key} title={`${s.name}: ${fmt(s.value)} €`}
+              style={{ width: `${grandTotal > 0 ? (s.value / grandTotal) * 100 : 0}%`, background: s.color, height: '100%' }} />
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
+          {segments.map(s => (
+            <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: 'var(--text-secondary, #555)' }}>{s.name}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text, #1a1a1a)' }}>{fmt(s.value)} €</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Details toggle */}
+      <div style={{ borderTop: '1px solid var(--border, #f0f0f0)' }}>
+        <button onClick={() => setShowDetails(p => !p)} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', padding: '9px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #666)' }}>
+          {showDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {showDetails ? 'Details ausblenden' : 'Details anzeigen'}
+        </button>
+      </div>
+
+      {showDetails && (
+      <div style={{ padding: '4px 0', borderTop: '1px solid var(--border, #f0f0f0)' }}>
         {katRows.map(r => {
           const rowVal = isVera ? r.kalkSum : r.bpSum
           return (
@@ -709,6 +826,7 @@ function BudgetFooter({ mode, kategorien, artikel, cocktails }: {
           <span style={{ fontSize: 14, fontWeight: 700 }}>{fmt(isVera ? grandKalk : grandBp)} €</span>
         </div>
       </div>
+      )}
     </div>
   )
 }
@@ -742,6 +860,12 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
   const canEdit = mode !== 'dienstleister'
   const isVera  = mode === 'veranstalter'
   const effectiveGuestCount = planEnabled && planCount > 0 ? planCount : guestCount
+
+  // Sum of all categories (for per-category share bar) — uses kalk for veranstalter, BP otherwise
+  const katGrandTotal = kategorien.reduce((sum, k) => {
+    const items = artikel.filter(a => a.kategorie_id === k.id)
+    return sum + items.reduce((s, a) => s + a.total_planned * (isVera ? a.kalkulationspreis : a.price_per_unit), 0)
+  }, 0)
 
   useEffect(() => {
     const supabase = createClient()
@@ -934,21 +1058,66 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
         </div>
       )}
 
-      {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 24, background: 'var(--bg, #f5f5f7)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', width: 'fit-content' }}>
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{
-            padding: '6px 14px', border: 'none', borderRadius: 6, fontSize: 13,
-            fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500,
-            background: tab === t.key ? '#fff' : 'transparent',
-            color: tab === t.key ? 'var(--text-primary, #1a1a1a)' : 'var(--text-secondary, #888)',
-            boxShadow: tab === t.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-            transition: 'background 0.15s',
-          }}>
-            {t.label}
-          </button>
-        ))}
+      {/* Tab bar + category actions */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'space-between', marginBottom: showKatForm ? 12 : 24 }}>
+        <div style={{ display: 'flex', gap: 2, background: 'var(--bg, #f5f5f7)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', width: 'fit-content' }}>
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{
+              padding: '6px 14px', border: 'none', borderRadius: 6, fontSize: 13,
+              fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500,
+              background: tab === t.key ? '#fff' : 'transparent',
+              color: tab === t.key ? 'var(--text-primary, #1a1a1a)' : 'var(--text-secondary, #888)',
+              boxShadow: tab === t.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              transition: 'background 0.15s',
+            }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Category actions (Mengenplanung tab only) */}
+        {canEdit && tab === 'planung' && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {kategorien.length === 0 && (
+              <button onClick={addPresetKategorien} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#fff', color: 'var(--gold, #B89968)', border: '1px solid var(--gold, #B89968)', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                Standard-Sortiment laden
+              </button>
+            )}
+            <button onClick={() => setShowKatForm(p => !p)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#fff', color: 'var(--gold, #B89968)', border: '1px solid var(--gold, #B89968)', borderRadius: 7, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              <Plus size={14} /> Neue Kategorie
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Inline new-category panel (under tab row, Mengenplanung only) */}
+      {canEdit && tab === 'planung' && showKatForm && (
+        <div style={{ background: 'var(--surface, #fff)', borderRadius: 10, border: '1px solid var(--border, #e5e7eb)', padding: '14px 16px', marginBottom: 24 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 10 }}>Neue Kategorie</p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <FieldInput value={newKatName} onChange={setNewKatName} placeholder="Kategoriename" />
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+              {CATEGORY_COLORS.map(c => (
+                <button key={c} onClick={() => setNewKatColor(c)} style={{ width: 18, height: 18, borderRadius: '50%', background: c, border: newKatColor === c ? '2px solid #333' : '1px solid #ddd', cursor: 'pointer', padding: 0 }} />
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <input type="checkbox" id="new-kat-alcoholic" checked={newKatAlcoholic} onChange={e => setNewKatAlcoholic(e.target.checked)} />
+            <label htmlFor="new-kat-alcoholic" style={{ fontSize: 13, color: 'var(--text-secondary, #666)' }}>Enthält Alkohol</label>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={addKategorie} disabled={addingKat || !newKatName.trim()} style={{ padding: '7px 16px', background: '#fff', color: newKatName.trim() ? 'var(--gold, #B89968)' : '#bbb', border: `1px solid ${newKatName.trim() ? 'var(--gold, #B89968)' : 'var(--border, #ddd)'}`, borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: newKatName.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+              {addingKat ? '…' : 'Erstellen'}
+            </button>
+            <button onClick={() => setShowKatForm(false)} style={{ padding: '7px 12px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Mengenplanung tab */}
       {tab === 'planung' && (
@@ -956,16 +1125,11 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
           {kategorien.length === 0 && !showKatForm ? (
             <div style={{ background: 'var(--surface, #fff)', borderRadius: 10, border: '1px dashed var(--border, #ddd)', padding: '32px 24px', textAlign: 'center' }}>
               <GlassWater size={32} style={{ color: 'var(--text-tertiary, #ccc)', margin: '0 auto 12px', display: 'block' }} />
-              <p style={{ fontSize: 14, color: 'var(--text-secondary, #888)', marginBottom: 16 }}>Noch keine Getränkekategorien angelegt</p>
+              <p style={{ fontSize: 14, color: 'var(--text-secondary, #888)', margin: 0 }}>Noch keine Getränkekategorien angelegt</p>
               {canEdit && (
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  <button onClick={addPresetKategorien} style={{ padding: '8px 16px', background: '#fff', color: '#B8943E', border: '1px solid #B8943E', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-                    Standard-Kategorien laden
-                  </button>
-                  <button onClick={() => setShowKatForm(true)} style={{ padding: '8px 16px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 7, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary, #666)' }}>
-                    Manuell anlegen
-                  </button>
-                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary, #aaa)', marginTop: 8, marginBottom: 0 }}>
+                  Oben rechts „Standard-Sortiment laden“ oder „Neue Kategorie“ wählen.
+                </p>
               )}
             </div>
           ) : (
@@ -976,6 +1140,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
                   artikel={artikel.filter(a => a.kategorie_id === k.id)}
                   canEdit={canEdit} isVera={isVera}
                   effectiveGuestCount={effectiveGuestCount}
+                  grandTotal={katGrandTotal}
                   onArtikelChange={updated => setArtikel(prev => prev.map(a => a.id === updated.id ? updated : a))}
                   onArtikelDelete={deleteArtikel}
                   onArtikelAdd={a => setArtikel(prev => [...prev, a])}
@@ -992,38 +1157,6 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
                     </div>
                   ))}
                 </div>
-              )}
-
-              {canEdit && (
-                showKatForm ? (
-                  <div style={{ background: 'var(--surface, #fff)', borderRadius: 10, border: '1px solid var(--border, #e5e7eb)', padding: '14px 16px', marginTop: 4 }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 10 }}>Neue Kategorie</p>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-                      <FieldInput value={newKatName} onChange={setNewKatName} placeholder="Kategoriename" />
-                      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                        {CATEGORY_COLORS.map(c => (
-                          <button key={c} onClick={() => setNewKatColor(c)} style={{ width: 18, height: 18, borderRadius: '50%', background: c, border: newKatColor === c ? '2px solid #333' : '1px solid #ddd', cursor: 'pointer', padding: 0 }} />
-                        ))}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <input type="checkbox" id="new-kat-alcoholic" checked={newKatAlcoholic} onChange={e => setNewKatAlcoholic(e.target.checked)} />
-                      <label htmlFor="new-kat-alcoholic" style={{ fontSize: 13, color: 'var(--text-secondary, #666)' }}>Enthält Alkohol</label>
-                    </div>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={addKategorie} disabled={addingKat || !newKatName.trim()} style={{ padding: '6px 14px', background: newKatColor, color: '#fff', border: 'none', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-                        {addingKat ? '…' : 'Erstellen'}
-                      </button>
-                      <button onClick={() => setShowKatForm(false)} style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border, #ddd)', borderRadius: 6, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-                        Abbrechen
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button onClick={() => setShowKatForm(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', background: 'none', border: '1px dashed var(--border, #ddd)', borderRadius: 8, fontSize: 13, color: 'var(--text-secondary, #888)', cursor: 'pointer', fontFamily: 'inherit', width: '100%', marginTop: 4 }}>
-                    <Plus size={14} /> Kategorie hinzufügen
-                  </button>
-                )
               )}
             </>
           )}

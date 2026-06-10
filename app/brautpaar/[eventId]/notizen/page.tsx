@@ -128,19 +128,19 @@ function NoteEditor({
           placeholder="Titel…"
           style={{
             flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit',
-            fontSize: 15, fontWeight: 600, color: 'var(--bp-ink-1)', background: 'transparent',
+            fontSize: 15, fontWeight: 600, color: 'var(--bp-ink)', background: 'transparent',
           }}
         />
         <button
           onClick={() => setDelConfirm(v => !v)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: delConfirm ? '#FF3B30' : 'var(--bp-ink-3)', padding: 4 }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: delConfirm ? 'var(--bp-red)' : 'var(--bp-ink-3)', padding: 4 }}
         >
           <Trash2 size={13} />
         </button>
         {delConfirm && (
           <button
             onClick={del}
-            style={{ padding: '4px 10px', background: '#FF3B30', color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+            style={{ padding: '4px 10px', background: 'var(--bp-red)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
           >
             Löschen
           </button>
@@ -158,7 +158,7 @@ function NoteEditor({
           rows={5}
           style={{
             width: '100%', border: 'none', outline: 'none', resize: 'vertical',
-            fontFamily: 'inherit', fontSize: 14, lineHeight: 1.65, color: 'var(--bp-ink-1)',
+            fontFamily: 'inherit', fontSize: 14, lineHeight: 1.65, color: 'var(--bp-ink)',
             background: 'transparent', boxSizing: 'border-box',
           }}
         />
@@ -183,7 +183,7 @@ function NoteEditor({
                 {item.done ? <CheckSquare size={16} /> : <Square size={16} />}
               </button>
               <span style={{
-                fontSize: 14, lineHeight: 1.5, color: item.done ? 'var(--bp-ink-3)' : 'var(--bp-ink-1)',
+                fontSize: 14, lineHeight: 1.5, color: item.done ? 'var(--bp-ink-3)' : 'var(--bp-ink)',
                 textDecoration: item.done ? 'line-through' : 'none', flex: 1,
               }}>
                 {item.text}
@@ -299,11 +299,11 @@ export default function NotizenPage() {
       <div className="bp-page">
         <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
           {[120, 90, 100].map((w, i) => (
-            <div key={i} className="skeleton" style={{ height: 32, width: w, borderRadius: 8 }} />
+            <div key={i} className="bp-skeleton" style={{ height: 32, width: w }} />
           ))}
         </div>
         {[1, 2].map(i => (
-          <div key={i} className="skeleton" style={{ height: 160, borderRadius: 12, marginBottom: 12 }} />
+          <div key={i} className="bp-skeleton" style={{ height: 160, borderRadius: 12, marginBottom: 12 }} />
         ))}
       </div>
     )
@@ -314,19 +314,12 @@ export default function NotizenPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 16 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px', margin: '0 0 4px', color: 'var(--bp-ink-1)' }}>Notizen</h1>
-          <p style={{ fontSize: 14, color: 'var(--bp-ink-3)', margin: 0 }}>
+          <h1 className="bp-page-title">Notizen</h1>
+          <p className="bp-page-subtitle">
             {notes.length === 0 ? 'Noch keine Notizen' : `${notes.length} Notiz${notes.length !== 1 ? 'en' : ''}`}
           </p>
         </div>
-        <button
-          onClick={() => setAdding(v => !v)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px',
-            background: '#fff', color: 'var(--bp-gold)', border: '1px solid var(--bp-gold)', borderRadius: 8,
-            fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
-          }}
-        >
+        <button onClick={() => setAdding(v => !v)} className="bp-btn bp-btn-primary" style={{ flexShrink: 0 }}>
           <Plus size={14} /> Neue Notiz
         </button>
       </div>
@@ -338,7 +331,7 @@ export default function NotizenPage() {
           padding: '18px 20px', marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 12,
         }}>
           <p style={{ ...labelSt, marginBottom: 0 }}>Neue Notiz erstellen</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="bp-grid-2" style={{ gap: 12 }}>
             <div>
               <label style={labelSt}>Titel</label>
               <input
@@ -385,16 +378,10 @@ export default function NotizenPage() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={addNote}
-              style={{ padding: '8px 18px', background: '#fff', color: 'var(--bp-gold)', border: '1px solid var(--bp-gold)', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
-            >
+            <button onClick={addNote} className="bp-btn bp-btn-primary bp-btn-sm">
               Erstellen
             </button>
-            <button
-              onClick={() => setAdding(false)}
-              style={{ padding: '8px 14px', background: 'none', border: '1px solid var(--bp-rule)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}
-            >
+            <button onClick={() => setAdding(false)} className="bp-btn bp-btn-secondary bp-btn-sm">
               Abbrechen
             </button>
           </div>
