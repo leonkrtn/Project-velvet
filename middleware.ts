@@ -128,6 +128,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // manifest.json/robots/sitemap ausgenommen: der Browser fordert das
+    // Manifest ohne Auth-Cookies an — ein Login-Redirect liefert sonst HTML
+    // statt JSON ("manifest is not valid JSON data").
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }

@@ -816,7 +816,7 @@ function TableRefRenderer({ item, eventId }: RendererProps) {
   useEffect(() => {
     if (!d.table_id) return
     const supabase = createClient()
-    supabase.from('seating_tables').select('name, capacity, shape').eq('id', d.table_id).single()
+    supabase.from('seating_tables').select('name, capacity, shape').eq('id', d.table_id).maybeSingle()
       .then(({ data }) => { if (data) setTable(data as typeof table) }, () => {})
   }, [d.table_id])
   return (

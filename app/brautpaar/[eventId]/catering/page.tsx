@@ -21,7 +21,7 @@ export default async function CateringPage({ params }: Props) {
     .from('catering_plans')
     .select('*')
     .eq('event_id', eventId)
-    .single()
+    .maybeSingle()
 
   const guestIdsRes = await supabase.from('guests').select('id').eq('event_id', eventId)
   const guestIds = (guestIdsRes.data ?? []).map(g => g.id)
