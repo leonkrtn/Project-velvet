@@ -40,8 +40,9 @@
 - **Signup:** `/signup/brautpaar` (public, no invite code) → `supabase.auth.signUp` with `user_metadata.signup_role='brautpaar_solo'` → RPC `create_event_as_brautpaar_solo()` creates exactly ONE event (idempotent — returns existing event if the user already has a brautpaar_solo membership). Helper: `lib/brautpaar-solo.ts` (`ensureSoloEvent`).
 - **E-Mail-Confirmation fallback:** if no session after signUp, event creation happens later via login fallback (`app/login/page.tsx`) or the `/brautpaar` root page (both call `ensureSoloEvent` from user metadata).
 - **Portal:** solo couples use the regular Brautpaar portal (`/brautpaar/[eventId]/`); layout/middleware/pages accept role `brautpaar_solo`.
-- **Veranstalter nachträglich dazuschalten:** Brautpaar generiert unter Allgemein → "Personen einladen" (`SoloInviteSection`) einen Code via `POST /api/invite/create {targetRole:'veranstalter'}`; ein registrierter (approved) Veranstalter löst ihn unter `/join` ein (`redeem_invite_code` RPC) und sieht das Event danach in seinem Dashboard. Gleiches UI erlaubt den Partner-Invite (`targetRole:'brautpaar_solo'`).
-- **Invite-Matrix** in `/api/invite/create`: veranstalter→brautpaar, brautpaar_solo→veranstalter, brautpaar_solo→brautpaar_solo.
+- **Partner einladen (nur für Solo):** Brautpaar generiert unter Allgemein → "Partner / Partnerin einladen" (`SoloInviteSection`) einen Code via `POST /api/invite/create {targetRole:'brautpaar_solo'}`; der Partner löst ihn unter `/join` ein (`redeem_invite_code` RPC) und hat danach dieselben Admin-Rechte im Event.
+- **Semantik: Solo = autonom ohne Organizer.** Veranstalter-Invite ist blockiert (wird auf API-Ebene 403 zurückgewiesen), da dies gegen die Semantik eines Solo-Events verstößt. Wenn Solo-Paare später administrative Hilfe brauchen, ist der primäre Ansatz: einander als Partner einladen (dual brautpaar_solo), nicht einen Organizer hinzufügen.
+- **Invite-Matrix** in `/api/invite/create`: veranstalter→brautpaar, brautpaar_solo→brautpaar_solo.
 - **Vendors & Deko:** brautpaar_solo darf Dienstleister einladen (`/api/invite/dienstleister`, `/api/vendor/invite`) und Deko freezen UND unfreezen (`/api/deko/freeze`).
 - `/join` (public route) — generic `invite_codes` redemption page for logged-in users; logged-out users are sent to login/signup with the code preserved.
 

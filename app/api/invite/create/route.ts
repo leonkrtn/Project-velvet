@@ -1,9 +1,9 @@
 // app/api/invite/create/route.ts
-// Erstellt Invite-Codes für Brautpaar / Veranstalter / Solo-Partner
+// Erstellt Invite-Codes für Brautpaar / Solo-Partner
 // Erlaubte Kombinationen (Caller-Rolle → Ziel-Rolle):
 //   veranstalter   → brautpaar       (klassischer Flow)
-//   brautpaar_solo → veranstalter    (Veranstalter nachträglich "dazuschalten")
 //   brautpaar_solo → brautpaar_solo  (Partner / Partnerin einladen)
+// NICHT erlaubt: brautpaar_solo → veranstalter (Solo = autonom, kein Organizer)
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   const callerRole = member.role as string
   const allowed =
     (callerRole === 'veranstalter' && targetRole === 'brautpaar') ||
-    (callerRole === 'brautpaar_solo' && (targetRole === 'veranstalter' || targetRole === 'brautpaar_solo'))
+    (callerRole === 'brautpaar_solo' && targetRole === 'brautpaar_solo')
 
   if (!allowed) {
     return NextResponse.json({ error: 'Keine Berechtigung für diese Einladung' }, { status: 403 })
