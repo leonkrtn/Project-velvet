@@ -463,10 +463,11 @@ function UploadPanel({
             onClick={handleUpload}
             disabled={!selectedFile || uploading}
             style={{
-              padding: '8px 20px', borderRadius: 8, border: 'none',
-              background: !selectedFile || uploading ? 'var(--border)' : 'var(--gold, #B89968)',
-              color: !selectedFile || uploading ? 'var(--text-tertiary)' : '#fff',
-              fontSize: 13, fontWeight: 500, cursor: !selectedFile || uploading ? 'not-allowed' : 'pointer',
+              padding: '8px 20px', borderRadius: 8,
+              border: `1px solid ${!selectedFile || uploading ? 'var(--border)' : 'var(--gold, #B89968)'}`,
+              background: '#fff',
+              color: !selectedFile || uploading ? 'var(--text-tertiary)' : 'var(--gold, #9C7F4F)',
+              fontSize: 13, fontWeight: 600, cursor: !selectedFile || uploading ? 'not-allowed' : 'pointer',
             }}
           >
             {uploading ? 'Wird hochgeladen…' : 'Hochladen'}
@@ -601,8 +602,8 @@ export default function FilesSection({
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '9px 16px', borderRadius: 8,
-              background: 'var(--gold, #B89968)', color: '#fff',
-              border: 'none', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              background: '#fff', color: 'var(--gold, #9C7F4F)',
+              border: '1px solid var(--gold, #B89968)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
               flexShrink: 0,
             }}
           >

@@ -170,13 +170,14 @@
 }
 
 /* Neutralize the aggressive global button hover (#333 + lift) from globals.css
-   for gold/accent-styled inline buttons inside the bp theme. */
+   for gold/accent-styled inline buttons inside the bp theme.
+   Gold buttons are outline-style (white fill) — hover tints them gold-pale. */
 .bp-shell button[style*="var(--gold)"]:hover:not(:disabled):not(.tab-btn):not([data-sel]),
 .bp-auth  button[style*="var(--gold)"]:hover:not(:disabled):not(.tab-btn):not([data-sel]) {
-  background: var(--bp-gold-deep) !important;
-  color: #fff !important;
+  background: var(--bp-gold-pale) !important;
+  color: var(--bp-gold-deep) !important;
   transform: none;
-  box-shadow: 0 4px 12px rgba(156, 127, 79, 0.25);
+  box-shadow: none;
 }
 
 .bp-shell button[style*="var(--accent)"]:hover:not(:disabled):not(.tab-btn):not([data-sel]),
@@ -618,12 +619,15 @@
 }
 
 .bp-btn-primary {
-  background: var(--bp-gold);
-  color: #fff;
+  background: #fff;
+  color: var(--bp-gold-deep);
+  border: 1px solid var(--bp-rule-gold);
 }
 
 .bp-btn-primary:hover {
-  background: var(--bp-gold-deep);
+  background: var(--bp-gold-pale);
+  border-color: var(--bp-gold);
+  color: var(--bp-gold-deep);
 }
 
 .bp-btn-secondary {
