@@ -80,6 +80,11 @@ export interface SitzplanEditorProps {
   roomElements?: RaumElement[]
   tablePool: RaumTablePool
   coupleName?: string
+  /** Einfacher Modus ohne konkreten Raumplan (Solo-Paare): die übergebenen
+      roomPoints sind eine synthetische Standard-Fläche, die nur als dezente
+      gestrichelte Begrenzung gezeichnet wird; Tische entstehen per
+      Schnell-Anlage (Form + Plätze) statt aus dem Tisch-Pool. */
+  simpleMode?: boolean
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -427,7 +432,7 @@ function TableShape({
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function SitzplanEditor({
-  eventId, canEditRoom: _canEditRoom, roomPoints, roomElements = [], tablePool, coupleName,
+  eventId, canEditRoom: _canEditRoom, roomPoints, roomElements = [], tablePool, coupleName, simpleMode = false,
 }: SitzplanEditorProps) {
   const supabase = createClient()
 
@@ -440,6 +445,9 @@ export default function SitzplanEditor({
 
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  // Schnell-Anlage (nur simpleMode)
+  const [quickShape, setQuickShape] = useState<'round' | 'rectangular'>('round')
+  const [quickSeats, setQuickSeats] = useState(8)
   const [editingName, setEditingName] = useState<string | null>(null)
   const [nameInput, setNameInput] = useState('')
 
@@ -583,6 +591,33 @@ export default function SitzplanEditor({
       event_id: eventId, name, shape: poolType.shape,
       capacity: cap, pos_x: cx, pos_y: cy, rotation: 0,
       table_length: len, table_width: wid, pool_type_id: poolType.id,
+    }).select().single()
+    if (!error && data) setTables(prev => [...prev, data])
+  }
+
+  // Schnell-Anlage im einfachen Modus: Form + Plätze, Größe wird hergeleitet
+  async function addQuickTable(shape: 'round' | 'rectangular', capacity: number) {
+    const name = `Tisch ${tables.length + 1}`
+    let len: number, wid: number
+    if (shape === 'round') {
+      // Durchmesser grob nach Personenzahl (60 cm Platz pro Person am Umfang)
+      len = Math.max(1.2, Math.round((capacity * 0.6) / Math.PI * 10) / 10)
+      wid = len
+    } else {
+      // Tafel: Personen je zur Hälfte auf beiden Längsseiten, 60 cm pro Platz
+      len = Math.max(1.2, Math.ceil(capacity / 2) * 0.6)
+      wid = 0.9
+    }
+
+    const num = tables.length
+    const bounds = roomBounds(roomPoints)
+    const cx = (bounds.minX + bounds.maxX) / 2 + (num % 3 - 1) * (len + 1.0)
+    const cy = (bounds.minY + bounds.maxY) / 2 + (Math.floor(num / 3) % 3 - 1) * (wid + 1.0)
+
+    const { data, error } = await supabase.from('seating_tables').insert({
+      event_id: eventId, name, shape,
+      capacity, pos_x: cx, pos_y: cy, rotation: 0,
+      table_length: len, table_width: wid, pool_type_id: null,
     }).select().single()
     if (!error && data) setTables(prev => [...prev, data])
   }
@@ -734,13 +769,57 @@ export default function SitzplanEditor({
         {/* ── Sidebar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-          {/* Table pool */}
+          {/* Table pool / Schnell-Anlage */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>
-              Verfügbare Tische
+              {simpleMode ? 'Tisch hinzufügen' : 'Verfügbare Tische'}
             </div>
             <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 7 }}>
-              {!hasPool ? (
+              {simpleMode ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    {(['round', 'rectangular'] as const).map(s => (
+                      <button key={s} onClick={() => setQuickShape(s)}
+                        style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                          padding: '8px 4px', borderRadius: 8, fontFamily: 'inherit', cursor: 'pointer',
+                          border: `1.5px solid ${quickShape === s ? '#6366F1' : 'var(--border)'}`,
+                          background: quickShape === s ? '#EEF2FF' : 'var(--surface)',
+                        }}>
+                        <svg width="26" height="26" viewBox="0 0 28 28">
+                          {s === 'round'
+                            ? <ellipse cx="14" cy="14" rx="10" ry="10" fill="none" stroke={quickShape === s ? '#6366F1' : '#9CA3AF'} strokeWidth="1.5"/>
+                            : <rect x="4" y="9" width="20" height="11" rx="2" fill="none" stroke={quickShape === s ? '#6366F1' : '#9CA3AF'} strokeWidth="1.5"/>
+                          }
+                        </svg>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: quickShape === s ? '#6366F1' : 'var(--text-secondary)' }}>
+                          {s === 'round' ? 'Rund' : 'Eckig'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Plätze</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button onClick={() => setQuickSeats(v => Math.max(2, v - 1))}
+                        style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 14, lineHeight: 1, fontFamily: 'inherit' }}>−</button>
+                      <span style={{ fontSize: 13, fontWeight: 700, minWidth: 20, textAlign: 'center' }}>{quickSeats}</span>
+                      <button onClick={() => setQuickSeats(v => Math.min(24, v + 1))}
+                        style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 14, lineHeight: 1, fontFamily: 'inherit' }}>+</button>
+                    </div>
+                  </div>
+                  <button onClick={() => addQuickTable(quickShape, quickSeats)}
+                    style={{
+                      padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                      background: '#6366F1', color: '#fff', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+                    }}>
+                    + Tisch hinzufügen
+                  </button>
+                  <p style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5, margin: 0 }}>
+                    Ohne Raumplan — Tische frei anordnen. Einen Grundriss könnt ihr später jederzeit ergänzen.
+                  </p>
+                </>
+              ) : !hasPool ? (
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
                   Noch keine Tische konfiguriert (Raum → Schritt 3).
                 </p>
@@ -929,7 +1008,10 @@ export default function SitzplanEditor({
                 {roomPoints.length >= 3 && (
                   <polygon
                     points={roomPoints.map(p => { const c = m2px(p.x, p.y, scale, offX, offY); return `${c.x},${c.y}` }).join(' ')}
-                    fill="rgba(29,29,31,0.04)" stroke="#1D1D1F" strokeWidth="2"
+                    fill={simpleMode ? 'rgba(29,29,31,0.02)' : 'rgba(29,29,31,0.04)'}
+                    stroke={simpleMode ? '#C9C2B6' : '#1D1D1F'}
+                    strokeWidth={simpleMode ? 1.5 : 2}
+                    strokeDasharray={simpleMode ? '8 6' : undefined}
                   />
                 )}
 

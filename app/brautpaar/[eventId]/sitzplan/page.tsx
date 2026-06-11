@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import dynamicImport from 'next/dynamic'
-import { Monitor, LayoutGrid } from 'lucide-react'
+import { Monitor, LayoutGrid, Armchair } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { RaumPoint, RaumElement, RaumTablePool, PlacedTablePreview, ConceptPlacedTable } from '@/components/room/RaumKonfigurator'
 
@@ -13,6 +13,15 @@ const SitzplanEditor   = dynamicImport(() => import('@/components/sitzplan/Sitzp
 const RaumKonfigurator = dynamicImport(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
 
 const EMPTY_POOL: RaumTablePool = { types: [] }
+
+// Synthetische Standard-Fläche (16 × 12 m) für den einfachen Modus ohne
+// konkreten Raumplan — dient nur als Begrenzung/Skalierung im Editor.
+const SIMPLE_AREA: RaumPoint[] = [
+  { x: -8, y: -6 }, { x: 8, y: -6 }, { x: 8, y: 6 }, { x: -8, y: 6 },
+]
+
+// feature_toggles-Key für den einfachen Sitzplan-Modus
+const SIMPLE_TOGGLE_KEY = 'sitzplan-simple'
 
 function normalizePool(raw: unknown): RaumTablePool {
   if (!raw || typeof raw !== 'object') return EMPTY_POOL
@@ -122,6 +131,8 @@ export default function BrautpaarSitzplanPage() {
   // (RLS via Migration 0090: event_room_configs über is_event_member)
   const [isSolo, setIsSolo]   = useState(false)
   const [userId, setUserId]   = useState<string | null>(null)
+  // Einfacher Modus ohne Raumplan (persistiert in feature_toggles)
+  const [simpleMode, setSimpleMode] = useState(false)
   const [showConfigurator, setShowConfigurator] = useState(false)
   const [configSaving, setConfigSaving] = useState(false)
   const [configSaved,  setConfigSaved]  = useState(false)
@@ -145,12 +156,13 @@ export default function BrautpaarSitzplanPage() {
         if (!user) return
         setUserId(user.id)
 
-        const [{ data: globalRow }, { data: eventRow }, { data: eventData }, { data: memberRow }, { data: tablesData }] = await Promise.all([
+        const [{ data: globalRow }, { data: eventRow }, { data: eventData }, { data: memberRow }, { data: tablesData }, { data: toggleRow }] = await Promise.all([
           supabase.from('organizer_room_configs').select('*').eq('user_id', user.id).maybeSingle(),
           supabase.from('event_room_configs').select('*').eq('event_id', eventId).maybeSingle(),
           supabase.from('events').select('couple_name').eq('id', eventId).single(),
           supabase.from('event_members').select('role').eq('event_id', eventId).eq('user_id', user.id).maybeSingle(),
           supabase.from('seating_tables').select('pos_x,pos_y,rotation,shape,table_length,table_width,name').eq('event_id', eventId),
+          supabase.from('feature_toggles').select('enabled').eq('event_id', eventId).eq('key', SIMPLE_TOGGLE_KEY).maybeSingle(),
         ])
 
         const hasEvent = Boolean(eventRow)
@@ -163,6 +175,7 @@ export default function BrautpaarSitzplanPage() {
         setTablePool(pool)
         if (eventData) setCoupleName(eventData.couple_name ?? '')
         setIsSolo(memberRow?.role === 'brautpaar_solo')
+        setSimpleMode(toggleRow?.enabled === true)
         if (tablesData) setPlacedTables(tablesData as PlacedTablePreview[])
 
         // Mobile-only: load seating data
@@ -198,6 +211,14 @@ export default function BrautpaarSitzplanPage() {
     load()
   }, [eventId, isMobile]) // eslint-disable-line
 
+  const saveSimpleToggle = useCallback(async (enabled: boolean) => {
+    setSimpleMode(enabled)
+    await supabase.from('feature_toggles').upsert(
+      { event_id: eventId, key: SIMPLE_TOGGLE_KEY, enabled },
+      { onConflict: 'event_id,key' }
+    )
+  }, [eventId, supabase])
+
   const handleSaveRoomConfig = useCallback(async (
     points: RaumPoint[], elements: RaumElement[], pool: RaumTablePool, _placed: ConceptPlacedTable[]
   ) => {
@@ -211,12 +232,15 @@ export default function BrautpaarSitzplanPage() {
       setRoomPoints(points)
       setRoomElements(elements)
       setTablePool(pool)
+      // Echter Raumplan gespeichert → einfacher Modus endet; Tische und
+      // Zuordnungen bleiben erhalten (seating_tables sind davon unabhängig)
+      if (points.length >= 3 && simpleMode) await saveSimpleToggle(false)
       setConfigSaved(true); setTimeout(() => setConfigSaved(false), 3000)
       setShowConfigurator(false)
     } finally {
       setConfigSaving(false)
     }
-  }, [userId, eventId, supabase])
+  }, [userId, eventId, supabase, simpleMode, saveSimpleToggle])
 
   if (loading) return (
     <div className="bp-page">
@@ -269,29 +293,46 @@ export default function BrautpaarSitzplanPage() {
             saved={configSaved}
           />
         </div>
+      ) : isSolo && roomPoints.length < 3 && !simpleMode ? (
+        /* Start-Wahl: einfach (ohne Raumplan) oder detaillierter Raumplan */
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', maxWidth: 720 }}>
+          <button
+            type="button"
+            onClick={() => saveSimpleToggle(true)}
+            className="bp-card"
+            style={{ padding: '2rem 1.75rem', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', border: '1.5px solid var(--bp-gold, #B89968)' }}
+          >
+            <Armchair size={24} style={{ color: 'var(--bp-gold-deep, #9C7F4F)', marginBottom: 12 }} />
+            <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 6px', color: 'var(--bp-ink)' }}>Einfach starten</p>
+            <p className="bp-caption" style={{ margin: 0, lineHeight: 1.6 }}>
+              Tische direkt anlegen und Gäste zuweisen — ganz ohne Grundriss.
+              Einen Raumplan könnt ihr später jederzeit ergänzen.
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowConfigurator(true)}
+            className="bp-card"
+            style={{ padding: '2rem 1.75rem', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            <LayoutGrid size={24} style={{ color: 'var(--bp-ink-3)', marginBottom: 12 }} />
+            <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 6px', color: 'var(--bp-ink)' }}>Raum detailliert planen</p>
+            <p className="bp-caption" style={{ margin: 0, lineHeight: 1.6 }}>
+              Grundriss eurer Location zeichnen, Raumelemente und Tischpool
+              festlegen — für die maßstabsgetreue Planung.
+            </p>
+          </button>
+        </div>
       ) : (
-        <>
-          {isSolo && roomPoints.length === 0 && (
-            <div style={{
-              background: 'var(--bp-gold-pale, #faf5ea)', border: '1px solid var(--bp-rule-gold, #e5d5b5)',
-              borderRadius: 'var(--bp-r-md, 12px)', padding: '0.875rem 1rem', marginBottom: '1.5rem',
-              display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
-            }}>
-              <LayoutGrid size={16} style={{ color: 'var(--bp-gold-deep, #8a6d3b)', flexShrink: 0, marginTop: 2 }} />
-              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--bp-gold-deep, #8a6d3b)', lineHeight: 1.5 }}>
-                Noch kein Raum eingerichtet. Klickt oben auf „Raum konfigurieren", um Grundriss und Tischpool anzulegen.
-              </p>
-            </div>
-          )}
-          <SitzplanEditor
-            eventId={eventId}
-            canEditRoom={isSolo}
-            roomPoints={roomPoints}
-            roomElements={roomElements}
-            tablePool={tablePool}
-            coupleName={coupleName}
-          />
-        </>
+        <SitzplanEditor
+          eventId={eventId}
+          canEditRoom={isSolo}
+          roomPoints={roomPoints.length >= 3 ? roomPoints : simpleMode ? SIMPLE_AREA : roomPoints}
+          roomElements={roomPoints.length >= 3 ? roomElements : []}
+          tablePool={tablePool}
+          coupleName={coupleName}
+          simpleMode={roomPoints.length < 3 && simpleMode}
+        />
       )}
     </div>
   )
