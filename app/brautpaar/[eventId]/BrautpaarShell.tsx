@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Palette, Music, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
-  Briefcase, Heart, FileDown, CreditCard, Lock,
+  Briefcase, Heart, FileDown, CreditCard, Lock, Sparkles,
 } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 import { createClient } from '@/lib/supabase/client'
@@ -353,50 +353,41 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
 
           {/* Trial-Banner: nur während laufender Testphase, nicht auf der Abo-Seite */}
           {subscription?.status === 'trialing' && !isAboPage && (
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap',
-              padding: '0.55rem 1rem', background: 'var(--bp-gold, #B8923A)', color: '#fff',
-              fontSize: '0.8rem', fontWeight: 500,
-            }}>
+            <div className="bp-trial-banner">
+              <Sparkles size={14} style={{ flexShrink: 0 }} />
               <span>
                 Testphase — {subscription.daysLeft === 1 ? 'noch 1 Tag' : `noch ${subscription.daysLeft} Tage`} voller Funktionsumfang
               </span>
-              <Link
-                href={`/brautpaar/${eventId}/abo`}
-                style={{
-                  color: '#fff', border: '1px solid rgba(255,255,255,0.7)', borderRadius: 999,
-                  padding: '0.15rem 0.8rem', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600,
-                }}
-              >
-                Tarif wählen
-              </Link>
+              <Link href={`/brautpaar/${eventId}/abo`}>Tarif wählen</Link>
             </div>
           )}
 
           {isExpired ? (
             <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-              <div style={{
-                maxWidth: 460, textAlign: 'center', background: 'var(--bp-surface, #fff)',
-                border: '1px solid var(--bp-border, #E5DED2)', borderRadius: 16, padding: '2.5rem 2rem',
-              }}>
-                <Lock size={28} style={{ color: 'var(--bp-gold, #B8923A)', margin: '0 auto 1rem', display: 'block' }} />
-                <h2 className="bp-font-display" style={{ fontSize: '1.5rem', margin: '0 0 0.6rem' }}>
+              <div className="bp-paywall-card">
+                <div className="bp-paywall-icon"><Lock size={24} /></div>
+                <h2 className="bp-font-heading" style={{ fontSize: '1.6rem', margin: '0 0 0.6rem', color: 'var(--bp-ink)' }}>
                   Eure Testphase ist beendet
                 </h2>
-                <p style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2, #6b6258)', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
-                  Eure Planung ist sicher gespeichert. Wählt einen Tarif, um genau dort weiterzumachen,
-                  wo ihr aufgehört habt — ab 25 € im Monat, monatlich kündbar.
+                <p style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)', margin: '0 0 1.75rem', lineHeight: 1.65 }}>
+                  Eure gesamte Planung — Gäste, Sitzplan, Budget — ist sicher gespeichert.
+                  Wählt einen Tarif und macht genau dort weiter, wo ihr aufgehört habt.
                 </p>
                 <Link
                   href={`/brautpaar/${eventId}/abo`}
                   style={{
-                    display: 'inline-block', background: 'var(--bp-gold, #B8923A)', color: '#fff',
-                    borderRadius: 999, padding: '0.65rem 1.6rem', textDecoration: 'none',
-                    fontSize: '0.875rem', fontWeight: 600,
+                    display: 'inline-block', color: '#fff', borderRadius: 999,
+                    padding: '0.75rem 1.9rem', textDecoration: 'none',
+                    fontSize: '0.9rem', fontWeight: 600,
+                    background: 'linear-gradient(135deg, #C9AE7D, var(--bp-gold-deep))',
+                    boxShadow: '0 4px 14px rgba(156,127,79,0.32)',
                   }}
                 >
-                  Tarif wählen & weiterplanen
+                  Tarif wählen &amp; weiterplanen
                 </Link>
+                <p style={{ fontSize: '0.72rem', color: 'var(--bp-ink-3)', margin: '1.1rem 0 0' }}>
+                  Ab 25 € im Monat · monatlich kündbar
+                </p>
               </div>
             </main>
           ) : isDeko ? (

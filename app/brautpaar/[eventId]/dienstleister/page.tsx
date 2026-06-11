@@ -44,10 +44,12 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
             Eure Dienstleister und ihre Zugriffsrechte auf die Planungsmodule
           </p>
         </div>
-        <div className="bp-card" style={{ padding: '2.5rem 2rem', textAlign: 'center', maxWidth: 520 }}>
-          <Sparkles size={28} style={{ color: 'var(--bp-gold, #B8923A)', marginBottom: 12 }} />
-          <p style={{ fontWeight: 600, fontSize: 15, margin: '0 0 6px' }}>Teil von Velvet Pro</p>
-          <p className="bp-caption" style={{ margin: '0 0 1.25rem', lineHeight: 1.6 }}>
+        <div className="bp-paywall-card" style={{ margin: 0 }}>
+          <div className="bp-paywall-icon"><Sparkles size={24} /></div>
+          <h2 className="bp-font-heading" style={{ fontSize: '1.45rem', margin: '0 0 0.6rem', color: 'var(--bp-ink)' }}>
+            Teil von Velvet Pro
+          </h2>
+          <p style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)', margin: '0 0 1.5rem', lineHeight: 1.65 }}>
             Mit Velvet Pro ladet ihr Caterer, DJ, Florist und weitere Dienstleister direkt in eure
             Planung ein — jeder sieht genau die Module, die ihr freigebt. Upgrade jederzeit,
             eure Planung bleibt vollständig erhalten.
@@ -55,9 +57,11 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
           <Link
             href={`/brautpaar/${eventId}/abo`}
             style={{
-              display: 'inline-block', background: 'var(--bp-gold, #B8923A)', color: '#fff',
-              borderRadius: 999, padding: '0.6rem 1.5rem', textDecoration: 'none',
+              display: 'inline-block', color: '#fff', borderRadius: 999,
+              padding: '0.7rem 1.7rem', textDecoration: 'none',
               fontSize: '0.875rem', fontWeight: 600,
+              background: 'linear-gradient(135deg, #C9AE7D, var(--bp-gold-deep))',
+              boxShadow: '0 4px 14px rgba(156,127,79,0.32)',
             }}
           >
             Auf Velvet Pro upgraden
