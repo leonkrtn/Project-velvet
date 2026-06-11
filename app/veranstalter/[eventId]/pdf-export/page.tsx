@@ -21,7 +21,11 @@ export default async function PdfExportPage({ params }: Props) {
     .eq('user_id', user.id)
     .single()
 
-  if (!member || member.role !== 'veranstalter') redirect('/veranstalter')
+  // Solo-Brautpaare (eigener Admin ohne Veranstalter) dürfen den PDF-Export
+  // ebenfalls nutzen — eingebunden über /brautpaar/[eventId]/pdf-export
+  if (!member || !['veranstalter', 'brautpaar_solo'].includes(member.role)) {
+    redirect(member?.role ? '/brautpaar' : '/veranstalter')
+  }
 
   // ── Step 1: Fetch guests first to obtain IDs for the begleitpersonen query.
   // This avoids an `await` inside the Promise.all array (which would serialise

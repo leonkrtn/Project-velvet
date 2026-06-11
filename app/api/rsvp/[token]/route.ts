@@ -8,6 +8,7 @@
 // Freeze (events.data_freeze_at) und rsvp_deadline werden serverseitig geprüft.
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { titleCaseName } from '@/lib/text'
 
 type MealChoice = 'fleisch' | 'fisch' | 'vegetarisch' | 'vegan'
 type AltersKategorie = 'erwachsen' | '13-17' | '6-12' | '0-6'
@@ -299,7 +300,7 @@ export async function POST(
   const bpRows = (attending && body.begleitpersonen && body.begleitpersonen.length > 0)
     ? body.begleitpersonen.map(b => ({
         id:            b.id ?? null,
-        name:          b.name ?? '',
+        name:          titleCaseName(b.name ?? ''),
         age_category:  b.ageCategory ?? 'erwachsen',
         trink_alkohol: b.ageCategory === 'erwachsen' ? (b.trinkAlkohol ?? null) : null,
         meal_choice:   b.meal ?? null,

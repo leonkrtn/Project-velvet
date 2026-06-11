@@ -28,6 +28,8 @@ interface Artikel {
   kalkulationspreis: number
   notes: string
   sort_order: number
+  // Alkohol pro Getränk: null = erbt Kategorie-Default (Vorbelegung)
+  is_alcoholic: boolean | null
 }
 
 interface Ingredient {
@@ -69,6 +71,17 @@ const PRESET_KATEGORIEN = [
 ]
 
 const UNITS = ['Flasche', 'Liter', 'Dose', 'Glas', 'Krug', 'Kasten', 'Stück']
+
+// Grobes Sortiment (Absprache mit Caterer/Location) — umgezogen aus dem
+// Catering-Modul; gespeichert in catering_plans.drinks_selection
+const SORTIMENT_OPTIONS = [
+  { value: 'wein',        label: 'Wein' },
+  { value: 'bier',        label: 'Bier' },
+  { value: 'softdrinks',  label: 'Softdrinks' },
+  { value: 'cocktails',   label: 'Cocktailbar' },
+  { value: 'longdrinks',  label: 'Longdrinks' },
+  { value: 'alkoholfrei', label: 'Alkoholfrei-Sortiment' },
+]
 
 const CATEGORY_COLORS = [
   '#E8A020', '#8B2252', '#C9A84C', '#5C4033', '#2A9D8F', '#457B9D',
@@ -138,9 +151,10 @@ function InfoBlock({ label, children }: { label: string; children: React.ReactNo
 // ── Artikel card ──────────────────────────────────────────────────────────────
 
 function ArtikelCard({
-  artikel, canEdit, isVera, effectiveGuestCount, onChange, onDelete,
+  artikel, canEdit, isVera, effectiveGuestCount, katAlcoholic, onChange, onDelete,
 }: {
   artikel: Artikel; canEdit: boolean; isVera: boolean; effectiveGuestCount: number
+  katAlcoholic: boolean
   onChange: (a: Artikel) => void; onDelete: () => void
 }) {
   const [draft, setDraft]  = useState(artikel)
@@ -158,6 +172,7 @@ function ArtikelCard({
       price_per_unit:    debouncedDraft.price_per_unit,
       kalkulationspreis: debouncedDraft.kalkulationspreis,
       notes:             debouncedDraft.notes,
+      is_alcoholic:      debouncedDraft.is_alcoholic,
     }).eq('id', artikel.id).then(({ error }) => {
       if (!error) onChange(debouncedDraft)
     })
@@ -207,6 +222,12 @@ function ArtikelCard({
     </div>
   ) : null
 
+  // Alkohol-Kennzeichen pro Getränk: null = erbt Kategorie-Vorbelegung
+  const effectiveAlcoholic = draft.is_alcoholic ?? katAlcoholic
+  function toggleAlcoholic() {
+    setField('is_alcoholic', !effectiveAlcoholic)
+  }
+
   // Manual badge + reset button shown under the "Gesamt" input
   const manualBadge = (canEdit && isManual) ? (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
@@ -240,6 +261,29 @@ function ArtikelCard({
           />
         ) : (
           <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{draft.name}</span>
+        )}
+        {/* Alkohol-Kennzeichen pro Getränk (Klick wechselt; Vorbelegung kommt aus der Kategorie) */}
+        {canEdit ? (
+          <button
+            onClick={toggleAlcoholic}
+            title={effectiveAlcoholic ? 'Alkoholisch — klicken für alkoholfrei' : 'Alkoholfrei — klicken für alkoholisch'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0,
+              padding: '2px 8px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 10, fontWeight: 600,
+              border: `1px solid ${effectiveAlcoholic ? '#D4A8B4' : '#A8D4C4'}`,
+              background: effectiveAlcoholic ? '#FBF3F5' : '#F2FAF6',
+              color: effectiveAlcoholic ? '#8B2252' : '#1F7A5C',
+            }}
+          >
+            {effectiveAlcoholic ? <Wine size={10} /> : <GlassWater size={10} />}
+            {effectiveAlcoholic ? 'Alkohol' : 'Alkoholfrei'}
+          </button>
+        ) : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0, fontSize: 10, fontWeight: 600, color: effectiveAlcoholic ? '#8B2252' : '#1F7A5C' }}>
+            {effectiveAlcoholic ? <Wine size={10} /> : <GlassWater size={10} />}
+            {effectiveAlcoholic ? 'Alkohol' : 'Alkoholfrei'}
+          </span>
         )}
         {canEdit && (
           <button onClick={onDelete} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.35, padding: 2, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
@@ -435,7 +479,7 @@ function KategorieSection({
           {canEdit ? (
             <button
               onClick={onKatAlcoholicToggle}
-              title={kat.is_alcoholic ? 'Alkoholisch (klicken zum Ändern)' : 'Alkoholfrei (klicken zum Ändern)'}
+              title={kat.is_alcoholic ? 'Vorbelegung: alkoholisch — gilt für neue Getränke, pro Getränk änderbar' : 'Vorbelegung: alkoholfrei — gilt für neue Getränke, pro Getränk änderbar'}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0 }}
             >
               {kat.is_alcoholic
@@ -493,6 +537,7 @@ function KategorieSection({
               <ArtikelCard
                 key={a.id} artikel={a} canEdit={canEdit} isVera={isVera}
                 effectiveGuestCount={effectiveGuestCount}
+                katAlcoholic={kat.is_alcoholic}
                 onChange={onArtikelChange}
                 onDelete={() => onArtikelDelete(a.id)}
               />
@@ -845,6 +890,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
   const [planEnabled, setPlanEnabled]               = useState(false)
   const [planCount, setPlanCount]                   = useState(0)
   const [getränkeBilling, setGetränkeBilling]       = useState<'honorar' | 'einzeln'>('honorar')
+  const [sortiment, setSortiment]                   = useState<string[]>([])
   const [savingPlan, setSavingPlan]                 = useState(false)
 
   const [newKatName, setNewKatName]           = useState('')
@@ -873,7 +919,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
       supabase.from('getraenke_kategorien').select('*').eq('event_id', eventId).order('sort_order'),
       supabase.from('getraenke_artikel').select('*').eq('event_id', eventId).order('sort_order'),
       supabase.from('getraenke_cocktails').select('*').eq('event_id', eventId).order('sort_order'),
-      supabase.from('catering_plans').select('id, plan_guest_count, plan_guest_count_enabled, getraenke_billing').eq('event_id', eventId).maybeSingle(),
+      supabase.from('catering_plans').select('id, plan_guest_count, plan_guest_count_enabled, getraenke_billing, drinks_selection').eq('event_id', eventId).maybeSingle(),
     ]).then(([{ data: k }, { data: a }, { data: c }, { data: plan }]) => {
       setKategorien((k ?? []).map(row => ({ ...row, is_alcoholic: row.is_alcoholic ?? true })))
       setArtikel((a ?? []).map(row => ({ ...row, kalkulationspreis: row.kalkulationspreis ?? 0 })))
@@ -888,6 +934,7 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
         setPlanEnabled(plan.plan_guest_count_enabled ?? false)
         setPlanCount(plan.plan_guest_count ?? 0)
         setGetränkeBilling((plan.getraenke_billing as 'honorar' | 'einzeln') ?? 'honorar')
+        setSortiment((plan.drinks_selection as string[] | null) ?? [])
       }
       setLoading(false)
     })
@@ -919,6 +966,12 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
   async function saveGetränkeBilling(val: 'honorar' | 'einzeln') {
     setGetränkeBilling(val)
     await saveCateringPlan({ getraenke_billing: val })
+  }
+
+  async function toggleSortiment(value: string) {
+    const next = sortiment.includes(value) ? sortiment.filter(v => v !== value) : [...sortiment, value]
+    setSortiment(next)
+    await saveCateringPlan({ drinks_selection: next })
   }
 
   async function toggleKatAlcoholic(kat: Kategorie) {
@@ -1160,6 +1213,36 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
               )}
             </>
           )}
+
+          {/* Sortiment-Absprache (aus dem Catering-Modul hierher umgezogen) */}
+          <div style={{ background: 'var(--surface, #fff)', borderRadius: 10, border: '1px solid var(--border, #e5e7eb)', padding: '14px 16px', marginTop: 16 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', margin: '0 0 4px' }}>Sortiment</p>
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary, #999)', margin: '0 0 10px' }}>
+              Grobe Absprache mit Caterer/Location, welche Getränkegruppen angeboten werden.
+            </p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {SORTIMENT_OPTIONS.map(o => {
+                const active = sortiment.includes(o.value)
+                return (
+                  <button
+                    key={o.value}
+                    onClick={() => canEdit && toggleSortiment(o.value)}
+                    disabled={!canEdit}
+                    style={{
+                      padding: '6px 12px', borderRadius: 999, fontSize: 12.5, fontFamily: 'inherit',
+                      cursor: canEdit ? 'pointer' : 'default',
+                      border: `1px solid ${active ? 'var(--accent, #1a1a1a)' : 'var(--border, #ddd)'}`,
+                      background: active ? 'var(--accent-light, rgba(0,0,0,0.06))' : 'transparent',
+                      color: active ? 'var(--accent, #1a1a1a)' : 'var(--text-secondary, #777)',
+                      fontWeight: active ? 600 : 400,
+                    }}
+                  >
+                    {o.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
 

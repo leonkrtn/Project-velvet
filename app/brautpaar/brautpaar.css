@@ -258,6 +258,9 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Scroll-Chaining unterbinden: am Listenende soll nicht der Main-Bereich
+     weiterscrollen */
+  overscroll-behavior: contain;
   padding: 0.75rem 0;
   scrollbar-width: none;
 }

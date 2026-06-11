@@ -8,6 +8,7 @@ import {
   MessageCircle, Share2, Link2, UserCheck, UserPlus2,
 } from 'lucide-react'
 import GeschenkTab from './GeschenkTab'
+import { titleCaseName } from '@/lib/text'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -741,7 +742,7 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
     setSaving(true)
     const supabase = createClient()
     const patch = {
-      name:  form.name.trim() || guest.name,
+      name:  titleCaseName(form.name) || guest.name,
       side:  form.side.trim()  || null,
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
@@ -970,7 +971,7 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
     const { data, error } = await supabase
       .from('guests')
       .insert({
-        event_id: eventId, name: newName.trim(),
+        event_id: eventId, name: titleCaseName(newName),
         side: newSide || null, email: newEmail.trim() || null,
         status: 'angelegt', created_by: userId,
         token: crypto.randomUUID(),
