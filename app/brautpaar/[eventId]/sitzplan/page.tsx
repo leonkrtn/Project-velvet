@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation'
 import dynamicImport from 'next/dynamic'
 import { Monitor, LayoutGrid, Armchair } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import type { RaumPoint, RaumElement, RaumTablePool, PlacedTablePreview, ConceptPlacedTable } from '@/components/room/RaumKonfigurator'
+import type { RaumPoint, RaumElement, RaumTablePool, RaumTableType, PlacedTablePreview, ConceptPlacedTable } from '@/components/room/RaumKonfigurator'
 
 const SitzplanEditor   = dynamicImport(() => import('@/components/sitzplan/SitzplanEditor'), { ssr: false })
 const RaumKonfigurator = dynamicImport(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
@@ -219,6 +219,58 @@ export default function BrautpaarSitzplanPage() {
     )
   }, [eventId, supabase])
 
+  // Konfigurator öffnen: schnell angelegte Tische (einfacher Modus, ohne
+  // Pool-Typ) vorher in den Tischpool übernehmen, damit die Tischauswahl in
+  // Schritt 3 vorausgewählt ist. Gruppiert nach Form/Plätzen/Maßen; die
+  // Tische bekommen den erzeugten Pool-Typ zugewiesen, damit die
+  // Verfügbarkeits-Zählung im Editor stimmt.
+  const openConfigurator = useCallback(async () => {
+    const { data: tbls } = await supabase
+      .from('seating_tables')
+      .select('id, shape, capacity, table_length, table_width, pool_type_id')
+      .eq('event_id', eventId)
+
+    const quickTables = (tbls ?? []).filter(t => !t.pool_type_id || String(t.pool_type_id).startsWith('quick-'))
+    if (quickTables.length > 0) {
+      interface Group { ids: string[]; toAssign: string[]; shape: 'round' | 'rectangular'; len: number; wid: number; seats: number }
+      const groups = new Map<string, Group>()
+      for (const t of quickTables) {
+        const len = Number(t.table_length), wid = Number(t.table_width)
+        const key = `quick-${t.shape}-${t.capacity}-${String(len).replace('.', '_')}-${String(wid).replace('.', '_')}`
+        if (!groups.has(key)) {
+          groups.set(key, { ids: [], toAssign: [], shape: t.shape as 'round' | 'rectangular', len, wid, seats: t.capacity })
+        }
+        const g = groups.get(key)!
+        g.ids.push(t.id)
+        if (t.pool_type_id !== key) g.toAssign.push(t.id)
+      }
+
+      const quickTypes: RaumTableType[] = []
+      for (const [typeId, g] of Array.from(groups.entries())) {
+        quickTypes.push({
+          id: typeId,
+          shape: g.shape,
+          count: g.ids.length,
+          diameter: g.shape === 'round' ? g.len : 1.5,
+          length: g.len,
+          width: g.wid,
+          seats: g.seats,
+        })
+        if (g.toAssign.length > 0) {
+          await supabase.from('seating_tables').update({ pool_type_id: typeId }).in('id', g.toAssign)
+        }
+      }
+
+      setTablePool(prev => ({
+        types: [
+          ...prev.types.filter(t => !quickTypes.some(q => q.id === t.id)),
+          ...quickTypes,
+        ],
+      }))
+    }
+    setShowConfigurator(true)
+  }, [eventId, supabase])
+
   const handleSaveRoomConfig = useCallback(async (
     points: RaumPoint[], elements: RaumElement[], pool: RaumTablePool, _placed: ConceptPlacedTable[]
   ) => {
@@ -299,7 +351,7 @@ export default function BrautpaarSitzplanPage() {
           <button
             type="button"
             className="bp-btn"
-            onClick={() => setShowConfigurator(v => !v)}
+            onClick={() => { if (showConfigurator) setShowConfigurator(false); else void openConfigurator() }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
             <LayoutGrid size={14} />
@@ -345,7 +397,7 @@ export default function BrautpaarSitzplanPage() {
           </button>
           <button
             type="button"
-            onClick={() => setShowConfigurator(true)}
+            onClick={() => void openConfigurator()}
             className="bp-card"
             style={{ padding: '2rem 1.75rem', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}
           >
