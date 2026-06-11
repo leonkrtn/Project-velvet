@@ -199,6 +199,19 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   // Close mobile drawer on route change
   useEffect(() => { setMobileOpen(false) }, [pathname])
 
+  // Offener Mobile-Drawer: Hintergrund-Scroll sperren + Schließen per Escape
+  useEffect(() => {
+    if (!mobileOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [mobileOpen])
+
   // Persist sidebar state
   useEffect(() => {
     const stored = localStorage.getItem('bp-sidebar-expanded')
@@ -345,7 +358,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
               <span />
               <span />
             </button>
-            <span className="bp-font-wordmark" style={{ fontSize: '1rem', color: 'var(--bp-ink)' }}>
+            <span className="bp-font-wordmark bp-mobile-header-title">
               {eventTitle}
             </span>
             <div style={{ width: 36 }} />
@@ -363,7 +376,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
           )}
 
           {isExpired ? (
-            <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+            <main className="bp-paywall-main">
               <div className="bp-paywall-card">
                 <div className="bp-paywall-icon"><Lock size={24} /></div>
                 <h2 className="bp-font-heading" style={{ fontSize: '1.6rem', margin: '0 0 0.6rem', color: 'var(--bp-ink)' }}>

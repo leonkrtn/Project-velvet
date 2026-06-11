@@ -134,7 +134,7 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
           <p className="bp-page-subtitle">Grundlegende Details eurer Hochzeit</p>
         </div>
         <button
-          className="bp-btn bp-btn-primary"
+          className="bp-btn bp-btn-primary bp-btn-mobile-full"
           onClick={save}
           disabled={saving}
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
@@ -193,7 +193,7 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
           <Field label="Straße">
             <input className="bp-input" value={data.location_street ?? ''} onChange={e => set('location_street', e.target.value || null)} />
           </Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '0.75rem' }}>
+          <div className="bp-grid-zip">
             <Field label="PLZ">
               <input className="bp-input" value={data.location_zip ?? ''} onChange={e => set('location_zip', e.target.value || null)} />
             </Field>
@@ -306,7 +306,7 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
       {/* Save footer */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '0.5rem', paddingBottom: '2rem' }}>
         <button
-          className="bp-btn bp-btn-primary bp-btn-lg"
+          className="bp-btn bp-btn-primary bp-btn-lg bp-btn-mobile-full"
           onClick={save}
           disabled={saving}
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
