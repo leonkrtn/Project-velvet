@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Plus, X, ChevronDown, ChevronUp, ChevronRight, Users, TrendingUp,
   AlertTriangle, UtensilsCrossed, Baby,
+  Utensils, HandPlatter, BookOpen, Sandwich, Flame, Trash2,
 } from 'lucide-react'
+import { titleCaseName, capitalizeFirst } from '@/lib/text'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -38,6 +40,7 @@ interface CateringPlan {
   weinbegleitung_note: string
   kinder_meal_options: string[]
   menu_courses: MenuCourse[]
+  menu_structure: MenuStructure
   plan_guest_count_enabled: boolean
   plan_guest_count: number
 }
@@ -46,6 +49,24 @@ interface MenuCourse {
   id: string
   name: string
   descriptions: Record<string, string>
+}
+
+interface BuffetStation {
+  id: string
+  name: string
+  items: string[]
+}
+
+interface CarteCourse {
+  id: string
+  name: string
+  dishes: string[]
+}
+
+interface MenuStructure {
+  buffet_stations: BuffetStation[]
+  carte_courses: CarteCourse[]
+  simple_items: string[]
 }
 
 interface OrganizerCost {
@@ -75,6 +96,19 @@ const DEFAULT_COURSES: MenuCourse[] = [
   { id: '3', name: 'Dessert', descriptions: {} },
 ]
 const MENU_TYPES = ['Mehrgängiges Menü', 'Buffet', 'À la carte', 'Fingerfood', 'BBQ']
+const MENU_TYPE_CARDS: { value: string; icon: typeof Utensils }[] = [
+  { value: 'Mehrgängiges Menü', icon: Utensils },
+  { value: 'Buffet',            icon: HandPlatter },
+  { value: 'À la carte',        icon: BookOpen },
+  { value: 'Fingerfood',        icon: Sandwich },
+  { value: 'BBQ',               icon: Flame },
+]
+const MEAL_LABELS: Record<string, string> = {
+  fleisch: 'Fleisch', fisch: 'Fisch', vegetarisch: 'Vegetarisch', vegan: 'Vegan',
+}
+// Anzeige-Label für meal_options / meal_choice-Werte: Label-Map bevorzugt, sonst capitalizeFirst
+const mealLabel = (v: string) => MEAL_LABELS[v.toLowerCase()] ?? capitalizeFirst(v)
+const DEFAULT_CARTE_COURSES = ['Vorspeisen', 'Hauptgänge', 'Desserts']
 const SERVICE_STYLES = [
   { value: 'klassisch', label: 'Klassisches Menü' },
   { value: 'buffet',    label: 'Buffet' },
@@ -253,6 +287,23 @@ function StatBadge({ label, value, sub }: { label: string; value: string | numbe
 
 // ── Main Component ─────────────────────────────────────────────────────────
 
+function parseMenuStructure(raw: unknown): MenuStructure {
+  const m = (raw ?? {}) as Record<string, unknown>
+  return {
+    buffet_stations: ((m.buffet_stations as any[]) ?? []).map((s: any) => ({
+      id: s.id ?? crypto.randomUUID(),
+      name: s.name ?? '',
+      items: Array.isArray(s.items) ? s.items : [],
+    })),
+    carte_courses: ((m.carte_courses as any[]) ?? []).map((c: any) => ({
+      id: c.id ?? crypto.randomUUID(),
+      name: c.name ?? '',
+      dishes: Array.isArray(c.dishes) ? c.dishes : [],
+    })),
+    simple_items: Array.isArray(m.simple_items) ? (m.simple_items as string[]) : [],
+  }
+}
+
 function parsePlan(raw: Record<string, unknown> | null): CateringPlan {
   return {
     id:                       raw?.id as string | undefined,
@@ -279,6 +330,7 @@ function parsePlan(raw: Record<string, unknown> | null): CateringPlan {
       name: c.name ?? '',
       descriptions: c.descriptions ?? {},
     })),
+    menu_structure:           parseMenuStructure(raw?.menu_structure),
     plan_guest_count_enabled: (raw?.plan_guest_count_enabled as boolean) ?? false,
     plan_guest_count:         (raw?.plan_guest_count as number) ?? 0,
   }
@@ -297,6 +349,9 @@ export default function CateringForm({
   const [newMealOption, setNewMealOption] = useState('')
   const [newKinderOption, setNewKinderOption] = useState('')
   const [newCourseName, setNewCourseName] = useState('')
+  const [stationItemDrafts, setStationItemDrafts] = useState<Record<string, string>>({})
+  const [carteDishDrafts, setCarteDishDrafts] = useState<Record<string, string>>({})
+  const [newSimpleItem, setNewSimpleItem] = useState('')
   const [customCostLabel, setCustomCostLabel] = useState('')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -363,6 +418,7 @@ export default function CateringForm({
         weinbegleitung_note:        pl.weinbegleitung_note,
         kinder_meal_options:        pl.kinder_meal_options,
         menu_courses:               pl.menu_courses,
+        menu_structure:             pl.menu_structure,
         plan_guest_count_enabled:   pl.plan_guest_count_enabled,
         plan_guest_count:           pl.plan_guest_count,
       }, { onConflict: 'event_id' }).then(r => r.error),
@@ -379,14 +435,14 @@ export default function CateringForm({
   // ── Meal options ──────────────────────────────────────────────────────────
 
   function addMealOption() {
-    const val = newMealOption.trim()
+    const val = titleCaseName(newMealOption)
     if (!val) return
     updateEvent('meal_options', [...mealOptions, val])
     setNewMealOption('')
   }
 
   function addKinderOption() {
-    const val = newKinderOption.trim()
+    const val = titleCaseName(newKinderOption)
     if (!val) return
     updatePlan({ kinder_meal_options: [...plan.kinder_meal_options, val] })
     setNewKinderOption('')
@@ -426,6 +482,94 @@ export default function CateringForm({
 
   function removeCourse(id: string) {
     updatePlan({ menu_courses: plan.menu_courses.filter(c => c.id !== id) })
+  }
+
+  // ── Menu structure (Buffet / À la carte / Fingerfood / BBQ) ────────────────
+
+  function patchStructure(patch: Partial<MenuStructure>) {
+    updatePlan({ menu_structure: { ...plan.menu_structure, ...patch } })
+  }
+
+  // Buffet stations
+  function addStation() {
+    patchStructure({
+      buffet_stations: [
+        ...plan.menu_structure.buffet_stations,
+        { id: crypto.randomUUID(), name: '', items: [] },
+      ],
+    })
+  }
+  function updateStationName(id: string, name: string) {
+    patchStructure({
+      buffet_stations: plan.menu_structure.buffet_stations.map(s => s.id === id ? { ...s, name } : s),
+    })
+  }
+  function removeStation(id: string) {
+    patchStructure({ buffet_stations: plan.menu_structure.buffet_stations.filter(s => s.id !== id) })
+  }
+  function addStationItem(id: string) {
+    const val = capitalizeFirst((stationItemDrafts[id] ?? '').trim())
+    if (!val) return
+    patchStructure({
+      buffet_stations: plan.menu_structure.buffet_stations.map(s =>
+        s.id === id ? { ...s, items: [...s.items, val] } : s),
+    })
+    setStationItemDrafts(d => ({ ...d, [id]: '' }))
+  }
+  function removeStationItem(id: string, idx: number) {
+    patchStructure({
+      buffet_stations: plan.menu_structure.buffet_stations.map(s =>
+        s.id === id ? { ...s, items: s.items.filter((_, i) => i !== idx) } : s),
+    })
+  }
+
+  // À la carte courses
+  function startDefaultCarte() {
+    patchStructure({
+      carte_courses: DEFAULT_CARTE_COURSES.map(name => ({ id: crypto.randomUUID(), name, dishes: [] })),
+    })
+  }
+  function addCarteCourse() {
+    patchStructure({
+      carte_courses: [
+        ...plan.menu_structure.carte_courses,
+        { id: crypto.randomUUID(), name: '', dishes: [] },
+      ],
+    })
+  }
+  function updateCarteName(id: string, name: string) {
+    patchStructure({
+      carte_courses: plan.menu_structure.carte_courses.map(c => c.id === id ? { ...c, name } : c),
+    })
+  }
+  function removeCarteCourse(id: string) {
+    patchStructure({ carte_courses: plan.menu_structure.carte_courses.filter(c => c.id !== id) })
+  }
+  function addCarteDish(id: string) {
+    const val = capitalizeFirst((carteDishDrafts[id] ?? '').trim())
+    if (!val) return
+    patchStructure({
+      carte_courses: plan.menu_structure.carte_courses.map(c =>
+        c.id === id ? { ...c, dishes: [...c.dishes, val] } : c),
+    })
+    setCarteDishDrafts(d => ({ ...d, [id]: '' }))
+  }
+  function removeCarteDish(id: string, idx: number) {
+    patchStructure({
+      carte_courses: plan.menu_structure.carte_courses.map(c =>
+        c.id === id ? { ...c, dishes: c.dishes.filter((_, i) => i !== idx) } : c),
+    })
+  }
+
+  // Simple items (Fingerfood / BBQ)
+  function addSimpleItem() {
+    const val = capitalizeFirst(newSimpleItem.trim())
+    if (!val) return
+    patchStructure({ simple_items: [...plan.menu_structure.simple_items, val] })
+    setNewSimpleItem('')
+  }
+  function removeSimpleItem(idx: number) {
+    patchStructure({ simple_items: plan.menu_structure.simple_items.filter((_, i) => i !== idx) })
   }
 
   // ── Catering costs ────────────────────────────────────────────────────────
@@ -478,6 +622,19 @@ export default function CateringForm({
       {/* ── Zusammenfassung ─────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
         {event.menu_type && <SummaryChip>Menüart: {event.menu_type}</SummaryChip>}
+        {event.menu_type === 'Buffet' && plan.menu_structure.buffet_stations.length > 0 && (
+          <SummaryChip>{plan.menu_structure.buffet_stations.length} Station{plan.menu_structure.buffet_stations.length === 1 ? '' : 'en'}</SummaryChip>
+        )}
+        {event.menu_type === 'À la carte' && plan.menu_structure.carte_courses.length > 0 && (
+          <SummaryChip>
+            {plan.menu_structure.carte_courses.length} Gang{plan.menu_structure.carte_courses.length === 1 ? '' : 'änge'}
+            {' · '}
+            {plan.menu_structure.carte_courses.reduce((s, c) => s + c.dishes.length, 0)} Gericht{plan.menu_structure.carte_courses.reduce((s, c) => s + c.dishes.length, 0) === 1 ? '' : 'e'}
+          </SummaryChip>
+        )}
+        {(event.menu_type === 'Fingerfood' || event.menu_type === 'BBQ') && plan.menu_structure.simple_items.length > 0 && (
+          <SummaryChip>{plan.menu_structure.simple_items.length} Speise{plan.menu_structure.simple_items.length === 1 ? '' : 'n'}</SummaryChip>
+        )}
         <SummaryChip>{mealOptions.length} Essensoption{mealOptions.length === 1 ? '' : 'en'}</SummaryChip>
         <SummaryChip>{confirmedGuestCount} Gäste zugesagt</SummaryChip>
         {Object.keys(allergyCounts).length > 0 && (
@@ -487,24 +644,40 @@ export default function CateringForm({
 
       {/* ── 1. Menü & Essenskonzept ────────────────────────────────────────── */}
       <SectionWrap title="Menü & Essenskonzept">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-          <div>
-            <label style={labelStyle}>Menü-Art</label>
-            <select
-              style={input}
-              value={event.menu_type ?? 'Mehrgängiges Menü'}
-              onChange={e => updateEvent('menu_type', e.target.value)}
-            >
-              {MENU_TYPES.map(o => <option key={o}>{o}</option>)}
-            </select>
+        <div style={{ marginBottom: 16 }}>
+          <label style={labelStyle}>Menü-Art</label>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: 10, marginTop: 6,
+          }}>
+            {MENU_TYPE_CARDS.map(({ value, icon: Icon }) => {
+              const active = (event.menu_type ?? 'Mehrgängiges Menü') === value
+              return (
+                <button key={value} type="button"
+                  onClick={() => updateEvent('menu_type', value)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                    padding: '16px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid',
+                    borderColor: active ? 'var(--accent)' : 'var(--border)',
+                    background: active ? 'var(--accent-light)' : 'var(--surface)',
+                    color: active ? 'var(--accent)' : 'var(--text-secondary)',
+                    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
+                  }}
+                >
+                  <Icon size={22} />
+                  <span style={{ fontSize: 13, fontWeight: 500, textAlign: 'center', lineHeight: 1.2 }}>{value}</span>
+                </button>
+              )
+            })}
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 2 }}>
-            <Toggle
-              checked={event.collect_allergies ?? true}
-              onChange={v => updateEvent('collect_allergies', v)}
-              label="Allergien erfassen"
-            />
-          </div>
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <Toggle
+            checked={event.collect_allergies ?? true}
+            onChange={v => updateEvent('collect_allergies', v)}
+            label="Allergien erfassen"
+          />
         </div>
 
         <div style={{ marginBottom: 16 }}>
@@ -516,7 +689,7 @@ export default function CateringForm({
                 background: 'var(--accent-light)', border: '1px solid rgba(29,29,31,0.15)',
                 borderRadius: 20, padding: '4px 10px', fontSize: 13, color: 'var(--accent)',
               }}>
-                {opt}
+                {mealLabel(opt)}
                 <button type="button" onClick={() => updateEvent('meal_options', mealOptions.filter(o => o !== opt))}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--accent)' }}>
                   <X size={13} />
@@ -534,6 +707,11 @@ export default function CateringForm({
               <Plus size={14} /> Hinzufügen
             </button>
           </div>
+          {event.menu_type && event.menu_type !== 'Mehrgängiges Menü' && (
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8, marginBottom: 0 }}>
+              Optional — wird Gästen bei der Rückmeldung zur Auswahl angezeigt. Leer lassen, wenn keine Vorauswahl nötig ist.
+            </p>
+          )}
         </div>
 
         {event.children_allowed && (
@@ -554,7 +732,7 @@ export default function CateringForm({
                   background: 'var(--bg-secondary, #F5F5F5)', border: '1px solid var(--border, #E5E5E5)',
                   borderRadius: 20, padding: '4px 10px', fontSize: 13, color: 'var(--text-primary, #2C2825)',
                 }}>
-                  {opt}
+                  {mealLabel(opt)}
                   <button type="button" onClick={() => updatePlan({ kinder_meal_options: plan.kinder_meal_options.filter(o => o !== opt) })}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-tertiary, #8C8076)' }}>
                     <X size={13} />
@@ -581,8 +759,8 @@ export default function CateringForm({
         )}
       </SectionWrap>
 
-      {/* ── 2. Menüpositionen je Essensoption ────────────────────────────── */}
-      {mealOptions.length > 0 && (() => {
+      {/* ── 2. Menüpositionen je Essensoption (nur Mehrgängiges Menü) ─────── */}
+      {mealOptions.length > 0 && event.menu_type === 'Mehrgängiges Menü' && (() => {
         const isMultiCourse = event.menu_type === 'Mehrgängiges Menü'
         const posLabel = isMultiCourse ? 'Gang' : 'Position'
         const sectionTitle = isMultiCourse ? 'Menügänge je Essensoption' : 'Menüpositionen je Essensoption'
@@ -633,7 +811,7 @@ export default function CateringForm({
                   borderRadius: 'var(--radius-sm)', padding: 16,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{opt}</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{mealLabel(opt)}</span>
                     {mealOptions.length > 1 && (
                       <select
                         value=""
@@ -647,7 +825,7 @@ export default function CateringForm({
                       >
                         <option value="">Übernehmen von…</option>
                         {mealOptions.filter(o => o !== opt).map(o => (
-                          <option key={o} value={o}>Von {o}</option>
+                          <option key={o} value={o}>Von {mealLabel(o)}</option>
                         ))}
                       </select>
                     )}
@@ -693,6 +871,195 @@ export default function CateringForm({
         )
       })()}
 
+      {/* ── 2b. Buffet-Stationen ──────────────────────────────────────────── */}
+      {event.menu_type === 'Buffet' && (
+        <SectionWrap title="Buffet-Stationen">
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -4 }}>
+            Lege die Stationen deines Buffets fest (z.B. Vorspeisenbuffet, Grillstation, Dessertbuffet) und ordne ihnen die Speisen zu.
+          </p>
+          {plan.menu_structure.buffet_stations.length === 0 && (
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic', marginBottom: 16 }}>
+              Noch keine Stationen angelegt.
+            </p>
+          )}
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: 14, marginBottom: 16,
+          }}>
+            {plan.menu_structure.buffet_stations.map((station, i) => (
+              <div key={station.id} style={{
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)', padding: 16,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <input
+                    style={{ ...input, fontWeight: 700, fontSize: 14 }}
+                    value={station.name}
+                    onChange={e => updateStationName(station.id, e.target.value)}
+                    placeholder={`Station ${i + 1} (z.B. Grillstation)`}
+                  />
+                  <button type="button" onClick={() => removeStation(station.id)} title="Station entfernen"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                  {station.items.length === 0 && (
+                    <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Noch keine Speisen</span>
+                  )}
+                  {station.items.map((dish, idx) => (
+                    <div key={idx} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                      padding: '7px 10px', background: 'var(--bg)', border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-sm)', fontSize: 13, color: 'var(--text-primary)',
+                    }}>
+                      <span>{dish}</span>
+                      <button type="button" onClick={() => removeStationItem(station.id, idx)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input style={{ ...input, flex: 1, fontSize: 13 }}
+                    value={stationItemDrafts[station.id] ?? ''}
+                    onChange={e => setStationItemDrafts(d => ({ ...d, [station.id]: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && addStationItem(station.id)}
+                    placeholder="Speise hinzufügen…" />
+                  <button type="button" onClick={() => addStationItem(station.id)}
+                    style={{ padding: '10px 12px', background: '#fff', color: 'var(--text)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500, flexShrink: 0 }}>
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={addStation}
+            style={{ padding: '10px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 500 }}>
+            <Plus size={14} /> Station hinzufügen
+          </button>
+        </SectionWrap>
+      )}
+
+      {/* ── 2c. Speisekarte (À la carte) ──────────────────────────────────── */}
+      {event.menu_type === 'À la carte' && (
+        <SectionWrap title="Speisekarte">
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -4 }}>
+            Gliedere deine Speisekarte in Gänge (z.B. Vorspeisen, Hauptgänge, Desserts) und füge die jeweiligen Gerichte hinzu.
+          </p>
+          {plan.menu_structure.carte_courses.length === 0 ? (
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic', marginBottom: 12 }}>
+                Noch keine Gänge angelegt.
+              </p>
+              <button type="button" onClick={startDefaultCarte}
+                style={{ padding: '10px 14px', background: 'var(--surface)', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 500 }}>
+                <Plus size={14} /> Mit Standard-Gängen starten
+              </button>
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: 14, marginBottom: 16,
+            }}>
+              {plan.menu_structure.carte_courses.map((course, i) => (
+                <div key={course.id} style={{
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)', padding: 16,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <input
+                      style={{ ...input, fontWeight: 700, fontSize: 14 }}
+                      value={course.name}
+                      onChange={e => updateCarteName(course.id, e.target.value)}
+                      placeholder={`Gang ${i + 1} (z.B. Vorspeisen)`}
+                    />
+                    <button type="button" onClick={() => removeCarteCourse(course.id)} title="Gang entfernen"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                    {course.dishes.length === 0 && (
+                      <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Noch keine Gerichte</span>
+                    )}
+                    {course.dishes.map((dish, idx) => (
+                      <div key={idx} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                        padding: '7px 10px', background: 'var(--bg)', border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-sm)', fontSize: 13, color: 'var(--text-primary)',
+                      }}>
+                        <span>{dish}</span>
+                        <button type="button" onClick={() => removeCarteDish(course.id, idx)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input style={{ ...input, flex: 1, fontSize: 13 }}
+                      value={carteDishDrafts[course.id] ?? ''}
+                      onChange={e => setCarteDishDrafts(d => ({ ...d, [course.id]: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && addCarteDish(course.id)}
+                      placeholder="Gericht hinzufügen…" />
+                    <button type="button" onClick={() => addCarteDish(course.id)}
+                      style={{ padding: '10px 12px', background: '#fff', color: 'var(--text)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500, flexShrink: 0 }}>
+                      <Plus size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {plan.menu_structure.carte_courses.length > 0 && (
+            <button type="button" onClick={addCarteCourse}
+              style={{ padding: '10px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 500 }}>
+              <Plus size={14} /> Gang hinzufügen
+            </button>
+          )}
+        </SectionWrap>
+      )}
+
+      {/* ── 2d. Speisenliste (Fingerfood / BBQ) ───────────────────────────── */}
+      {(event.menu_type === 'Fingerfood' || event.menu_type === 'BBQ') && (
+        <SectionWrap title={event.menu_type === 'BBQ' ? 'BBQ-Speisen' : 'Fingerfood-Speisen'}>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -4 }}>
+            Liste die geplanten Speisen auf.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+            {plan.menu_structure.simple_items.length === 0 && (
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Noch keine Speisen</span>
+            )}
+            {plan.menu_structure.simple_items.map((dish, idx) => (
+              <div key={idx} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                padding: '8px 12px', background: 'var(--surface)', border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)', fontSize: 13, color: 'var(--text-primary)',
+              }}>
+                <span>{dish}</span>
+                <button type="button" onClick={() => removeSimpleItem(idx)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                  <X size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input style={{ ...input, flex: 1 }}
+              value={newSimpleItem}
+              onChange={e => setNewSimpleItem(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addSimpleItem()}
+              placeholder={event.menu_type === 'BBQ' ? 'z.B. Spareribs, Grillgemüse…' : 'z.B. Mini-Quiches, Wraps…'} />
+            <button type="button" onClick={addSimpleItem}
+              style={{ padding: '10px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 500, flexShrink: 0 }}>
+              <Plus size={14} /> Hinzufügen
+            </button>
+          </div>
+        </SectionWrap>
+      )}
+
       {/* ── 3. Service & Ablauf ───────────────────────────────────────────── */}
       <SectionWrap title="Service & Ablauf">
         <div style={{ marginBottom: 16 }}>
@@ -735,36 +1102,9 @@ export default function CateringForm({
         </div>
       </SectionWrap>
 
-      {/* ── 4. Getränke ───────────────────────────────────────────────────── */}
-      <SectionWrap title="Getränke">
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Abrechnung</label>
-          <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-            {[{ value: 'pauschale', label: 'Getränkepauschale' }, { value: 'einzeln', label: 'Einzelabrechnung' }].map(o => {
-              const active = plan.drinks_billing === o.value
-              return (
-                <button key={o.value} type="button"
-                  onClick={() => updatePlan({ drinks_billing: o.value })}
-                  style={{
-                    flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid',
-                    borderColor: active ? 'var(--accent)' : 'var(--border)',
-                    background: active ? 'var(--accent-light)' : 'var(--surface)',
-                    color: active ? 'var(--accent)' : 'var(--text-secondary)',
-                    fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                  }}
-                >{o.label}</button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Sortiment</label>
-          <ChipGroup options={DRINKS_OPTIONS} selected={plan.drinks_selection}
-            onChange={v => updatePlan({ drinks_selection: v })} />
-        </div>
-
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* ── 4. Sektempfang & Weinbegleitung ───────────────────────────────── */}
+      <SectionWrap title="Sektempfang & Weinbegleitung">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <ToggleRow checked={plan.champagne_finger_food} onChange={v => updatePlan({ champagne_finger_food: v })} label="Häppchen zum Sektempfang">
             <input style={input} value={plan.champagne_finger_food_note}
               onChange={e => updatePlan({ champagne_finger_food_note: e.target.value })}
@@ -845,7 +1185,7 @@ export default function CateringForm({
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
                   <StatBadge label="Bestätigte Zusagen" value={confirmedGuestCount} sub="Personen" />
                   {Object.entries(mealCounts).map(([key, n]) => (
-                    <StatBadge key={key} label={key.charAt(0).toUpperCase() + key.slice(1)} value={n}
+                    <StatBadge key={key} label={mealLabel(key)} value={n}
                       sub={`${Math.round((n / confirmedGuestCount) * 100)} %`} />
                   ))}
                 </div>

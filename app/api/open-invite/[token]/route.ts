@@ -7,6 +7,7 @@
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
+import { titleCaseName } from '@/lib/text'
 
 function getServiceClient() {
   return createServiceClient(
@@ -55,7 +56,7 @@ export async function POST(
   }
 
   const body = await request.json().catch(() => ({}))
-  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  const name = typeof body.name === 'string' ? titleCaseName(body.name) : ''
   const side = typeof body.side === 'string' && body.side.trim() ? body.side.trim() : null
 
   if (!name || name.length < 2 || name.length > 120) {

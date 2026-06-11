@@ -28,6 +28,8 @@ interface Artikel {
   kalkulationspreis: number
   notes: string
   sort_order: number
+  // Alkohol pro Getränk: null = erbt Kategorie-Default (Vorbelegung)
+  is_alcoholic: boolean | null
 }
 
 interface Ingredient {
@@ -138,9 +140,10 @@ function InfoBlock({ label, children }: { label: string; children: React.ReactNo
 // ── Artikel card ──────────────────────────────────────────────────────────────
 
 function ArtikelCard({
-  artikel, canEdit, isVera, effectiveGuestCount, onChange, onDelete,
+  artikel, canEdit, isVera, effectiveGuestCount, katAlcoholic, onChange, onDelete,
 }: {
   artikel: Artikel; canEdit: boolean; isVera: boolean; effectiveGuestCount: number
+  katAlcoholic: boolean
   onChange: (a: Artikel) => void; onDelete: () => void
 }) {
   const [draft, setDraft]  = useState(artikel)
@@ -158,6 +161,7 @@ function ArtikelCard({
       price_per_unit:    debouncedDraft.price_per_unit,
       kalkulationspreis: debouncedDraft.kalkulationspreis,
       notes:             debouncedDraft.notes,
+      is_alcoholic:      debouncedDraft.is_alcoholic,
     }).eq('id', artikel.id).then(({ error }) => {
       if (!error) onChange(debouncedDraft)
     })
@@ -207,6 +211,12 @@ function ArtikelCard({
     </div>
   ) : null
 
+  // Alkohol-Kennzeichen pro Getränk: null = erbt Kategorie-Vorbelegung
+  const effectiveAlcoholic = draft.is_alcoholic ?? katAlcoholic
+  function toggleAlcoholic() {
+    setField('is_alcoholic', !effectiveAlcoholic)
+  }
+
   // Manual badge + reset button shown under the "Gesamt" input
   const manualBadge = (canEdit && isManual) ? (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
@@ -240,6 +250,29 @@ function ArtikelCard({
           />
         ) : (
           <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{draft.name}</span>
+        )}
+        {/* Alkohol-Kennzeichen pro Getränk (Klick wechselt; Vorbelegung kommt aus der Kategorie) */}
+        {canEdit ? (
+          <button
+            onClick={toggleAlcoholic}
+            title={effectiveAlcoholic ? 'Alkoholisch — klicken für alkoholfrei' : 'Alkoholfrei — klicken für alkoholisch'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0,
+              padding: '2px 8px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 10, fontWeight: 600,
+              border: `1px solid ${effectiveAlcoholic ? '#D4A8B4' : '#A8D4C4'}`,
+              background: effectiveAlcoholic ? '#FBF3F5' : '#F2FAF6',
+              color: effectiveAlcoholic ? '#8B2252' : '#1F7A5C',
+            }}
+          >
+            {effectiveAlcoholic ? <Wine size={10} /> : <GlassWater size={10} />}
+            {effectiveAlcoholic ? 'Alkohol' : 'Alkoholfrei'}
+          </button>
+        ) : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0, fontSize: 10, fontWeight: 600, color: effectiveAlcoholic ? '#8B2252' : '#1F7A5C' }}>
+            {effectiveAlcoholic ? <Wine size={10} /> : <GlassWater size={10} />}
+            {effectiveAlcoholic ? 'Alkohol' : 'Alkoholfrei'}
+          </span>
         )}
         {canEdit && (
           <button onClick={onDelete} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.35, padding: 2, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
@@ -435,7 +468,7 @@ function KategorieSection({
           {canEdit ? (
             <button
               onClick={onKatAlcoholicToggle}
-              title={kat.is_alcoholic ? 'Alkoholisch (klicken zum Ändern)' : 'Alkoholfrei (klicken zum Ändern)'}
+              title={kat.is_alcoholic ? 'Vorbelegung: alkoholisch — gilt für neue Getränke, pro Getränk änderbar' : 'Vorbelegung: alkoholfrei — gilt für neue Getränke, pro Getränk änderbar'}
               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0 }}
             >
               {kat.is_alcoholic
@@ -493,6 +526,7 @@ function KategorieSection({
               <ArtikelCard
                 key={a.id} artikel={a} canEdit={canEdit} isVera={isVera}
                 effectiveGuestCount={effectiveGuestCount}
+                katAlcoholic={kat.is_alcoholic}
                 onChange={onArtikelChange}
                 onDelete={() => onArtikelDelete(a.id)}
               />

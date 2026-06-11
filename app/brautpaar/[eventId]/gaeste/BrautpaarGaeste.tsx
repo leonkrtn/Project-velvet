@@ -5,9 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Users, Hotel as HotelIcon, Mail, Settings, Plus, Copy, Check,
   Trash2, QrCode, Download, X, Edit2, Star, Gift, ChevronDown, ChevronRight,
-  MessageCircle, Share2, Link2, UserCheck,
+  MessageCircle, Share2, Link2, UserCheck, UserPlus2,
 } from 'lucide-react'
 import GeschenkTab from './GeschenkTab'
+import { titleCaseName } from '@/lib/text'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,10 +67,21 @@ interface RsvpSettings {
   phone_contact: string | null
 }
 
+// Begleitperson in der Listen-Ansicht (eventweit geladen, mit Gast-Zuordnung)
+interface BegleitRow {
+  id: string
+  guest_id: string
+  name: string | null
+  age_category: string | null
+  meal_choice: string | null
+  allergy_tags: string[] | null
+}
+
 interface Props {
   eventId: string
   userId: string
   initialGuests: Guest[]
+  initialBegleitpersonen: BegleitRow[]
   mealOptions: string[]
   childrenAllowed: boolean
   hotels: Hotel[]
@@ -711,7 +723,8 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
   })
 
   useEffect(() => {
-    if (guest.status !== 'zugesagt') return
+    // Immer laden — Begleitpersonen können auch bei späterem Statuswechsel
+    // noch in der DB stehen und sollen sichtbar bleiben
     const supabase = createClient()
     supabase
       .from('begleitpersonen')
@@ -729,7 +742,7 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
     setSaving(true)
     const supabase = createClient()
     const patch = {
-      name:  form.name.trim() || guest.name,
+      name:  titleCaseName(form.name) || guest.name,
       side:  form.side.trim()  || null,
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
@@ -918,8 +931,8 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
 
 // ── Gästeliste tab ────────────────────────────────────────────────────────────
 
-function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }: {
-  guests: Guest[]; eventId: string; userId: string; hotels: Hotel[]
+function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUpdate, onDelete }: {
+  guests: Guest[]; begleitpersonen: BegleitRow[]; eventId: string; userId: string; hotels: Hotel[]
   onUpdate: (g: Guest) => void; onDelete: (id: string) => void
 }) {
   const [search, setSearch]       = useState('')
@@ -933,8 +946,20 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
   const [deleting, setDeleting]   = useState(false)
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null)
 
+  // Begleitpersonen je Gast (für Anzeige unter dem Gastnamen + Suche)
+  const begleitByGuest = new Map<string, BegleitRow[]>()
+  for (const b of begleitpersonen) {
+    const list = begleitByGuest.get(b.guest_id)
+    if (list) list.push(b)
+    else begleitByGuest.set(b.guest_id, [b])
+  }
+
   const filtered = guests.filter(g => {
-    const matchSearch = g.name.toLowerCase().includes(search.toLowerCase())
+    const q = search.toLowerCase()
+    const companions = begleitByGuest.get(g.id) ?? []
+    const matchSearch =
+      g.name.toLowerCase().includes(q) ||
+      companions.some(b => (b.name ?? '').toLowerCase().includes(q))
     const matchFilter = filter === 'all' || g.status === filter
     return matchSearch && matchFilter
   })
@@ -946,7 +971,7 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
     const { data, error } = await supabase
       .from('guests')
       .insert({
-        event_id: eventId, name: newName.trim(),
+        event_id: eventId, name: titleCaseName(newName),
         side: newSide || null, email: newEmail.trim() || null,
         status: 'angelegt', created_by: userId,
         token: crypto.randomUUID(),
@@ -973,6 +998,9 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
   const ja = guests.filter(g => g.status === 'zugesagt').length
   const nein = guests.filter(g => g.status === 'abgesagt').length
   const ausstehend = guests.filter(g => g.status !== 'zugesagt' && g.status !== 'abgesagt').length
+  const begleitCount = begleitpersonen.length
+  // Erwartete Personen am Event: zugesagte Gäste + deren Begleitpersonen
+  const personenGesamt = ja + begleitpersonen.filter(b => guests.find(g => g.id === b.guest_id)?.status === 'zugesagt').length
 
   return (
     <div>
@@ -988,10 +1016,12 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
         width: '100%',
       }}>
         {[
-          { label: 'Gesamt',     value: guests.length, color: 'var(--bp-ink)' },
-          { label: 'Zugesagt',   value: ja,            color: '#15803D' },
-          { label: 'Abgesagt',   value: nein,          color: '#B91C1C' },
-          { label: 'Ausstehend', value: ausstehend,    color: 'var(--bp-ink-3)' },
+          { label: 'Gesamt',         value: guests.length,  color: 'var(--bp-ink)' },
+          { label: 'Zugesagt',       value: ja,             color: '#15803D' },
+          { label: 'Abgesagt',       value: nein,           color: '#B91C1C' },
+          { label: 'Ausstehend',     value: ausstehend,     color: 'var(--bp-ink-3)' },
+          { label: 'Begleitpers.',   value: begleitCount,   color: 'var(--bp-gold-deep)' },
+          { label: 'Pers. erwartet', value: personenGesamt, color: 'var(--bp-ink)' },
         ].map((s, i) => (
           <div key={s.label} style={{
             flex: 1,
@@ -1064,13 +1094,28 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
               </tr>
             </thead>
             <tbody>
-              {filtered.map(g => (
+              {filtered.map(g => {
+                const companions = begleitByGuest.get(g.id) ?? []
+                return (
                 <tr
                   key={g.id}
                   onClick={() => setSelectedGuest(g)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <td style={{ fontWeight: 500, color: 'var(--bp-ink)' }}>{g.name}</td>
+                  <td style={{ fontWeight: 500, color: 'var(--bp-ink)' }}>
+                    {g.name}
+                    {companions.length > 0 && (
+                      <div style={{ marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        {companions.map(b => (
+                          <span key={b.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.8125rem', fontWeight: 400, color: 'var(--bp-ink-3)' }}>
+                            <UserPlus2 size={11} style={{ flexShrink: 0 }} />
+                            {b.name || 'Begleitung'}
+                            {b.age_category === 'kind' && ' (Kind)'}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </td>
                   <td><AttendingBadge status={g.status} /></td>
                   <td style={{ color: 'var(--bp-ink-3)' }}>{g.side ?? '—'}</td>
                   <td style={{ color: 'var(--bp-ink-3)' }}>{g.meal_choice ? (MEAL_LABELS[g.meal_choice] ?? g.meal_choice) : '—'}</td>
@@ -1089,7 +1134,8 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
                     </button>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         )}
@@ -1101,7 +1147,9 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
             <div className="bp-empty-title">Keine Gäste gefunden</div>
             <div className="bp-empty-body">Passt eure Suche oder den Filter an.</div>
           </div>
-        ) : filtered.map(g => (
+        ) : filtered.map(g => {
+          const companions = begleitByGuest.get(g.id) ?? []
+          return (
           <div
             key={g.id}
             className="bp-card"
@@ -1112,6 +1160,17 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
               <div style={{ fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9375rem', marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {g.name}
               </div>
+              {companions.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginBottom: '0.25rem' }}>
+                  {companions.map(b => (
+                    <span key={b.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
+                      <UserPlus2 size={11} style={{ flexShrink: 0 }} />
+                      {b.name || 'Begleitung'}
+                      {b.age_category === 'kind' && ' (Kind)'}
+                    </span>
+                  ))}
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <AttendingBadge status={g.status} />
                 {g.side && <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>{g.side}</span>}
@@ -1126,7 +1185,8 @@ function GaestelisteTab({ guests, eventId, userId, hotels, onUpdate, onDelete }:
               <Trash2 size={14} />
             </button>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {confirmDeleteId && (
@@ -1865,7 +1925,7 @@ function PendingApprovals({ pending, onApprove, onReject }: {
   )
 }
 
-export default function BrautpaarGaeste({ eventId, userId, initialGuests, mealOptions, childrenAllowed, hotels, rsvpSettings, openInviteToken, openInviteEnabled }: Props) {
+export default function BrautpaarGaeste({ eventId, userId, initialGuests, initialBegleitpersonen, mealOptions, childrenAllowed, hotels, rsvpSettings, openInviteToken, openInviteEnabled }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('gaesteliste')
   const [guests, setGuests]       = useState<Guest[]>(initialGuests)
 
@@ -1919,7 +1979,7 @@ export default function BrautpaarGaeste({ eventId, userId, initialGuests, mealOp
       </div>
 
       <div style={{ minHeight: 480 }}>
-        {activeTab === 'gaesteliste'   && <GaestelisteTab guests={activeGuests} eventId={eventId} userId={userId} hotels={hotels} onUpdate={handleGuestUpdate} onDelete={handleGuestDelete} />}
+        {activeTab === 'gaesteliste'   && <GaestelisteTab guests={activeGuests} begleitpersonen={initialBegleitpersonen} eventId={eventId} userId={userId} hotels={hotels} onUpdate={handleGuestUpdate} onDelete={handleGuestDelete} />}
         {activeTab === 'geschenke'     && <GeschenkTab eventId={eventId} />}
         {activeTab === 'hotel'         && <HotelTab eventId={eventId} hotels={hotels} />}
         {activeTab === 'rsvp'          && (

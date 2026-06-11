@@ -30,7 +30,7 @@ export default async function UebersichtPage({ params }: Props) {
   const [eventRes, guestsRes, budgetRes, tasksRes, seatingRes, songsRes] = await Promise.all([
     supabase
       .from('events')
-      .select('id, title, date, couple_name, venue, organizer_fee, organizer_fee_type')
+      .select('id, title, date, couple_name, venue, organizer_fee, organizer_fee_type, budget_total')
       .eq('id', eventId)
       .single(),
     supabase
@@ -71,8 +71,9 @@ export default async function UebersichtPage({ params }: Props) {
   const guestApprovalPending = allGuests.length - guests.length
 
   const budgetItems = budgetRes.data ?? []
-  const budgetTotal = budgetItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)
-  const budgetPaid  = budgetItems.reduce((s, i) => s + (Number(i.actual) || 0), 0)
+  // Karte zeigt: verplante Summe der Budgetpunkte vs. Gesamtbudget des Events
+  const budgetPlanned = budgetItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)
+  const budgetLimit   = Number(event.budget_total) || 0
 
   const tasks = tasksRes.data ?? []
   const tasksDone  = tasks.filter(t => t.done).length
@@ -104,8 +105,8 @@ export default async function UebersichtPage({ params }: Props) {
       guestPending={guestPending}
       guestNotInvited={guestNotInvited}
       guestApprovalPending={guestApprovalPending}
-      budgetTotal={budgetTotal}
-      budgetPaid={budgetPaid}
+      budgetPlanned={budgetPlanned}
+      budgetLimit={budgetLimit}
       tasksDone={tasksDone}
       tasksTotal={tasksTotal}
       nextTasks={nextTasks}

@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Palette, Music, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
-  Briefcase, Heart,
+  Briefcase, Heart, FileDown,
 } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 import { createClient } from '@/lib/supabase/client'
@@ -61,6 +61,7 @@ function buildNav(eventId: string, isSolo: boolean): NavGroup[] {
         b('notizen', 'Notizen', <NotebookPen size={16} />),
         // Solo-Paare verwalten Dienstleister-Zugriffsrechte selbst (kein Veranstalter)
         ...(isSolo ? [b('dienstleister', 'Dienstleister', <Briefcase size={16} />)] : []),
+        ...(isSolo ? [b('pdf-export', 'PDF-Export', <FileDown size={16} />)] : []),
         b('allgemein', 'Allgemein', <Settings size={16} />),
       ],
     },
@@ -179,7 +180,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   const nav = fullNav.map(group => ({
     ...group,
     items: group.items.filter(item =>
-      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister'
+      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'pdf-export'
         ? true
         : (bpToggles[`bp-${item.key}`] ?? true)
     ),

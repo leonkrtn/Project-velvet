@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { v4 as uuid } from 'uuid'
-import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink, Music, Camera } from 'lucide-react'
+import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink, Music, Camera, UtensilsCrossed } from 'lucide-react'
 import RsvpPhotos from '@/components/rsvp/RsvpPhotos'
 import type {
   Event, Guest, MealChoice, AllergyTag, TransportMode, AltersKategorie,
@@ -447,7 +447,10 @@ export default function RSVPPage() {
 
   const maxComp = event.maxBegleitpersonen ?? 2
 
-  const mealRequired = showMealChoice && rsvpShowMenu
+  // Menüwahl nur zeigen, wenn es überhaupt Essensoptionen gibt (bei Buffet/
+  // À la carte o.ä. ohne Vorauswahl bleibt die Liste leer → ausblenden)
+  const hasMealOptions = ((event.mealOptions as string[] | null) ?? []).length > 0
+  const mealRequired = showMealChoice && rsvpShowMenu && hasMealOptions
   const detailsOk = (!mealRequired || !!meal)
     && companions.every(c => !mealRequired || !!c.meal)
 
@@ -728,7 +731,7 @@ export default function RSVPPage() {
             <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Deine Details</h2>
             <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>Damit wir alles perfekt vorbereiten können.</p>
 
-            {showMealChoice && rsvpShowMenu && (
+            {mealRequired && (
               <Card style={{ marginBottom: 10 }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 12 }}>Deine Menüwahl</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -746,7 +749,7 @@ export default function RSVPPage() {
               </Card>
             )}
 
-            {showMealChoice && rsvpShowMenu && companions.map((c, idx) => (
+            {mealRequired && companions.map((c, idx) => (
               <Card key={c.id} style={{ marginBottom: 10 }}>
                 <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 12 }}>
                   Menüwahl: {c.name || `Begleitperson ${idx + 1}`}
@@ -1197,6 +1200,20 @@ export default function RSVPPage() {
                   >
                     <Music size={15} />
                     {suggestedSongs.length > 0 ? `Musikwünsche (${suggestedSongs.length}) · Weitere hinzufügen` : 'Musikwünsche hinzufügen'}
+                  </button>
+                )}
+                {mealRequired && !isBlocked && (
+                  <button
+                    onClick={() => setStep('details')}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                      padding: '14px 18px', borderRadius: 'var(--r-md)', fontFamily: 'inherit',
+                      border: '1.5px solid var(--border)', background: 'var(--surface)',
+                      color: 'var(--text)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      width: '100%', transition: 'opacity 0.15s',
+                    }}
+                  >
+                    <UtensilsCrossed size={15} /> Menüauswahl ansehen & ändern
                   </button>
                 )}
                 {rsvpShowGeschenke && (

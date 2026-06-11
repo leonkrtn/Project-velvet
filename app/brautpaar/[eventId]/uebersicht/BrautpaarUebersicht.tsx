@@ -26,8 +26,8 @@ interface Props {
   guestPending: number
   guestNotInvited: number
   guestApprovalPending: number
-  budgetTotal: number
-  budgetPaid: number
+  budgetPlanned: number
+  budgetLimit: number
   tasksDone: number
   tasksTotal: number
   nextTasks: NextTask[]
@@ -312,12 +312,12 @@ export default function BrautpaarUebersicht({
   eventId, eventTitle, eventDate, coupleName, venueName,
   daysLeft, guestTotal, guestConfirmed, guestDeclined, guestPending,
   guestNotInvited, guestApprovalPending,
-  budgetTotal, budgetPaid, tasksDone, tasksTotal, nextTasks,
+  budgetPlanned, budgetLimit, tasksDone, tasksTotal, nextTasks,
   seatedCount, songCount,
 }: Props) {
   const answered = guestTotal - guestPending
   const responseRate = guestTotal > 0 ? Math.round(answered / guestTotal * 100) : 0
-  const budgetRate = budgetTotal > 0 ? Math.round(budgetPaid / budgetTotal * 100) : 0
+  const budgetRate = budgetLimit > 0 ? Math.round(budgetPlanned / budgetLimit * 100) : 0
 
   const planning = [
     {
@@ -386,10 +386,10 @@ export default function BrautpaarUebersicht({
         <StatCard
           href={`/brautpaar/${eventId}/budget`}
           icon={<Wallet size={15} />}
-          value={formatCurrency(budgetPaid)}
+          value={formatCurrency(budgetPlanned)}
           label="Budget verplant"
-          detail={budgetTotal > 0 ? `von ${formatCurrency(budgetTotal)} gesamt` : 'noch kein Budget erfasst'}
-          bar={budgetTotal > 0 ? budgetRate : undefined}
+          detail={budgetLimit > 0 ? `von ${formatCurrency(budgetLimit)} Gesamtbudget` : 'noch kein Gesamtbudget festgelegt'}
+          bar={budgetLimit > 0 ? budgetRate : undefined}
         />
         <StatCard
           href={`/brautpaar/${eventId}/aufgaben`}

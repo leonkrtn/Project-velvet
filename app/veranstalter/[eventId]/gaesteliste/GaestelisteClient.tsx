@@ -3,6 +3,7 @@ import React, { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Search, X, Edit2, ChevronDown, ChevronRight, Star, Download, Upload, FileSpreadsheet } from 'lucide-react'
 import ImportModal from '@/components/gaesteliste/ImportModal'
+import { titleCaseName } from '@/lib/text'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -436,7 +437,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
     try {
       if (editId) {
         const { error } = await supabase.from('guests').update({
-          name: form.name!.trim(),
+          name: titleCaseName(form.name!),
           status: form.status ?? 'angelegt',
           side: form.side ?? null,
           allergy_tags: form.allergy_tags ?? [],
@@ -444,12 +445,12 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
           meal_choice: form.meal_choice ?? null,
         }).eq('id', editId)
         if (!error) {
-          setGuests(prev => prev.map(g => g.id === editId ? { ...g, ...form, name: form.name!.trim() } as Guest : g))
+          setGuests(prev => prev.map(g => g.id === editId ? { ...g, ...form, name: titleCaseName(form.name!) } as Guest : g))
         }
       } else {
         const { data, error } = await supabase.from('guests').insert({
           event_id: eventId,
-          name: form.name!.trim(),
+          name: titleCaseName(form.name!),
           status: form.status ?? 'angelegt',
           side: form.side ?? null,
           allergy_tags: form.allergy_tags ?? [],
