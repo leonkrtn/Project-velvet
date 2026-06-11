@@ -2142,3 +2142,75 @@
   .bp-modal-body { padding: 1rem 1.25rem 1.25rem; }
   .bp-pay-success { padding: 2rem 1.25rem 1.75rem; }
 }
+
+/* ── Horizontaler Scroll-Container für breite Tabellen/Tools ──────────────
+   Ohne Overflow rendert das auf Desktop pixel-identisch (kein Scrollbalken);
+   auf Mobile wird seitlich gescrollt statt das Layout zu sprengen. */
+.bp-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Gäste: Statistik-Leiste (ehem. Inline-Styles, Desktop identisch) ───── */
+.bp-guest-stats {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1.25rem;
+  background: var(--bp-paper);
+  border: 1px solid var(--bp-rule);
+  border-radius: var(--bp-r-sm);
+  box-shadow: var(--bp-shadow-card);
+  overflow: hidden;
+  width: 100%;
+}
+
+.bp-guest-stat {
+  flex: 1;
+  min-width: 0;
+  padding: 0.375rem 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.bp-guest-stat + .bp-guest-stat {
+  border-left: 1px solid var(--bp-rule);
+}
+
+@media (max-width: 640px) {
+  .bp-guest-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .bp-guest-stat {
+    flex-direction: column;
+    gap: 0;
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+  }
+  .bp-guest-stat:nth-child(3n + 1) { border-left: none; }
+  .bp-guest-stat:nth-child(n + 4) { border-top: 1px solid var(--bp-rule); }
+}
+
+/* ── Dialog-Innenabstand (ehem. Inline padding: 1.75rem) ──────────────────
+   Desktop identisch; auf kleinen Screens kompakter, damit Formularfelder
+   bei 320px nutzbare Breite behalten. */
+.bp-dialog-pad {
+  padding: 1.75rem;
+}
+
+/* ── Gast-Lightbox: Kopf/Body (ehem. Inline-Paddings, Desktop identisch) ── */
+.bp-lightbox-head {
+  padding: 1.25rem 1.5rem;
+}
+
+.bp-lightbox-body {
+  padding: 1.25rem 1.5rem 1.75rem;
+}
+
+@media (max-width: 640px) {
+  .bp-dialog-pad { padding: 1.25rem 1rem; }
+  .bp-lightbox-head { padding: 1rem; }
+  .bp-lightbox-body { padding: 1rem 1rem 1.25rem; }
+}

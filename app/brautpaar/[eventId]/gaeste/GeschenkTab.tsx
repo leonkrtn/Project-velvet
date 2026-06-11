@@ -211,10 +211,9 @@ function WishModal({ form, onChange, onSave, onClose, saving, isEdit }: {
       }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div style={{
+      <div className="bp-dialog-pad" style={{
         background: 'var(--bp-paper)',
         borderRadius: 'var(--bp-r-lg)',
-        padding: '1.75rem',
         width: '100%', maxWidth: 520,
         maxHeight: '90vh', overflowY: 'auto',
         boxShadow: 'var(--bp-shadow-elevated)',
@@ -469,7 +468,7 @@ export default function GeschenkTab({ eventId }: { eventId: string }) {
     return (
       <div>
         {/* Header: title + caption on left, button on right */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
             <div className="bp-skeleton" style={{ height: 18, width: 130, marginBottom: 8, borderRadius: 6 }} />
             <div className="bp-skeleton" style={{ height: 13, width: 280, borderRadius: 4 }} />
@@ -488,13 +487,13 @@ export default function GeschenkTab({ eventId }: { eventId: string }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h3 className="bp-section-title" style={{ marginBottom: '0.25rem' }}>Geschenkliste</h3>
           <p className="bp-caption">Gäste sehen diese Liste beim RSVP und können Wünsche reservieren.</p>
         </div>
         <button
-          className="bp-btn bp-btn-primary"
+          className="bp-btn bp-btn-primary bp-btn-mobile-full"
           onClick={openCreate}
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}
         >

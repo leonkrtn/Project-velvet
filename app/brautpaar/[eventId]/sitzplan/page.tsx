@@ -369,15 +369,19 @@ export default function BrautpaarSitzplanPage() {
               Legt den Grundriss eurer Location, Raumelemente und euren Tischpool fest — danach könnt ihr im Sitzplan Tische platzieren und Gäste zuweisen.
             </p>
           </div>
-          <RaumKonfigurator
-            initialPoints={roomPoints}
-            initialElements={roomElements}
-            initialTablePool={tablePool}
-            placedTables={placedTables}
-            onSave={handleSaveRoomConfig}
-            saving={configSaving}
-            saved={configSaved}
-          />
+          {/* Scroll-Container: der Konfigurator-Canvas ist 780px breit und darf
+              die Seite auf schmalen Viewports nicht horizontal sprengen */}
+          <div className="bp-scroll-x">
+            <RaumKonfigurator
+              initialPoints={roomPoints}
+              initialElements={roomElements}
+              initialTablePool={tablePool}
+              placedTables={placedTables}
+              onSave={handleSaveRoomConfig}
+              saving={configSaving}
+              saved={configSaved}
+            />
+          </div>
         </div>
       ) : isSolo && roomPoints.length < 3 && !simpleMode ? (
         /* Start-Wahl: einfach (ohne Raumplan) oder detaillierter Raumplan */
