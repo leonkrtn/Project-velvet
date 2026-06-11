@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Palette, Music, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
-  Briefcase, Heart, FileDown,
+  Briefcase, Heart, FileDown, CreditCard, Lock,
 } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 import { createClient } from '@/lib/supabase/client'
@@ -62,6 +62,7 @@ function buildNav(eventId: string, isSolo: boolean): NavGroup[] {
         // Solo-Paare verwalten Dienstleister-Zugriffsrechte selbst (kein Veranstalter)
         ...(isSolo ? [b('dienstleister', 'Dienstleister', <Briefcase size={16} />)] : []),
         ...(isSolo ? [b('pdf-export', 'PDF-Export', <FileDown size={16} />)] : []),
+        ...(isSolo ? [b('abo', 'Abo & Tarif', <CreditCard size={16} />)] : []),
         b('allgemein', 'Allgemein', <Settings size={16} />),
       ],
     },
@@ -150,9 +151,18 @@ interface Props {
   userId: string
   showWelcome: boolean
   isSolo?: boolean
+  subscription?: ShellSubscription | null
 }
 
-export default function BrautpaarShell({ children, eventId, eventTitle, userId, showWelcome, isSolo = false }: Props) {
+// Serialisierbarer Abo-Zustand (vom Server-Layout via lib/subscription.ts)
+export interface ShellSubscription {
+  gated: boolean
+  status: 'trialing' | 'active' | 'canceled' | 'expired'
+  plan: 'trial' | 'basis' | 'pro'
+  daysLeft: number
+}
+
+export default function BrautpaarShell({ children, eventId, eventTitle, userId, showWelcome, isSolo = false, subscription = null }: Props) {
   const pathname = usePathname()
   const [expanded, setExpanded] = useState(true)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -180,7 +190,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   const nav = fullNav.map(group => ({
     ...group,
     items: group.items.filter(item =>
-      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'pdf-export'
+      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'pdf-export' || item.key === 'abo'
         ? true
         : (bpToggles[`bp-${item.key}`] ?? true)
     ),
@@ -204,6 +214,9 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   }, [])
 
   const isDeko = pathname === `/brautpaar/${eventId}/dekoration` || pathname.startsWith(`/brautpaar/${eventId}/dekoration/`)
+  // Paywall: Trial/Abo abgelaufen → nur die Abo-Seite bleibt erreichbar
+  const isAboPage = pathname === `/brautpaar/${eventId}/abo` || pathname.startsWith(`/brautpaar/${eventId}/abo/`)
+  const isExpired = subscription?.status === 'expired' && !isAboPage
 
   function isActive(item: NavItem) {
     return pathname === item.href || pathname.startsWith(item.href + '/')
@@ -338,7 +351,55 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
             <div style={{ width: 36 }} />
           </header>
 
-          {isDeko ? (
+          {/* Trial-Banner: nur während laufender Testphase, nicht auf der Abo-Seite */}
+          {subscription?.status === 'trialing' && !isAboPage && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap',
+              padding: '0.55rem 1rem', background: 'var(--bp-gold, #B8923A)', color: '#fff',
+              fontSize: '0.8rem', fontWeight: 500,
+            }}>
+              <span>
+                Testphase — {subscription.daysLeft === 1 ? 'noch 1 Tag' : `noch ${subscription.daysLeft} Tage`} voller Funktionsumfang
+              </span>
+              <Link
+                href={`/brautpaar/${eventId}/abo`}
+                style={{
+                  color: '#fff', border: '1px solid rgba(255,255,255,0.7)', borderRadius: 999,
+                  padding: '0.15rem 0.8rem', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600,
+                }}
+              >
+                Tarif wählen
+              </Link>
+            </div>
+          )}
+
+          {isExpired ? (
+            <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+              <div style={{
+                maxWidth: 460, textAlign: 'center', background: 'var(--bp-surface, #fff)',
+                border: '1px solid var(--bp-border, #E5DED2)', borderRadius: 16, padding: '2.5rem 2rem',
+              }}>
+                <Lock size={28} style={{ color: 'var(--bp-gold, #B8923A)', margin: '0 auto 1rem', display: 'block' }} />
+                <h2 className="bp-font-display" style={{ fontSize: '1.5rem', margin: '0 0 0.6rem' }}>
+                  Eure Testphase ist beendet
+                </h2>
+                <p style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2, #6b6258)', margin: '0 0 1.5rem', lineHeight: 1.6 }}>
+                  Eure Planung ist sicher gespeichert. Wählt einen Tarif, um genau dort weiterzumachen,
+                  wo ihr aufgehört habt — ab 25 € im Monat, monatlich kündbar.
+                </p>
+                <Link
+                  href={`/brautpaar/${eventId}/abo`}
+                  style={{
+                    display: 'inline-block', background: 'var(--bp-gold, #B8923A)', color: '#fff',
+                    borderRadius: 999, padding: '0.65rem 1.6rem', textDecoration: 'none',
+                    fontSize: '0.875rem', fontWeight: 600,
+                  }}
+                >
+                  Tarif wählen & weiterplanen
+                </Link>
+              </div>
+            </main>
+          ) : isDeko ? (
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               {children}
             </div>

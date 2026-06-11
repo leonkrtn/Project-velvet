@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { hasProAccess } from '@/lib/subscription'
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     if (!profile?.is_approved_organizer) {
       const { data: soloMembership } = await supabase
         .from('event_members')
-        .select('id')
+        .select('id, event_id')
         .eq('user_id', user.id)
         .eq('role', 'brautpaar_solo')
         .limit(1)
@@ -27,6 +28,14 @@ export async function POST(req: NextRequest) {
 
       if (!soloMembership) {
         return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+      }
+
+      // Dienstleister onboarden ist für Solo-Paare ein Pro-Feature
+      if (!(await hasProAccess(soloMembership.event_id))) {
+        return NextResponse.json(
+          { error: 'Dienstleister einladen ist Teil von Velvet Pro. Upgradet euren Tarif, um euer Profi-Team dazuzuholen.', code: 'PRO_REQUIRED' },
+          { status: 403 },
+        )
       }
     }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient as createAdmin } from '@/lib/supabase/admin'
+import { hasProAccess } from '@/lib/subscription'
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,6 +29,14 @@ export async function POST(req: NextRequest) {
 
     if (!member || !['veranstalter', 'brautpaar_solo'].includes(member.role as string)) {
       return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+    }
+
+    // Dienstleister einladen ist für Solo-Paare ein Pro-Feature
+    if (member.role === 'brautpaar_solo' && !(await hasProAccess(eventId))) {
+      return NextResponse.json(
+        { error: 'Dienstleister einladen ist Teil von Velvet Pro. Upgradet euren Tarif, um euer Profi-Team dazuzuholen.', code: 'PRO_REQUIRED' },
+        { status: 403 },
+      )
     }
 
     const admin = createAdmin()

@@ -6,6 +6,7 @@ import {
   AlertCircle, Eye, EyeOff, RefreshCw, LogOut,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import SubscriptionsSection from './SubscriptionsSection'
 
 // ── Typen ─────────────────────────────────────────────────────────────────────
 
@@ -453,6 +454,9 @@ export default function AdminClient({ adminName }: { adminName: string }) {
                 </div>
               )}
             </section>
+
+            {/* ── Abos (Solo-Brautpaare) ── */}
+            <SubscriptionsSection card={card} cardHeader={cardHeader} btnSecondary={btnSecondary} />
           </div>
         )}
       </div>

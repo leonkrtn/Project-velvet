@@ -2,58 +2,62 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import './landing.css'
 
+const SIGNUP_URL = '/signup/brautpaar'
+
+function Check() {
+  return (
+    <svg className="lp-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+      <path d="M3 8.5l3.2 3.2L13 4.5" />
+    </svg>
+  )
+}
+
 export default function LandingPage() {
-  const router = useRouter()
   const navRef = useRef<HTMLElement>(null)
   const heroBgRef = useRef<HTMLDivElement>(null)
-  const typewriterRef = useRef<HTMLElement>(null)
-  const typeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [dashboardUrl, setDashboardUrl] = useState<string | null>(null)
 
-  const getRedirectUrl = useCallback(async (): Promise<string> => {
-    const supabase = createClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return '/login'
+  // Background session check on mount — no latency on click.
+  useEffect(() => {
+    let cancelled = false
+    async function check() {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session || cancelled) return
 
-    // Check organizer
-    let isOrganizer = session.user.app_metadata?.is_approved_organizer === true
-    if (!isOrganizer) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_approved_organizer')
-        .eq('id', session.user.id)
-        .single()
-      isOrganizer = profile?.is_approved_organizer === true
+      let isOrganizer = session.user.app_metadata?.is_approved_organizer === true
+      if (!isOrganizer) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_approved_organizer')
+          .eq('id', session.user.id)
+          .single()
+        isOrganizer = profile?.is_approved_organizer === true
+      }
+      if (cancelled) return
+      if (isOrganizer) { setDashboardUrl('/veranstalter/events'); return }
+
+      const { data: memberships } = await supabase
+        .from('event_members')
+        .select('event_id, role')
+        .eq('user_id', session.user.id)
+      if (cancelled) return
+      if (!memberships?.length) { setDashboardUrl('/signup'); return }
+
+      const roles = memberships.map(m => m.role)
+      if (roles.includes('brautpaar_solo') || roles.includes('brautpaar')) { setDashboardUrl('/brautpaar'); return }
+      const vendor = memberships.find(m => m.role === 'dienstleister')
+      if (vendor) { setDashboardUrl(`/vendor/dashboard/${vendor.event_id}/uebersicht`); return }
+      if (roles.includes('veranstalter')) { setDashboardUrl('/veranstalter/pending'); return }
+      setDashboardUrl('/brautpaar')
     }
-    if (isOrganizer) return '/veranstalter/events'
-
-    // Check event membership + role — feste Priorität statt erstem DB-Treffer
-    const { data: memberships } = await supabase
-      .from('event_members')
-      .select('event_id, role')
-      .eq('user_id', session.user.id)
-
-    if (!memberships?.length) return '/signup'
-
-    const roles = memberships.map(m => m.role)
-    if (roles.includes('brautpaar_solo') || roles.includes('brautpaar')) return '/brautpaar'
-    const vendor = memberships.find(m => m.role === 'dienstleister')
-    if (vendor) return `/vendor/dashboard/${vendor.event_id}/uebersicht`
-    // Veranstalter-Mitgliedschaft, aber nicht freigegeben (isOrganizer war false)
-    // → Warteseite, nicht /veranstalter/events (Middleware würde dort blocken)
-    if (roles.includes('veranstalter')) return '/veranstalter/pending'
-    return '/brautpaar'
+    check()
+    return () => { cancelled = true }
   }, [])
-
-  const handleCtaClick = useCallback(async (e: React.MouseEvent) => {
-    e.preventDefault()
-    const url = await getRedirectUrl()
-    router.push(url)
-  }, [getRedirectUrl, router])
 
   useEffect(() => {
     // Scroll progress
@@ -127,58 +131,8 @@ export default function LandingPage() {
     }, { threshold: 0.1 })
     if (cards[0]) cardObs.observe(cards[0])
 
-    // Counter animation
-    function animateCounter(el: HTMLElement, target: number, duration: number) {
-      let start: number | null = null
-      const step = (ts: number) => {
-        if (!start) start = ts
-        const progress = Math.min((ts - start) / duration, 1)
-        const ease = 1 - Math.pow(1 - progress, 3)
-        el.textContent = String(Math.round(ease * target))
-        if (progress < 1) requestAnimationFrame(step)
-        else el.textContent = String(target)
-      }
-      requestAnimationFrame(step)
-    }
-    const counters = document.querySelectorAll<HTMLElement>('[data-counter]')
-    const counterObs = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const el = entry.target as HTMLElement
-          animateCounter(el, parseInt(el.dataset.counter!, 10), 1200)
-          counterObs.unobserve(el)
-        }
-      })
-    }, { threshold: 0.5 })
-    counters.forEach(el => counterObs.observe(el))
-
-    // Typewriter
-    const typeTarget = typewriterRef.current
-    const typeWords = ['Einfach unvergesslich.', 'Gemeinsam organisiert.', 'Stilvoll geplant.']
-    let wordIdx = 0, charIdx = 0, deleting = false
-    function typeStep() {
-      if (!typeTarget) return
-      const word = typeWords[wordIdx]
-      if (!deleting) {
-        charIdx++
-        typeTarget.textContent = word.slice(0, charIdx)
-        if (charIdx === word.length) { deleting = true; typeTimerRef.current = setTimeout(typeStep, 2200); return }
-        typeTimerRef.current = setTimeout(typeStep, 68)
-      } else {
-        charIdx--
-        typeTarget.textContent = word.slice(0, charIdx)
-        if (charIdx === 0) {
-          deleting = false
-          wordIdx = (wordIdx + 1) % typeWords.length
-          typeTimerRef.current = setTimeout(typeStep, 380); return
-        }
-        typeTimerRef.current = setTimeout(typeStep, 36)
-      }
-    }
-    typeTimerRef.current = setTimeout(typeStep, 1200)
-
     // Active nav section highlight
-    const sectionIds = ['lp-features', 'lp-steps', 'lp-faq']
+    const sectionIds = ['lp-features', 'lp-pricing', 'lp-steps', 'lp-faq']
     const navAnchors: Record<string, Element> = {}
     sectionIds.forEach(id => {
       const a = document.querySelector(`.lp-nav .nav-links a[href="#${id}"]`)
@@ -193,27 +147,10 @@ export default function LandingPage() {
     }, { threshold: 0.3 })
     sectionEls.forEach(el => sectionObs.observe(el))
 
-    // Feature card tilt
-    cards.forEach(card => {
-      card.addEventListener('mousemove', (e) => {
-        if (!card.classList.contains('card-visible')) return
-        const rect = card.getBoundingClientRect()
-        const dx = (e.clientX - rect.left - rect.width / 2) / (rect.width / 2)
-        const dy = (e.clientY - rect.top - rect.height / 2) / (rect.height / 2)
-        card.style.transform = `translateY(-4px) rotateX(${-dy * 3}deg) rotateY(${dx * 3}deg)`
-        card.style.transition = 'background 0.3s, box-shadow 0.3s'
-      })
-      card.addEventListener('mouseleave', () => {
-        card.style.transform = ''
-        card.style.transition = 'background 0.3s, transform 0.5s ease, box-shadow 0.3s'
-      })
-    })
-
     return () => {
       window.removeEventListener('scroll', onScroll)
       revealObs.disconnect(); clipObs.disconnect(); cardObs.disconnect()
-      counterObs.disconnect(); sectionObs.disconnect()
-      if (typeTimerRef.current) clearTimeout(typeTimerRef.current)
+      sectionObs.disconnect()
     }
   }, [])
 
@@ -229,6 +166,9 @@ export default function LandingPage() {
     }
   }
 
+  const navCtaHref = dashboardUrl ?? SIGNUP_URL
+  const navCtaLabel = dashboardUrl ? 'Zum Dashboard' : '3 Tage kostenlos testen'
+
   return (
     <div className="landing-root">
       {/* SCROLL PROGRESS */}
@@ -241,10 +181,14 @@ export default function LandingPage() {
         </a>
         <ul className="nav-links">
           <li><a href="#lp-features">Funktionen</a></li>
+          <li><a href="#lp-pricing">Preise</a></li>
           <li><a href="#lp-steps">So funktioniert&apos;s</a></li>
           <li><a href="#lp-faq">FAQ</a></li>
         </ul>
-        <a href="#" onClick={handleCtaClick} className="lp-nav-cta">Jetzt anmelden</a>
+        <div className="lp-nav-right">
+          <a href="/login" className="lp-nav-login">Anmelden</a>
+          <a href={navCtaHref} className="lp-nav-cta">{navCtaLabel}</a>
+        </div>
       </nav>
 
       {/* HERO */}
@@ -254,30 +198,46 @@ export default function LandingPage() {
         </div>
         <div className="lp-hero-bg" />
         <div className="lp-hero-content">
-          <div>
-            <p className="lp-hero-eyebrow">Willkommen bei Velvet</p>
+          <div className="lp-hero-text">
+            <p className="lp-hero-eyebrow">Hochzeitsplanung, neu gedacht</p>
             <h1 className="lp-hero-headline">
-              <span style={{ whiteSpace: 'nowrap' }}>Euer großer Tag.</span><br />
-              <span className="typewriter-line"><em ref={typewriterRef} /></span>
+              Plant eure Hochzeit an einem Ort. <em>Gemeinsam.</em>
             </h1>
             <p className="lp-hero-sub">
-              Alles, was ihr für eure Hochzeit braucht — an einem Ort. Gästeliste, Sitzplan, Budget, Aufgaben und mehr. Für euch. Nur für euch.
+              Gästeliste mit RSVP-Links, Sitzplan, Budget, Aufgaben und Zeitplan — in einem eleganten Dashboard für euch beide. Schluss mit Excel-Tabellen und WhatsApp-Chaos.
             </p>
             <div className="lp-hero-actions">
-              <a href="#" onClick={handleCtaClick} className="lp-btn-primary">Zum Brautpaar-Dashboard</a>
-              <a href="/signup/brautpaar" className="lp-btn-ghost">Selbst planen — kostenlos starten</a>
+              <a href={SIGNUP_URL} className="lp-btn-primary">3 Tage kostenlos testen</a>
+              <a href="#lp-steps" className="lp-btn-ghost">So funktioniert&apos;s</a>
             </div>
-          </div>
-          <div className="lp-hero-aside">
-            <div className="lp-hero-aside-stat">
-              <div className="lp-hero-aside-num" data-counter="6">6</div>
-              <div className="lp-hero-aside-label">smarte Tools für<br />euren großen Tag</div>
-            </div>
+            <ul className="lp-hero-trust">
+              <li><Check /> Voller Funktionsumfang im Test</li>
+              <li><Check /> Keine Zahlungsdaten nötig</li>
+              <li><Check /> Monatlich kündbar</li>
+            </ul>
           </div>
         </div>
         <div className="lp-scroll-hint">
           <div className="lp-scroll-line" />
           <span>Entdecken</span>
+        </div>
+      </section>
+
+      {/* PROBLEM / SOLUTION */}
+      <section className="lp-problem" id="lp-problem">
+        <div className="lp-problem-grid">
+          <div className="lp-problem-card lp-reveal">
+            <p className="lp-problem-label">Ohne Velvet</p>
+            <p className="lp-problem-text">
+              Die Gästeliste in Excel, Zusagen per WhatsApp, das Budget im Kopf, der Sitzplan auf Papier — und keiner weiß, welcher Stand aktuell ist.
+            </p>
+          </div>
+          <div className="lp-problem-card lp-problem-card-gold lp-reveal lp-reveal-d2">
+            <p className="lp-problem-label">Mit Velvet</p>
+            <p className="lp-problem-text">
+              Eure Gäste antworten über einen persönlichen Link — und Gästeliste, Menüwahl, Allergien und Sitzplan aktualisieren sich von selbst. Ihr beide seht immer denselben Stand. Live.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -304,12 +264,11 @@ export default function LandingPage() {
               <path d="M2 38c0-8 7-13 16-13s16 5 16 13"/><path d="M34 26c5 0 10 3 10 10"/>
             </svg>
             <h3 className="lp-feature-title">Gästeliste &amp; RSVP</h3>
-            <p className="lp-feature-desc">Jeder Gast erhält einen persönlichen Einladungslink. Über ein elegantes 4-Schritte-Formular geben eure Gäste an: Zu- oder Absage, Begleitpersonen mit Namen &amp; Altersgruppe, Menüwahl (Fleisch, Fisch, Vegetarisch, Vegan), Allergien aus 8 vordefinierten Tags plus Freitext, Ankunftsdatum &amp; -uhrzeit, Transportmittel und ob Alkohol erwünscht ist. Ihr seht live: wer zugesagt, abgesagt oder noch ausstehend ist — plus automatische Menü- und Allergieauswertung.</p>
+            <p className="lp-feature-desc">Jeder Gast bekommt einen persönlichen Link — Zusagen, Menüwahl und Allergien tragen sich von selbst ein.</p>
             <div className="lp-feature-bullets">
               <span className="lp-feature-bullet">Zusagen &amp; Absagen in Echtzeit</span>
               <span className="lp-feature-bullet">Begleitpersonen mit Namen &amp; Alter</span>
               <span className="lp-feature-bullet">Allergien &amp; Menüwahl automatisch</span>
-              <span className="lp-feature-bullet">Anreisedatum &amp; Transportmittel</span>
             </div>
           </div>
           <div className="lp-feature-card">
@@ -327,7 +286,7 @@ export default function LandingPage() {
               <line x1="37" y1="23" x2="34" y2="23"/><line x1="37" y1="27" x2="34" y2="27"/>
             </svg>
             <h3 className="lp-feature-title">Sitzplan &amp; Tischplanung</h3>
-            <p className="lp-feature-desc">Seht für jeden Tisch den Namen, die Kapazität und wie viele Plätze noch frei sind — in Echtzeit aktualisiert. Sobald Gäste ihre RSVP abgeben, fließen ihre Infos direkt in die Tischübersicht ein. Ihr behaltet stets den Überblick, welche Gäste noch keinen Platz haben, und könnt die Sitzordnung jederzeit anpassen.</p>
+            <p className="lp-feature-desc">Tische, Kapazitäten und Belegung in Echtzeit — ihr seht sofort, wer noch keinen Platz hat.</p>
             <div className="lp-feature-bullets">
               <span className="lp-feature-bullet">Tischnamen &amp; Kapazitäten</span>
               <span className="lp-feature-bullet">Live-Belegung nach RSVP</span>
@@ -342,7 +301,7 @@ export default function LandingPage() {
               <path d="M14 28h4v4h-4zM22 28h4v4h-4zM30 28h4v4h-4z"/>
             </svg>
             <h3 className="lp-feature-title">Aufgaben &amp; To-Do-Liste</h3>
-            <p className="lp-feature-desc">Eure Aufgaben sind nach Planungsphasen geordnet: von „12+ Monate vorher" bis zum „Hochzeitstag". Das Dashboard zeigt euch als Fortschrittsbalken, wie viel ihr in der aktuellen Phase bereits erledigt habt. Hakt gemeinsam ab — jede abgeschlossene Aufgabe bringt euch eurem großen Tag näher.</p>
+            <p className="lp-feature-desc">Alle Aufgaben nach Planungsphasen geordnet — von 12+ Monate vorher bis zum Hochzeitstag, gemeinsam abhakbar.</p>
             <div className="lp-feature-bullets">
               <span className="lp-feature-bullet">6 strukturierte Planungsphasen</span>
               <span className="lp-feature-bullet">Fortschrittsbalken pro Phase</span>
@@ -352,17 +311,17 @@ export default function LandingPage() {
           <div className="lp-feature-card">
             <span className="lp-feature-num">04</span>
             <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="6" y="10" width="36" height="28" rx="2"/>
-              <path d="M6 18h36"/>
-              <circle cx="16" cy="14" r="2"/><circle cx="24" cy="14" r="2"/><circle cx="32" cy="14" r="2"/>
-              <path d="M13 26h8M13 32h14"/>
+              <rect x="6" y="13" width="36" height="24" rx="3"/>
+              <path d="M6 21h36"/>
+              <path d="M33 13v-3a2 2 0 00-2.4-1.96L9 12"/>
+              <circle cx="34" cy="29" r="2.5"/>
             </svg>
-            <h3 className="lp-feature-title">Dienstleister-Verwaltung</h3>
-            <p className="lp-feature-desc">Alle eure Dienstleister — Fotograf, Florist, Caterer, DJ, Dekoration — an einem Ort mit Status (bestätigt / in Verhandlung / abgesagt), Kontaktdaten und Notizen. Das Dashboard zeigt euch live, wie viele bereits bestätigt sind. Keine doppelten E-Mails, keine vergessenen Rückrufe mehr.</p>
+            <h3 className="lp-feature-title">Budget im Griff</h3>
+            <p className="lp-feature-desc">Geplante und tatsächliche Kosten je Kategorie — ihr seht jederzeit, wo ihr steht.</p>
             <div className="lp-feature-bullets">
-              <span className="lp-feature-bullet">Status für jeden Dienstleister</span>
-              <span className="lp-feature-bullet">Kontaktdaten &amp; Notizen zentral</span>
-              <span className="lp-feature-bullet">Live-Übersicht bestätigter Gewerke</span>
+              <span className="lp-feature-bullet">Soll/Ist je Kategorie</span>
+              <span className="lp-feature-bullet">Gesamtbudget-Übersicht</span>
+              <span className="lp-feature-bullet">Keine bösen Überraschungen</span>
             </div>
           </div>
           <div className="lp-feature-card">
@@ -371,7 +330,7 @@ export default function LandingPage() {
               <circle cx="24" cy="24" r="18"/><path d="M24 12v12l8 4"/>
             </svg>
             <h3 className="lp-feature-title">Zeitstrahl &amp; Regieplan</h3>
-            <p className="lp-feature-desc">Euer gesamter Hochzeitstag auf einen Blick — minutengenau geplant. Jeder Eintrag hat eine Uhrzeit, Dauer, Kategorie (Zeremonie, Empfang, Feier, Logistik) und einen Ort. So wissen alle Beteiligten immer, was als nächstes passiert — vom Sektempfang bis zum letzten Tanz.</p>
+            <p className="lp-feature-desc">Euer Hochzeitstag minutengenau geplant — vom Sektempfang bis zum letzten Tanz.</p>
             <div className="lp-feature-bullets">
               <span className="lp-feature-bullet">Minutengenaue Tagesplanung</span>
               <span className="lp-feature-bullet">Kategorien: Zeremonie bis Feier</span>
@@ -385,13 +344,16 @@ export default function LandingPage() {
               <line x1="16" y1="18" x2="32" y2="18"/><line x1="16" y1="24" x2="26" y2="24"/>
             </svg>
             <h3 className="lp-feature-title">Direktnachrichten</h3>
-            <p className="lp-feature-desc">Ein integrierter Chat direkt mit eurem Veranstaltungsteam — in Echtzeit, mit Lese-Bestätigung und Verlauf. Ihr könnt mehrere Gespräche führen, z.B. mit der Location, dem Caterer oder dem Koordinator. Alle Nachrichten sind dauerhaft gespeichert und jederzeit nachlesbar. Kein WhatsApp-Chaos, keine verlorenen E-Mails.</p>
+            <p className="lp-feature-desc">Ein Chat mit allen Beteiligten — nachlesbar, in Echtzeit, ohne WhatsApp-Chaos.</p>
             <div className="lp-feature-bullets">
-              <span className="lp-feature-bullet">Echtzeit-Chat mit Lese-Bestätigung</span>
+              <span className="lp-feature-bullet">Echtzeit-Chat mit Verlauf</span>
               <span className="lp-feature-bullet">Mehrere parallele Gespräche</span>
               <span className="lp-feature-bullet">Dauerhafter Nachrichtenverlauf</span>
             </div>
           </div>
+        </div>
+        <div className="lp-features-cta lp-reveal">
+          <a href={SIGNUP_URL} className="lp-text-cta">Alle Funktionen 3 Tage kostenlos ausprobieren &rarr;</a>
         </div>
       </section>
 
@@ -411,83 +373,91 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* STEPS */}
-      <section className="lp-steps" id="lp-steps">
-        <p className="lp-section-eyebrow lp-reveal">So einfach geht&apos;s</p>
-        <h2 className="lp-section-title">
-          <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">In <em>drei Schritten</em> zum Dashboard</span></span>
-        </h2>
-        <p className="lp-section-sub lp-reveal lp-reveal-d2">Mit Einladung eures Veranstalters — oder komplett eigenständig. Beides dauert nur wenige Minuten.</p>
-        <div className="lp-steps-grid">
-          <div className="lp-step lp-reveal">
-            <div className="lp-step-num">01</div>
-            <h3 className="lp-step-title">Einstieg wählen</h3>
-            <p className="lp-step-desc">Ihr habt einen Einladungslink von eurem Veranstalter? Dann seid ihr mit einem Klick drin. Ihr plant ohne Veranstalter? Registriert euch direkt — euer Hochzeits-Dashboard wird automatisch für euch eingerichtet, einen Veranstalter könnt ihr später jederzeit dazuholen.</p>
+      {/* PRICING */}
+      <section className="lp-pricing" id="lp-pricing">
+        <div className="lp-pricing-header">
+          <p className="lp-section-eyebrow lp-reveal">Ein Preis, kein Kleingedrucktes</p>
+          <h2 className="lp-section-title">
+            <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">Erst testen. <em>Dann planen.</em></span></span>
+          </h2>
+          <p className="lp-section-sub lp-reveal lp-reveal-d2">3 Tage voller Zugriff auf alles — danach entscheidet ihr.</p>
+        </div>
+        <div className="lp-pricing-grid">
+          <div className="lp-price-card lp-reveal">
+            <p className="lp-price-name">Velvet</p>
+            <p className="lp-price-amount"><span className="lp-price-num">25 €</span><span className="lp-price-period">/ Monat</span></p>
+            <p className="lp-price-tagline">Ihr plant zu zweit</p>
+            <ul className="lp-price-list">
+              <li><Check /> Gästeliste &amp; RSVP-Links</li>
+              <li><Check /> Sitzplan &amp; Tischplanung</li>
+              <li><Check /> Budget, Aufgaben, Zeitplan</li>
+              <li><Check /> Beide Partner, alle Geräte</li>
+            </ul>
+            <a href={SIGNUP_URL} className="lp-btn-primary lp-price-btn">3 Tage kostenlos testen</a>
           </div>
-          <div className="lp-step lp-reveal lp-reveal-d2">
-            <div className="lp-step-num">02</div>
-            <h3 className="lp-step-title">Konto einrichten</h3>
-            <p className="lp-step-desc">Wählt einen sicheren Zugang und gebt euren Namen ein. Das dauert weniger als zwei Minuten. Kein lästiges Formular — nur das Nötigste, damit wir euch persönlich ansprechen können.</p>
+          <div className="lp-price-card lp-price-card-pro lp-reveal lp-reveal-d2">
+            <span className="lp-price-badge">Mit Profi-Team</span>
+            <p className="lp-price-name">Velvet Pro</p>
+            <p className="lp-price-amount"><span className="lp-price-num">55 €</span><span className="lp-price-period">/ Monat</span></p>
+            <p className="lp-price-tagline">Ihr plant mit Profis</p>
+            <ul className="lp-price-list">
+              <li className="lp-price-plus">Alles aus Velvet, plus:</li>
+              <li><Check /> Euer Hochzeitsplaner arbeitet im selben Dashboard mit</li>
+              <li><Check /> Dienstleister einladen — Caterer, DJ, Florist sehen genau das, was sie brauchen</li>
+              <li><Check /> Chat mit eurem ganzen Team</li>
+            </ul>
+            <a href={SIGNUP_URL} className="lp-btn-primary lp-price-btn">3 Tage kostenlos testen</a>
           </div>
-          <div className="lp-step lp-reveal lp-reveal-d4">
-            <div className="lp-step-num">03</div>
-            <h3 className="lp-step-title">Loslegen &amp; genießen</h3>
-            <p className="lp-step-desc">Euer Dashboard ist sofort bereit. Ladet Gäste ein, plant den Sitzplan, kommuniziert mit eurem Veranstaltungsmanager — alles an einem Ort. Entspannt und stilvoll.</p>
-            <button onClick={handleCtaClick} className="lp-step-cta">
-              Jetzt starten
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M3 8h10M9 4l4 4-4 4"/>
-              </svg>
-            </button>
+        </div>
+        <p className="lp-pricing-note lp-reveal">
+          <strong>Erst klein anfangen, später hochschalten?</strong> Klar. Startet mit Velvet für 25 € — und holt euren Veranstalter oder eure Dienstleister jederzeit per Upgrade dazu. Monatlich kündbar, kein Jahresvertrag.
+        </p>
+        <p className="lp-pricing-compare lp-reveal">Zum Vergleich: weniger als ein Brautstrauß — für die Organisation eures gesamten Tages.</p>
+      </section>
+
+      {/* TRIAL TIMELINE */}
+      <section className="lp-trial">
+        <div className="lp-trial-grid">
+          <div className="lp-trial-step lp-reveal">
+            <p className="lp-trial-when">Tag 1–3</p>
+            <p className="lp-trial-text">Voller Zugriff auf alles. Gäste anlegen, Sitzplan bauen, Partner einladen.</p>
+          </div>
+          <div className="lp-trial-step lp-reveal lp-reveal-d2">
+            <p className="lp-trial-when">Tag 3</p>
+            <p className="lp-trial-text">Ihr entscheidet: weiterplanen ab 25 €/Monat oder einfach nichts tun.</p>
+          </div>
+          <div className="lp-trial-step lp-reveal lp-reveal-d4">
+            <p className="lp-trial-when">Jederzeit</p>
+            <p className="lp-trial-text">Upgraden, kündigen, pausieren. Eure Daten bleiben gespeichert.</p>
           </div>
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
-      <section className="lp-testimonials">
-        <div className="lp-testimonials-inner">
-          <div className="lp-testimonials-header">
-            <p className="lp-section-eyebrow lp-reveal">Stimmen von Brautpaaren</p>
-            <h2 className="lp-section-title">
-              <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">Was andere <em>Paare sagen</em></span></span>
-            </h2>
+      {/* STEPS */}
+      <section className="lp-steps" id="lp-steps">
+        <p className="lp-section-eyebrow lp-reveal">So einfach geht&apos;s</p>
+        <h2 className="lp-section-title">
+          <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">In <em>zwei Schritten</em> zum Dashboard</span></span>
+        </h2>
+        <div className="lp-steps-grid lp-steps-grid-2">
+          <div className="lp-step lp-reveal">
+            <div className="lp-step-num">01</div>
+            <h3 className="lp-step-title">Registrieren</h3>
+            <p className="lp-step-desc">E-Mail, Name, fertig. Euer Dashboard wird automatisch eingerichtet.</p>
           </div>
-          <div className="lp-testimonials-track">
-            <div className="lp-testimonial lp-reveal">
-              <p className="lp-testimonial-text">&ldquo;Velvet hat unsere Hochzeitsplanung komplett verändert. Statt zehn verschiedener Apps hatten wir alles auf einen Blick. Unser Sitzplan war in einer Stunde fertig — das hätte sonst Tage gedauert.&rdquo;</p>
-              <div className="lp-testimonial-author">
-                <div className="lp-testimonial-avatar">L&amp;M</div>
-                <div>
-                  <div className="lp-testimonial-name">Laura &amp; Markus</div>
-                  <div className="lp-testimonial-date">Hochzeit im Juni 2025</div>
-                  <div className="lp-testimonial-stars"><span className="lp-star">★</span><span className="lp-star">★</span><span className="lp-star">★</span><span className="lp-star">★</span><span className="lp-star">★</span></div>
-                </div>
-              </div>
-            </div>
-            <div className="lp-testimonial lp-reveal lp-reveal-d2">
-              <p className="lp-testimonial-text">&ldquo;Die Kommunikation mit unserem Veranstalter war so einfach wie nie. Alles ist nachlesbar, nichts geht verloren. Wir wussten immer, was als nächstes passiert — das hat uns so viel Stress erspart.&rdquo;</p>
-              <div className="lp-testimonial-author">
-                <div className="lp-testimonial-avatar">S&amp;J</div>
-                <div>
-                  <div className="lp-testimonial-name">Sophie &amp; Jonas</div>
-                  <div className="lp-testimonial-date">Hochzeit im September 2025</div>
-                  <div className="lp-testimonial-stars"><span className="lp-star">★</span><span className="lp-star">★</span><span className="lp-star">★</span><span className="lp-star">★</span><span className="lp-star">★</span></div>
-                </div>
-              </div>
-            </div>
-            <div className="lp-testimonial lp-reveal lp-reveal-d4">
-              <p className="lp-testimonial-text">&ldquo;Das Design von Velvet ist so wunderschön, dass ich das Dashboard einfach nur so aufgemacht habe, um es anzuschauen. Und dann war der Zeitplan plötzlich fertig, ohne dass es sich wie Arbeit angefühlt hat.&rdquo;</p>
-              <div className="lp-testimonial-author">
-                <div className="lp-testimonial-avatar">A&amp;T</div>
-                <div>
-                  <div className="lp-testimonial-name">Anna &amp; Thomas</div>
-                  <div className="lp-testimonial-date">Hochzeit im März 2026</div>
-                  <div className="lp-testimonial-stars"><span className="lp-star">★</span><span className="lp-star">★</span><span className="lp-star">★</span><span className="lp-star">★</span><span className="lp-star">★</span></div>
-                </div>
-              </div>
-            </div>
+          <div className="lp-step lp-reveal lp-reveal-d2">
+            <div className="lp-step-num">02</div>
+            <h3 className="lp-step-title">Loslegen</h3>
+            <p className="lp-step-desc">Gäste einladen, Budget anlegen, Sitzplan bauen. Euer Partner plant vom eigenen Gerät aus mit.</p>
+            <a href={SIGNUP_URL} className="lp-step-cta">
+              3 Tage kostenlos testen
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M3 8h10M9 4l4 4-4 4"/>
+              </svg>
+            </a>
           </div>
         </div>
+        <p className="lp-steps-note lp-reveal">Ihr habt einen Einladungslink von eurem Veranstalter? Dann seid ihr mit einem Klick drin.</p>
       </section>
 
       {/* FAQ */}
@@ -500,11 +470,11 @@ export default function LandingPage() {
             </h2>
           </div>
           {([
-            { q: 'Wie bekomme ich Zugang zu meinem Dashboard?', a: 'Entweder über den persönlichen Einladungslink eures Veranstalters — oder ihr registriert euch direkt selbst und plant eure Hochzeit eigenständig. In beiden Fällen ist euer Dashboard in wenigen Minuten eingerichtet.' },
-            { q: 'Können wir beide gemeinsam auf das Dashboard zugreifen?', a: 'Ja! Das Dashboard ist für beide Partner gleichzeitig zugänglich. Ihr könnt von verschiedenen Geräten aus gleichzeitig arbeiten. Änderungen werden in Echtzeit synchronisiert — so seid ihr immer auf dem gleichen Stand.' },
+            { q: 'Was kostet Velvet?', a: 'Die ersten 3 Tage sind kostenlos — mit vollem Funktionsumfang und ohne Zahlungsdaten. Danach kostet Velvet 25 € im Monat. Wenn euer Hochzeitsplaner und eure Dienstleister mitarbeiten sollen, gibt es Velvet Pro für 55 € im Monat. Beides ist monatlich kündbar.' },
+            { q: 'Was passiert nach den 3 Testtagen?', a: 'Ihr entscheidet aktiv, ob ihr weitermacht — es wird nichts automatisch abgebucht, weil wir im Test keine Zahlungsdaten verlangen. Eure Daten bleiben gespeichert, sodass ihr nahtlos weiterplanen könnt.' },
+            { q: 'Können wir später von Velvet auf Pro wechseln?', a: 'Jederzeit, mit einem Klick. Viele Paare starten allein für 25 € und holen den Veranstalter oder die Dienstleister später per Upgrade dazu.' },
+            { q: 'Können wir beide gemeinsam planen?', a: 'Ja! Das Dashboard ist für beide Partner gleichzeitig zugänglich. Ihr könnt von verschiedenen Geräten aus gleichzeitig arbeiten. Änderungen werden in Echtzeit synchronisiert — so seid ihr immer auf dem gleichen Stand.' },
             { q: 'Sind unsere Daten sicher?', a: 'Eure Daten sind ausschließlich für euch und die Personen sichtbar, die ihr zu eurer Planung einladet. Velvet verwendet eine sichere, verschlüsselte Verbindung. Eure Gästeliste, Sitzpläne und persönlichen Informationen werden vertraulich behandelt und nicht an Dritte weitergegeben.' },
-            { q: 'Auf welchen Geräten funktioniert Velvet?', a: 'Velvet funktioniert auf allen Geräten — Smartphone, Tablet und Desktop. Kein App-Download nötig: Das Dashboard öffnet sich direkt im Browser, genau so schön wie ihr es hier seht. Optimiert für iOS, Android, Windows und Mac.' },
-            { q: 'Können wir auch ohne Veranstalter planen?', a: 'Ja! Registriert euch einfach direkt als Brautpaar — ihr bekommt das volle Dashboard mit Gästeliste, Sitzplan, Budget und allen Tools. Und falls ihr euch später professionelle Unterstützung holt, könnt ihr einen Veranstalter mit einem Einladungscode zu eurer Planung dazuschalten.' },
           ] as const).map(({ q, a }, i) => (
             <div key={i} className={`lp-faq-item lp-reveal${i > 0 ? ` lp-reveal-d${i}` : ''}`}>
               <button
@@ -532,12 +502,11 @@ export default function LandingPage() {
         </div>
         <div className="lp-cta-content">
           <p className="lp-cta-eyebrow">Euer Einstieg</p>
-          <h2 className="lp-cta-title">Bereit für <em>euren großen Tag?</em></h2>
-          <p className="lp-cta-sub">Euer Dashboard wartet auf euch — mit Einladung eures Veranstalters oder komplett eigenständig.</p>
+          <h2 className="lp-cta-title">Eure Hochzeit. Euer Dashboard. <em>Ab heute.</em></h2>
           <div className="lp-cta-actions">
-            <a href="#" onClick={handleCtaClick} className="lp-btn-gold">Zum Anmeldeportal →</a>
-            <a href="/signup/brautpaar" className="lp-btn-outline-light">Selbst planen — kostenlos starten</a>
+            <a href={SIGNUP_URL} className="lp-btn-gold">3 Tage kostenlos testen</a>
           </div>
+          <p className="lp-cta-foot">3 Tage kostenlos · danach ab 25 €/Monat · monatlich kündbar</p>
         </div>
       </div>
 
@@ -552,10 +521,11 @@ export default function LandingPage() {
             <p className="lp-footer-col-title">Navigation</p>
             <ul className="lp-footer-links">
               <li><a href="#lp-features">Funktionen</a></li>
+              <li><a href="#lp-pricing">Preise</a></li>
               <li><a href="#lp-steps">So funktioniert&apos;s</a></li>
               <li><a href="#lp-faq">FAQ</a></li>
-              <li><a href="/signup/brautpaar">Als Brautpaar starten</a></li>
-              <li><a href="#lp-register">Anmelden</a></li>
+              <li><a href="/signup/brautpaar">3 Tage kostenlos testen</a></li>
+              <li><a href="/login">Anmelden</a></li>
             </ul>
           </div>
           <div>

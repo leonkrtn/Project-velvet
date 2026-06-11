@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import BrautpaarShell from './BrautpaarShell'
+import { getSubscriptionState } from '@/lib/subscription'
+import BrautpaarShell, { type ShellSubscription } from './BrautpaarShell'
 import '@/app/brautpaar/brautpaar.css'
 
 interface Props {
@@ -37,6 +38,21 @@ export default async function BrautpaarLayout({ children, params }: Props) {
   const showWelcome =
     ['brautpaar', 'brautpaar_solo'].includes(member.role) && !member.onboarding_completed_at
 
+  // Abo-Status: nur Solo-Events sind gegated (Trial-Zeile entsteht beim
+  // ersten Portal-Besuch); veranstalter-verwaltete Events bleiben ungegated.
+  let subscription: ShellSubscription | null = null
+  if (member.role === 'brautpaar_solo') {
+    const state = await getSubscriptionState(eventId, { lazyCreateTrial: true })
+    if (state.gated) {
+      subscription = {
+        gated: state.gated,
+        status: state.status,
+        plan: state.plan,
+        daysLeft: state.daysLeft,
+      }
+    }
+  }
+
   return (
     <BrautpaarShell
       eventId={eventId}
@@ -45,6 +61,7 @@ export default async function BrautpaarLayout({ children, params }: Props) {
       userId={user.id}
       showWelcome={showWelcome}
       isSolo={member.role === 'brautpaar_solo'}
+      subscription={subscription}
     >
       {children}
     </BrautpaarShell>

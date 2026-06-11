@@ -2,9 +2,10 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSubscriptionState } from '@/lib/subscription'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Briefcase, SlidersHorizontal } from 'lucide-react'
+import { Briefcase, SlidersHorizontal, Sparkles } from 'lucide-react'
 import VendorInviteSection from './VendorInviteSection'
 
 interface Props {
@@ -31,6 +32,40 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
 
   if (!member) redirect('/login')
   if (member.role !== 'brautpaar_solo') redirect(`/brautpaar/${eventId}/uebersicht`)
+
+  // Dienstleister-Verwaltung ist ein Pro-Feature (Trial = voller Umfang)
+  const subscription = await getSubscriptionState(eventId)
+  if (subscription.gated && !subscription.isPro) {
+    return (
+      <div className="bp-page">
+        <div className="bp-page-header">
+          <h1 className="bp-page-title">Dienstleister</h1>
+          <p className="bp-page-subtitle">
+            Eure Dienstleister und ihre Zugriffsrechte auf die Planungsmodule
+          </p>
+        </div>
+        <div className="bp-card" style={{ padding: '2.5rem 2rem', textAlign: 'center', maxWidth: 520 }}>
+          <Sparkles size={28} style={{ color: 'var(--bp-gold, #B8923A)', marginBottom: 12 }} />
+          <p style={{ fontWeight: 600, fontSize: 15, margin: '0 0 6px' }}>Teil von Velvet Pro</p>
+          <p className="bp-caption" style={{ margin: '0 0 1.25rem', lineHeight: 1.6 }}>
+            Mit Velvet Pro ladet ihr Caterer, DJ, Florist und weitere Dienstleister direkt in eure
+            Planung ein — jeder sieht genau die Module, die ihr freigebt. Upgrade jederzeit,
+            eure Planung bleibt vollständig erhalten.
+          </p>
+          <Link
+            href={`/brautpaar/${eventId}/abo`}
+            style={{
+              display: 'inline-block', background: 'var(--bp-gold, #B8923A)', color: '#fff',
+              borderRadius: 999, padding: '0.6rem 1.5rem', textDecoration: 'none',
+              fontSize: '0.875rem', fontWeight: 600,
+            }}
+          >
+            Auf Velvet Pro upgraden
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   const admin = createAdminClient()
   const { data: vendors } = await admin

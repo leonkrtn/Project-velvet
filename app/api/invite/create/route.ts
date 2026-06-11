@@ -9,6 +9,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { hasProAccess } from '@/lib/subscription'
 
 function getServiceClient() {
   return createServiceClient(
@@ -52,6 +53,14 @@ export async function POST(request: Request) {
 
   if (!allowed) {
     return NextResponse.json({ error: 'Keine Berechtigung für diese Einladung' }, { status: 403 })
+  }
+
+  // Veranstalter dazuholen ist ein Pro-Feature (Partner-Einladung bleibt frei)
+  if (callerRole === 'brautpaar_solo' && targetRole === 'veranstalter' && !(await hasProAccess(eventId))) {
+    return NextResponse.json(
+      { error: 'Veranstalter einladen ist Teil von Velvet Pro. Upgradet euren Tarif, um euer Profi-Team dazuzuholen.', code: 'PRO_REQUIRED' },
+      { status: 403 },
+    )
   }
 
   const code = crypto.randomUUID()
