@@ -43,7 +43,9 @@
 
 /* ─── NAV ─── */
 .landing-root .lp-nav {
-  position: fixed;
+  /* Bewusst absolute statt fixed: Der Header liegt nur ganz oben über dem
+     Hero und scrollt nicht mit. */
+  position: absolute;
   top: 0; left: 0; right: 0;
   z-index: 100;
   padding: 20px 60px;

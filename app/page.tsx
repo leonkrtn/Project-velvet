@@ -536,7 +536,7 @@ function DemoSection() {
             </div>
           </div>
         </div>
-        <a href={SIGNUP_URL} className="lp-btn-primary" style={{ marginTop: '36px', display: 'inline-block' }}>
+        <a href={SIGNUP_URL} className="lp-btn-primary" style={{ marginTop: '36px', display: 'block', width: 'fit-content', marginLeft: 'auto', marginRight: 'auto' }}>
           3 Tage kostenlos testen
         </a>
         <p className="lp-demo-invite-note">
@@ -550,7 +550,6 @@ function DemoSection() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function LandingPage() {
-  const navRef = useRef<HTMLElement>(null)
   const heroBgRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -560,11 +559,6 @@ export default function LandingPage() {
       if (!progressBar) return
       const total = document.documentElement.scrollHeight - window.innerHeight
       progressBar.style.width = (total > 0 ? (window.scrollY / total) * 100 : 0) + '%'
-    }
-
-    // Nav scroll class
-    function handleNavScroll() {
-      if (navRef.current) navRef.current.classList.toggle('scrolled', window.scrollY > 60)
     }
 
     // Parallax hero
@@ -592,7 +586,6 @@ export default function LandingPage() {
 
     function onScroll() {
       updateProgress()
-      handleNavScroll()
       lastScrollY = window.scrollY
       if (!rafHeroPending) { rafHeroPending = true; requestAnimationFrame(updateParallax) }
       if (!rafPhotoPending) { rafPhotoPending = true; requestAnimationFrame(updatePhotoParallax) }
@@ -666,7 +659,7 @@ export default function LandingPage() {
       <div id="lp-scroll-progress" />
 
       {/* NAV */}
-      <nav ref={navRef} className="lp-nav">
+      <nav className="lp-nav">
         <a href="#" className="nav-logo">
           <img src="/landing/logo.png" alt="Velvet" />
         </a>
