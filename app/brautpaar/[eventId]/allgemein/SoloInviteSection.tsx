@@ -164,7 +164,17 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
         )}
 
         {state.error && (
-          <p style={{ fontSize: 13, color: 'var(--bp-red, #a04040)', margin: 0 }}>{state.error}</p>
+          <p style={{ fontSize: 13, color: 'var(--bp-red, #a04040)', margin: 0 }}>
+            {state.error}
+            {state.error.includes('Velvet Pro') && (
+              <>
+                {' '}
+                <a href={`/brautpaar/${eventId}/abo`} style={{ color: 'var(--bp-gold, #B8923A)', fontWeight: 600 }}>
+                  Zum Abo
+                </a>
+              </>
+            )}
+          </p>
         )}
         {state.code && (
           <p className="bp-body" style={{ fontSize: 12, margin: 0, opacity: 0.7 }}>

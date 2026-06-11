@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { hasProAccess } from '@/lib/subscription'
 
 function getServiceClient() {
   return createServiceClient(
@@ -49,6 +50,14 @@ export async function POST(request: Request) {
 
   if (!member || !['veranstalter', 'brautpaar', 'brautpaar_solo'].includes(member.role as string)) {
     return NextResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
+  }
+
+  // Dienstleister einladen ist für Solo-Paare ein Pro-Feature
+  if (member.role === 'brautpaar_solo' && !(await hasProAccess(eventId))) {
+    return NextResponse.json(
+      { error: 'Dienstleister einladen ist Teil von Velvet Pro. Upgradet euren Tarif, um euer Profi-Team dazuzuholen.', code: 'PRO_REQUIRED' },
+      { status: 403 },
+    )
   }
 
   // DienstleisterProfile erstellen oder vorhandenen nutzen
