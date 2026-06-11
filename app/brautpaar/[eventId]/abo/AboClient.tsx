@@ -56,7 +56,7 @@ export default function AboClient({ eventId, initialState }: Props) {
       : state.plan === 'pro' ? 'Velvet Pro' : 'Velvet'
 
   const heroSub = isTrialing
-    ? `Voller Funktionsumfang bis ${fmtDate(state.trialEndsAt)} — danach entscheidet ihr in Ruhe.`
+    ? `Alle Planungsfunktionen bis ${fmtDate(state.trialEndsAt)} — Profi-Team-Funktionen (Chat, Dienstleister, Veranstalter) gibt es mit Velvet Pro.`
     : isExpired
       ? 'Eure Planung ist sicher gespeichert. Wählt einen Tarif, um genau dort weiterzumachen, wo ihr aufgehört habt.'
       : isCanceled

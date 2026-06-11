@@ -695,7 +695,7 @@ export default function LandingPage() {
               <a href="#lp-demo" className="lp-btn-ghost">So funktioniert&apos;s</a>
             </div>
             <ul className="lp-hero-trust">
-              <li><Check /> Voller Funktionsumfang im Test</li>
+              <li><Check /> Alle Planungsfunktionen im Test</li>
               <li><Check /> Keine Zahlungsdaten nötig</li>
               <li><Check /> Monatlich kündbar</li>
             </ul>
@@ -933,7 +933,7 @@ export default function LandingPage() {
             <span className="lp-trial-node"><span className="lp-trial-dot">1</span></span>
             <div className="lp-trial-body">
               <p className="lp-trial-when">Tag 1–3</p>
-              <p className="lp-trial-text">Voller Zugriff auf alles. Gäste anlegen, Sitzplan bauen, Partner einladen.</p>
+              <p className="lp-trial-text">Alle Planungsfunktionen testen. Gäste anlegen, Sitzplan bauen, Partner einladen.</p>
             </div>
           </div>
           <div className="lp-trial-step lp-reveal lp-reveal-d2">
@@ -963,7 +963,7 @@ export default function LandingPage() {
             </h2>
           </div>
           {([
-            { q: 'Was kostet Velvet?', a: 'Die ersten 3 Tage sind kostenlos — mit vollem Funktionsumfang und ohne Zahlungsdaten. Danach kostet Velvet 25 € im Monat. Wenn euer Hochzeitsplaner und eure Dienstleister mitarbeiten sollen, gibt es Velvet Pro für 55 € im Monat. Beides ist monatlich kündbar.' },
+            { q: 'Was kostet Velvet?', a: 'Die ersten 3 Tage sind kostenlos — mit allen Planungsfunktionen und ohne Zahlungsdaten. Danach kostet Velvet 25 € im Monat. Wenn euer Hochzeitsplaner und eure Dienstleister mitarbeiten sollen — inklusive Team-Chat —, gibt es Velvet Pro für 55 € im Monat. Beides ist monatlich kündbar.' },
             { q: 'Was passiert nach den 3 Testtagen?', a: 'Ihr entscheidet aktiv, ob ihr weitermacht — es wird nichts automatisch abgebucht, weil wir im Test keine Zahlungsdaten verlangen. Eure Daten bleiben gespeichert, sodass ihr nahtlos weiterplanen könnt.' },
             { q: 'Können wir später von Velvet auf Pro wechseln?', a: 'Jederzeit, mit einem Klick. Viele Paare starten allein für 25 € und holen den Veranstalter oder die Dienstleister später per Upgrade dazu.' },
             { q: 'Können wir beide gemeinsam planen?', a: 'Ja! Das Dashboard ist für beide Partner gleichzeitig zugänglich. Ihr könnt von verschiedenen Geräten aus gleichzeitig arbeiten. Änderungen werden in Echtzeit synchronisiert — so seid ihr immer auf dem gleichen Stand.' },
