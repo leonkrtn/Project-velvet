@@ -233,8 +233,42 @@ export default function BrautpaarSitzplanPage() {
       setRoomElements(elements)
       setTablePool(pool)
       // Echter Raumplan gespeichert → einfacher Modus endet; Tische und
-      // Zuordnungen bleiben erhalten (seating_tables sind davon unabhängig)
-      if (points.length >= 3 && simpleMode) await saveSimpleToggle(false)
+      // Zuordnungen bleiben erhalten (seating_tables sind davon unabhängig).
+      // Tische, die außerhalb des neuen Grundriss-Ausschnitts liegen (z.B.
+      // aus der einfachen 16×12m-Fläche), werden in den Raum geholt, damit
+      // sie im Detail-Editor sichtbar und greifbar bleiben.
+      if (points.length >= 3) {
+        if (simpleMode) await saveSimpleToggle(false)
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+        for (const p of points) {
+          minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x)
+          minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y)
+        }
+
+        const { data: allTables } = await supabase
+          .from('seating_tables')
+          .select('id, pos_x, pos_y, shape, table_length, table_width')
+          .eq('event_id', eventId)
+
+        const PADDING = 0.3
+        for (const t of allTables ?? []) {
+          const halfL = Number(t.table_length) / 2
+          const halfW = t.shape === 'round' ? halfL : Number(t.table_width) / 2
+          const cx = Math.min(Math.max(Number(t.pos_x), minX + halfL + PADDING), maxX - halfL - PADDING)
+          const cy = Math.min(Math.max(Number(t.pos_y), minY + halfW + PADDING), maxY - halfW - PADDING)
+          if (cx !== Number(t.pos_x) || cy !== Number(t.pos_y)) {
+            await supabase.from('seating_tables').update({ pos_x: cx, pos_y: cy }).eq('id', t.id)
+          }
+        }
+
+        // Vorschau-Overlay im Konfigurator aktualisieren
+        const { data: refreshed } = await supabase
+          .from('seating_tables')
+          .select('pos_x,pos_y,rotation,shape,table_length,table_width,name')
+          .eq('event_id', eventId)
+        if (refreshed) setPlacedTables(refreshed as PlacedTablePreview[])
+      }
       setConfigSaved(true); setTimeout(() => setConfigSaved(false), 3000)
       setShowConfigurator(false)
     } finally {
