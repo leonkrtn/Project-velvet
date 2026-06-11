@@ -13,7 +13,7 @@ export default async function GaestePage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [guestsRes, eventRes, hotelsRes, rsvpSettingsRes] = await Promise.all([
+  const [guestsRes, eventRes, hotelsRes, rsvpSettingsRes, begleitRes] = await Promise.all([
     supabase
       .from('guests')
       .select('id, name, status, side, meal_choice, allergy_tags, allergy_custom, email, phone, hotel_room_id, notes, token, trink_alkohol, arrival_date, arrival_time, transport_mode, responded_at, message, invited_at, pending_approval')
@@ -34,6 +34,11 @@ export default async function GaestePage({ params }: Props) {
       .select('*')
       .eq('event_id', eventId)
       .maybeSingle(),
+    // Begleitpersonen aller Gäste dieses Events (Join-Filter über guests)
+    supabase
+      .from('begleitpersonen')
+      .select('id, guest_id, name, age_category, meal_choice, allergy_tags, guests!inner(event_id)')
+      .eq('guests.event_id', eventId),
   ])
 
   return (
@@ -41,6 +46,14 @@ export default async function GaestePage({ params }: Props) {
       eventId={eventId}
       userId={user.id}
       initialGuests={guestsRes.data ?? []}
+      initialBegleitpersonen={(begleitRes.data ?? []).map(b => ({
+        id: b.id,
+        guest_id: b.guest_id,
+        name: b.name,
+        age_category: b.age_category,
+        meal_choice: b.meal_choice,
+        allergy_tags: b.allergy_tags,
+      }))}
       mealOptions={eventRes.data?.meal_options ?? []}
       childrenAllowed={eventRes.data?.children_allowed ?? false}
       hotels={hotelsRes.data ?? []}
