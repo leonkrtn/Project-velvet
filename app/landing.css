@@ -100,6 +100,11 @@
 }
 .lp-nav-login:hover { opacity: 1; }
 
+/* Mobile-Navigation (Burger + Dropdown) — auf Desktop unsichtbar,
+   wird ausschließlich in den max-width-Media-Queries aktiviert. */
+.lp-nav-burger { display: none; }
+.lp-nav-mobile-menu { display: none; }
+
 @media (max-width: 767px) {
   .lp-nav-login { display: none; }
   .lp-nav-cta,
@@ -107,6 +112,9 @@
   .lp-btn-ghost {
     min-height: 44px;
   }
+  .lp-demo-tab { min-height: 44px; }
+  .lp-faq-q { min-height: 44px; }
+  .lp-demo-task { min-height: 44px; }
 }
 
 /* ─── HERO ─── */
@@ -1177,10 +1185,132 @@
   .lp-demo-phone-grow { font-size: 12px; }
   .lp-demo-phone-badge-g, .lp-demo-phone-badge-n { font-size: 10px; }
   .lp-demo-devices { display: block; }
+
+  /* Mobile-Navigation: Burger sichtbar, Dropdown-Panel unterhalb der Nav */
+  .lp-nav-right { gap: 16px; }
+  .lp-nav-burger {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; padding: 0;
+    background: rgba(20,16,10,0.35);
+    border: 1px solid rgba(255,253,249,0.3);
+    border-radius: 8px; color: #FFFDF9; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .lp-nav-burger:hover { background: rgba(20,16,10,0.5); }
+  .lp-nav-mobile-menu {
+    display: flex; flex-direction: column;
+    position: absolute; top: calc(100% + 4px); left: 16px; right: 16px;
+    background: #FFFDF9;
+    border: 1px solid #EDE4D3;
+    border-radius: 14px; padding: 10px;
+    box-shadow: 0 18px 48px rgba(45,45,53,0.18), 0 4px 12px rgba(45,45,53,0.10);
+    z-index: 99;
+  }
+  .lp-nav-mobile-menu a {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500; letter-spacing: 0.04em;
+    color: #2D2D35; text-decoration: none;
+    min-height: 44px; padding: 12px 14px; border-radius: 8px;
+    display: flex; align-items: center;
+    transition: background 0.15s;
+  }
+  .lp-nav-mobile-menu a:hover { background: #F9F4EC; }
+  .lp-nav-mobile-menu .lp-nav-mobile-cta {
+    margin-top: 6px; justify-content: center;
+    background: #B8923A; color: #FFFDF9;
+    font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .lp-nav-mobile-menu .lp-nav-mobile-cta:hover { background: #8A6B28; }
+
+  /* Footer hatte keinerlei Tablet/Mobile-Padding-Override */
+  .lp-footer { padding: 48px 32px 32px; }
+
+  /* Phone-Frame auf Tablets nicht in voller Breite aufblasen */
+  .lp-demo-phone { max-width: 440px; margin-left: auto; margin-right: auto; }
 }
 @media (max-width: 640px) {
   .lp-features-grid { grid-template-columns: 1fr; }
   .lp-footer-top { grid-template-columns: 1fr; }
   .lp-footer-bottom { flex-direction: column; gap: 16px; align-items: flex-start; }
   .lp-demo-stats { grid-template-columns: 1fr 1fr; }
+
+  /* Grundabstände & Nav */
+  .landing-root section { padding: 64px 20px; }
+  .lp-demo { padding: 64px 20px; }
+  .lp-nav { padding: 12px 16px; }
+  .lp-nav .nav-logo img { height: 52px; }
+  /* CTA wandert ins Burger-Menü — Nav bleibt bei 320px frei von Overflow */
+  .lp-nav-cta { display: none; }
+  .lp-nav-mobile-menu { left: 12px; right: 12px; }
+
+  /* Hero: dynamische Viewport-Höhe (Mobile-Browser-UI), gestapelte Buttons */
+  .lp-hero { height: 100svh; min-height: 600px; }
+  .lp-hero-content { padding: 0 20px 64px; }
+  .lp-hero-headline { font-size: clamp(32px, 10vw, 42px); }
+  .lp-hero-sub { font-size: 15px; margin-top: 18px; }
+  .lp-hero-actions {
+    margin-top: 28px;
+    flex-direction: column; align-items: stretch; gap: 12px;
+  }
+  .lp-hero-actions a { text-align: center; }
+  .lp-btn-primary { padding: 15px 24px; }
+  .lp-btn-ghost { padding: 14px 24px; }
+  .lp-btn-primary, .lp-btn-ghost, .lp-btn-gold, .lp-price-btn {
+    font-size: 12px; letter-spacing: 0.06em;
+  }
+  /* Trust-Liste vertikal, Punkt-Separatoren entfallen */
+  .lp-hero-trust { flex-direction: column; align-items: flex-start; gap: 10px; margin-top: 24px; }
+  .lp-hero-trust li:not(:last-child)::after { display: none; }
+  /* rein dekorativ, kollidiert auf kleinen Screens mit dem Hero-Inhalt */
+  .lp-scroll-hint { display: none; }
+
+  /* Typografie */
+  .lp-section-title { font-size: clamp(28px, 8.5vw, 40px); }
+  .lp-section-sub { font-size: 15px; }
+
+  /* Problem/Lösung: Glow-::before ragte 24px über den Viewport hinaus (H-Scroll) */
+  .lp-problem-side-gold::before { inset: -8px -10px; }
+
+  /* Features */
+  .lp-features-header { margin-bottom: 48px; gap: 24px; }
+  .lp-feature-card { padding: 40px 24px 32px; }
+  .lp-feature-num { font-size: 56px; top: 24px; right: 24px; }
+  .lp-features-cta { margin-top: 40px; }
+
+  /* Photo-Band: 3 Spalten wären bei 320px nur ~106px breit → stapeln */
+  .lp-photo-band { grid-template-columns: 1fr; height: auto; }
+  .lp-photo-cell { height: 180px; }
+
+  /* Pricing */
+  .lp-pricing-header { margin-bottom: 48px; }
+  .lp-price-card { padding: 36px 24px 28px; }
+  .lp-price-num { font-size: 52px; }
+  .lp-pricing-foot { margin-top: 48px; }
+
+  /* Trial-Timeline */
+  .lp-trial-step { gap: 16px; }
+
+  /* Demo-Steps: vertikal stapeln, Divider wird senkrecht */
+  .lp-demo-steps { margin-top: 48px; }
+  .lp-demo-steps-inner { flex-direction: column; gap: 14px; }
+  .lp-demo-steps-divider {
+    width: 1px; height: 24px;
+    background: linear-gradient(to bottom, transparent, rgba(184,146,58,0.5), transparent);
+  }
+  .lp-demo-step-item { text-align: left; }
+
+  /* FAQ: kompakter + genug Platz für lange Antworten bei schmaler Spalte */
+  .lp-faq-header { margin-bottom: 40px; }
+  .lp-faq-q { font-size: 19px; padding: 22px 0; gap: 16px; }
+  .lp-faq-item.open .lp-faq-a { max-height: 700px; }
+
+  /* CTA-Band */
+  .lp-cta-content { padding: 56px 20px; }
+  .lp-cta-actions a { width: 100%; text-align: center; }
+  .lp-btn-gold { padding: 16px 28px; }
+
+  /* Footer */
+  .lp-footer { padding: 48px 20px 28px; }
+  .lp-footer-logo img { height: 48px; }
+  .lp-footer-top { gap: 32px; margin-bottom: 40px; }
 }

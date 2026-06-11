@@ -142,7 +142,7 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
             </code>
             <button
               type="button"
-              className="bp-btn"
+              className="bp-btn bp-btn-mobile-full"
               onClick={() => copyLink(target)}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
@@ -154,7 +154,7 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
           <div>
             <button
               type="button"
-              className="bp-btn bp-btn-primary"
+              className="bp-btn bp-btn-primary bp-btn-mobile-full"
               onClick={() => createCode(target)}
               disabled={state.loading}
             >
@@ -232,7 +232,7 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
                 </div>
                 <button
                   type="button"
-                  className="bp-btn"
+                  className="bp-btn bp-btn-mobile-full"
                   onClick={() => removeOrganizer(organizer.id)}
                   disabled={removingId === organizer.id}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--bp-red, #a04040)' }}

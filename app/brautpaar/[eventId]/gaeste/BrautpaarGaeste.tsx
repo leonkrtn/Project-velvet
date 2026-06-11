@@ -156,9 +156,9 @@ function Modal({ title, onClose, children, width = 520 }: {
       }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div style={{
+      <div className="bp-dialog-pad" style={{
         background: 'var(--bp-paper)', borderRadius: 'var(--bp-r-lg)',
-        padding: '1.75rem', width: '100%', maxWidth: width,
+        width: '100%', maxWidth: width,
         maxHeight: '92vh', overflowY: 'auto',
         boxShadow: 'var(--bp-shadow-elevated)',
       }}>
@@ -337,13 +337,13 @@ function HotelTab({ eventId, hotels: initialHotels }: { eventId: string; hotels:
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h3 className="bp-section-title" style={{ marginBottom: '0.25rem' }}>Hotels</h3>
           <p className="bp-caption">Zimmer hier anlegen — Gäste können diese beim RSVP buchen.</p>
         </div>
         <button
-          className="bp-btn bp-btn-primary"
+          className="bp-btn bp-btn-primary bp-btn-mobile-full"
           onClick={openCreateHotel}
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}
         >
@@ -440,8 +440,8 @@ function HotelTab({ eventId, hotels: initialHotels }: { eventId: string; hotels:
                       {hotel.hotel_rooms.length === 0 ? (
                         <p className="bp-caption" style={{ fontStyle: 'italic' }}>Noch keine Zimmer angelegt.</p>
                       ) : (
-                        <div className="bp-card" style={{ overflow: 'hidden', marginBottom: '0.5rem' }}>
-                          <table className="bp-table">
+                        <div className="bp-card bp-scroll-x" style={{ marginBottom: '0.5rem' }}>
+                          <table className="bp-table" style={{ minWidth: 640 }}>
                             <thead>
                               <tr>
                                 <th>Typ</th>
@@ -775,7 +775,7 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
       <div style={{ background: 'var(--bp-paper)', borderRadius: 'var(--bp-r-lg)', width: '100%', maxWidth: 600, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--bp-shadow-elevated)' }}>
 
         {/* ── Sticky header ── */}
-        <div style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bp-paper)', borderBottom: '1px solid var(--bp-rule)', padding: '1.25rem 1.5rem' }}>
+        <div className="bp-lightbox-head" style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bp-paper)', borderBottom: '1px solid var(--bp-rule)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
             <div>
               <h2 style={{ fontFamily: 'var(--bp-font-serif)', fontSize: '1.375rem', fontWeight: 400, margin: '0 0 0.375rem', color: 'var(--bp-ink)' }}>
@@ -801,7 +801,7 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
         </div>
 
         {/* ── Body ── */}
-        <div style={{ padding: '1.25rem 1.5rem 1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className="bp-lightbox-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
           {editing ? (
             <>
@@ -1004,17 +1004,7 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
 
   return (
     <div>
-      <div style={{
-        display: 'flex',
-        gap: 0,
-        marginBottom: '1.25rem',
-        background: 'var(--bp-paper)',
-        border: '1px solid var(--bp-rule)',
-        borderRadius: 'var(--bp-r-sm)',
-        boxShadow: 'var(--bp-shadow-card)',
-        overflow: 'hidden',
-        width: '100%',
-      }}>
+      <div className="bp-guest-stats">
         {[
           { label: 'Gesamt',         value: guests.length,  color: 'var(--bp-ink)' },
           { label: 'Zugesagt',       value: ja,             color: '#15803D' },
@@ -1022,17 +1012,8 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
           { label: 'Ausstehend',     value: ausstehend,     color: 'var(--bp-ink-3)' },
           { label: 'Begleitpers.',   value: begleitCount,   color: 'var(--bp-gold-deep)' },
           { label: 'Pers. erwartet', value: personenGesamt, color: 'var(--bp-ink)' },
-        ].map((s, i) => (
-          <div key={s.label} style={{
-            flex: 1,
-            minWidth: 0,
-            padding: '0.375rem 0.25rem',
-            borderLeft: i > 0 ? '1px solid var(--bp-rule)' : 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.25rem',
-          }}>
+        ].map(s => (
+          <div key={s.label} className="bp-guest-stat">
             <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: s.color }}>{s.value}</span>
             <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>{s.label}</span>
           </div>
@@ -1047,7 +1028,7 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
           <option value="abgesagt">Abgesagt</option>
           <option value="ausstehend">Ausstehend</option>
         </select>
-        <button className="bp-btn bp-btn-primary" onClick={() => setAdding(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button className="bp-btn bp-btn-primary bp-btn-mobile-full" onClick={() => setAdding(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Plus size={16} /> Gast hinzufügen
         </button>
       </div>
@@ -1080,7 +1061,7 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
         </div>
       )}
 
-      <div className="bp-hide-mobile bp-card" style={{ overflow: 'hidden' }}>
+      <div className="bp-hide-mobile bp-card bp-scroll-x">
         {filtered.length === 0 ? (
           <div className="bp-empty">
             <div className="bp-empty-title">Keine Gäste gefunden</div>
@@ -1194,7 +1175,7 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
           style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(44,40,37,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
           onClick={e => { if (e.target === e.currentTarget) setConfirmDeleteId(null) }}
         >
-          <div style={{ background: 'var(--bp-paper)', borderRadius: 'var(--bp-r-lg)', padding: '1.75rem', width: '100%', maxWidth: 360, boxShadow: 'var(--bp-shadow-elevated)' }}>
+          <div className="bp-dialog-pad" style={{ background: 'var(--bp-paper)', borderRadius: 'var(--bp-r-lg)', width: '100%', maxWidth: 360, boxShadow: 'var(--bp-shadow-elevated)' }}>
             <h2 className="bp-h2" style={{ margin: '0 0 0.75rem' }}>Gast löschen?</h2>
             <p className="bp-caption" style={{ margin: '0 0 1.5rem' }}>Diese Aktion kann nicht rückgängig gemacht werden.</p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -1581,7 +1562,7 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
         </div>
       )}
 
-      <div className="bp-card" style={{ overflow: 'hidden' }}>
+      <div className="bp-card bp-scroll-x">
         {guests.length === 0 ? (
           <div className="bp-empty">
             <div className="bp-empty-title">Noch keine Gäste</div>
@@ -1593,7 +1574,7 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
             <div className="bp-empty-body">Kein Gast passt zur Suche.</div>
           </div>
         ) : (
-          <table className="bp-table">
+          <table className="bp-table" style={{ minWidth: 560 }}>
             <thead>
               <tr>
                 <th style={{ width: 36, paddingRight: 0 }}>
@@ -1770,8 +1751,8 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
                       background: 'var(--bp-bg)', borderRadius: 'var(--bp-r-md)',
                       border: '1px solid var(--bp-rule)', padding: '0.75rem 1rem',
                     }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
-                        <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <div style={{ minWidth: 0, flex: '1 1 160px' }}>
                           <p style={{ fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9rem', margin: '0 0 0.2rem' }}>{guest.name}</p>
                           {guest.email
                             ? <p style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)', margin: 0 }}>{guest.email}</p>
@@ -1877,7 +1858,7 @@ function EinstellungenTab({ eventId, rsvpSettings: initialSettings }: { eventId:
           Begleitperson-Option anzeigen
         </label>
       </div>
-      <button className="bp-btn bp-btn-primary" onClick={save} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+      <button className="bp-btn bp-btn-primary bp-btn-mobile-full" onClick={save} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
         {saved && <Check size={16} />}
         {saving ? 'Speichert…' : saved ? 'Gespeichert' : 'Einstellungen speichern'}
       </button>

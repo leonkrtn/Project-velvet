@@ -2007,3 +2007,210 @@
   color: #fff;
   box-shadow: 0 6px 18px rgba(156,127,79,0.35);
 }
+
+/* Paywall-Wrapper (Shell) — Desktop identisch zum früheren Inline-Style */
+.bp-paywall-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsive Kern (320px–1024px) — nur max-width-Queries bzw. Klassen, die
+   frühere Inline-Styles 1:1 replizieren. Desktop bleibt pixel-identisch.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Mobile Drawer: Labels immer sichtbar, unabhängig vom Desktop-Collapse ── */
+@media (max-width: 768px) {
+  .bp-sidebar[data-mobile-open] .bp-sidebar-couple-name {
+    opacity: 1;
+    flex: 1;
+    width: auto;
+  }
+  .bp-sidebar[data-mobile-open] .bp-nav-item-label { opacity: 1; }
+  .bp-sidebar[data-mobile-open] .bp-sidebar-section-label {
+    opacity: 1;
+    height: auto;
+  }
+  .bp-sidebar[data-mobile-open] .bp-sidebar-footer-link span { opacity: 1; }
+  .bp-sidebar[data-mobile-open] .bp-sidebar-logo {
+    cursor: default;
+    justify-content: flex-start;
+    gap: 0.75rem;
+  }
+  .bp-sidebar[data-mobile-open] .bp-sidebar-logo:hover { background: none; }
+}
+
+/* ── Mobile Header: Titel mit Ellipsis statt Overflow ── */
+.bp-mobile-header-title {
+  font-size: 1rem;
+  color: var(--bp-ink);
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 0.5rem;
+}
+
+/* ── iOS-Zoom verhindern: Eingabefelder mind. 16px auf Mobile ── */
+@media (max-width: 767px) {
+  .bp-input,
+  .bp-select,
+  .bp-textarea,
+  .bp-pay-input,
+  .bp-cancel-textarea {
+    font-size: 1rem;
+  }
+}
+
+/* ── Buttons: auf Mobile volle Breite + Umbruch erlauben ── */
+@media (max-width: 640px) {
+  .bp-btn-mobile-full {
+    width: 100%;
+    white-space: normal;
+    height: auto;
+    min-height: 44px;
+  }
+}
+
+/* ── Übersicht: Hero (ehem. Inline-Styles, Desktop identisch) ── */
+.bp-uebersicht-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 2rem;
+}
+
+.bp-uebersicht-hero-days {
+  text-align: center;
+  padding-left: 1.5rem;
+  border-left: 1px solid var(--bp-rule-gold);
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .bp-uebersicht-hero { padding: 1.25rem; }
+  .bp-uebersicht-hero-days {
+    border-left: none;
+    padding-left: 0;
+    width: 100%;
+    border-top: 1px solid var(--bp-rule-gold);
+    padding-top: 1rem;
+  }
+}
+
+/* ── Allgemein: PLZ/Stadt-Zeile (ehem. Inline-Grid, Desktop identisch) ── */
+.bp-grid-zip {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .bp-grid-zip { grid-template-columns: 100px 1fr; }
+}
+
+/* ── Kompaktere Paddings auf kleinen Screens ── */
+@media (max-width: 640px) {
+  .bp-card-body { padding: 1rem; }
+  .bp-card-header { padding: 0.875rem 1rem; }
+  .bp-stat-card { padding: 1rem; }
+  .bp-gold-card { padding: 1.25rem; }
+  .bp-empty { padding: 2rem 1rem; }
+
+  /* Auth-Seiten (Signup/Login/Join) */
+  .bp-auth { padding: 1rem; }
+  .bp-auth-card { padding: 1.5rem 1.25rem; }
+
+  /* Abo & Tarif */
+  .bp-abo-hero { padding: 1.25rem 1rem; }
+  .bp-abo-days { margin-left: 0; flex: 1 1 100%; }
+
+  /* Paywall */
+  .bp-paywall-main { padding: 1.25rem 1rem; }
+  .bp-paywall-card { padding: 2rem 1.25rem; }
+
+  /* Modals */
+  .bp-modal-head { padding: 1.25rem 1.25rem 0; }
+  .bp-modal-body { padding: 1rem 1.25rem 1.25rem; }
+  .bp-pay-success { padding: 2rem 1.25rem 1.75rem; }
+}
+
+/* ── Horizontaler Scroll-Container für breite Tabellen/Tools ──────────────
+   Ohne Overflow rendert das auf Desktop pixel-identisch (kein Scrollbalken);
+   auf Mobile wird seitlich gescrollt statt das Layout zu sprengen. */
+.bp-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Gäste: Statistik-Leiste (ehem. Inline-Styles, Desktop identisch) ───── */
+.bp-guest-stats {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1.25rem;
+  background: var(--bp-paper);
+  border: 1px solid var(--bp-rule);
+  border-radius: var(--bp-r-sm);
+  box-shadow: var(--bp-shadow-card);
+  overflow: hidden;
+  width: 100%;
+}
+
+.bp-guest-stat {
+  flex: 1;
+  min-width: 0;
+  padding: 0.375rem 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.bp-guest-stat + .bp-guest-stat {
+  border-left: 1px solid var(--bp-rule);
+}
+
+@media (max-width: 640px) {
+  .bp-guest-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .bp-guest-stat {
+    flex-direction: column;
+    gap: 0;
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+  }
+  .bp-guest-stat:nth-child(3n + 1) { border-left: none; }
+  .bp-guest-stat:nth-child(n + 4) { border-top: 1px solid var(--bp-rule); }
+}
+
+/* ── Dialog-Innenabstand (ehem. Inline padding: 1.75rem) ──────────────────
+   Desktop identisch; auf kleinen Screens kompakter, damit Formularfelder
+   bei 320px nutzbare Breite behalten. */
+.bp-dialog-pad {
+  padding: 1.75rem;
+}
+
+/* ── Gast-Lightbox: Kopf/Body (ehem. Inline-Paddings, Desktop identisch) ── */
+.bp-lightbox-head {
+  padding: 1.25rem 1.5rem;
+}
+
+.bp-lightbox-body {
+  padding: 1.25rem 1.5rem 1.75rem;
+}
+
+@media (max-width: 640px) {
+  .bp-dialog-pad { padding: 1.25rem 1rem; }
+  .bp-lightbox-head { padding: 1rem; }
+  .bp-lightbox-body { padding: 1rem 1rem 1.25rem; }
+}

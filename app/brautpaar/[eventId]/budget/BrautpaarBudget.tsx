@@ -281,7 +281,7 @@ function AddItemForm({ eventId, onAdded }: { eventId: string; onAdded: (i: Budge
 
   if (!open) {
     return (
-      <button className="bp-btn bp-btn-secondary" onClick={() => setOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <button className="bp-btn bp-btn-secondary bp-btn-mobile-full" onClick={() => setOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <Plus size={16} /> Position hinzufügen
       </button>
     )
@@ -340,7 +340,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
         </div>
         <Link
           href={`/brautpaar/${eventId}/allgemein#budget`}
-          className="bp-btn bp-btn-secondary"
+          className="bp-btn bp-btn-secondary bp-btn-mobile-full"
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
         >
           <Settings size={15} />
@@ -376,7 +376,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
         <div className="bp-card-header">
           <h2 className="bp-section-title" style={{ margin: 0 }}>Positionen ({visibleItems.length + 1})</h2>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="bp-scroll-x">
         <table className="bp-table" style={{ minWidth: 560 }}>
           <thead>
             <tr>

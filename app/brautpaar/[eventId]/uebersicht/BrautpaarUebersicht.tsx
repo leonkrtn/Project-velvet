@@ -56,13 +56,7 @@ function Hero({ eventId, coupleName, eventTitle, eventDate, venueName, daysLeft 
   daysLeft: number | null
 }) {
   return (
-    <div
-      className="bp-gold-card bp-mb-6"
-      style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: '1.5rem', flexWrap: 'wrap', padding: '2rem',
-      }}
-    >
+    <div className="bp-gold-card bp-mb-6 bp-uebersicht-hero">
       <div style={{ minWidth: 0 }}>
         <p className="bp-label" style={{ marginBottom: '0.625rem' }}>Willkommen zurück</p>
         <h1 style={{
@@ -90,10 +84,7 @@ function Hero({ eventId, coupleName, eventTitle, eventDate, venueName, daysLeft 
       </div>
 
       {daysLeft !== null && (
-        <div style={{
-          textAlign: 'center', paddingLeft: '1.5rem',
-          borderLeft: '1px solid var(--bp-rule-gold)', flexShrink: 0,
-        }}>
+        <div className="bp-uebersicht-hero-days">
           <div style={{
             fontFamily: 'Cormorant Garamond, Georgia, serif', fontWeight: 600,
             fontSize: '3.25rem', lineHeight: 1, color: 'var(--bp-gold-deep)',

@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { Menu, X } from 'lucide-react'
 import './landing.css'
 
 const SIGNUP_URL = '/signup/brautpaar'
@@ -551,6 +552,7 @@ function DemoSection() {
 
 export default function LandingPage() {
   const heroBgRef = useRef<HTMLDivElement>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     // Scroll progress
@@ -672,7 +674,27 @@ export default function LandingPage() {
         <div className="lp-nav-right">
           <a href="/login" className="lp-nav-login">Anmelden</a>
           <a href={SIGNUP_URL} className="lp-nav-cta">3 Tage kostenlos testen</a>
+          <button
+            type="button"
+            className="lp-nav-burger"
+            aria-label={menuOpen ? 'Menü schließen' : 'Menü öffnen'}
+            aria-expanded={menuOpen}
+            aria-controls="lp-mobile-menu"
+            onClick={() => setMenuOpen(o => !o)}
+          >
+            {menuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
         </div>
+        {menuOpen && (
+          <div id="lp-mobile-menu" className="lp-nav-mobile-menu">
+            <a href="#lp-features" onClick={() => setMenuOpen(false)}>Funktionen</a>
+            <a href="#lp-pricing" onClick={() => setMenuOpen(false)}>Preise</a>
+            <a href="#lp-demo" onClick={() => setMenuOpen(false)}>So funktioniert&apos;s</a>
+            <a href="#lp-faq" onClick={() => setMenuOpen(false)}>FAQ</a>
+            <a href="/login" onClick={() => setMenuOpen(false)}>Anmelden</a>
+            <a href={SIGNUP_URL} className="lp-nav-mobile-cta" onClick={() => setMenuOpen(false)}>3 Tage kostenlos testen</a>
+          </div>
+        )}
       </nav>
 
       {/* HERO */}
