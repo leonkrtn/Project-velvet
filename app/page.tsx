@@ -16,6 +16,25 @@ function Check() {
   )
 }
 
+function Sparkle() {
+  return (
+    <svg className="lp-sparkle" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2c.4 3.6 1.4 4.6 5 5-3.6.4-4.6 1.4-5 5-.4-3.6-1.4-4.6-5-5 3.6-.4 4.6-1.4 5-5z" />
+      <path d="M19 13c.2 1.8.7 2.3 2.5 2.5-1.8.2-2.3.7-2.5 2.5-.2-1.8-.7-2.3-2.5-2.5 1.8-.2 2.3-.7 2.5-2.5z" opacity="0.7" />
+    </svg>
+  )
+}
+
+function CheckCircle() {
+  return (
+    <span className="lp-check-circle" aria-hidden="true">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M3.5 8.4l3 3L12.5 5" />
+      </svg>
+    </span>
+  )
+}
+
 export default function LandingPage() {
   const navRef = useRef<HTMLElement>(null)
   const heroBgRef = useRef<HTMLDivElement>(null)
@@ -226,17 +245,33 @@ export default function LandingPage() {
       {/* PROBLEM / SOLUTION */}
       <section className="lp-problem" id="lp-problem">
         <div className="lp-problem-grid">
-          <div className="lp-problem-card lp-reveal">
+          <div className="lp-problem-side lp-problem-side-plain lp-reveal">
             <p className="lp-problem-label">Ohne Velvet</p>
             <p className="lp-problem-text">
               Die Gästeliste in Excel, Zusagen per WhatsApp, das Budget im Kopf, der Sitzplan auf Papier — und keiner weiß, welcher Stand aktuell ist.
             </p>
+            <ul className="lp-problem-tags">
+              <li>Excel-Tabellen</li>
+              <li>WhatsApp-Chaos</li>
+              <li>Zettelwirtschaft</li>
+              <li>Veraltete Stände</li>
+            </ul>
           </div>
-          <div className="lp-problem-card lp-problem-card-gold lp-reveal lp-reveal-d2">
-            <p className="lp-problem-label">Mit Velvet</p>
+          <div className="lp-problem-divider" aria-hidden="true" />
+          <div className="lp-problem-side lp-problem-side-gold lp-reveal lp-reveal-d2">
+            <p className="lp-problem-label">
+              <Sparkle />
+              Mit Velvet
+            </p>
             <p className="lp-problem-text">
               Eure Gäste antworten über einen persönlichen Link — und Gästeliste, Menüwahl, Allergien und Sitzplan aktualisieren sich von selbst. Ihr beide seht immer denselben Stand. Live.
             </p>
+            <ul className="lp-problem-tags lp-problem-tags-gold">
+              <li>Ein Dashboard</li>
+              <li>RSVP automatisch</li>
+              <li>Live-Synchronisation</li>
+              <li>Immer aktuell</li>
+            </ul>
           </div>
         </div>
       </section>
@@ -384,51 +419,68 @@ export default function LandingPage() {
         </div>
         <div className="lp-pricing-grid">
           <div className="lp-price-card lp-reveal">
-            <p className="lp-price-name">Velvet</p>
+            <div className="lp-price-head">
+              <p className="lp-price-name">Velvet</p>
+              <p className="lp-price-tagline">Ihr plant zu zweit</p>
+            </div>
             <p className="lp-price-amount"><span className="lp-price-num">25 €</span><span className="lp-price-period">/ Monat</span></p>
-            <p className="lp-price-tagline">Ihr plant zu zweit</p>
             <ul className="lp-price-list">
-              <li><Check /> Gästeliste &amp; RSVP-Links</li>
-              <li><Check /> Sitzplan &amp; Tischplanung</li>
-              <li><Check /> Budget, Aufgaben, Zeitplan</li>
-              <li><Check /> Beide Partner, alle Geräte</li>
+              <li><CheckCircle /> Gästeliste &amp; RSVP-Links</li>
+              <li><CheckCircle /> Sitzplan &amp; Tischplanung</li>
+              <li><CheckCircle /> Budget, Aufgaben, Zeitplan</li>
+              <li><CheckCircle /> Beide Partner, alle Geräte</li>
             </ul>
-            <a href={SIGNUP_URL} className="lp-btn-primary lp-price-btn">3 Tage kostenlos testen</a>
+            <a href={SIGNUP_URL} className="lp-price-btn lp-price-btn-outline">3 Tage kostenlos testen</a>
           </div>
           <div className="lp-price-card lp-price-card-pro lp-reveal lp-reveal-d2">
-            <span className="lp-price-badge">Mit Profi-Team</span>
-            <p className="lp-price-name">Velvet Pro</p>
+            <span className="lp-price-badge"><Sparkle /> Mit Profi-Team</span>
+            <div className="lp-price-head">
+              <p className="lp-price-name">Velvet Pro</p>
+              <p className="lp-price-tagline">Ihr plant mit Profis</p>
+            </div>
             <p className="lp-price-amount"><span className="lp-price-num">55 €</span><span className="lp-price-period">/ Monat</span></p>
-            <p className="lp-price-tagline">Ihr plant mit Profis</p>
             <ul className="lp-price-list">
               <li className="lp-price-plus">Alles aus Velvet, plus:</li>
-              <li><Check /> Euer Hochzeitsplaner arbeitet im selben Dashboard mit</li>
-              <li><Check /> Dienstleister einladen — Caterer, DJ, Florist sehen genau das, was sie brauchen</li>
-              <li><Check /> Chat mit eurem ganzen Team</li>
+              <li><CheckCircle /> Euer Hochzeitsplaner arbeitet im selben Dashboard mit</li>
+              <li><CheckCircle /> Dienstleister einladen — Caterer, DJ, Florist sehen genau das, was sie brauchen</li>
+              <li><CheckCircle /> Chat mit eurem ganzen Team</li>
             </ul>
-            <a href={SIGNUP_URL} className="lp-btn-primary lp-price-btn">3 Tage kostenlos testen</a>
+            <a href={SIGNUP_URL} className="lp-price-btn lp-price-btn-fill">3 Tage kostenlos testen</a>
           </div>
         </div>
-        <p className="lp-pricing-note lp-reveal">
-          <strong>Erst klein anfangen, später hochschalten?</strong> Klar. Startet mit Velvet für 25 € — und holt euren Veranstalter oder eure Dienstleister jederzeit per Upgrade dazu. Monatlich kündbar, kein Jahresvertrag.
-        </p>
-        <p className="lp-pricing-compare lp-reveal">Zum Vergleich: weniger als ein Brautstrauß — für die Organisation eures gesamten Tages.</p>
+        <div className="lp-pricing-foot lp-reveal">
+          <p className="lp-pricing-note">
+            <strong>Erst klein anfangen, später hochschalten?</strong> Klar. Startet mit Velvet für 25 € — und holt euren Veranstalter oder eure Dienstleister jederzeit per Upgrade dazu. Monatlich kündbar, kein Jahresvertrag.
+          </p>
+          <span className="lp-pricing-rule" aria-hidden="true" />
+          <p className="lp-pricing-compare">Zum Vergleich: weniger als ein Brautstrauß — für die Organisation eures gesamten Tages.</p>
+        </div>
       </section>
 
       {/* TRIAL TIMELINE */}
       <section className="lp-trial">
         <div className="lp-trial-grid">
+          <div className="lp-trial-line" aria-hidden="true" />
           <div className="lp-trial-step lp-reveal">
-            <p className="lp-trial-when">Tag 1–3</p>
-            <p className="lp-trial-text">Voller Zugriff auf alles. Gäste anlegen, Sitzplan bauen, Partner einladen.</p>
+            <span className="lp-trial-node"><span className="lp-trial-dot">1</span></span>
+            <div className="lp-trial-body">
+              <p className="lp-trial-when">Tag 1–3</p>
+              <p className="lp-trial-text">Voller Zugriff auf alles. Gäste anlegen, Sitzplan bauen, Partner einladen.</p>
+            </div>
           </div>
           <div className="lp-trial-step lp-reveal lp-reveal-d2">
-            <p className="lp-trial-when">Tag 3</p>
-            <p className="lp-trial-text">Ihr entscheidet: weiterplanen ab 25 €/Monat oder einfach nichts tun.</p>
+            <span className="lp-trial-node"><span className="lp-trial-dot">2</span></span>
+            <div className="lp-trial-body">
+              <p className="lp-trial-when">Tag 3</p>
+              <p className="lp-trial-text">Ihr entscheidet: weiterplanen ab 25 €/Monat oder einfach nichts tun.</p>
+            </div>
           </div>
           <div className="lp-trial-step lp-reveal lp-reveal-d4">
-            <p className="lp-trial-when">Jederzeit</p>
-            <p className="lp-trial-text">Upgraden, kündigen, pausieren. Eure Daten bleiben gespeichert.</p>
+            <span className="lp-trial-node"><span className="lp-trial-dot">3</span></span>
+            <div className="lp-trial-body">
+              <p className="lp-trial-when">Jederzeit</p>
+              <p className="lp-trial-text">Upgraden, kündigen, pausieren. Eure Daten bleiben gespeichert.</p>
+            </div>
           </div>
         </div>
       </section>

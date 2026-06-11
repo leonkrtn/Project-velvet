@@ -1,4 +1,5 @@
-// POST { eventId } — kündigt zum Periodenende (Zugriff bleibt bis dahin).
+// POST { eventId, reason? } — kündigt zum Periodenende (Zugriff bleibt bis
+// dahin); der Kündigungsgrund aus der Lightbox wird mitgespeichert.
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -9,7 +10,7 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })
 
-  const body = await req.json().catch(() => null) as { eventId?: string } | null
+  const body = await req.json().catch(() => null) as { eventId?: string; reason?: string } | null
   if (!body?.eventId) return NextResponse.json({ error: 'Ungültige Anfrage' }, { status: 400 })
 
   if (!(await isSoloMember(body.eventId, user.id))) {
@@ -18,7 +19,12 @@ export async function POST(req: Request) {
 
   const admin = createAdminClient()
   const { error } = await admin.from('event_subscriptions')
-    .update({ status: 'canceled', canceled_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .update({
+      status: 'canceled',
+      canceled_at: new Date().toISOString(),
+      cancel_reason: typeof body.reason === 'string' ? body.reason.slice(0, 500) : null,
+      updated_at: new Date().toISOString(),
+    })
     .eq('event_id', body.eventId)
     .eq('status', 'active')
 
