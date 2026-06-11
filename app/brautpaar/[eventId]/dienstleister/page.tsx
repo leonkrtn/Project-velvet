@@ -33,7 +33,21 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
   if (!member) redirect('/login')
   if (member.role !== 'brautpaar_solo') redirect(`/brautpaar/${eventId}/uebersicht`)
 
-  // Dienstleister-Verwaltung ist ein Pro-Feature (Trial = voller Umfang)
+  const admin = createAdminClient()
+  const { data: vendors } = await admin
+    .from('event_members')
+    .select('id, user_id, profiles!user_id(id, name, email)')
+    .eq('event_id', eventId)
+    .eq('role', 'dienstleister')
+
+  const rows = (vendors ?? []).map(v => {
+    const profile = Array.isArray(v.profiles) ? (v.profiles[0] ?? null) : v.profiles
+    return { id: v.id, userId: v.user_id, name: profile?.name ?? null, email: profile?.email ?? null }
+  })
+
+  // Dienstleister-Verwaltung ist ein Pro-Feature (auch im Trial gesperrt).
+  // Bestandsschutz: bereits verbundene Dienstleister behalten ihren Zugriff
+  // und werden weiter angezeigt — nur Einladen + Rechte ändern braucht Pro.
   const subscription = await getSubscriptionState(eventId)
   if (subscription.gated && !subscription.isPro) {
     return (
@@ -67,21 +81,30 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
             Auf Velvet Pro upgraden
           </Link>
         </div>
+
+        {rows.length > 0 && (
+          <div style={{ marginTop: '1.75rem', maxWidth: 460 }}>
+            <p className="bp-label" style={{ marginBottom: '0.6rem' }}>Bereits verbunden</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              {rows.map(v => (
+                <div key={v.id} className="bp-card" style={{ padding: '0.9rem 1.1rem', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Briefcase size={16} style={{ flexShrink: 0, opacity: 0.6 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>{v.name ?? v.email ?? 'Dienstleister'}</p>
+                    {v.name && v.email && <p className="bp-caption" style={{ margin: 0 }}>{v.email}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="bp-caption" style={{ marginTop: '0.6rem', lineHeight: 1.5 }}>
+              Eure verbundenen Dienstleister behalten ihren Zugriff. Berechtigungen ändern und
+              neue Dienstleister einladen ist Teil von Velvet Pro.
+            </p>
+          </div>
+        )}
       </div>
     )
   }
-
-  const admin = createAdminClient()
-  const { data: vendors } = await admin
-    .from('event_members')
-    .select('id, user_id, profiles!user_id(id, name, email)')
-    .eq('event_id', eventId)
-    .eq('role', 'dienstleister')
-
-  const rows = (vendors ?? []).map(v => {
-    const profile = Array.isArray(v.profiles) ? (v.profiles[0] ?? null) : v.profiles
-    return { id: v.id, userId: v.user_id, name: profile?.name ?? null, email: profile?.email ?? null }
-  })
 
   return (
     <div className="bp-page">

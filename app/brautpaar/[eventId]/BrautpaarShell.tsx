@@ -356,7 +356,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
             <div className="bp-trial-banner">
               <Sparkles size={14} style={{ flexShrink: 0 }} />
               <span>
-                Testphase — {subscription.daysLeft === 1 ? 'noch 1 Tag' : `noch ${subscription.daysLeft} Tage`} voller Funktionsumfang
+                Testphase — {subscription.daysLeft === 1 ? 'noch 1 Tag' : `noch ${subscription.daysLeft} Tage`} mit allen Planungsfunktionen
               </span>
               <Link href={`/brautpaar/${eventId}/abo`}>Tarif wählen</Link>
             </div>

@@ -21,7 +21,7 @@ export interface SubscriptionState {
   status: 'trialing' | 'active' | 'canceled' | 'expired'
   /** Portal nutzbar (Trial läuft oder Abo aktiv/gekündigt-aber-bezahlt) */
   isActive: boolean
-  /** Pro-Features (Veranstalter + Dienstleister): Trial = voller Umfang */
+  /** Pro-Features (Chat mit Team, Veranstalter + Dienstleister): NUR mit Pro-Abo — der Trial entspricht dem Basis-Umfang */
   isPro: boolean
   trialEndsAt: string | null
   currentPeriodEnd: string | null
@@ -65,7 +65,7 @@ function computeState(row: SubscriptionRow): SubscriptionState {
       ...base,
       status: expired ? 'expired' : 'trialing',
       isActive: !expired,
-      isPro: !expired, // Trial = voller Pro-Umfang
+      isPro: false, // Trial = Basis-Umfang; Chat/Dienstleister/Veranstalter erst mit Pro
       daysLeft: daysUntil(row.trial_ends_at),
     }
   }
