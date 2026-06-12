@@ -67,7 +67,7 @@ export default async function NachrichtenPage({ params }: Props) {
   }))
 
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {proLocked && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap',
@@ -92,12 +92,14 @@ export default async function NachrichtenPage({ params }: Props) {
           </Link>
         </div>
       )}
-      <ChatsClient
-        eventId={eventId}
-        currentUserId={user.id}
-        initialConversations={conversations}
-        members={membersRaw}
-      />
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <ChatsClient
+          eventId={eventId}
+          currentUserId={user.id}
+          initialConversations={conversations}
+          members={membersRaw}
+        />
+      </div>
     </div>
   )
 }
