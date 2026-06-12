@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div style={{ height: '100dvh', display: 'flex', overflow: 'hidden' }}>
+    <div style={{ height: '100%', display: 'flex', overflow: 'hidden' }}>
       {/* Conversation list */}
       <div style={{ width: 280, flexShrink: 0, borderRight: '1px solid var(--bp-rule)', background: 'var(--bp-white)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '16px 14px', borderBottom: '1px solid var(--bp-rule)' }}>

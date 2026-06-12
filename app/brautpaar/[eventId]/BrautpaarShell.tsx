@@ -168,6 +168,17 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   const [mobileOpen, setMobileOpen] = useState(false)
   const [welcomeVisible, setWelcomeVisible] = useState(showWelcome)
   const [bpToggles, setBpToggles] = useState<Record<string, boolean>>({})
+  const [trialDismissed, setTrialDismissed] = useState(false)
+
+  // Trial-Banner: einmal weggeklickt bleibt es weg (auch auf dem Desktop)
+  useEffect(() => {
+    setTrialDismissed(localStorage.getItem('bp-trial-banner-dismissed') === 'true')
+  }, [])
+
+  const dismissTrialBanner = useCallback(() => {
+    setTrialDismissed(true)
+    localStorage.setItem('bp-trial-banner-dismissed', 'true')
+  }, [])
 
   // Load bp-* feature toggles to filter nav items
   useEffect(() => {
@@ -227,6 +238,9 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   }, [])
 
   const isDeko = pathname === `/brautpaar/${eventId}/dekoration` || pathname.startsWith(`/brautpaar/${eventId}/dekoration/`)
+  const isChat = pathname === `/brautpaar/${eventId}/nachrichten` || pathname.startsWith(`/brautpaar/${eventId}/nachrichten/`)
+  // Vollflächige Ansichten füllen exakt die verbleibende Höhe (kein Seiten-Scroll)
+  const isFullBleed = isDeko || isChat
   // Paywall: Trial/Abo abgelaufen → nur die Abo-Seite bleibt erreichbar
   const isAboPage = pathname === `/brautpaar/${eventId}/abo` || pathname.startsWith(`/brautpaar/${eventId}/abo/`)
   const isExpired = subscription?.status === 'expired' && !isAboPage
@@ -323,7 +337,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
         />
       )}
 
-      <div className="bp-shell" style={isDeko ? { height: '100dvh', overflow: 'hidden' } : undefined}>
+      <div className="bp-shell" style={isFullBleed ? { height: '100dvh', overflow: 'hidden' } : undefined}>
         {/* Sidebar — single element, CSS adapts desktop (data-expanded) vs mobile (data-mobile-open) */}
         <aside
           className="bp-sidebar"
@@ -364,14 +378,23 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
             <div style={{ width: 36 }} />
           </header>
 
-          {/* Trial-Banner: nur während laufender Testphase, nicht auf der Abo-Seite */}
-          {subscription?.status === 'trialing' && !isAboPage && (
+          {/* Trial-Banner: nur während laufender Testphase, nicht auf der Abo-Seite,
+              und nur solange nicht weggeklickt */}
+          {subscription?.status === 'trialing' && !isAboPage && !trialDismissed && (
             <div className="bp-trial-banner">
               <Sparkles size={14} style={{ flexShrink: 0 }} />
               <span>
                 Testphase — {subscription.daysLeft === 1 ? 'noch 1 Tag' : `noch ${subscription.daysLeft} Tage`} mit allen Planungsfunktionen
               </span>
               <Link href={`/brautpaar/${eventId}/abo`}>Tarif wählen</Link>
+              <button
+                type="button"
+                className="bp-trial-banner-close"
+                onClick={dismissTrialBanner}
+                aria-label="Hinweis ausblenden"
+              >
+                <X size={16} />
+              </button>
             </div>
           )}
 
@@ -403,7 +426,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
                 </p>
               </div>
             </main>
-          ) : isDeko ? (
+          ) : isFullBleed ? (
             <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               {children}
             </div>
