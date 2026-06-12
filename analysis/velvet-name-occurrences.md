@@ -3,6 +3,11 @@
 > Erstellt: 2026-06-12  
 > Zweck: Vollständige Inventur aller Stellen, die den Namen "Velvet" enthalten — als Grundlage für ein späteres Rebranding.
 
+> **STATUS: Rebranding zu "Forevr" am 2026-06-12 durchgeführt.**
+> Wordmarks/Logo erscheinen als FOREVR (Cormorant Garamond, Letterspacing), Fließtext als "Forevr", Tarife als "Forevr" / "Forevr Pro".
+> Bewusst NICHT umbenannt (siehe Abschnitte 2–4): localStorage/sessionStorage-Keys (`velvet_*`), Window-Events (`velvet-saved`, `velvet-tab-change`), Cloudflare-Worker (`velvet-file-service`), R2-Bucket (`velvet-files`), Vercel-URL (`project-velvet.vercel.app`) — Code zeigt weiterhin auf die bestehende Infrastruktur.
+> Umbenannte Dateien: `VelvetPdfDocument.tsx` → `ForevrPdfDocument.tsx`, `velvet-overview.html` → `forevr-overview.html`. Das Landing-Page-Logo (`logo.png`) wurde durch ein Text-Wordmark ersetzt.
+
 ---
 
 ## 1. Package- & Config-Dateien

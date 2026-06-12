@@ -1,4 +1,4 @@
-# Velvet – Known Issues, Bugs & Technical Debt
+# Forevr – Known Issues, Bugs & Technical Debt
 
 Severity: 🔴 Critical (data loss / security) · 🟠 High (broken feature) · 🟡 Medium (inconsistency) · 🟢 Low (cleanup)
 

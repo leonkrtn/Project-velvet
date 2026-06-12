@@ -22,8 +22,8 @@ interface Props {
 }
 
 const PLAN_INFO = {
-  basis: { name: 'Velvet', price: 25 },
-  pro:   { name: 'Velvet Pro', price: 55 },
+  basis: { name: 'Forevr', price: 25 },
+  pro:   { name: 'Forevr Pro', price: 55 },
 } as const
 
 const CANCEL_REASONS = [
@@ -53,10 +53,10 @@ export default function AboClient({ eventId, initialState }: Props) {
     ? 'Eure kostenlose Testphase'
     : isExpired
       ? 'Kein aktiver Tarif'
-      : state.plan === 'pro' ? 'Velvet Pro' : 'Velvet'
+      : state.plan === 'pro' ? 'Forevr Pro' : 'Forevr'
 
   const heroSub = isTrialing
-    ? `Alle Planungsfunktionen bis ${fmtDate(state.trialEndsAt)} — Profi-Team-Funktionen (Chat, Dienstleister, Veranstalter) gibt es mit Velvet Pro.`
+    ? `Alle Planungsfunktionen bis ${fmtDate(state.trialEndsAt)} — Profi-Team-Funktionen (Chat, Dienstleister, Veranstalter) gibt es mit Forevr Pro.`
     : isExpired
       ? 'Eure Planung ist sicher gespeichert. Wählt einen Tarif, um genau dort weiterzumachen, wo ihr aufgehört habt.'
       : isCanceled
@@ -67,7 +67,7 @@ export default function AboClient({ eventId, initialState }: Props) {
     <div className="bp-page">
       <div className="bp-page-header">
         <h1 className="bp-page-title">Abo &amp; Tarif</h1>
-        <p className="bp-page-subtitle">Euer Zugang zu Velvet — transparent und monatlich kündbar.</p>
+        <p className="bp-page-subtitle">Euer Zugang zu Forevr — transparent und monatlich kündbar.</p>
       </div>
 
       {/* Status-Hero */}
@@ -99,7 +99,7 @@ export default function AboClient({ eventId, initialState }: Props) {
             'Beide Partner, alle Geräte',
           ]}
           current={activePlan === 'basis'}
-          ctaLabel={activePlan === 'pro' ? null : isTrialing || isExpired ? 'Velvet wählen' : null}
+          ctaLabel={activePlan === 'pro' ? null : isTrialing || isExpired ? 'Forevr wählen' : null}
           onSelect={() => setCheckoutPlan('basis')}
         />
         <PlanCard
@@ -107,7 +107,7 @@ export default function AboClient({ eventId, initialState }: Props) {
           highlight
           tagline="Ihr plant mit Profis — Veranstalter und Dienstleister arbeiten mit."
           features={[
-            'Alles aus Velvet, plus:',
+            'Alles aus Forevr, plus:',
             'Euer Hochzeitsplaner arbeitet im selben Dashboard mit',
             'Dienstleister einladen — Caterer, DJ, Florist & Co.',
             'Chat mit eurem ganzen Team',
@@ -350,7 +350,7 @@ function CheckoutModal({ eventId, plan, isUpgrade, onClose }: {
               {method === 'paypal' && (
                 <p style={{ fontSize: '0.84rem', color: 'var(--bp-ink-2)', lineHeight: 1.6, margin: '0 0 0.4rem' }}>
                   Ihr werdet zur Bestätigung zu PayPal weitergeleitet und kehrt danach
-                  automatisch zu Velvet zurück.
+                  automatisch zu Forevr zurück.
                 </p>
               )}
 
@@ -464,7 +464,7 @@ function CancelModal({ eventId, periodEnd, planName, onClose }: {
           <>
             <div className="bp-modal-head">
               <h2 className="bp-modal-title">Schade, dass ihr gehen wollt</h2>
-              <p className="bp-modal-sub">Verratet ihr uns kurz, warum? Das hilft uns, Velvet besser zu machen.</p>
+              <p className="bp-modal-sub">Verratet ihr uns kurz, warum? Das hilft uns, Forevr besser zu machen.</p>
             </div>
             <div className="bp-modal-body">
               {CANCEL_REASONS.map(r => (

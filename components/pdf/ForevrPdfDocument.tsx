@@ -31,10 +31,10 @@ function buildExportTimestamp() {
   return `${p(now.getDate())}.${p(now.getMonth() + 1)}.${String(now.getFullYear()).slice(2)}, ${p(now.getHours())}:${p(now.getMinutes())}`
 }
 
-export default function VelvetPdfDocument({ data, mode, sections }: Props) {
+export default function ForevrPdfDocument({ data, mode, sections }: Props) {
   const has = (s: PdfSection) => sections.includes(s)
 
-  const headerTitle = `${data.event.title} – Velvet`
+  const headerTitle = `${data.event.title} – Forevr`
   const exportTimestamp = buildExportTimestamp()
 
   // Pre-compute 1-based section index for each included section
@@ -56,9 +56,9 @@ export default function VelvetPdfDocument({ data, mode, sections }: Props) {
   return (
     <Document
       title={data.event.title}
-      author="Velvet"
+      author="Forevr"
       subject={`${mode === 'intern' ? 'Interne' : 'Externe'} Exportdokumentation`}
-      creator="Velvet Event Management"
+      creator="Forevr Event Management"
     >
       <PdfCoverPage data={data} mode={mode} />
 

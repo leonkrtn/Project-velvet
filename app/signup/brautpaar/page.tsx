@@ -70,7 +70,7 @@ export default function BrautpaarSignupPage() {
     return (
       <div className="bp-auth">
         <div className="bp-auth-inner" style={{ textAlign: 'center' }}>
-          <p className="bp-auth-wordmark" style={{ marginBottom: 24 }}>Velvet.</p>
+          <p className="bp-auth-wordmark" style={{ marginBottom: 24 }}>FOREVR</p>
           <h2 className="bp-h2" style={{ marginBottom: 8 }}>Fast geschafft!</h2>
           <p className="bp-body">
             Bitte bestätigt eure E-Mail-Adresse über den Link, den wir euch geschickt haben.
@@ -87,7 +87,7 @@ export default function BrautpaarSignupPage() {
       <div className="bp-auth-inner bp-auth-inner-wide">
 
         <div className="bp-auth-logo">
-          <p className="bp-auth-wordmark">Velvet.</p>
+          <p className="bp-auth-wordmark">FOREVR</p>
           <p className="bp-auth-tagline">Eure Hochzeit, selbst geplant.</p>
         </div>
 

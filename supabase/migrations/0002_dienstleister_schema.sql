@@ -1,5 +1,5 @@
 -- ============================================================
--- Velvet Migration 0002 — Dienstleister Planning Schema
+-- Forevr Migration 0002 — Dienstleister Planning Schema
 -- Catering menu items, Fotograf schedule/deliverables,
 -- Band tech requirements / set list, and guest-count /
 -- allergy aggregation views.

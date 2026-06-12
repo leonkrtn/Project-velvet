@@ -69,7 +69,7 @@ export default function VeranstalterSignupPage() {
     return (
       <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
         <div style={{ textAlign: 'center', maxWidth: 420 }}>
-          <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 40, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1, marginBottom: 24 }}>Velvet.</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, fontSize: 34, color: 'var(--gold)', letterSpacing: '0.16em', lineHeight: 1, marginBottom: 24 }}>FOREVR</p>
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Fast geschafft!</h2>
           <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>
             Bitte bestätigt eure E-Mail-Adresse über den Link, den wir euch geschickt haben.
@@ -86,7 +86,7 @@ export default function VeranstalterSignupPage() {
       <div style={{ width: '100%', maxWidth: 440 }}>
 
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 40, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1 }}>Velvet.</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, fontSize: 34, color: 'var(--gold)', letterSpacing: '0.16em', lineHeight: 1 }}>FOREVR</p>
           <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 8 }}>
             Wird Veranstalter und verwalte deine Hochzeitsveranstaltungen
           </p>

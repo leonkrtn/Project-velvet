@@ -1,4 +1,4 @@
-// lib/store.ts — Velvet complete data model
+// lib/store.ts — Forevr complete data model
 
 export type MealChoice   = 'fleisch' | 'fisch' | 'vegetarisch' | 'vegan'
 export type AllergyTag   = 'Gluten' | 'Laktose' | 'Nüsse' | 'Fisch' | 'Soja' | 'Halal' | 'Kosher' | 'Ei'

@@ -108,7 +108,7 @@ function LoginForm() {
       <div className="bp-auth-inner">
 
         <div className="bp-auth-logo">
-          <p className="bp-auth-wordmark">Velvet.</p>
+          <p className="bp-auth-wordmark">FOREVR</p>
           <p className="bp-auth-tagline">Euer schönster Tag.</p>
         </div>
 

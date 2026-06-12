@@ -109,7 +109,7 @@ export default function PdfCoverPage({ data, mode }: Props) {
             textTransform: 'uppercase',
             letterSpacing: 0.5,
           }}>
-            Velvet Event Management
+            Forevr Event Management
           </Text>
         </View>
       </View>

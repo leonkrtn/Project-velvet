@@ -37,7 +37,7 @@ export default function PasswordResetPage() {
     return (
       <div className="bp-auth">
         <div className="bp-auth-inner" style={{ textAlign: 'center' }}>
-          <p className="bp-auth-wordmark" style={{ marginBottom: 24 }}>Velvet.</p>
+          <p className="bp-auth-wordmark" style={{ marginBottom: 24 }}>FOREVR</p>
           <MailCheck size={40} style={{ color: 'var(--bp-gold-deep)', marginBottom: 12 }} />
           <h2 className="bp-h2" style={{ marginBottom: 8 }}>E-Mail unterwegs</h2>
           <p className="bp-body">
@@ -55,7 +55,7 @@ export default function PasswordResetPage() {
       <div className="bp-auth-inner">
 
         <div className="bp-auth-logo">
-          <p className="bp-auth-wordmark">Velvet.</p>
+          <p className="bp-auth-wordmark">FOREVR</p>
           <p className="bp-auth-tagline">Passwort zurücksetzen</p>
         </div>
 

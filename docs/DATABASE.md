@@ -1,4 +1,4 @@
-# Velvet – Database Schema Reference
+# Forevr – Database Schema Reference
 
 Source of truth: `/supabase/migrations/` (applied in order) + `/supabase/setup.sql`.
 All tables have RLS enabled unless noted. SECURITY DEFINER functions bypass RLS.

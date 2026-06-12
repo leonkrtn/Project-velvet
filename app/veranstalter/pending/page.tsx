@@ -50,7 +50,7 @@ export default function VeranstalterPendingPage() {
     }}>
       <div style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 32, color: 'var(--accent)', letterSpacing: '-1px', lineHeight: 1 }}>Velvet.</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, fontSize: 28, color: 'var(--accent)', letterSpacing: '0.16em', lineHeight: 1 }}>FOREVR</p>
         </div>
 
         <div style={{

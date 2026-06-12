@@ -84,7 +84,7 @@ export default function JoinClient({ initialCode }: Props) {
 
         {/* Logo / Header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8 }}>Velvet</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: 16, fontWeight: 500, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: 8 }}>FOREVR</p>
           <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>Event beitreten</h1>
           <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Gib deinen Einladungscode ein.</p>
         </div>

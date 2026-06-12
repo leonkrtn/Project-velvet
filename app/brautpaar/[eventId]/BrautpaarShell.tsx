@@ -123,7 +123,7 @@ function WelcomeOverlay({ eventTitle, eventId, userId, onDone }: WelcomeOverlayP
           </span>
         </div>
         <h1 className="bp-h1" style={{ marginBottom: '0.5rem' }}>
-          Willkommen bei Velvet
+          Willkommen bei Forevr
         </h1>
         <p className="bp-body" style={{ marginBottom: '0.25rem', color: 'var(--bp-gold-deep)', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.125rem' }}>
           {eventTitle}

@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   // Dienstleister einladen ist für Solo-Paare ein Pro-Feature
   if (member.role === 'brautpaar_solo' && !(await hasProAccess(eventId))) {
     return NextResponse.json(
-      { error: 'Dienstleister einladen ist Teil von Velvet Pro. Upgradet euren Tarif, um euer Profi-Team dazuzuholen.', code: 'PRO_REQUIRED' },
+      { error: 'Dienstleister einladen ist Teil von Forevr Pro. Upgradet euren Tarif, um euer Profi-Team dazuzuholen.', code: 'PRO_REQUIRED' },
       { status: 403 },
     )
   }

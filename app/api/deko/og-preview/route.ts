@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Velvet/1.0)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Forevr/1.0)' },
       signal: AbortSignal.timeout(5000),
     })
     if (!res.ok) throw new Error('Fetch failed')

@@ -144,7 +144,7 @@ function SignupForm() {
     return (
       <div className="bp-auth">
         <div className="bp-auth-inner" style={{ textAlign: 'center' }}>
-          <p className="bp-auth-wordmark" style={{ marginBottom: 24 }}>Velvet.</p>
+          <p className="bp-auth-wordmark" style={{ marginBottom: 24 }}>FOREVR</p>
           <h2 className="bp-h2" style={{ marginBottom: 8 }}>Account erstellt!</h2>
           <p className="bp-body">Du wirst zum Login weitergeleitet…</p>
         </div>
@@ -157,7 +157,7 @@ function SignupForm() {
       <div className="bp-auth-inner bp-auth-inner-wide">
 
         <div className="bp-auth-logo">
-          <p className="bp-auth-wordmark">Velvet.</p>
+          <p className="bp-auth-wordmark">FOREVR</p>
           <p className="bp-auth-tagline">Konto erstellen</p>
         </div>
 

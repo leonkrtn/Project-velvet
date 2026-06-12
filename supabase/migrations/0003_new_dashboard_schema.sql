@@ -1,5 +1,5 @@
 -- ============================================================
--- Velvet Migration 0003 — New Dashboard Schema
+-- Forevr Migration 0003 — New Dashboard Schema
 -- Adds columns for Allgemein, Mitglieder, Ablaufplan, Vendors,
 -- and creates brautpaar_permissions table.
 -- Idempotent — safe to re-run.

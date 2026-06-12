@@ -108,7 +108,7 @@ export default function BewerbungPage() {
             Veranstalter werden
           </p>
           <p style={{ fontSize: 14, color: 'var(--text-dim)', lineHeight: 1.6 }}>
-            Bewerben Sie sich, um Events auf Velvet zu erstellen und zu verwalten.
+            Bewerben Sie sich, um Events auf Forevr zu erstellen und zu verwalten.
           </p>
         </div>
 

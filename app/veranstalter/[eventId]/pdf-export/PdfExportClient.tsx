@@ -10,7 +10,7 @@ import {
 import type { PdfEventData, PdfMode, PdfSection } from '@/components/pdf/PdfTypes'
 
 // Single dynamic import for ALL @react-pdf/renderer code (BlobProvider +
-// VelvetPdfDocument + all section components). Splitting these across two
+// ForevrPdfDocument + all section components). Splitting these across two
 // separate dynamic() calls caused webpack to create two separate module
 // instances of @react-pdf/renderer, each with their own copy of the internal
 // `re` variable — one copy always null → "TypeError: re is not a function".
@@ -166,7 +166,7 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
       .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
       .replace(/\s+/g, '-')
       .toLowerCase()
-    return `velvet-export-${safe}-${new Date().toISOString().slice(0, 10)}.pdf`
+    return `forevr-export-${safe}-${new Date().toISOString().slice(0, 10)}.pdf`
   }, [data.event.title])
 
 

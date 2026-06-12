@@ -227,8 +227,8 @@ export default function AppHeader() {
           padding: '16px 20px',
           borderBottom: '1px solid var(--border)',
         }}>
-          <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 18, color: 'var(--gold)' }}>
-            Velvet.
+          <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, letterSpacing: '0.16em', fontSize: 17, color: 'var(--gold)' }}>
+            FOREVR
           </span>
           <button onClick={() => setMenuOpen(false)} style={{
             background: 'none', border: 'none', cursor: 'pointer', padding: 4,
@@ -390,7 +390,7 @@ export default function AppHeader() {
 
         {/* Footer */}
         <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)' }}>
-          <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center' }}>Velvet. · Euer schönster Tag.</p>
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center' }}>Forevr · Euer schönster Tag.</p>
         </div>
       </div>
 
@@ -410,7 +410,7 @@ export default function AppHeader() {
           alignItems: 'center',
           padding: '14px 18px',
         }}>
-          {/* Left: back arrow + Velvet. */}
+          {/* Left: back arrow + FOREVR wordmark */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <button
               onClick={isSubPage ? handleBack : undefined}
@@ -431,8 +431,8 @@ export default function AppHeader() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
               </svg>
             </button>
-            <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: 16, color: 'var(--gold)' }}>
-              Velvet.
+            <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, letterSpacing: '0.16em', fontSize: 15, color: 'var(--gold)' }}>
+              FOREVR
             </span>
           </div>
 
@@ -531,9 +531,9 @@ export default function AppHeader() {
                 />
               </svg>
             </div>
-            {/* Velvet. */}
-            <div style={{fontFamily:"'DM Serif Display',serif",fontSize:52,color:'#C9A84C',letterSpacing:'-1px',lineHeight:1,animation:'vSlideUp 0.7s 1.2s cubic-bezier(0.22,1,0.36,1) both'}}>
-              Velvet.
+            {/* FOREVR wordmark */}
+            <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif",fontWeight:500,fontSize:44,color:'#C9A84C',letterSpacing:'0.2em',lineHeight:1,animation:'vSlideUp 0.7s 1.2s cubic-bezier(0.22,1,0.36,1) both'}}>
+              FOREVR
             </div>
           </div>
 

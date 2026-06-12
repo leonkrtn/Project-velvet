@@ -1,4 +1,4 @@
-/* Velvet Landing Page — scoped to .landing-root */
+/* Forevr Landing Page — scoped to .landing-root */
 
 .landing-root *, .landing-root *::before, .landing-root *::after {
   box-sizing: border-box; margin: 0; padding: 0;
@@ -53,7 +53,12 @@
   align-items: center;
   justify-content: space-between;
 }
-.lp-nav .nav-logo img { height: 72px; display: block; }
+.lp-nav .nav-logo .lp-logo-text {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 28px; font-weight: 500;
+  letter-spacing: 0.2em; color: #FFFDF9;
+  line-height: 1; display: block;
+}
 .lp-nav .nav-links {
   display: flex; gap: 36px; list-style: none;
 }
@@ -1058,7 +1063,12 @@
   display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
   gap: 60px; margin-bottom: 60px;
 }
-.lp-footer-logo img { height: 64px; margin-bottom: 20px; }
+.lp-footer-logo .lp-logo-text {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 26px; font-weight: 500;
+  letter-spacing: 0.2em; color: #3A3A45;
+  line-height: 1; display: block; margin-bottom: 20px;
+}
 .lp-footer-tagline {
   font-family: 'Cormorant Garamond', serif;
   font-size: 18px; font-style: italic; font-weight: 300;
@@ -1238,7 +1248,7 @@
   .landing-root section { padding: 64px 20px; }
   .lp-demo { padding: 64px 20px; }
   .lp-nav { padding: 12px 16px; }
-  .lp-nav .nav-logo img { height: 52px; }
+  .lp-nav .nav-logo .lp-logo-text { font-size: 22px; }
   /* CTA wandert ins Burger-Menü — Nav bleibt bei 320px frei von Overflow */
   .lp-nav-cta { display: none; }
   .lp-nav-mobile-menu { left: 12px; right: 12px; }
@@ -1311,6 +1321,6 @@
 
   /* Footer */
   .lp-footer { padding: 48px 20px 28px; }
-  .lp-footer-logo img { height: 48px; }
+  .lp-footer-logo .lp-logo-text { font-size: 22px; }
   .lp-footer-top { gap: 32px; margin-bottom: 40px; }
 }

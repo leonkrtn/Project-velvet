@@ -233,7 +233,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     try {
       const { upsertEventToDB } = await getDB()
       await upsertEventToDB(e, userId)
-      console.log('[Velvet] Sync OK – Gäste:', e.guests.length)
+      console.log('[Forevr] Sync OK – Gäste:', e.guests.length)
       setSyncError(null)
       if (pendingEvent.current) {
         const next = pendingEvent.current
@@ -243,7 +243,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
         return
       }
     } catch (err: any) {
-      console.error('[Velvet] Sync FEHLER:', err?.message ?? String(err), '| code:', err?.code, '| details:', err?.details, '| hint:', err?.hint)
+      console.error('[Forevr] Sync FEHLER:', err?.message ?? String(err), '| code:', err?.code, '| details:', err?.details, '| hint:', err?.hint)
       setSyncError('Daten konnten nicht synchronisiert werden.')
     } finally {
       syncInProgress.current = false
@@ -255,7 +255,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     saveEvent(e)
 
     if (isDemoRef.current || !isSupabaseConfigured()) {
-      console.log('[Velvet] updateEvent: übersprungen – isDemo:', isDemoRef.current, '| supabaseOK:', isSupabaseConfigured())
+      console.log('[Forevr] updateEvent: übersprungen – isDemo:', isDemoRef.current, '| supabaseOK:', isSupabaseConfigured())
       return
     }
 
@@ -263,11 +263,11 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       const { createClient } = await getSupabase()
       const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
-      console.log('[Velvet] updateEvent: session userId:', session?.user?.id ?? 'KEINE SESSION')
+      console.log('[Forevr] updateEvent: session userId:', session?.user?.id ?? 'KEINE SESSION')
       if (!session) return
       await doSync(e, session.user.id)
     } catch (err: any) {
-      console.error('[Velvet] updateEvent Fehler:', err?.message ?? String(err))
+      console.error('[Forevr] updateEvent Fehler:', err?.message ?? String(err))
       setSyncError('Daten konnten nicht synchronisiert werden.')
     }
   }, [])

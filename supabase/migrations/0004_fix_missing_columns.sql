@@ -1,5 +1,5 @@
 -- ============================================================
--- Velvet Migration 0004 — Fix missing columns
+-- Forevr Migration 0004 — Fix missing columns
 -- Adds joined_at to event_members and ensures conversations
 -- has the name + updated_at columns (in case the table was
 -- created from the old schema.ts which used 'title' instead).

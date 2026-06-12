@@ -77,7 +77,7 @@ export default async function NachrichtenPage({ params }: Props) {
         }}>
           <Sparkles size={14} style={{ color: 'var(--bp-gold-deep, #9C7F4F)', flexShrink: 0 }} />
           <span>
-            Chats mit Veranstalter &amp; Dienstleistern sind Teil von <strong>Velvet Pro</strong> —
+            Chats mit Veranstalter &amp; Dienstleistern sind Teil von <strong>Forevr Pro</strong> —
             der Chat mit eurem Partner ist immer frei.
           </span>
           <Link

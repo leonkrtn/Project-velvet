@@ -1,5 +1,5 @@
 -- ============================================================
--- Velvet Migration 0009 — Vendor Signup Codes
+-- Forevr Migration 0009 — Vendor Signup Codes
 -- Organizer-generated one-time codes for vendor account creation.
 -- Separate from event_invitations (which add a user to an event).
 -- Idempotent — safe to re-run.

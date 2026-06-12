@@ -1,4 +1,4 @@
-# Velvet – Claude Code Context
+# Forevr – Claude Code Context
 
 > Auto-loaded by Claude Code at session start. Keep up to date when schema or architecture changes.
 > Detailed references: [DATABASE](docs/DATABASE.md) · [ARCHITECTURE](docs/ARCHITECTURE.md) · [KNOWN_ISSUES](docs/KNOWN_ISSUES.md)
@@ -232,7 +232,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 
 ## Landing Page
 
-`app/page.tsx` — Full Velvet landing page (client component, not a redirect).
+`app/page.tsx` — Full Forevr landing page (client component, not a redirect).
 - CSS in `app/landing.css` (scoped to `.landing-root`, prefixed `lp-*`)
 - Images in `public/landing/` (hero.jpg, cta.jpg, photo-*.jpg, logo.png)
 - Google Fonts (Cormorant Garamond + DM Sans) loaded in `app/layout.tsx`

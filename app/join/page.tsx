@@ -102,7 +102,7 @@ function JoinForm() {
       <div className="bp-auth-inner bp-auth-inner-wide">
 
         <div className="bp-auth-logo">
-          <p className="bp-auth-wordmark">Velvet.</p>
+          <p className="bp-auth-wordmark">FOREVR</p>
           <p className="bp-auth-tagline">Event beitreten</p>
         </div>
 

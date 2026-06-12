@@ -310,7 +310,7 @@ export default function RSVPPage() {
 
   if (!event || !guest) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--bg)', flexDirection: 'column', gap: 12 }}>
-      <span style={{ fontFamily: "'DM Serif Display',serif", fontSize: 28, color: 'var(--gold)' }}>Velvet.</span>
+      <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, letterSpacing: '0.16em', fontSize: 26, color: 'var(--gold)' }}>FOREVR</span>
       <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>
         {loadError ?? 'Einladung wird geladen…'}
       </p>
