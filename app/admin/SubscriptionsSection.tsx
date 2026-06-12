@@ -21,7 +21,7 @@ const C = {
   red: '#B91C1C', green: '#15803D', amber: '#B45309',
 }
 
-const PLAN_LABEL: Record<string, string> = { trial: 'Trial', basis: 'Velvet (25 €)', pro: 'Velvet Pro (55 €)' }
+const PLAN_LABEL: Record<string, string> = { trial: 'Trial', basis: 'Forevr (25 €)', pro: 'Forevr Pro (55 €)' }
 
 const STATUS_BADGE: Record<string, { label: string; color: string; bg: string }> = {
   trialing: { label: 'Testphase', color: C.amber, bg: '#FFFBEB' },
@@ -154,8 +154,8 @@ export default function SubscriptionsSection({
                         style={selStyle}
                       >
                         <option value="">Aktion wählen…</option>
-                        <option value="basis">Auf Velvet setzen (aktiv)</option>
-                        <option value="pro">Auf Velvet Pro setzen (aktiv)</option>
+                        <option value="basis">Auf Forevr setzen (aktiv)</option>
+                        <option value="pro">Auf Forevr Pro setzen (aktiv)</option>
                         <option value="trial7">Trial verlängern (+7 Tage)</option>
                         <option value="trial30">Trial verlängern (+30 Tage)</option>
                         <option value="grant_free">Dauerhaft freischalten (Pro)</option>

@@ -28,7 +28,7 @@ interface Organizer {
   createdAt: string | null
 }
 
-// ── Neutrales Admin-Design (bewusst kein Velvet-Branding) ─────────────────────
+// ── Neutrales Admin-Design (bewusst kein Forevr-Branding) ─────────────────────
 
 const C = {
   bg: '#F4F5F7',

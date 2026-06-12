@@ -475,7 +475,7 @@ function DemoSection() {
       <div className="lp-demo-header">
         <p className="lp-section-eyebrow lp-reveal">Ein Blick ins Produkt</p>
         <h2 className="lp-section-title">
-          <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">So <em>fühlt sich Velvet an</em></span></span>
+          <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">So <em>fühlt sich Forevr an</em></span></span>
         </h2>
         <p className="lp-section-sub lp-reveal lp-reveal-d2">
           Klickt euch durch — das ist euer Dashboard mit Beispieldaten von Lisa &amp; Jonas.
@@ -503,7 +503,7 @@ function DemoSection() {
             <span className="lp-demo-browser-dot" style={{ background: '#FF5F57' }} />
             <span className="lp-demo-browser-dot" style={{ background: '#FFBD2E' }} />
             <span className="lp-demo-browser-dot" style={{ background: '#28C840' }} />
-            <span className="lp-demo-browser-url">app.velvet.de</span>
+            <span className="lp-demo-browser-url">app.forevr.de</span>
           </div>
           <div className="lp-demo-browser-content">
             {activeTab === 0 && <DemoUebersicht />}
@@ -663,7 +663,7 @@ export default function LandingPage() {
       {/* NAV */}
       <nav className="lp-nav">
         <a href="#" className="nav-logo">
-          <img src="/landing/logo.png" alt="Velvet" />
+          <span className="lp-logo-text">FOREVR</span>
         </a>
         <ul className="nav-links">
           <li><a href="#lp-features">Funktionen</a></li>
@@ -733,7 +733,7 @@ export default function LandingPage() {
       <section className="lp-problem" id="lp-problem">
         <div className="lp-problem-grid">
           <div className="lp-problem-side lp-problem-side-plain lp-reveal">
-            <p className="lp-problem-label">Ohne Velvet</p>
+            <p className="lp-problem-label">Ohne Forevr</p>
             <p className="lp-problem-text">
               Die Gästeliste in Excel, Zusagen per WhatsApp, das Budget im Kopf, der Sitzplan auf Papier — und keiner weiß, welcher Stand aktuell ist.
             </p>
@@ -748,7 +748,7 @@ export default function LandingPage() {
           <div className="lp-problem-side lp-problem-side-gold lp-reveal lp-reveal-d2">
             <p className="lp-problem-label">
               <Sparkle />
-              Mit Velvet
+              Mit Forevr
             </p>
             <p className="lp-problem-text">
               Eure Gäste antworten über einen persönlichen Link — und Gästeliste, Menüwahl, Allergien und Sitzplan aktualisieren sich von selbst. Ihr beide seht immer denselben Stand. Live.
@@ -774,7 +774,7 @@ export default function LandingPage() {
           </div>
           <div>
             <p className="lp-section-sub lp-reveal lp-reveal-d2">
-              Das Velvet-Brautpaar-Dashboard vereint alle wichtigen Planungstools in einer eleganten Oberfläche — damit ihr euch auf das Wesentliche konzentrieren könnt: einander.
+              Das Forevr-Brautpaar-Dashboard vereint alle wichtigen Planungstools in einer eleganten Oberfläche — damit ihr euch auf das Wesentliche konzentrieren könnt: einander.
             </p>
           </div>
         </div>
@@ -910,7 +910,7 @@ export default function LandingPage() {
         <div className="lp-pricing-grid">
           <div className="lp-price-card lp-reveal">
             <div className="lp-price-head">
-              <p className="lp-price-name">Velvet</p>
+              <p className="lp-price-name">Forevr</p>
               <p className="lp-price-tagline">Ihr plant zu zweit</p>
             </div>
             <p className="lp-price-amount"><span className="lp-price-num">25 €</span><span className="lp-price-period">/ Monat</span></p>
@@ -925,12 +925,12 @@ export default function LandingPage() {
           <div className="lp-price-card lp-price-card-pro lp-reveal lp-reveal-d2">
             <span className="lp-price-badge"><Sparkle /> Mit Profi-Team</span>
             <div className="lp-price-head">
-              <p className="lp-price-name">Velvet Pro</p>
+              <p className="lp-price-name">Forevr Pro</p>
               <p className="lp-price-tagline">Ihr plant mit Profis</p>
             </div>
             <p className="lp-price-amount"><span className="lp-price-num">55 €</span><span className="lp-price-period">/ Monat</span></p>
             <ul className="lp-price-list">
-              <li className="lp-price-plus">Alles aus Velvet, plus:</li>
+              <li className="lp-price-plus">Alles aus Forevr, plus:</li>
               <li><CheckCircle /> Euer Hochzeitsplaner arbeitet im selben Dashboard mit</li>
               <li><CheckCircle /> Dienstleister einladen — Caterer, DJ, Florist sehen genau das, was sie brauchen</li>
               <li><CheckCircle /> Chat mit eurem ganzen Team</li>
@@ -940,7 +940,7 @@ export default function LandingPage() {
         </div>
         <div className="lp-pricing-foot lp-reveal">
           <p className="lp-pricing-note">
-            <strong>Erst klein anfangen, später hochschalten?</strong> Klar. Startet mit Velvet für 25 € — und holt euren Veranstalter oder eure Dienstleister jederzeit per Upgrade dazu. Monatlich kündbar, kein Jahresvertrag.
+            <strong>Erst klein anfangen, später hochschalten?</strong> Klar. Startet mit Forevr für 25 € — und holt euren Veranstalter oder eure Dienstleister jederzeit per Upgrade dazu. Monatlich kündbar, kein Jahresvertrag.
           </p>
           <span className="lp-pricing-rule" aria-hidden="true" />
           <p className="lp-pricing-compare">Zum Vergleich: weniger als ein Brautstrauß — für die Organisation eures gesamten Tages.</p>
@@ -985,11 +985,11 @@ export default function LandingPage() {
             </h2>
           </div>
           {([
-            { q: 'Was kostet Velvet?', a: 'Die ersten 3 Tage sind kostenlos — mit allen Planungsfunktionen und ohne Zahlungsdaten. Danach kostet Velvet 25 € im Monat. Wenn euer Hochzeitsplaner und eure Dienstleister mitarbeiten sollen — inklusive Team-Chat —, gibt es Velvet Pro für 55 € im Monat. Beides ist monatlich kündbar.' },
+            { q: 'Was kostet Forevr?', a: 'Die ersten 3 Tage sind kostenlos — mit allen Planungsfunktionen und ohne Zahlungsdaten. Danach kostet Forevr 25 € im Monat. Wenn euer Hochzeitsplaner und eure Dienstleister mitarbeiten sollen — inklusive Team-Chat —, gibt es Forevr Pro für 55 € im Monat. Beides ist monatlich kündbar.' },
             { q: 'Was passiert nach den 3 Testtagen?', a: 'Ihr entscheidet aktiv, ob ihr weitermacht — es wird nichts automatisch abgebucht, weil wir im Test keine Zahlungsdaten verlangen. Eure Daten bleiben gespeichert, sodass ihr nahtlos weiterplanen könnt.' },
-            { q: 'Können wir später von Velvet auf Pro wechseln?', a: 'Jederzeit, mit einem Klick. Viele Paare starten allein für 25 € und holen den Veranstalter oder die Dienstleister später per Upgrade dazu.' },
+            { q: 'Können wir später von Forevr auf Pro wechseln?', a: 'Jederzeit, mit einem Klick. Viele Paare starten allein für 25 € und holen den Veranstalter oder die Dienstleister später per Upgrade dazu.' },
             { q: 'Können wir beide gemeinsam planen?', a: 'Ja! Das Dashboard ist für beide Partner gleichzeitig zugänglich. Ihr könnt von verschiedenen Geräten aus gleichzeitig arbeiten. Änderungen werden in Echtzeit synchronisiert — so seid ihr immer auf dem gleichen Stand.' },
-            { q: 'Sind unsere Daten sicher?', a: 'Eure Daten sind ausschließlich für euch und die Personen sichtbar, die ihr zu eurer Planung einladet. Velvet verwendet eine sichere, verschlüsselte Verbindung. Eure Gästeliste, Sitzpläne und persönlichen Informationen werden vertraulich behandelt und nicht an Dritte weitergegeben.' },
+            { q: 'Sind unsere Daten sicher?', a: 'Eure Daten sind ausschließlich für euch und die Personen sichtbar, die ihr zu eurer Planung einladet. Forevr verwendet eine sichere, verschlüsselte Verbindung. Eure Gästeliste, Sitzpläne und persönlichen Informationen werden vertraulich behandelt und nicht an Dritte weitergegeben.' },
           ] as const).map(({ q, a }, i) => (
             <div key={i} className={`lp-faq-item lp-reveal${i > 0 ? ` lp-reveal-d${i}` : ''}`}>
               <button
@@ -1029,7 +1029,7 @@ export default function LandingPage() {
       <footer className="lp-footer">
         <div className="lp-footer-top">
           <div>
-            <div className="lp-footer-logo"><img src="/landing/logo.png" alt="Velvet" /></div>
+            <div className="lp-footer-logo"><span className="lp-logo-text">FOREVR</span></div>
             <p className="lp-footer-tagline">Euer großer Tag.<br />Einfach unvergesslich geplant.</p>
           </div>
           <div>
@@ -1061,7 +1061,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="lp-footer-bottom">
-          <span className="lp-footer-copy">© 2026 Velvet. Alle Rechte vorbehalten. <a href="/signup/veranstalter" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Veranstalter</a></span>
+          <span className="lp-footer-copy">© 2026 Forevr. Alle Rechte vorbehalten. <a href="/signup/veranstalter" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Veranstalter</a></span>
           <div className="lp-footer-legal">
             <a href="#">Impressum</a>
             <a href="#">Datenschutz</a>

@@ -57,7 +57,7 @@ export default function OpenInvitePage() {
     return (
       <div className="bp-auth">
         <div className="bp-auth-inner" style={{ textAlign: 'center' }}>
-          <p className="bp-auth-wordmark" style={{ marginBottom: 20 }}>Velvet.</p>
+          <p className="bp-auth-wordmark" style={{ marginBottom: 20 }}>FOREVR</p>
           <h1 className="bp-h2" style={{ marginBottom: 8 }}>Link nicht gültig</h1>
           <p className="bp-body">
             Diese Einladung ist nicht mehr aktiv. Bitte wendet euch an das Brautpaar.

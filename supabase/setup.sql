@@ -1,5 +1,5 @@
 -- ============================================================
--- Velvet Wedding Platform — Production-Ready Database Setup v7
+-- Forevr Wedding Platform — Production-Ready Database Setup v7
 -- Supabase-kompatibel | Idempotent — beliebig oft ausführbar
 -- ============================================================
 

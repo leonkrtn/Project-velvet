@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Velvet — Brautpaar Design System
+   Forevr — Brautpaar Design System
    All classes scoped to .bp-* — never overrides globals.css
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -1195,10 +1195,11 @@
 }
 
 .bp-auth-wordmark {
-  font-family: 'DM Serif Display', Georgia, serif;
-  font-size: 2.5rem;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 2.1rem;
+  font-weight: 500;
   color: var(--bp-gold-deep);
-  letter-spacing: -1px;
+  letter-spacing: 0.16em;
   line-height: 1;
   margin: 0;
 }

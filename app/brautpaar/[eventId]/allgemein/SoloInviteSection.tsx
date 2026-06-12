@@ -166,7 +166,7 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
         {state.error && (
           <p style={{ fontSize: 13, color: 'var(--bp-red, #a04040)', margin: 0 }}>
             {state.error}
-            {state.error.includes('Velvet Pro') && (
+            {state.error.includes('Forevr Pro') && (
               <>
                 {' '}
                 <a href={`/brautpaar/${eventId}/abo`} style={{ color: 'var(--bp-gold, #B8923A)', fontWeight: 600 }}>
@@ -248,7 +248,7 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
           ) : (
             <>
               <p className="bp-body" style={{ fontSize: 13, margin: 0 }}>
-                Falls ihr euch später professionelle Unterstützung holt: Mit diesem Code kann ein registrierter und freigeschalteter Veranstalter eurem Event beitreten und die Planung in seinem Veranstalter-Portal übernehmen. Hat euer Veranstalter noch kein Velvet-Konto, muss er sich zuerst registrieren und freischalten lassen.
+                Falls ihr euch später professionelle Unterstützung holt: Mit diesem Code kann ein registrierter und freigeschalteter Veranstalter eurem Event beitreten und die Planung in seinem Veranstalter-Portal übernehmen. Hat euer Veranstalter noch kein Forevr-Konto, muss er sich zuerst registrieren und freischalten lassen.
               </p>
               {membersLoaded && <InviteControls target="veranstalter" buttonLabel="Veranstalter-Code erstellen" />}
             </>

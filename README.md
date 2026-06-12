@@ -1,4 +1,4 @@
-# Velvet — Hochzeitsplattform
+# Forevr — Hochzeitsplattform
 
 Mobile-first Web App Prototyp · Next.js 14 + TypeScript
 
@@ -26,7 +26,7 @@ npm run dev
 ## Struktur
 
 ```
-velvet/
+forevr/
 ├── app/
 │   ├── layout.tsx          # Root Layout + PWA Meta
 │   ├── page.tsx            # Redirect → /dashboard

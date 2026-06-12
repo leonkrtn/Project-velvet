@@ -159,7 +159,7 @@ export default function OnboardingPage() {
       <div style={{background:'var(--surface)',borderBottom:'1px solid var(--border)',padding:'16px 20px',paddingTop:'calc(16px + env(safe-area-inset-top))',position:'sticky',top:0,zIndex:10}}>
         <div style={{maxWidth:600,margin:'0 auto'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-            <span style={{fontFamily:"'DM Serif Display',serif",fontSize:18,color:'var(--gold)'}}>Velvet.</span>
+            <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif",fontWeight:500,letterSpacing:'0.16em',fontSize:17,color:'var(--gold)'}}>FOREVR</span>
             <span style={{fontSize:11,color:'var(--text-dim)'}}>{step} / {STEPS.length} — {STEPS[step-1].label}</span>
           </div>
           <div style={{display:'flex',gap:5}}>
@@ -175,7 +175,7 @@ export default function OnboardingPage() {
         {/* STEP 1 */}
         {step===1&&(
           <div style={{animation:'fadeUp 0.4s ease'}}>
-            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:26,fontWeight:400,color:'var(--text)',marginBottom:6}}>Willkommen bei Velvet</h2>
+            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:26,fontWeight:400,color:'var(--text)',marginBottom:6}}>Willkommen bei Forevr</h2>
             <p style={{fontSize:14,color:'var(--text-light)',marginBottom:24,lineHeight:1.6}}>Lass uns euren großen Tag einrichten. Diese Angaben bilden die Grundlage eurer gesamten Planung.</p>
             <Block>
               <Lbl req>Name des Brautpaars</Lbl>

@@ -61,10 +61,10 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
         <div className="bp-paywall-card" style={{ margin: 0 }}>
           <div className="bp-paywall-icon"><Sparkles size={24} /></div>
           <h2 className="bp-font-heading" style={{ fontSize: '1.45rem', margin: '0 0 0.6rem', color: 'var(--bp-ink)' }}>
-            Teil von Velvet Pro
+            Teil von Forevr Pro
           </h2>
           <p style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)', margin: '0 0 1.5rem', lineHeight: 1.65 }}>
-            Mit Velvet Pro ladet ihr Caterer, DJ, Florist und weitere Dienstleister direkt in eure
+            Mit Forevr Pro ladet ihr Caterer, DJ, Florist und weitere Dienstleister direkt in eure
             Planung ein — jeder sieht genau die Module, die ihr freigebt. Upgrade jederzeit,
             eure Planung bleibt vollständig erhalten.
           </p>
@@ -78,7 +78,7 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
               boxShadow: '0 4px 14px rgba(156,127,79,0.32)',
             }}
           >
-            Auf Velvet Pro upgraden
+            Auf Forevr Pro upgraden
           </Link>
         </div>
 
@@ -98,7 +98,7 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
             </div>
             <p className="bp-caption" style={{ marginTop: '0.6rem', lineHeight: 1.5 }}>
               Eure verbundenen Dienstleister behalten ihren Zugriff. Berechtigungen ändern und
-              neue Dienstleister einladen ist Teil von Velvet Pro.
+              neue Dienstleister einladen ist Teil von Forevr Pro.
             </p>
           </div>
         )}

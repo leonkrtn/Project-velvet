@@ -1,4 +1,4 @@
-// components/ui/index.tsx — Velvet · Black/White/Gold
+// components/ui/index.tsx — Forevr · Black/White/Gold
 'use client'
 import React from 'react'
 import type { MealChoice, AllergyTag } from '@/lib/store'

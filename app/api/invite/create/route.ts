@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   // Veranstalter dazuholen ist ein Pro-Feature (Partner-Einladung bleibt frei)
   if (callerRole === 'brautpaar_solo' && targetRole === 'veranstalter' && !(await hasProAccess(eventId))) {
     return NextResponse.json(
-      { error: 'Veranstalter einladen ist Teil von Velvet Pro. Upgradet euren Tarif, um euer Profi-Team dazuzuholen.', code: 'PRO_REQUIRED' },
+      { error: 'Veranstalter einladen ist Teil von Forevr Pro. Upgradet euren Tarif, um euer Profi-Team dazuzuholen.', code: 'PRO_REQUIRED' },
       { status: 403 },
     )
   }

@@ -1,5 +1,5 @@
 -- ============================================================
--- Velvet Migration 0008 — Vendor Permission System
+-- Forevr Migration 0008 — Vendor Permission System
 -- Adds event_invitations, permissions, module-content tables,
 -- join_event_by_code RPC, and vendor-aware RLS policies.
 -- Idempotent — safe to re-run.

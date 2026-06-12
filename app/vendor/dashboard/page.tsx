@@ -24,7 +24,7 @@ export default async function VendorOverviewPage() {
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
 
         <div style={{ marginBottom: 32 }}>
-          <p style={{ fontFamily: "'DM Serif Display', serif", fontSize: 32, color: 'var(--gold)', letterSpacing: '-1px', lineHeight: 1, marginBottom: 8 }}>Velvet.</p>
+          <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, fontSize: 28, color: 'var(--gold)', letterSpacing: '0.16em', lineHeight: 1, marginBottom: 8 }}>FOREVR</p>
           <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', marginBottom: 4 }}>Meine Events</h1>
           <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>Alle Events, bei denen du als Dienstleister eingetragen bist.</p>
         </div>

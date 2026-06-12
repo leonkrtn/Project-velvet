@@ -112,7 +112,7 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
     if (downloading || photos.length === 0) return
     setDownloading(true)
     for (let i = 0; i < photos.length; i++) {
-      await downloadSinglePhoto(photos[i], `velvet-foto-${String(i + 1).padStart(3, '0')}-${photos[i].uploader_name ?? 'gast'}.jpg`)
+      await downloadSinglePhoto(photos[i], `forevr-foto-${String(i + 1).padStart(3, '0')}-${photos[i].uploader_name ?? 'gast'}.jpg`)
       if (i < photos.length - 1) await new Promise(r => setTimeout(r, 300))
     }
     setDownloading(false)
