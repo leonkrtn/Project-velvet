@@ -41,6 +41,33 @@
   z-index: 2;
 }
 
+/* ─── WORDMARK ───
+   FOREVR-Schriftzug: Letterspacing 0.16em (Brand-Spec) + Ausgleich des
+   Nachlaufs hinter dem letzten Buchstaben. Alle 30s läuft ein kurzer
+   Glanz-Sweep über den Schriftzug (lp-logo-glint). */
+.landing-root .lp-logo-text {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  margin-right: -0.16em;
+  line-height: 1; display: block;
+  color: var(--lp-logo-base, #FFFDF9);
+  background: linear-gradient(100deg,
+    var(--lp-logo-base, #FFFDF9) 0%,
+    var(--lp-logo-base, #FFFDF9) 42%,
+    var(--lp-logo-glint, #EBCF8E) 50%,
+    var(--lp-logo-base, #FFFDF9) 58%,
+    var(--lp-logo-base, #FFFDF9) 100%);
+  background-size: 200% auto;
+  background-position: -200% center;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: lp-logo-glint 30s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-root .lp-logo-text { animation: none; }
+}
+
 /* ─── NAV ─── */
 .landing-root .lp-nav {
   /* Bewusst absolute statt fixed: Der Header liegt nur ganz oben über dem
@@ -53,11 +80,16 @@
   align-items: center;
   justify-content: space-between;
 }
+.lp-nav .nav-logo {
+  display: inline-flex; align-items: center;
+  text-decoration: none; line-height: 1;
+}
 .lp-nav .nav-logo .lp-logo-text {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 28px; font-weight: 500;
-  letter-spacing: 0.2em; color: #FFFDF9;
-  line-height: 1; display: block;
+  font-size: 28px;
+  /* Cormorant-Versalien sitzen mit line-height 1 optisch leicht zu hoch */
+  transform: translateY(0.05em);
+  --lp-logo-base: #FFFDF9;
+  --lp-logo-glint: #EBCF8E;
 }
 .lp-nav .nav-links {
   display: flex; gap: 36px; list-style: none;
@@ -131,7 +163,10 @@
 }
 .lp-hero-bg {
   position: absolute; inset: 0;
-  background: linear-gradient(to bottom, rgba(30,25,20,0.25) 0%, rgba(30,25,20,0.72) 100%);
+  /* Zusätzlicher Scrim oben: Logo + Nav bleiben über hellen Fotostellen lesbar */
+  background:
+    linear-gradient(to bottom, rgba(20,16,10,0.45) 0%, rgba(20,16,10,0) 22%),
+    linear-gradient(to bottom, rgba(30,25,20,0.25) 0%, rgba(30,25,20,0.72) 100%);
   z-index: 1;
 }
 .lp-hero-photo {
@@ -1064,10 +1099,10 @@
   gap: 60px; margin-bottom: 60px;
 }
 .lp-footer-logo .lp-logo-text {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 26px; font-weight: 500;
-  letter-spacing: 0.2em; color: #3A3A45;
-  line-height: 1; display: block; margin-bottom: 20px;
+  font-size: 26px;
+  margin-bottom: 20px;
+  --lp-logo-base: #3A3A45;
+  --lp-logo-glint: #B8923A;
 }
 .lp-footer-tagline {
   font-family: 'Cormorant Garamond', serif;
@@ -1112,6 +1147,15 @@
 @keyframes lp-shimmer {
   0%   { background-position: -200% center; }
   100% { background-position:  200% center; }
+}
+/* Wordmark-Glint: 92% der Zeit ruhig, dann ~2.4s Sweep (30s-Zyklus) */
+@keyframes lp-logo-glint {
+  0%, 92% { background-position: -200% center; }
+  100%    { background-position:  200% center; }
+}
+@keyframes lp-menuIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* ─── SCROLL REVEAL ─── */
@@ -1201,20 +1245,23 @@
   .lp-nav-burger {
     display: inline-flex; align-items: center; justify-content: center;
     width: 44px; height: 44px; padding: 0;
-    background: rgba(20,16,10,0.35);
-    border: 1px solid rgba(255,253,249,0.3);
-    border-radius: 8px; color: #FFFDF9; cursor: pointer;
+    background: rgba(20,16,10,0.32);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,253,249,0.28);
+    border-radius: 10px; color: #FFFDF9; cursor: pointer;
     transition: background 0.2s;
   }
   .lp-nav-burger:hover { background: rgba(20,16,10,0.5); }
   .lp-nav-mobile-menu {
     display: flex; flex-direction: column;
-    position: absolute; top: calc(100% + 4px); left: 16px; right: 16px;
+    position: absolute; top: calc(100% + 6px); left: 16px; right: 16px;
     background: #FFFDF9;
     border: 1px solid #EDE4D3;
     border-radius: 14px; padding: 10px;
     box-shadow: 0 18px 48px rgba(45,45,53,0.18), 0 4px 12px rgba(45,45,53,0.10);
     z-index: 99;
+    animation: lp-menuIn 0.22s ease both;
   }
   .lp-nav-mobile-menu a {
     font-family: 'DM Sans', sans-serif;
@@ -1225,6 +1272,12 @@
     transition: background 0.15s;
   }
   .lp-nav-mobile-menu a:hover { background: #F9F4EC; }
+  /* Anmelden vom Seiten-Menü absetzen */
+  .lp-nav-mobile-menu .lp-nav-mobile-login {
+    margin-top: 6px;
+    border-top: 1px solid #F1E9D9;
+    color: #8A6B28;
+  }
   .lp-nav-mobile-menu .lp-nav-mobile-cta {
     margin-top: 6px; justify-content: center;
     background: #B8923A; color: #FFFDF9;
@@ -1247,16 +1300,20 @@
   /* Grundabstände & Nav */
   .landing-root section { padding: 64px 20px; }
   .lp-demo { padding: 64px 20px; }
-  .lp-nav { padding: 12px 16px; }
-  .lp-nav .nav-logo .lp-logo-text { font-size: 22px; }
+  .lp-nav { padding: 14px 20px; }
+  .lp-nav .nav-logo .lp-logo-text { font-size: 21px; }
+  .lp-nav-right { gap: 10px; }
+  .lp-nav-burger { width: 42px; height: 42px; }
   /* CTA wandert ins Burger-Menü — Nav bleibt bei 320px frei von Overflow */
   .lp-nav-cta { display: none; }
-  .lp-nav-mobile-menu { left: 12px; right: 12px; }
+  /* Menü bündig zur Logo-Kante (Nav-Padding 20px) */
+  .lp-nav-mobile-menu { left: 20px; right: 20px; }
 
   /* Hero: dynamische Viewport-Höhe (Mobile-Browser-UI), gestapelte Buttons */
   .lp-hero { height: 100svh; min-height: 600px; }
-  .lp-hero-content { padding: 0 20px 64px; }
-  .lp-hero-headline { font-size: clamp(32px, 10vw, 42px); }
+  .lp-hero-content { padding: 0 20px 56px; }
+  .lp-hero-eyebrow { font-size: 11px; letter-spacing: 0.16em; }
+  .lp-hero-headline { font-size: clamp(34px, 10.5vw, 46px); }
   .lp-hero-sub { font-size: 15px; margin-top: 18px; }
   .lp-hero-actions {
     margin-top: 28px;
@@ -1299,6 +1356,17 @@
 
   /* Trial-Timeline */
   .lp-trial-step { gap: 16px; }
+
+  /* Demo-Tabs: einzeilig horizontal scrollbar statt zweizeilig umbrechen */
+  .lp-demo-tabs {
+    flex-wrap: nowrap; overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-left: -20px; margin-right: -20px;
+    padding-left: 20px; padding-right: 20px;
+  }
+  .lp-demo-tabs::-webkit-scrollbar { display: none; }
+  .lp-demo-tab { white-space: nowrap; flex-shrink: 0; }
 
   /* Demo-Steps: vertikal stapeln, Divider wird senkrecht */
   .lp-demo-steps { margin-top: 48px; }
