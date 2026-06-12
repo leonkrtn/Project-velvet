@@ -5,6 +5,19 @@
 
 ---
 
+## ⚠️ Branding: Forevr (ehemals Velvet)
+
+- Der Produktname ist **Forevr** — im UI als Wordmark **FOREVR** (Cormorant Garamond, Letterspacing ~0.16em, Großbuchstaben), im Fließtext **Forevr**, Tarife **Forevr** / **Forevr Pro**.
+- Der alte Name "Velvet" darf in neuem Code, UI-Texten, Doku und Kommentaren **nie wieder verwendet werden**.
+- Ausnahme — bestehende technische Bezeichner bleiben bewusst `velvet*` und dürfen NICHT umbenannt werden (Nutzerdaten/Infrastruktur):
+  - localStorage/sessionStorage-Keys: `velvet_event_v3`, `velvet_display`, `velvet_dashboard_tab`, `velvet_current_path`, `velvet_back_target`
+  - Window-Events: `velvet-saved`, `velvet-tab-change`
+  - Cloudflare Worker `velvet-file-service` + R2-Bucket `velvet-files` (`wrangler.toml`)
+  - Vercel-Deployment `project-velvet.vercel.app` (Einladungstexte in `MitgliederClient.tsx`)
+- Vollständige Rebranding-Inventur: `analysis/velvet-name-occurrences.md`
+
+---
+
 ## UI Conventions
 
 - **No emojis** — use Lucide React icons everywhere instead (already a dependency)
