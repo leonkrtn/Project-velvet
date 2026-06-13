@@ -27,7 +27,7 @@ export default async function AllgemeinPage({ params }: Props) {
       venue, venue_address,
       location_name, location_street, location_zip, location_city, location_website,
       max_begleitpersonen, children_allowed, children_note,
-      meal_options, menu_type, collect_allergies,
+      meal_options, collect_allergies,
       budget_total, dresscode
     `)
     .eq('id', eventId)
