@@ -691,7 +691,7 @@ export default function LandingPage() {
             <a href="#lp-pricing" onClick={() => setMenuOpen(false)}>Preise</a>
             <a href="#lp-demo" onClick={() => setMenuOpen(false)}>So funktioniert&apos;s</a>
             <a href="#lp-faq" onClick={() => setMenuOpen(false)}>FAQ</a>
-            <a href="/login" onClick={() => setMenuOpen(false)}>Anmelden</a>
+            <a href="/login" className="lp-nav-mobile-login" onClick={() => setMenuOpen(false)}>Anmelden</a>
             <a href={SIGNUP_URL} className="lp-nav-mobile-cta" onClick={() => setMenuOpen(false)}>3 Tage kostenlos testen</a>
           </div>
         )}
