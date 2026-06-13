@@ -27,7 +27,7 @@ export default async function UebersichtPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [eventRes, guestsRes, budgetRes, tasksRes, seatingRes, songsRes] = await Promise.all([
+  const [eventRes, guestsRes, begleitRes, budgetRes, tasksRes, seatingRes, songsRes] = await Promise.all([
     supabase
       .from('events')
       .select('id, title, date, couple_name, venue, organizer_fee, organizer_fee_type, budget_total')
@@ -36,6 +36,10 @@ export default async function UebersichtPage({ params }: Props) {
     supabase
       .from('guests')
       .select('id, status, invited_at, pending_approval')
+      .eq('event_id', eventId),
+    supabase
+      .from('begleitpersonen')
+      .select('guest_id')
       .eq('event_id', eventId),
     supabase
       .from('budget_items')
@@ -62,8 +66,10 @@ export default async function UebersichtPage({ params }: Props) {
   // pending_approval-Gäste (Sammel-Link, noch unbestätigt) zählen nicht mit
   const allGuests = guestsRes.data ?? []
   const guests = allGuests.filter(g => !g.pending_approval)
+  const confirmedGuestIds = new Set(guests.filter(g => g.status === 'zugesagt').map(g => g.id))
+  const confirmedBegleit = (begleitRes.data ?? []).filter(b => confirmedGuestIds.has(b.guest_id)).length
   const guestTotal = guests.length
-  const guestConfirmed = guests.filter(g => g.status === 'zugesagt').length
+  const guestConfirmed = confirmedGuestIds.size + confirmedBegleit
   const guestDeclined = guests.filter(g => g.status === 'abgesagt').length
   // "Ausstehend" = eingeladen aber noch ohne Antwort (inkl. vielleicht)
   const guestPending = guests.filter(g => ['angelegt', 'eingeladen', 'vielleicht'].includes(g.status as string)).length
