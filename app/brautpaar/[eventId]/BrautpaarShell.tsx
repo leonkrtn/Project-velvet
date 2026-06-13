@@ -317,9 +317,8 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
             window.location.href = '/login'
           }}
           className="bp-sidebar-footer-link"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, color: 'inherit' }}
         >
-          <LogOut size={13} />
+          <LogOut size={16} className="bp-nav-item-icon" />
           <span>Abmelden</span>
         </button>
       </div>

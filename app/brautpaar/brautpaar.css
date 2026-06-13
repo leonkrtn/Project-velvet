@@ -414,16 +414,28 @@
 .bp-sidebar-footer-link {
   display: flex;
   align-items: center;
+  /* Geometrie spiegelt .bp-nav-item: gleiche Icon-Größe, gleicher Gap,
+     gleiche Einrückung (1rem + 2px transparenter Rand) → Icon und Label
+     fluchten exakt mit den Nav-Einträgen darüber. */
+  gap: 0.75rem;
   padding: 0 1rem;
-  height: 32px;
+  height: 40px;
+  border: none;
+  border-left: 2px solid transparent;
+  background: none;
+  width: 100%;
+  cursor: pointer;
+  box-sizing: border-box;
   font-family: 'DM Sans', system-ui, sans-serif;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   color: var(--bp-ink-3);
   text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
   transition: color var(--bp-transition), background var(--bp-transition);
 }
+
+.bp-sidebar-footer-link svg { flex-shrink: 0; }
 
 .bp-sidebar-footer-link:hover {
   color: var(--bp-ink);
