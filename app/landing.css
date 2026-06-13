@@ -181,7 +181,10 @@
 }
 .lp-hero-content {
   position: relative; z-index: 2;
-  width: 100%; padding: 120px 60px 80px;
+  /* Kein horizontales Padding: die generische `section`-Gutter (0 60px)
+     liefert es bereits. Sonst säße der Hero-Text doppelt eingerückt (120px)
+     und damit nicht bündig zum Nav-Logo/den übrigen Sektionen (60px). */
+  width: 100%; padding: 120px 0 80px;
   display: flex; align-items: flex-end;
 }
 .lp-hero-text { max-width: 720px; }
@@ -1188,10 +1191,13 @@
 
 /* ─── RESPONSIVE ─── */
 @media (max-width: 1024px) {
-  .lp-nav { padding: 16px 32px; }
+  /* .landing-root-Präfix nötig: die Basisregel hat sonst höhere Spezifität
+     und die Nav behielte ihre 60px-Gutter (Logo nicht bündig zum Inhalt). */
+  .landing-root .lp-nav { padding: 16px 32px; }
   .lp-nav .nav-links { display: none; }
   .landing-root section { padding: 80px 32px; }
-  .lp-hero-content { padding: 0 32px 64px; }
+  /* horizontale Gutter kommt von der `section`-Regel (0 32px) */
+  .lp-hero-content { padding: 0 0 64px; }
   .lp-features-header { grid-template-columns: 1fr; }
   .lp-features-grid { grid-template-columns: 1fr 1fr; }
   /* Problem: stack vertically, divider becomes horizontal */
@@ -1300,7 +1306,7 @@
   /* Grundabstände & Nav */
   .landing-root section { padding: 64px 20px; }
   .lp-demo { padding: 64px 20px; }
-  .lp-nav { padding: 14px 20px; }
+  .landing-root .lp-nav { padding: 14px 20px; }
   .lp-nav .nav-logo .lp-logo-text { font-size: 21px; }
   .lp-nav-right { gap: 10px; }
   .lp-nav-burger { width: 42px; height: 42px; }
@@ -1311,7 +1317,8 @@
 
   /* Hero: dynamische Viewport-Höhe (Mobile-Browser-UI), gestapelte Buttons */
   .lp-hero { height: 100svh; min-height: 600px; }
-  .lp-hero-content { padding: 0 20px 56px; }
+  /* horizontale Gutter kommt von der `section`-Regel (0 20px) */
+  .lp-hero-content { padding: 0 0 56px; }
   .lp-hero-eyebrow { font-size: 11px; letter-spacing: 0.16em; }
   .lp-hero-headline { font-size: clamp(34px, 10.5vw, 46px); }
   .lp-hero-sub { font-size: 15px; margin-top: 18px; }
