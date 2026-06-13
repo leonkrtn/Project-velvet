@@ -550,7 +550,7 @@ function BrautpaarMusikView({ eventId, songs, setSongs }: { eventId: string; son
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {(['wish', 'no_go', 'playlist'] as Song['type'][]).map(type => (
+      {(['wish', 'no_go'] as Song['type'][]).map(type => (
         <BrautpaarSongSection
           key={type}
           type={type}
