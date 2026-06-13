@@ -24,7 +24,6 @@ interface EventData {
   children_allowed: boolean
   children_note: string | null
   meal_options: string[] | null
-  menu_type: string | null
   collect_allergies: boolean | null
   budget_total: number | null
   dresscode: string | null
@@ -102,7 +101,6 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
         children_allowed:     data.children_allowed,
         children_note:        data.children_note,
         meal_options:         data.meal_options,
-        menu_type:            data.menu_type,
         collect_allergies:    data.collect_allergies,
         budget_total:         data.budget_total,
         dresscode:            data.dresscode,
@@ -271,15 +269,7 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
           </div>
         </Field>
 
-        <Field label="Menütyp">
-          <select className="bp-select" value={data.menu_type ?? ''} onChange={e => set('menu_type', e.target.value || null)}>
-            <option value="">Nicht festgelegt</option>
-            <option value="buffet">Buffet</option>
-            <option value="menu">Menü (serviert)</option>
-            <option value="mixed">Gemischt</option>
-            <option value="food-truck">Food Truck</option>
-          </select>
-        </Field>
+
       </Section>
 
       {/* Budget */}
