@@ -26,6 +26,7 @@ interface SitzAssignment {
   guest_id: string | null
   begleitperson_id: string | null
   brautpaar_slot: 1 | 2 | null
+  seat_index: number | null
 }
 
 interface GuestFull {
@@ -332,6 +333,45 @@ function px2m(px: number, py: number, scale: number, offX: number, offY: number)
   return { x: (px - offX) / scale, y: (py - offY) / scale }
 }
 
+// Initialen (max. 2 Buchstaben) aus einem Namen
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '–'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+// Sitzpositionen (in Metern, relativ zum Tischzentrum, VOR Rotation) für n Plätze.
+function seatLocalPositions(table: SitzTable, n: number): { dx: number; dy: number }[] {
+  const out: { dx: number; dy: number }[] = []
+  if (n <= 0) return out
+  if (table.shape === 'round') {
+    const r = table.table_length / 2 + CHAIR_PAD * 0.6
+    for (let i = 0; i < n; i++) {
+      const ang = -Math.PI / 2 + (i * 2 * Math.PI) / n
+      out.push({ dx: Math.cos(ang) * r, dy: Math.sin(ang) * r })
+    }
+  } else {
+    const L = table.table_length
+    const W = table.table_width
+    const off = W / 2 + CHAIR_PAD * 0.6
+    const nTop = Math.ceil(n / 2)
+    const nBot = n - nTop
+    for (let i = 0; i < nTop; i++) {
+      out.push({ dx: -L / 2 + ((i + 0.5) * L) / nTop, dy: -off })
+    }
+    for (let i = 0; i < nBot; i++) {
+      out.push({ dx: -L / 2 + ((i + 0.5) * L) / nBot, dy: off })
+    }
+  }
+  return out
+}
+
+function rotatePt(dx: number, dy: number, deg: number): { dx: number; dy: number } {
+  const r = (deg * Math.PI) / 180
+  return { dx: dx * Math.cos(r) - dy * Math.sin(r), dy: dx * Math.sin(r) + dy * Math.cos(r) }
+}
+
 function coupleNames(coupleName?: string): [string, string] {
   if (!coupleName) return ['Partner 1', 'Partner 2']
   const parts = coupleName.split(/[&+,]/).map(s => s.trim()).filter(Boolean)
@@ -451,6 +491,12 @@ export default function SitzplanEditor({
   const [editingName, setEditingName] = useState<string | null>(null)
   const [nameInput, setNameInput] = useState('')
 
+  // Sitz-Tausch: ausgewählter Sitz (Tippen) + Drag-Status
+  const [selectedSeat, setSelectedSeat] = useState<{ tableId: string; index: number } | null>(null)
+  const seatDrag = useRef<{ tableId: string; index: number; x: number; y: number; moved: boolean } | null>(null)
+  const suppressSeatClick = useRef(false)
+  const seatPointerUpRef = useRef<(e: PointerEvent) => void>(() => {})
+
   const svgRef = useRef<SVGSVGElement>(null)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
   const [canvasW, setCanvasW] = useState(CANVAS_W)
@@ -512,8 +558,32 @@ export default function SitzplanEditor({
           .eq('guests.event_id', eventId)
           .order('name'),
       ])
+      // Sitzpositionen normalisieren: Zuweisungen ohne seat_index bekommen den
+      // nächsten freien Platz an ihrem Tisch (einmalig, persistiert).
+      const asg = (assignmentsData ?? []) as SitzAssignment[]
+      const pendingSeat: { id: string; seat_index: number }[] = []
+      const byTable = new Map<string, SitzAssignment[]>()
+      for (const a of asg) {
+        const list = byTable.get(a.table_id) ?? []
+        list.push(a); byTable.set(a.table_id, list)
+      }
+      for (const list of byTable.values()) {
+        const used = new Set(list.map(a => a.seat_index).filter(i => i != null) as number[])
+        for (const a of list) {
+          if (a.seat_index == null) {
+            let s = 0; while (used.has(s)) s++
+            a.seat_index = s; used.add(s)
+            pendingSeat.push({ id: a.id, seat_index: s })
+          }
+        }
+      }
+      if (pendingSeat.length) {
+        void Promise.all(pendingSeat.map(p =>
+          supabase.from('seating_assignments').update({ seat_index: p.seat_index }).eq('id', p.id)
+        ))
+      }
       setTables(tablesData ?? [])
-      setAssignments(assignmentsData ?? [])
+      setAssignments(asg)
       setGuests((guestsData ?? []) as GuestFull[])
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped = (begleitData ?? []).map((b: any) => ({
@@ -639,9 +709,22 @@ export default function SitzplanEditor({
     await supabase.from('seating_tables').update({ [field]: value }).eq('id', tableId)
   }
 
+  // Klartext-Name (ohne "Begl."-Zusatz) für Initialen
+  const personBaseName = (a: SitzAssignment): string => {
+    if (a.guest_id) return guests.find(g => g.id === a.guest_id)?.name ?? ''
+    if (a.begleitperson_id) return begleit.find(b => b.id === a.begleitperson_id)?.name ?? ''
+    if (a.brautpaar_slot === 1) return partner1
+    if (a.brautpaar_slot === 2) return partner2
+    return ''
+  }
+
   async function assignPerson(person: PersonEntry) {
     if (!selectedTableId) return
-    const payload: Record<string, unknown> = { table_id: selectedTableId, event_id: eventId }
+    // nächsten freien Platz am Tisch bestimmen
+    const used = new Set(assignmentsForTable(selectedTableId).map(a => a.seat_index).filter(i => i != null) as number[])
+    let seat = 0; while (used.has(seat)) seat++
+
+    const payload: Record<string, unknown> = { table_id: selectedTableId, event_id: eventId, seat_index: seat }
     if (person.type === 'guest') payload.guest_id = person.id
     else if (person.type === 'begleitperson') payload.begleitperson_id = person.id
     else if (person.id === 'bp1') payload.brautpaar_slot = 1
@@ -649,6 +732,53 @@ export default function SitzplanEditor({
 
     const { data, error } = await supabase.from('seating_assignments').insert(payload).select().single()
     if (!error && data) setAssignments(prev => [...prev, data])
+  }
+
+  // Zwei Plätze am selben Tisch tauschen (Tausch der seat_index-Werte)
+  async function swapSeats(a: { tableId: string; index: number }, b: { tableId: string; index: number }) {
+    if (a.tableId !== b.tableId || a.index === b.index) return
+    const occA = assignments.find(x => x.table_id === a.tableId && (x.seat_index ?? -1) === a.index)
+    const occB = assignments.find(x => x.table_id === b.tableId && (x.seat_index ?? -1) === b.index)
+    if (!occA && !occB) return
+    const changes: { id: string; seat_index: number }[] = []
+    if (occA) changes.push({ id: occA.id, seat_index: b.index })
+    if (occB) changes.push({ id: occB.id, seat_index: a.index })
+    setAssignments(prev => prev.map(x => {
+      const c = changes.find(c => c.id === x.id)
+      return c ? { ...x, seat_index: c.seat_index } : x
+    }))
+    await Promise.all(changes.map(c =>
+      supabase.from('seating_assignments').update({ seat_index: c.seat_index }).eq('id', c.id)
+    ))
+  }
+
+  // Tippen: ersten Sitz markieren, zweiten am selben Tisch → tauschen
+  function handleSeatTap(tableId: string, index: number) {
+    if (suppressSeatClick.current) { suppressSeatClick.current = false; return }
+    if (!selectedSeat) { setSelectedSeat({ tableId, index }); return }
+    if (selectedSeat.tableId === tableId && selectedSeat.index === index) { setSelectedSeat(null); return }
+    if (selectedSeat.tableId === tableId) { void swapSeats(selectedSeat, { tableId, index }); setSelectedSeat(null); return }
+    setSelectedSeat({ tableId, index })
+  }
+
+  function onSeatPointerDown(e: React.PointerEvent, tableId: string, index: number) {
+    e.stopPropagation()
+    seatDrag.current = { tableId, index, x: e.clientX, y: e.clientY, moved: false }
+  }
+
+  // Drag-Ende: Sitz unter dem Zeiger ermitteln und tauschen
+  seatPointerUpRef.current = (e: PointerEvent) => {
+    const sd = seatDrag.current; seatDrag.current = null
+    if (!sd || !sd.moved) return
+    const el = (document.elementFromPoint(e.clientX, e.clientY) as Element | null)?.closest('[data-seat]')
+    if (!el) return
+    const tt = el.getAttribute('data-tableid')
+    const ti = Number(el.getAttribute('data-seat'))
+    if (tt === sd.tableId && ti !== sd.index) {
+      void swapSeats({ tableId: sd.tableId, index: sd.index }, { tableId: tt, index: ti })
+      suppressSeatClick.current = true
+      setSelectedSeat(null)
+    }
   }
 
   async function removeAssignment(assignmentId: string) {
@@ -695,6 +825,18 @@ export default function SitzplanEditor({
     if ((e.target as SVGElement).closest('g')) return
     panState.current = { startX: e.clientX, startY: e.clientY, startOffX: offX, startOffY: offY }
   }, [offX, offY])
+
+  // Seat-Drag (Tausch per Ziehen) — global, da der Zeiger über andere Sitze geht
+  useEffect(() => {
+    function mv(e: PointerEvent) {
+      const sd = seatDrag.current; if (!sd) return
+      if (Math.hypot(e.clientX - sd.x, e.clientY - sd.y) > 6) sd.moved = true
+    }
+    function up(e: PointerEvent) { seatPointerUpRef.current(e) }
+    window.addEventListener('pointermove', mv)
+    window.addEventListener('pointerup', up)
+    return () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up) }
+  }, [])
 
   useEffect(() => {
     function onMove(e: MouseEvent) {
@@ -1034,11 +1176,61 @@ export default function SitzplanEditor({
                     onMouseDown={e => onTableMouseDown(e, table.id)}
                   />
                 ))}
+
+                {/* Sitz-Kreise um jeden Tisch (ein Kreis pro Platz, Initialen) */}
+                {tables.map(table => {
+                  const tas = assignmentsForTable(table.id)
+                  const maxOcc = tas.reduce((m, a) => Math.max(m, (a.seat_index ?? -1) + 1), 0)
+                  const seatCount = Math.max(table.capacity, maxOcc)
+                  const locals = seatLocalPositions(table, seatCount)
+                  const rad = Math.max(8, scale * 0.2)
+                  return (
+                    <g key={`seats-${table.id}`}>
+                      {locals.map((loc, idx) => {
+                        const rp = rotatePt(loc.dx, loc.dy, table.rotation)
+                        const c = m2px(table.pos_x + rp.dx, table.pos_y + rp.dy, scale, offX, offY)
+                        const occ = tas.find(a => (a.seat_index ?? -1) === idx)
+                        const isSel = selectedSeat?.tableId === table.id && selectedSeat.index === idx
+                        const fill = occ
+                          ? (occ.brautpaar_slot ? '#FEF3C7' : occ.begleitperson_id ? '#F3F4F6' : '#EEF2FF')
+                          : '#FFFFFF'
+                        const stroke = isSel ? '#4338CA' : occ
+                          ? (occ.brautpaar_slot ? '#F59E0B' : occ.begleitperson_id ? '#9CA3AF' : '#6366F1')
+                          : '#C7C7CC'
+                        const txtColor = occ
+                          ? (occ.brautpaar_slot ? '#92400E' : occ.begleitperson_id ? '#4B5563' : '#4338CA')
+                          : '#C7C7CC'
+                        return (
+                          <g key={idx}
+                            data-seat={idx} data-tableid={table.id}
+                            onClick={e => { e.stopPropagation(); handleSeatTap(table.id, idx) }}
+                            onPointerDown={e => onSeatPointerDown(e, table.id, idx)}
+                            style={{ cursor: occ ? 'grab' : 'pointer' }}>
+                            <circle cx={c.x} cy={c.y} r={rad}
+                              fill={fill} stroke={stroke}
+                              strokeWidth={isSel ? 2.5 : 1.3}
+                              strokeDasharray={occ ? undefined : '3 2'} />
+                            {occ && (
+                              <text x={c.x} y={c.y} textAnchor="middle" dominantBaseline="central"
+                                fontSize={Math.max(7, rad * 0.85)} fontWeight="700"
+                                fontFamily="-apple-system,Helvetica,sans-serif" fill={txtColor}
+                                style={{ pointerEvents: 'none', userSelect: 'none' }}>
+                                {initialsOf(personBaseName(occ))}
+                              </text>
+                            )}
+                          </g>
+                        )
+                      })}
+                    </g>
+                  )
+                })}
               </svg>
             </div>
 
-            <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: 11, color: 'var(--text-tertiary)' }}>
-              Tisch anklicken = auswählen · Ziehen = verschieben · Scroll = zoom
+            <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: 11, color: selectedSeat ? '#4338CA' : 'var(--text-tertiary)' }}>
+              {selectedSeat
+                ? 'Sitz markiert — anderen Sitz am selben Tisch antippen zum Tauschen (oder Sitz ziehen).'
+                : 'Tisch: anklicken = auswählen, ziehen = verschieben · Sitz: tippen oder ziehen zum Tauschen · Scroll = zoom'}
             </div>
 
             {elemGroups.length > 0 && (() => {
