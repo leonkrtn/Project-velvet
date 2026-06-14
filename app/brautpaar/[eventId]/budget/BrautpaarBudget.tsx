@@ -135,16 +135,16 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
         <div style={{ fontWeight: 500, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>{item.description || '—'}</div>
         {item.notes && <div style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>{item.notes}</div>}
       </td>
-      <td>
+      <td data-label="Kategorie">
         {item.category && <span className="bp-badge bp-badge-neutral">{item.category}</span>}
       </td>
-      <td style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', fontWeight: 600 }}>
+      <td data-label="Geplant" style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', fontWeight: 600 }}>
         {formatCurrency(item.planned)}
       </td>
-      <td style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', color: 'var(--bp-ink-2)' }}>
+      <td data-label="Tatsächlich" style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', color: 'var(--bp-ink-2)' }}>
         {item.actual > 0 ? formatCurrency(item.actual) : '—'}
       </td>
-      <td><StatusBadge status={item.payment_status} /></td>
+      <td data-label="Status"><StatusBadge status={item.payment_status} /></td>
       <td style={{ textAlign: 'right' }}>
         <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'flex-end', alignItems: 'center' }}>
           {delConfirm ? (
@@ -196,11 +196,11 @@ function CateringRow({ costs, effectiveGuestCount }: { costs: CateringCostItem[]
             </div>
           </div>
         </td>
-        <td><span className="bp-badge" style={{ color: 'var(--bp-gold-deep)', borderColor: 'var(--bp-gold)' }}>Catering</span></td>
-        <td style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', fontWeight: 600 }}>
+        <td data-label="Kategorie"><span className="bp-badge" style={{ color: 'var(--bp-gold-deep)', borderColor: 'var(--bp-gold)' }}>Catering</span></td>
+        <td data-label="Geplant" style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', fontWeight: 600 }}>
           {formatCurrency(total)}
         </td>
-        <td style={{ textAlign: 'right', color: 'var(--bp-ink-3)' }}>—</td>
+        <td data-label="Tatsächlich" style={{ textAlign: 'right', color: 'var(--bp-ink-3)' }}>—</td>
         <td></td>
         <td></td>
       </tr>
@@ -237,11 +237,11 @@ function GetränkeRow({ total }: { total: number }) {
         <div style={{ fontWeight: 500, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>Getränke</div>
         <div style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>Einzeln abgerechnet</div>
       </td>
-      <td><span className="bp-badge" style={{ color: 'var(--bp-gold-deep)', borderColor: 'var(--bp-gold)' }}>Getränke</span></td>
-      <td style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', fontWeight: 600 }}>
+      <td data-label="Kategorie"><span className="bp-badge" style={{ color: 'var(--bp-gold-deep)', borderColor: 'var(--bp-gold)' }}>Getränke</span></td>
+      <td data-label="Geplant" style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', fontWeight: 600 }}>
         {formatCurrency(total)}
       </td>
-      <td style={{ textAlign: 'right', color: 'var(--bp-ink-3)' }}>—</td>
+      <td data-label="Tatsächlich" style={{ textAlign: 'right', color: 'var(--bp-ink-3)' }}>—</td>
       <td></td>
       <td></td>
     </tr>
@@ -407,8 +407,8 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
         <div className="bp-card-header">
           <h2 className="bp-section-title" style={{ margin: 0 }}>Positionen ({visibleItems.length + 1})</h2>
         </div>
-        <div className="bp-scroll-x">
-        <table className="bp-table" style={{ minWidth: 560 }}>
+        <div className="bp-scroll-x bp-budget-scroll">
+        <table className="bp-table bp-budget-table" style={{ minWidth: 560 }}>
           <thead>
             <tr>
               <th>Beschreibung</th>
@@ -426,11 +426,11 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
                   <div style={{ fontWeight: 500, color: 'var(--bp-ink)' }}>Veranstalter-Honorar</div>
                   <div style={{ fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>Wird vom Veranstalter festgelegt</div>
                 </td>
-                <td><span className="bp-badge bp-badge-gold">Honorar</span></td>
-                <td style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', fontWeight: 600 }}>
+                <td data-label="Kategorie"><span className="bp-badge bp-badge-gold">Honorar</span></td>
+                <td data-label="Geplant" style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', fontWeight: 600 }}>
                   {formatCurrency(organizerFee)}
                 </td>
-                <td>—</td>
+                <td data-label="Tatsächlich">—</td>
                 <td></td>
                 <td></td>
               </tr>
