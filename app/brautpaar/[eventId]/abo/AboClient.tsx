@@ -7,6 +7,12 @@ import {
   CalendarX, Database, RotateCcw, HeartCrack,
 } from 'lucide-react'
 
+interface Promo {
+  percent: number
+  duration: 'first_month' | 'forever'
+  appliesTo: 'all' | 'basis' | 'pro'
+}
+
 interface AboState {
   plan: 'trial' | 'basis' | 'pro'
   status: 'trialing' | 'active' | 'canceled' | 'expired'
@@ -14,6 +20,15 @@ interface AboState {
   currentPeriodEnd: string | null
   daysLeft: number
   isPro: boolean
+  promo: Promo | null
+}
+
+function promoAppliesTo(promo: Promo | null, plan: 'basis' | 'pro'): boolean {
+  return !!promo && (promo.appliesTo === 'all' || promo.appliesTo === plan)
+}
+function discounted(price: number, promo: Promo | null, plan: 'basis' | 'pro'): number {
+  if (!promoAppliesTo(promo, plan)) return price
+  return Math.round(price * (1 - promo!.percent / 100) * 100) / 100
 }
 
 interface Props {
@@ -87,10 +102,14 @@ export default function AboClient({ eventId, initialState }: Props) {
         )}
       </div>
 
+      {/* Gutscheincode einlösen */}
+      {state.status !== 'active' && <RedeemBox eventId={eventId} activePromo={state.promo} />}
+
       {/* Tarifkarten */}
       <div className="bp-plan-grid">
         <PlanCard
           plan="basis"
+          promo={state.promo}
           tagline="Ihr plant zu zweit — alle Kernfunktionen für eure Hochzeit."
           features={[
             'Gästeliste & persönliche RSVP-Links',
@@ -105,6 +124,7 @@ export default function AboClient({ eventId, initialState }: Props) {
         <PlanCard
           plan="pro"
           highlight
+          promo={state.promo}
           tagline="Ihr plant mit Profis — Veranstalter und Dienstleister arbeiten mit."
           features={[
             'Alles aus Forevr, plus:',
@@ -142,6 +162,7 @@ export default function AboClient({ eventId, initialState }: Props) {
         <CheckoutModal
           eventId={eventId}
           plan={checkoutPlan}
+          promo={state.promo}
           isUpgrade={activePlan === 'basis' && checkoutPlan === 'pro'}
           onClose={() => setCheckoutPlan(null)}
         />
@@ -161,7 +182,7 @@ export default function AboClient({ eventId, initialState }: Props) {
 
 // ── Tarifkarte ────────────────────────────────────────────────────────────────
 
-function PlanCard({ plan, tagline, features, highlight, current, ctaLabel, onSelect }: {
+function PlanCard({ plan, tagline, features, highlight, current, ctaLabel, onSelect, promo }: {
   plan: 'basis' | 'pro'
   tagline: string
   features: string[]
@@ -169,15 +190,31 @@ function PlanCard({ plan, tagline, features, highlight, current, ctaLabel, onSel
   current?: boolean
   ctaLabel: string | null
   onSelect: () => void
+  promo?: Promo | null
 }) {
   const info = PLAN_INFO[plan]
+  const hasPromo = promoAppliesTo(promo ?? null, plan)
+  const newPrice = discounted(info.price, promo ?? null, plan)
   return (
     <div className={`bp-plan-card${highlight ? ' pro' : ''}`}>
       {highlight && <span className="bp-plan-badge">Mit Profi-Team</span>}
       <p className="bp-plan-name">{info.name}</p>
       <div className="bp-plan-price">
-        {info.price} €<small>/ Monat</small>
+        {hasPromo ? (
+          <>
+            <span style={{ textDecoration: 'line-through', color: 'var(--bp-ink-3)', fontWeight: 400, marginRight: 8 }}>{info.price} €</span>
+            {newPrice} €
+          </>
+        ) : (
+          <>{info.price} €</>
+        )}
+        <small>/ Monat</small>
       </div>
+      {hasPromo && (
+        <p style={{ fontSize: '0.72rem', color: 'var(--bp-gold-deep)', fontWeight: 600, margin: '-0.3rem 0 0.5rem' }}>
+          −{promo!.percent} % {promo!.duration === 'forever' ? 'dauerhaft' : 'im ersten Monat'}
+        </p>
+      )}
       <p className="bp-plan-tagline">{tagline}</p>
       <ul className="bp-plan-features">
         {features.map((f, i) => (
@@ -204,14 +241,18 @@ function PlanCard({ plan, tagline, features, highlight, current, ctaLabel, onSel
 
 type PayMethod = 'card' | 'paypal' | 'sepa'
 
-function CheckoutModal({ eventId, plan, isUpgrade, onClose }: {
+function CheckoutModal({ eventId, plan, isUpgrade, onClose, promo }: {
   eventId: string
   plan: 'basis' | 'pro'
   isUpgrade: boolean
   onClose: () => void
+  promo?: Promo | null
 }) {
   const router = useRouter()
   const info = PLAN_INFO[plan]
+  const hasPromo = promoAppliesTo(promo ?? null, plan)
+  const price = discounted(info.price, promo ?? null, plan)
+  const priceStr = price.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   const [method, setMethod] = useState<PayMethod>('card')
   const [holder, setHolder] = useState('')
   const [cardNo, setCardNo] = useState('')
@@ -300,9 +341,12 @@ function CheckoutModal({ eventId, plan, isUpgrade, onClose }: {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div className="bp-font-heading" style={{ fontSize: '1.3rem', color: 'var(--bp-ink)' }}>
-                    {info.price},00 €
+                    {hasPromo && <span style={{ textDecoration: 'line-through', color: 'var(--bp-ink-3)', fontSize: '0.85rem', marginRight: 6 }}>{info.price},00 €</span>}
+                    {priceStr} €
                   </div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--bp-ink-3)' }}>heute fällig</div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--bp-ink-3)' }}>
+                    heute fällig{hasPromo ? ` · −${promo!.percent} %${promo!.duration === 'forever' ? '' : ' (1. Monat)'}` : ''}
+                  </div>
                 </div>
               </div>
 
@@ -380,7 +424,7 @@ function CheckoutModal({ eventId, plan, isUpgrade, onClose }: {
                 ) : method === 'paypal' ? (
                   'Mit PayPal fortfahren'
                 ) : (
-                  `Jetzt ${info.price},00 € zahlen`
+                  `Jetzt ${priceStr} € zahlen`
                 )}
               </button>
 
@@ -548,6 +592,78 @@ function CancelModal({ eventId, periodEnd, planName, onClose }: {
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── Gutscheincode einlösen ────────────────────────────────────────────────────
+
+function RedeemBox({ eventId, activePromo }: { eventId: string; activePromo: Promo | null }) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function redeem() {
+    if (!code.trim()) return
+    setBusy(true); setMsg(null)
+    try {
+      const res = await fetch('/api/promo/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, code }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error ?? 'Code konnte nicht eingelöst werden')
+      setMsg({ ok: true, text: data.message ?? 'Code eingelöst.' })
+      setCode('')
+      router.refresh()
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : 'Code ungültig' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (activePromo && !msg) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--bp-gold-deep)' }}>
+        <Sparkles size={15} />
+        <span>Aktiver Rabatt: <strong>−{activePromo.percent} %</strong> {activePromo.duration === 'forever' ? 'dauerhaft' : 'im ersten Monat'}.</span>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ margin: '0 0 1.25rem' }}>
+      {!open ? (
+        <button
+          onClick={() => setOpen(true)}
+          style={{ background: 'none', border: 'none', color: 'var(--bp-gold-deep)', fontSize: '0.85rem', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
+        >
+          Gutschein- oder Influencer-Code einlösen
+        </button>
+      ) : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+          <input
+            value={code}
+            onChange={e => setCode(e.target.value.toUpperCase())}
+            onKeyDown={e => { if (e.key === 'Enter') redeem() }}
+            placeholder="CODE EINGEBEN"
+            autoFocus
+            style={{ height: 40, padding: '0 12px', border: '1px solid var(--bp-rule)', borderRadius: 8, fontSize: '0.9rem', fontFamily: 'inherit', letterSpacing: '0.08em', textTransform: 'uppercase', outline: 'none', minWidth: 180 }}
+          />
+          <button className="bp-plan-cta" disabled={busy || !code.trim()} onClick={redeem} style={{ width: 'auto', padding: '0.6rem 1.3rem', height: 40 }}>
+            {busy ? 'Prüfe…' : 'Einlösen'}
+          </button>
+        </div>
+      )}
+      {msg && (
+        <p style={{ fontSize: '0.82rem', marginTop: 8, color: msg.ok ? 'var(--bp-green, #15803D)' : 'var(--bp-red)' }}>
+          {msg.text}
+        </p>
+      )}
     </div>
   )
 }

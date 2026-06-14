@@ -1,9 +1,9 @@
 'use client'
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState } from 'react'
 import {
   Image, Link, Palette, Type, StickyNote, Heading,
   Flower2, Grid2X2, Minus, Vote, CheckSquare,
-  Globe, LayoutGrid, Info, Users, Scissors, GripVertical,
+  Globe, LayoutGrid, Info, Users, Scissors,
   ChevronLeft, ChevronRight, X,
 } from 'lucide-react'
 import type { DekoItemType } from '@/lib/deko/types'
@@ -60,54 +60,28 @@ interface Props {
 
 export default function DekoFloatingToolbar({ pendingType, onSelect, onCancel }: Props) {
   const [collapsed, setCollapsed] = useState(false)
-  // Start past both the 220px Forevr sidebar and the 220px deko nav
-  const [pos, setPos] = useState({ x: 460, y: 80 })
-  const dragging = useRef(false)
-  const dragOffset = useRef({ x: 0, y: 0 })
-
-  const handleHandleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault()
-    dragging.current = true
-    dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y }
-    const onMove = (ev: MouseEvent) => {
-      if (!dragging.current) return
-      setPos({ x: ev.clientX - dragOffset.current.x, y: ev.clientY - dragOffset.current.y })
-    }
-    const onUp = () => {
-      dragging.current = false
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-    }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-  }, [pos])
 
   return (
     <div style={{
-      position: 'fixed',
-      left: pos.x,
-      top: pos.y,
-      zIndex: 500,
-      background: 'rgba(253,252,250,0.97)',
-      backdropFilter: 'blur(12px)',
-      border: '1px solid rgba(0,0,0,0.1)',
-      borderRadius: 12,
-      boxShadow: '0 4px 24px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06)',
+      flexShrink: 0,
+      alignSelf: 'stretch',
+      background: 'var(--surface)',
+      borderLeft: '1px solid var(--border)',
       userSelect: 'none',
-      width: collapsed ? 44 : 172,
+      width: collapsed ? 44 : 188,
       transition: 'width 0.15s ease',
-      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: 0,
     }}>
-      {/* Drag handle */}
+      {/* Header */}
       <div
         style={{
           display: 'flex', alignItems: 'center', padding: '9px 8px 7px',
-          borderBottom: '1px solid rgba(0,0,0,0.07)', gap: 4, cursor: 'grab',
-          background: 'transparent',
+          borderBottom: '1px solid var(--border)', gap: 4,
+          background: 'transparent', flexShrink: 0,
         }}
-        onMouseDown={handleHandleMouseDown}
       >
-        <GripVertical size={12} color="var(--text-tertiary)" style={{ flexShrink: 0 }} />
         {!collapsed && (
           <span style={{
             fontSize: 9, fontWeight: 800, textTransform: 'uppercase',
@@ -118,9 +92,10 @@ export default function DekoFloatingToolbar({ pendingType, onSelect, onCancel }:
         )}
         <button
           onClick={() => setCollapsed(c => !c)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: 'var(--text-tertiary)' }}
+          title={collapsed ? 'Ausklappen' : 'Einklappen'}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: 'var(--text-tertiary)', marginLeft: collapsed ? 'auto' : 0, marginRight: collapsed ? 'auto' : 0 }}
         >
-          {collapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
+          {collapsed ? <ChevronLeft size={11} /> : <ChevronRight size={11} />}
         </button>
       </div>
 
@@ -142,7 +117,7 @@ export default function DekoFloatingToolbar({ pendingType, onSelect, onCancel }:
 
       {/* Expanded list */}
       {!collapsed && (
-        <div style={{ padding: '4px 0 6px', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+        <div style={{ padding: '4px 0 6px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {GROUPS.map(group => {
             const tools = TOOLS.filter(t => t.group === group)
             const color = GROUP_COLORS[group]
@@ -186,7 +161,7 @@ export default function DekoFloatingToolbar({ pendingType, onSelect, onCancel }:
 
       {/* Collapsed icon list */}
       {collapsed && (
-        <div style={{ padding: '4px 0' }}>
+        <div style={{ padding: '4px 0', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {TOOLS.map(tool => {
             const active = pendingType === tool.type
             const color = GROUP_COLORS[tool.group]

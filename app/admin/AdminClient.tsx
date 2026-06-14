@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import SubscriptionsSection from './SubscriptionsSection'
+import PromoCodesSection from './PromoCodesSection'
 
 // ── Typen ─────────────────────────────────────────────────────────────────────
 
@@ -457,6 +458,16 @@ export default function AdminClient({ adminName }: { adminName: string }) {
 
             {/* ── Abos (Solo-Brautpaare) ── */}
             <SubscriptionsSection card={card} cardHeader={cardHeader} btnSecondary={btnSecondary} />
+
+            {/* ── Promo-Codes (Influencer) ── */}
+            <PromoCodesSection
+              card={card}
+              cardHeader={cardHeader}
+              btnSecondary={btnSecondary}
+              btnPrimary={btnPrimary}
+              inputStyle={inputStyle}
+              labelStyle={labelStyle}
+            />
           </div>
         )}
       </div>
