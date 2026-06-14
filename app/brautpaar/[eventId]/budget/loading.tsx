@@ -9,7 +9,7 @@ export default function Loading() {
         <div className="bp-skeleton" style={{ height: 36, width: 130, borderRadius: 8, flexShrink: 0 }} />
       </div>
       {/* 3 stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div className="bp-grid-3" style={{ marginBottom: '1.5rem' }}>
         {[0,1,2].map(i => (
           <div key={i} style={{ background: 'var(--bp-white)', border: '1px solid var(--bp-rule)', borderRadius: 12, padding: '14px 16px' }}>
             <div className="bp-skeleton" style={{ height: 11, width: '55%', marginBottom: 10, borderRadius: 4 }} />

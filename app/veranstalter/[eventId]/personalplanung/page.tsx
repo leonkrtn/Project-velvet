@@ -673,7 +673,7 @@ export default function PersonalplanungPage() {
           ))}
         </div>
         {/* Stats grid: 4 cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div className="pp-stats-grid">
           {['Im Einsatz', 'Bereiche', 'Geplante Stunden', 'Gesamtkosten'].map((_, i) => (
             <div key={i} style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
               <div className="skeleton" style={{ height: 12, width: '55%', marginBottom: 10 }} />

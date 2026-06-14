@@ -2,7 +2,7 @@ export default function Loading() {
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Conversation list */}
-      <div style={{ width: 300, minWidth: 300, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column' }}>
+      <div className="chat-load-list" style={{ width: 300, minWidth: 300, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column' }}>
         {/* Header: title + plus button + search */}
         <div style={{ padding: '18px 16px 10px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -29,7 +29,7 @@ export default function Loading() {
       </div>
 
       {/* Message area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)', minWidth: 0, overflow: 'hidden' }}>
+      <div className="chat-load-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)', minWidth: 0, overflow: 'hidden' }}>
         {/* Chat header */}
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <div className="skeleton" style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0 }} />

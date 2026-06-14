@@ -16,7 +16,7 @@ export default function Loading() {
       </div>
       {/* Module heading + 3-col grid of 10 links */}
       <div className="bp-skeleton" style={{ height: 14, width: 70, marginBottom: 12, borderRadius: 6 }} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+      <div className="bp-grid-3" style={{ gap: '0.75rem' }}>
         {Array.from({ length: 10 }).map((_, i) => (
           <div key={i} className="bp-skeleton" style={{ height: 52, borderRadius: 12 }} />
         ))}
