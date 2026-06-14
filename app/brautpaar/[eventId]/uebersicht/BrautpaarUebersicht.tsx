@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -48,6 +48,56 @@ function formatDate(dateStr: string) {
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(amount)
+}
+
+const prefersReduced = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+// Count-up: eases an integer from 0 → target once, on mount.
+function useCountUp(target: number, durationMs = 1100, delayMs = 0) {
+  const [value, setValue] = useState(prefersReduced() ? target : 0)
+  useEffect(() => {
+    if (prefersReduced()) { setValue(target); return }
+    let raf = 0
+    let start = 0
+    const tick = (t: number) => {
+      if (!start) start = t + delayMs
+      const elapsed = t - start
+      if (elapsed < 0) { raf = requestAnimationFrame(tick); return }
+      const p = Math.min(elapsed / durationMs, 1)
+      const eased = 1 - Math.pow(1 - p, 3) // easeOutCubic
+      setValue(Math.round(target * eased))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target, durationMs, delayMs])
+  return value
+}
+
+// Scroll-reveal: adds `.in` to every `.bp-reveal` inside the ref as it enters.
+function useReveal<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+  useEffect(() => {
+    const root = ref.current
+    if (!root) return
+    const els = Array.from(root.querySelectorAll<HTMLElement>('.bp-reveal'))
+    if (prefersReduced()) { els.forEach(el => el.classList.add('in')); return }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) }
+      })
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' })
+    els.forEach(el => io.observe(el))
+    return () => io.disconnect()
+  }, [])
+  return ref
+}
+
+// Animated integer (lining figures applied via .bp-num in CSS).
+function CountUpNum({ value, duration, delay, suffix }: { value: number; duration?: number; delay?: number; suffix?: string }) {
+  const n = useCountUp(value, duration, delay)
+  return <>{n}{suffix}</>
 }
 
 // ── Hero / Cover ───────────────────────────────────────────────────────────────
@@ -106,7 +156,7 @@ function Hero({ eventId, coupleName, eventTitle, eventDate, venueName, daysLeft,
     <header className={`bp-mag-hero ${hasPhoto ? 'has-photo' : ''} bp-mb-8`}>
       {hasPhoto && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={coverImageUrl} alt="" className="bp-mag-hero-photo" />
+        <img src={coverImageUrl} alt="" className="bp-mag-hero-photo bp-kenburns" />
       )}
       <div className="bp-mag-hero-veil" />
 
@@ -139,8 +189,9 @@ function Hero({ eventId, coupleName, eventTitle, eventDate, venueName, daysLeft,
 
         {daysLeft !== null ? (
           <div className="bp-mag-countdown">
-            <div className="bp-mag-countdown-num" style={{ fontFamily: SERIF }}>
-              {daysLeft > 0 ? daysLeft : daysLeft === 0 ? '♥' : Math.abs(daysLeft)}
+            <div className="bp-mag-countdown-num bp-num" style={{ fontFamily: SERIF }}>
+              {daysLeft > 0 ? <CountUpNum value={daysLeft} duration={1400} delay={260} />
+                : daysLeft === 0 ? '♥' : <CountUpNum value={Math.abs(daysLeft)} duration={1400} delay={260} />}
             </div>
             <div className="bp-mag-countdown-label">
               {daysLeft > 0 ? (daysLeft === 1 ? 'Tag bis zum Ja-Wort' : 'Tage bis zum Ja-Wort')
@@ -162,21 +213,35 @@ function Hero({ eventId, coupleName, eventTitle, eventDate, venueName, daysLeft,
 
 // ── Editorial-Zahlenleiste ──────────────────────────────────────────────────────
 
-function StatFigure({ href, value, label, sub, bar }: {
+function StatFigure({ href, value, countTo, countSuffix, label, sub, bar, delay = 0 }: {
   href: string
-  value: React.ReactNode
+  value?: React.ReactNode
+  countTo?: number
+  countSuffix?: string
   label: string
   sub?: string
   bar?: number
+  delay?: number
 }) {
+  const [barW, setBarW] = useState(0)
+  useEffect(() => {
+    if (bar === undefined) return
+    const id = setTimeout(() => setBarW(Math.min(Math.max(bar, 0), 100)), 250 + delay)
+    return () => clearTimeout(id)
+  }, [bar, delay])
+
   return (
-    <Link href={href} className="bp-mag-figure">
-      <div className="bp-mag-figure-num" style={{ fontFamily: SERIF }}>{value}</div>
+    <Link href={href} className="bp-mag-figure bp-reveal" style={{ transitionDelay: `${delay}ms` }}>
+      <div className="bp-mag-figure-num bp-num" style={{ fontFamily: SERIF }}>
+        {countTo !== undefined
+          ? <CountUpNum value={countTo} duration={1000} delay={delay + 150} suffix={countSuffix} />
+          : value}
+      </div>
       <div className="bp-mag-figure-label">{label}</div>
       {sub && <div className="bp-mag-figure-sub">{sub}</div>}
       {bar !== undefined && (
         <div className="bp-mag-figure-bar">
-          <div style={{ width: `${Math.min(Math.max(bar, 0), 100)}%` }} />
+          <div style={{ width: `${barW}%` }} />
         </div>
       )}
     </Link>
@@ -211,7 +276,7 @@ function NextTasksCard({ eventId, initialTasks, tasksDone, tasksTotal }: {
   }
 
   return (
-    <div className="bp-card bp-mag-block" style={{ display: 'flex', flexDirection: 'column' }}>
+    <div className="bp-card bp-mag-block bp-reveal" style={{ display: 'flex', flexDirection: 'column' }}>
       <div className="bp-card-header">
         <span className="bp-mag-block-title" style={{ fontFamily: SERIF }}>Als Nächstes</span>
         {tasksTotal > 0 && <span className="bp-caption">{doneCount} / {tasksTotal} erledigt</span>}
@@ -274,7 +339,7 @@ function GuestStatusCard({ eventId, guestTotal, guestConfirmed, guestDeclined, g
   guestApprovalPending: number
 }) {
   return (
-    <div className="bp-card bp-mag-block" style={{ display: 'flex', flexDirection: 'column' }}>
+    <div className="bp-card bp-mag-block bp-reveal" style={{ display: 'flex', flexDirection: 'column', transitionDelay: '110ms' }}>
       <div className="bp-card-header">
         <span className="bp-mag-block-title" style={{ fontFamily: SERIF }}>Gäste-Status</span>
         {guestTotal > 0 && <span className="bp-caption">{guestTotal} Gäste</span>}
@@ -352,8 +417,10 @@ export default function BrautpaarUebersicht({
     { key: 'dekoration', label: 'Dekoration', icon: <Palette size={18} />, detail: 'Moodboards und Deko-Planung' },
   ]
 
+  const rootRef = useReveal<HTMLDivElement>()
+
   return (
-    <div className="bp-page bp-mag">
+    <div className="bp-page bp-mag" ref={rootRef}>
       <Hero
         eventId={eventId}
         coupleName={coupleName}
@@ -368,24 +435,30 @@ export default function BrautpaarUebersicht({
       <section className="bp-mag-stats bp-mb-8">
         <StatFigure
           href={`/brautpaar/${eventId}/gaeste`}
-          value={guestTotal}
+          countTo={guestTotal}
           label="Gäste"
           sub={guestTotal > 0 ? `${guestConfirmed} zugesagt` : 'noch keine'}
           bar={guestTotal > 0 ? confirmRate : undefined}
+          delay={0}
         />
         <StatFigure
           href={`/brautpaar/${eventId}/gaeste`}
-          value={`${responseRate}%`}
+          countTo={responseRate}
+          countSuffix="%"
           label="Rückmeldung"
           sub={`${answered} von ${guestTotal}`}
           bar={guestTotal > 0 ? responseRate : undefined}
+          delay={90}
         />
         <StatFigure
           href={`/brautpaar/${eventId}/budget`}
-          value={budgetLimit > 0 ? `${budgetRate}%` : formatCurrency(budgetPlanned)}
+          countTo={budgetLimit > 0 ? budgetRate : undefined}
+          countSuffix="%"
+          value={budgetLimit > 0 ? undefined : formatCurrency(budgetPlanned)}
           label="Budget verplant"
           sub={budgetLimit > 0 ? `${formatCurrency(budgetPlanned)} von ${formatCurrency(budgetLimit)}` : 'kein Limit gesetzt'}
           bar={budgetLimit > 0 ? budgetRate : undefined}
+          delay={180}
         />
         <StatFigure
           href={`/brautpaar/${eventId}/aufgaben`}
@@ -393,6 +466,7 @@ export default function BrautpaarUebersicht({
           label="Aufgaben"
           sub={`${taskRate}% erledigt`}
           bar={tasksTotal > 0 ? taskRate : undefined}
+          delay={270}
         />
       </section>
 
@@ -412,14 +486,14 @@ export default function BrautpaarUebersicht({
 
       {/* Eure Planung — Galerie */}
       <section>
-        <div className="bp-mag-section-head">
+        <div className="bp-mag-section-head bp-reveal">
           <span className="bp-mag-section-rule" />
           <h2 className="bp-mag-section-title" style={{ fontFamily: SERIF }}>Eure Planung</h2>
           <span className="bp-mag-section-rule" />
         </div>
         <div className="bp-mag-gallery">
-          {planning.map(mod => (
-            <Link key={mod.key} href={`/brautpaar/${eventId}/${mod.key}`} className="bp-card bp-mag-gallery-card">
+          {planning.map((mod, i) => (
+            <Link key={mod.key} href={`/brautpaar/${eventId}/${mod.key}`} className="bp-card bp-mag-gallery-card bp-reveal" style={{ transitionDelay: `${i * 70}ms` }}>
               <span className="bp-mag-gallery-icon">{mod.icon}</span>
               <span style={{ minWidth: 0 }}>
                 <span className="bp-mag-gallery-label" style={{ fontFamily: SERIF }}>{mod.label}</span>

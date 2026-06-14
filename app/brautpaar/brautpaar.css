@@ -2262,6 +2262,31 @@
 @keyframes bp-spin { to { transform: rotate(360deg); } }
 .bp-spin { animation: bp-spin 0.9s linear infinite; }
 
+/* Clean lining/tabular figures for large serif numbers (Cormorant defaults to
+   old-style figures, which look unruly at display sizes). */
+.bp-mag .bp-num {
+  font-feature-settings: "lnum" 1, "tnum" 1;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Scroll-reveal — elements fade + rise as they enter the viewport. */
+.bp-mag .bp-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.bp-mag .bp-reveal.in { opacity: 1; transform: none; }
+
+/* Slow Ken-Burns zoom on the hero photo. */
+@keyframes bp-kenburns { from { transform: scale(1.09); } to { transform: scale(1); } }
+.bp-kenburns { animation: bp-kenburns 20s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bp-mag .bp-reveal { opacity: 1 !important; transform: none !important; transition: none; }
+  .bp-kenburns, .bp-mag-hero-inner > * { animation: none !important; opacity: 1 !important; }
+}
+
 /* ── Hero / Cover ──────────────────────────────────────────────────────────── */
 .bp-mag-hero {
   position: relative;
@@ -2286,7 +2311,13 @@
   background:
     linear-gradient(180deg, rgba(248,248,246,0.55) 0%, rgba(248,248,246,0.78) 60%, rgba(248,248,246,0.95) 100%);
 }
-.bp-mag-hero-inner { position: relative; z-index: 2; animation: bp-mag-rise 0.5s ease both; }
+.bp-mag-hero-inner { position: relative; z-index: 2; }
+.bp-mag-hero-inner > * { opacity: 0; animation: bp-mag-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.bp-mag-hero-inner > *:nth-child(1) { animation-delay: 0.10s; }
+.bp-mag-hero-inner > *:nth-child(2) { animation-delay: 0.22s; }
+.bp-mag-hero-inner > *:nth-child(3) { animation-delay: 0.34s; }
+.bp-mag-hero-inner > *:nth-child(4) { animation-delay: 0.44s; }
+.bp-mag-hero-inner > *:nth-child(5) { animation-delay: 0.56s; }
 
 .bp-mag-kicker {
   margin: 0 0 1rem;
@@ -2321,7 +2352,7 @@
   color: var(--bp-ink-2);
 }
 
-.bp-mag-countdown { margin-top: clamp(1.5rem, 4vw, 2.5rem); animation: bp-mag-rise 0.5s ease 0.12s both; }
+.bp-mag-countdown { margin-top: clamp(1.5rem, 4vw, 2.5rem); }
 .bp-mag-countdown-num {
   font-weight: 600;
   font-size: clamp(4rem, 12vw, 7rem);
@@ -2366,7 +2397,6 @@
   border-radius: var(--bp-r-md);
   box-shadow: var(--bp-shadow-card);
   overflow: hidden;
-  animation: bp-mag-rise 0.5s ease 0.06s both;
 }
 .bp-mag-figure {
   position: relative;
@@ -2400,7 +2430,6 @@
   grid-template-columns: 1.5fr 1fr;
   gap: 1.25rem;
   align-items: stretch;
-  animation: bp-mag-rise 0.5s ease 0.1s both;
 }
 .bp-mag-block-title { font-size: 1.375rem; font-weight: 600; color: var(--bp-ink); }
 .bp-mag-guest-rows { display: flex; flex-direction: column; gap: 0.5rem; }
