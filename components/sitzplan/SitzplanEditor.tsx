@@ -567,7 +567,7 @@ export default function SitzplanEditor({
         const list = byTable.get(a.table_id) ?? []
         list.push(a); byTable.set(a.table_id, list)
       }
-      for (const list of byTable.values()) {
+      for (const list of Array.from(byTable.values())) {
         const used = new Set(list.map(a => a.seat_index).filter(i => i != null) as number[])
         for (const a of list) {
           if (a.seat_index == null) {
