@@ -27,6 +27,9 @@ export default async function VendorOverviewPage() {
           <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, fontSize: 28, color: 'var(--gold)', letterSpacing: '0.16em', lineHeight: 1, marginBottom: 8 }}>FOREVR</p>
           <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', marginBottom: 4 }}>Meine Events</h1>
           <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>Alle Events, bei denen du als Dienstleister eingetragen bist.</p>
+          <a href="/vendor/anfragen" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12, padding: '8px 16px', borderRadius: 8, background: 'var(--gold)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+            Anfragen aus dem Marktplatz
+          </a>
         </div>
 
         <VendorEventsClient events={events} />

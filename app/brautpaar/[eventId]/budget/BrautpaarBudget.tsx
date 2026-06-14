@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Pencil, Settings, ChevronDown, ChevronRight, X } from 'lucide-react'
+import { useAutoSave } from '@/hooks/useAutoSave'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 type PaymentStatus = 'offen' | 'angezahlt' | 'bezahlt'
 
@@ -60,26 +62,26 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
 function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i: BudgetItem) => void; onDelete: () => void }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState(item)
-  const [saving, setSaving]   = useState(false)
   const [delConfirm, setDelConfirm] = useState(false)
 
-  async function save() {
-    setSaving(true)
+  async function save(d: BudgetItem) {
     const supabase = createClient()
     const { error } = await supabase
       .from('budget_items')
       .update({
-        description:    draft.description,
-        category:       draft.category,
-        planned:        draft.planned,
-        actual:         draft.actual,
-        payment_status: draft.payment_status,
-        notes:          draft.notes,
+        description:    d.description,
+        category:       d.category,
+        planned:        d.planned,
+        actual:         d.actual,
+        payment_status: d.payment_status,
+        notes:          d.notes,
       })
       .eq('id', item.id)
-    setSaving(false)
-    if (!error) { onUpdate(draft); setEditing(false) }
+    if (error) throw error
+    onUpdate(d)
   }
+
+  const { status: saveStatus } = useAutoSave(draft, save, { enabled: editing })
 
   if (editing) {
     return (
@@ -119,9 +121,11 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
                 <input className="bp-input" value={draft.notes ?? ''} onChange={e => setDraft(p => ({ ...p, notes: e.target.value || null }))} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button className="bp-btn bp-btn-secondary bp-btn-sm" onClick={() => { setDraft(item); setEditing(false) }}>Abbrechen</button>
-              <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={save} disabled={saving}>{saving ? '…' : 'Speichern'}</button>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+              {saveStatus === 'idle'
+                ? <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>Änderungen werden automatisch gespeichert.</span>
+                : <SaveStatus status={saveStatus} />}
+              <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={() => setEditing(false)}>Fertig</button>
             </div>
           </div>
         </td>

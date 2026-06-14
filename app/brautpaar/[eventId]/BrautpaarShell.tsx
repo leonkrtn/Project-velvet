@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Palette, Music, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
-  Briefcase, Heart, FileDown, CreditCard, Lock, Sparkles,
+  Briefcase, Heart, FileDown, CreditCard, Lock, Sparkles, Store,
 } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 import { createClient } from '@/lib/supabase/client'
@@ -51,6 +51,8 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
         b('dekoration', 'Dekoration', <Palette size={16} />),
         b('musik', 'Musik', <Music size={16} />),
         b('medien', 'Foto & Videograf', <Camera size={16} />),
+        // Marktplatz — für alle Brautpaare (Solo & mit Veranstalter), ohne Pro
+        b('dienstleister/entdecken', 'Marktplatz', <Store size={16} />),
       ],
     },
     {
@@ -207,7 +209,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   const nav = fullNav.map(group => ({
     ...group,
     items: group.items.filter(item =>
-      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'pdf-export' || item.key === 'abo'
+      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'dienstleister/entdecken' || item.key === 'pdf-export' || item.key === 'abo'
         ? true
         : (bpToggles[`bp-${item.key}`] ?? true)
     ),

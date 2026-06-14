@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Edit2, Check, X, Heart, Ban, ListMusic, Lightbulb, Music2, Link, ExternalLink } from 'lucide-react'
+import { useAutoSave } from '@/hooks/useAutoSave'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -93,7 +95,6 @@ function FieldInput({ value, onChange, placeholder, type = 'text' }: { value: st
 function RequirementsForm({ reqs, eventId, canEdit, onSaved }: { reqs: Requirements | null; eventId: string; canEdit: boolean; onSaved: (r: Requirements) => void }) {
   const [editing, setEditing]   = useState(false)
   const [draft, setDraft]       = useState<Requirements | null>(null)
-  const [saving, setSaving]     = useState(false)
 
   function startEdit() {
     setDraft(reqs ?? {
@@ -104,18 +105,19 @@ function RequirementsForm({ reqs, eventId, canEdit, onSaved }: { reqs: Requireme
     setEditing(true)
   }
 
-  async function save() {
-    if (!draft) return
-    setSaving(true)
+  async function save(d: Requirements | null) {
+    if (!d) return
     const supabase = createClient()
     const { data, error } = await supabase
       .from('music_requirements')
-      .upsert({ event_id: eventId, ...draft }, { onConflict: 'event_id' })
+      .upsert({ event_id: eventId, ...d }, { onConflict: 'event_id' })
       .select()
       .single()
-    setSaving(false)
-    if (!error && data) { onSaved(data as Requirements); setEditing(false) }
+    if (error) throw error
+    if (data) onSaved(data as Requirements)
   }
+
+  const { status: saveStatus } = useAutoSave(draft, save, { enabled: editing && canEdit })
 
   function row(label: string, field: keyof Requirements, placeholder?: string, type = 'text') {
     return (
@@ -175,7 +177,10 @@ function RequirementsForm({ reqs, eventId, canEdit, onSaved }: { reqs: Requireme
 
   return (
     <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--gold)', padding: '18px 20px', marginBottom: 24 }}>
-      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 16 }}>Technische Anforderungen bearbeiten</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)' }}>Technische Anforderungen bearbeiten</p>
+        <SaveStatus status={saveStatus} />
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 12 }}>
         {row('Soundcheck Datum', 'soundcheck_date', 'z.B. 12.06.2025')}
         {row('Soundcheck Uhrzeit', 'soundcheck_time', 'z.B. 14:00')}
@@ -210,13 +215,11 @@ function RequirementsForm({ reqs, eventId, canEdit, onSaved }: { reqs: Requireme
           />
         )}
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={save} disabled={saving} style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
-          {saving ? 'Speichern…' : 'Speichern'}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button onClick={() => setEditing(false)} style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
+          Fertig
         </button>
-        <button onClick={() => setEditing(false)} style={{ padding: '8px 12px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-          Abbrechen
-        </button>
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Änderungen werden automatisch gespeichert.</span>
       </div>
     </div>
   )

@@ -2,9 +2,10 @@
 
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Save, Plus, X, Check } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
 import SoloInviteSection from './SoloInviteSection'
+import { useAutoSave } from '@/hooks/useAutoSave'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 interface EventData {
   id: string
@@ -62,10 +63,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default function BrautpaarAllgemein({ eventId, initialData, isSolo, currentUserId }: Props) {
   const [data, setData] = useState<EventData>(initialData)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved]   = useState(false)
   const [error, setError]   = useState<string | null>(null)
-  const [newMealOption, setNewMealOption] = useState('')
   const [ceremonyTimeStr, setCeremonyTimeStr] = useState(() => {
     const cs = initialData.ceremony_start
     if (!cs) return ''
@@ -75,54 +73,39 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
 
   const set = useCallback(<K extends keyof EventData>(key: K, value: EventData[K]) => {
     setData(prev => ({ ...prev, [key]: value }))
-    setSaved(false)
   }, [])
 
-  async function save() {
-    setSaving(true)
+  async function save(d: EventData) {
     setError(null)
     const supabase = createClient()
     const { error: err } = await supabase
       .from('events')
       .update({
-        title:                data.title,
-        couple_name:          data.couple_name,
-        date:                 data.date || null,
-        ceremony_start:       data.ceremony_start || null,
-        description:          data.description,
-        venue:                data.venue,
-        venue_address:        data.venue_address,
-        location_name:        data.location_name,
-        location_street:      data.location_street,
-        location_zip:         data.location_zip,
-        location_city:        data.location_city,
-        location_website:     data.location_website,
-        max_begleitpersonen:  data.max_begleitpersonen,
-        children_allowed:     data.children_allowed,
-        children_note:        data.children_note,
-        meal_options:         data.meal_options,
-        collect_allergies:    data.collect_allergies,
-        budget_total:         data.budget_total,
-        dresscode:            data.dresscode,
+        title:                d.title,
+        couple_name:          d.couple_name,
+        date:                 d.date || null,
+        ceremony_start:       d.ceremony_start || null,
+        description:          d.description,
+        venue:                d.venue,
+        venue_address:        d.venue_address,
+        location_name:        d.location_name,
+        location_street:      d.location_street,
+        location_zip:         d.location_zip,
+        location_city:        d.location_city,
+        location_website:     d.location_website,
+        max_begleitpersonen:  d.max_begleitpersonen,
+        children_allowed:     d.children_allowed,
+        children_note:        d.children_note,
+        meal_options:         d.meal_options,
+        collect_allergies:    d.collect_allergies,
+        budget_total:         d.budget_total,
+        dresscode:            d.dresscode,
       })
       .eq('id', eventId)
-    setSaving(false)
-    if (err) { setError(err.message); return }
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    if (err) { setError(err.message); throw err }
   }
 
-  function addMealOption() {
-    if (!newMealOption.trim()) return
-    const opts = [...(data.meal_options ?? []), newMealOption.trim()]
-    set('meal_options', opts)
-    setNewMealOption('')
-  }
-
-  function removeMealOption(idx: number) {
-    const opts = (data.meal_options ?? []).filter((_, i) => i !== idx)
-    set('meal_options', opts)
-  }
+  const { status: saveStatus } = useAutoSave(data, save)
 
   return (
     <div className="bp-page">
@@ -131,15 +114,9 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
           <h1 className="bp-page-title">Einstellungen</h1>
           <p className="bp-page-subtitle">Grundlegende Details eurer Hochzeit</p>
         </div>
-        <button
-          className="bp-btn bp-btn-primary bp-btn-mobile-full"
-          onClick={save}
-          disabled={saving}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          {saved ? <Check size={16} /> : <Save size={16} />}
-          {saving ? 'Speichert…' : saved ? 'Gespeichert' : 'Speichern'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', minHeight: 20, fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
+          {saveStatus === 'idle' ? 'Änderungen werden automatisch gespeichert.' : <SaveStatus status={saveStatus} />}
+        </div>
       </div>
 
       {error && (
@@ -237,54 +214,13 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
           </Field>
         )}
 
-        <div className="bp-divider" />
-
-        <Field label="Menüoptionen">
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            {(data.meal_options ?? []).map((opt, idx) => (
-              <span
-                key={idx}
-                className="bp-badge bp-badge-neutral"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.25rem 0.625rem' }}
-              >
-                {opt}
-                <button onClick={() => removeMealOption(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', lineHeight: 1 }}>
-                  <X size={12} style={{ color: 'var(--bp-ink-3)' }} />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              className="bp-input"
-              value={newMealOption}
-              onChange={e => setNewMealOption(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMealOption() } }}
-              placeholder="z.B. Vegetarisch, Vegan, Fleisch"
-              style={{ flex: 1 }}
-            />
-            <button className="bp-btn bp-btn-secondary" onClick={addMealOption} disabled={!newMealOption.trim()}>
-              <Plus size={16} />
-            </button>
-          </div>
-        </Field>
-
-
       </Section>
 
       {isSolo && currentUserId && <SoloInviteSection eventId={eventId} currentUserId={currentUserId} />}
 
-      {/* Save footer */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', paddingTop: '0.5rem', paddingBottom: '2rem' }}>
-        <button
-          className="bp-btn bp-btn-primary bp-btn-lg bp-btn-mobile-full"
-          onClick={save}
-          disabled={saving}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          {saved ? <Check size={16} /> : <Save size={16} />}
-          {saving ? 'Speichert…' : saved ? 'Gespeichert' : 'Änderungen speichern'}
-        </button>
+      {/* Auto-Save footer */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', minHeight: 20, paddingTop: '0.5rem', paddingBottom: '2rem', fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
+        {saveStatus === 'idle' ? 'Änderungen werden automatisch gespeichert.' : <SaveStatus status={saveStatus} />}
       </div>
     </div>
   )

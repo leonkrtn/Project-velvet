@@ -8,6 +8,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import SubscriptionsSection from './SubscriptionsSection'
 import PromoCodesSection from './PromoCodesSection'
+import MarketplaceVendorsSection from './MarketplaceVendorsSection'
 
 // ── Typen ─────────────────────────────────────────────────────────────────────
 
@@ -468,6 +469,9 @@ export default function AdminClient({ adminName }: { adminName: string }) {
               inputStyle={inputStyle}
               labelStyle={labelStyle}
             />
+
+            {/* ── Marktplatz-Dienstleister ── */}
+            <MarketplaceVendorsSection />
           </div>
         )}
       </div>
