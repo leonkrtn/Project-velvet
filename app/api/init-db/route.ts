@@ -3,12 +3,22 @@
 // Wird beim ersten authentifizierten App-Start aufgerufen.
 
 import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { runMigrations } from '@/lib/db/migrate'
 
 // Caching: verhindert mehrfache Ausführung pro Server-Instanz
 let migrationRan = false
 
 export async function POST() {
+  // Auth: nur eingeloggte Nutzer dürfen die Migration auslösen. Der Aufruf
+  // erfolgt ohnehin nur im angemeldeten App-Kontext (lib/event-context.tsx);
+  // ohne diesen Check wäre der DDL-Endpoint anonym erreichbar.
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   // DATABASE_URL nicht gesetzt → überspringen (App läuft im localStorage-Modus)
   if (!process.env.DATABASE_URL) {
     return NextResponse.json({ status: 'skipped', reason: 'DATABASE_URL not set' })

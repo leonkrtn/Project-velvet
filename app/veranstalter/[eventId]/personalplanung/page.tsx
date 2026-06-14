@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { Plus, X, Pencil, Trash2, AlertTriangle, Check, ArrowLeftRight, MessageSquare, Send, Clock } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
 import ZeiterfassungSection from './ZeiterfassungSection'
@@ -287,6 +288,15 @@ export default function PersonalplanungPage() {
   const [chatLoading, setChatLoading] = useState(false)
   const chatEndRef = React.useRef<HTMLDivElement>(null)
   const chatConvIdRef = React.useRef<string | null>(null)
+  const chatChannelRef = React.useRef<RealtimeChannel | null>(null)
+
+  // Realtime-Channel beim Unmount aufräumen (verhindert Channel-Leak)
+  React.useEffect(() => () => {
+    if (chatChannelRef.current) {
+      supabase.removeChannel(chatChannelRef.current)
+      chatChannelRef.current = null
+    }
+  }, [])
 
   const [hoveredShiftId, setHoveredShiftId] = useState<string | null>(null)
   const [showAblaufplan, setShowAblaufplan] = useState(true)
@@ -595,6 +605,12 @@ export default function PersonalplanungPage() {
   // ── Staff chat ────────────────────────────────────────────────────────────
   async function openStaffChat(member: StaffMember) {
     if (!member.auth_user_id) return
+    // Vorherigen Realtime-Channel entfernen, bevor ein neuer Chat geöffnet wird
+    // (sonst akkumulieren Channels und Nachrichten werden mehrfach angehängt).
+    if (chatChannelRef.current) {
+      supabase.removeChannel(chatChannelRef.current)
+      chatChannelRef.current = null
+    }
     setActiveChatStaff(member)
     setChatConvId(null)
     setChatMessages([])
@@ -617,13 +633,14 @@ export default function PersonalplanungPage() {
         .order('created_at')
       setChatMessages((msgs ?? []) as unknown as ChatMessage[])
 
-      // Realtime subscription
-      supabase.channel(`chat-${conversationId}`)
+      // Realtime subscription — im Ref halten, damit sie beim erneuten Öffnen
+      // bzw. beim Unmount wieder entfernt werden kann.
+      chatChannelRef.current = supabase.channel(`chat-${conversationId}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
           async payload => {
             const newMsg = payload.new as ChatMessage
             const { data: profile } = await supabase.from('profiles').select('name').eq('id', newMsg.sender_id).maybeSingle()
-            setChatMessages(prev => [...prev, { ...newMsg, sender: profile }])
+            setChatMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, { ...newMsg, sender: profile }])
             setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
           })
         .subscribe()
@@ -1304,7 +1321,7 @@ export default function PersonalplanungPage() {
                   <div style={{ fontSize: 14, fontWeight: 700 }}>Chat · {activeChatStaff.name}</div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ROLES[activeChatStaff.role_category ?? '']?.label ?? '—'}</div>
                 </div>
-                <button onClick={() => { setActiveChatStaff(null); setChatConvId(null); setChatMessages([]) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 7, background: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                <button onClick={() => { if (chatChannelRef.current) { supabase.removeChannel(chatChannelRef.current); chatChannelRef.current = null } setActiveChatStaff(null); setChatConvId(null); setChatMessages([]) }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 7, background: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                   <X size={14} />
                 </button>
               </div>

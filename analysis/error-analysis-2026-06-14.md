@@ -3,6 +3,9 @@
 Tiefgründige Analyse über alle Fehlerklassen: statische Checks, Sicherheit,
 Laufzeit-/Logikfehler, sowie Doku-Drift. Branch: `claude/error-analysis-thpe86`.
 
+> **Status:** Alle sechs Befunde wurden behoben (siehe Abschnitt
+> „Behebung" am Ende). `tsc --noEmit` 0 Fehler, `npm run lint` 0 Errors.
+
 ## Methodik
 
 - `tsc --noEmit` (echter Typecheck nach `npm install`)
@@ -100,6 +103,17 @@ entfernt. Es läuft also faktisch kein Linting in CI.
 **Fix:** ESLint-Flat-Config + `eslint-config-next` committen und auf die ESLint-CLI migrieren.
 
 ---
+
+## Behebung (2026-06-14)
+
+| # | Fix |
+|---|---|
+| #1 SSRF | `og-preview/route.ts` neu: nur `http(s)`, DNS-Auflösung + Block privater/interner IP-Bereiche (RFC1918, 127/8, 169.254/16 inkl. Metadata, CGNAT, IPv6 loopback/ULA/link-local), Redirects manuell pro Hop re-validiert, `runtime = 'nodejs'`. |
+| #2 init-db | `auth.getUser()`-Check ergänzt → 401 für anonyme Aufrufe; Verhalten für eingeloggte Nutzer unverändert. |
+| #3 Channel-Leak | `personalplanung/page.tsx`: Channel im `chatChannelRef` gehalten, beim erneuten Öffnen / Schließen / Unmount via `removeChannel` entfernt; Dedupe-Guard gegen doppelte Nachrichten. |
+| #4 Doku-Drift | `CLAUDE.md`: Middleware- und Permission-Abschnitt als „behoben" markiert; Hinweis ergänzt, dass `/api/*` via Middleware public ist (Self-Auth nötig). |
+| #5 Prerender-Env | `lib/supabase/client.ts`: ohne Env nur server-/buildseitig Platzhalter statt hartem Throw; im Browser weiterhin strikt. |
+| #6 ESLint | `.eslintrc.json` (next/core-web-vitals + @typescript-eslint registriert, laute Regeln auf `warn`/`off`), `eslint`/`eslint-config-next` als devDeps, `eslint.ignoreDuringBuilds` in `next.config.js`. `npm run lint` läuft non-interaktiv, exit 0. |
 
 ## Was sauber ist
 

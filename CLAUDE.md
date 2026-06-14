@@ -122,23 +122,26 @@
 
 ---
 
-## ⚠️ CRITICAL: Dual Permission System (Active Bug)
+## Permission System (Vendor Tabs)
 
-The project has **two parallel permission systems** that are **not in sync**:
+> **Hinweis (Stand 2026-06):** Der früher hier dokumentierte „Dual Permission"-Bug
+> ist behoben. Die Vendor-Sidebar liest die Tab-Sichtbarkeit jetzt aus dem
+> **neuen** System (`dienstleister_permissions`) — siehe
+> `app/vendor/dashboard/[eventId]/VendorSidebarLayout.tsx` (filtert per
+> `access !== 'none'`). Das alte `permissions`-System ist nur noch Legacy.
 
-### OLD system (partially deprecated but still controlling frontend)
-- Table: `permissions` (columns: `event_id`, `user_id`, `permission TEXT`)
-- Keys: `mod_chat`, `mod_timeline`, `mod_timeline_read`, `mod_seating`, `mod_seating_read`, `mod_catering`, `mod_catering_read`, `mod_music`, `mod_music_read`, `mod_patisserie`, `mod_patisserie_read`, `mod_decor`, `mod_decor_read`, `mod_media`, `mod_media_read`, `mod_location`, `mod_guests`
-- Still used by: `VendorDashboardClient.tsx` (tab visibility), `vendor-modules.ts` (`ALL_MODULES`), `lib/store.ts`
-
-### NEW system (DB RLS enforced since migration 0042)
+### NEW system (DB RLS enforced since migration 0042) — maßgeblich
 - Table: `dienstleister_permissions` (columns: `event_id`, `dienstleister_user_id`, `tab_key TEXT`, `item_id TEXT|NULL`, `access: none|read|write`)
 - Tab keys: `uebersicht`, `catering`, `chats`, `ablaufplan`, `gaesteliste`, `musik`, `patisserie`, `dekoration`, `medien`, `sitzplan`
 - `allgemein` is **explicitly blocked** — migration 0043 added a CHECK constraint (`tab_key <> 'allgemein'`) and purged existing rows
 - Written by: `BerechtigungenClient.tsx` (permission editor UI)
+- Read by: `VendorSidebarLayout.tsx` (tab visibility)
 - Enforced by: `dl_has_tab_access()` SECURITY DEFINER function in all table RLS policies
 
-**Consequence:** Organizer configures permissions in the UI (writes to new system), but vendor portal reads from old system for tab visibility → vendor may see tabs they have no DB access to, or not see tabs they do have DB access to. The permission editor UI has no effect on what the vendor sees in the sidebar.
+### OLD system (Legacy, nicht mehr für Tab-Sichtbarkeit maßgeblich)
+- Table: `permissions` (columns: `event_id`, `user_id`, `permission TEXT`)
+- Keys: `mod_chat`, `mod_timeline`, `mod_timeline_read`, `mod_seating`, `mod_seating_read`, `mod_catering`, `mod_catering_read`, `mod_music`, `mod_music_read`, `mod_patisserie`, `mod_patisserie_read`, `mod_decor`, `mod_decor_read`, `mod_media`, `mod_media_read`, `mod_location`, `mod_guests`
+- Still referenced by: `vendor-modules.ts` (`ALL_MODULES`), `lib/store.ts`
 
 ---
 
@@ -158,15 +161,20 @@ redeem_invite_code(code TEXT) → json
 
 ---
 
-## Middleware Auth (Critical Nuance)
+## Middleware Auth
 
-`middleware.ts` — guards `/veranstalter/*` by checking `app_metadata.is_approved_organizer`.
+`middleware.ts` — guards `/veranstalter/*`.
 
-**Bug:** The check logic is:
-```ts
-if (isOrganizerRoute && isApproved === false && isApproved !== undefined)
-```
-This condition is always `false` (impossible to be both `=== false` AND `!== undefined` simultaneously). Without the Custom Access Token Hook setting `is_approved_organizer`, every user can access organizer routes.
+> **Hinweis (Stand 2026-06):** Der früher hier dokumentierte Approval-Bug
+> (`isApproved === false && isApproved !== undefined`, immer `false`) ist behoben.
+> Die Middleware prüft jetzt **autoritativ über die `profiles`-Tabelle**
+> (`is_approved_organizer`) und funktioniert damit unabhängig vom Custom Access
+> Token Hook — siehe `middleware.ts` Layer 3. Nicht freigeschaltete Nutzer werden
+> deterministisch auf ihr Portal bzw. `/veranstalter/pending` umgeleitet.
+
+**Wichtig:** Alle `/api/`-Routen werden von der Middleware als *public* behandelt
+(Layer 1) — API-Routen müssen Authentifizierung/Autorisierung daher **selbst**
+durchführen (siehe `app/api/events/[eventId]/cover/route.ts` als Vorbild).
 
 ---
 
