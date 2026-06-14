@@ -238,3 +238,22 @@ button[style*="background: none"]:hover:not([data-sel]) {
 .list-item-enter {
   animation: slideInFromBottom 0.2s ease both;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Responsive Helpers — nur Mobile (Desktop bleibt unverändert)
+   Gästelisten-Grids (Veranstalter + Dienstleister): am Handy Sekundärspalten
+   ausblenden, Grid auf eine Spalte, keine erzwungene Mindestbreite/-scroll.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .va-guest-scroll { overflow-x: visible !important; }
+  .va-guest-min { min-width: 0 !important; }
+  .va-guest-head { display: none !important; }
+  .va-guest-row { grid-template-columns: 1fr !important; min-width: 0 !important; }
+  .va-guest-sec { display: none !important; }
+}
+
+/* Chats-Ladezustand: auf Mobile nur die Liste (volle Breite), Nachrichten-Panel aus */
+@media (max-width: 767px) {
+  .chat-load-list { width: 100% !important; min-width: 0 !important; border-right: none !important; }
+  .chat-load-main { display: none !important; }
+}

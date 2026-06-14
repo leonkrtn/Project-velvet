@@ -628,8 +628,8 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
           </div>
 
           <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px', padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)', minWidth: 480 }}>
+            <div className="va-guest-scroll" style={{ overflowX: 'auto' }}>
+            <div className="va-guest-head" style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px', padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)', minWidth: 480 }}>
               {['Name', 'Seite', 'Menü', 'Allergien'].map(h => (
                 <span key={h} style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)' }}>{h}</span>
               ))}
@@ -640,7 +640,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
             {filtered.map(g => {
               const st = STATUS_STYLE[g.status] ?? STATUS_STYLE.angelegt
               return (
-                <div key={g.id} onClick={() => openEdit(g)} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px', padding: '12px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center', cursor: 'pointer', transition: 'background 0.1s', minWidth: 480 }}
+                <div key={g.id} className="va-guest-row" onClick={() => openEdit(g)} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px', padding: '12px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center', cursor: 'pointer', transition: 'background 0.1s', minWidth: 480 }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#FAFAFA')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                   <div>
@@ -649,9 +649,9 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
                       {STATUS_LABELS[g.status] ?? g.status}
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.side ?? '—'}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.meal_choice ?? '—'}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.side ?? '—'}</div>
+                  <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.meal_choice ?? '—'}</div>
+                  <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).join(', ') || '—'}
                   </div>
                 </div>

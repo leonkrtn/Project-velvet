@@ -97,8 +97,8 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
       )}
 
       {loading ? (
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflowX: 'auto', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ minWidth: 520 }}>
+        <div className="va-guest-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflowX: 'auto', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="va-guest-min" style={{ minWidth: 520 }}>
           {/* Header row — matches gridCols 1fr 100px 120px 160px 100px */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 160px 100px', padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)', gap: 12, alignItems: 'center' }}>
             {[70, 40, 50, 60, 40].map((w, i) => (
@@ -121,10 +121,10 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
           </div>
         </div>
       ) : (
-        <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflowX: 'auto', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ minWidth: 520 }}>
+        <div className="va-guest-scroll" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflowX: 'auto', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="va-guest-min" style={{ minWidth: 520 }}>
           {visibleCols.length > 0 && (
-            <div style={{ display: 'grid', gridTemplateColumns: gridCols, padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)' }}>
+            <div className="va-guest-head" style={{ display: 'grid', gridTemplateColumns: gridCols, padding: '10px 20px', background: '#F5F5F7', borderBottom: '1px solid var(--border)' }}>
               {visibleCols.map(c => (
                 <span key={c.key} style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)' }}>{c.label}</span>
               ))}
@@ -136,7 +136,7 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
           {filtered.map(g => {
             const st = STATUS_STYLE[g.status] ?? STATUS_STYLE.angelegt
             return (
-              <div key={g.id} style={{ display: 'grid', gridTemplateColumns: gridCols, padding: '12px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
+              <div key={g.id} className="va-guest-row" style={{ display: 'grid', gridTemplateColumns: gridCols, padding: '12px 20px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
                 {showNamen && (
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 500 }}>{g.name}</div>
@@ -147,10 +147,10 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
                     )}
                   </div>
                 )}
-                {showNamen && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.side ?? '—'}</div>}
-                {showEssen && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.meal_choice ?? '—'}</div>}
+                {showNamen && <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.side ?? '—'}</div>}
+                {showEssen && <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.meal_choice ?? '—'}</div>}
                 {showAllergien && (
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).join(', ') || '—'}
                   </div>
                 )}
@@ -159,7 +159,7 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
                   const table = Array.isArray(assignment?.seating_tables)
                     ? assignment?.seating_tables?.[0]
                     : assignment?.seating_tables
-                  return <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{table?.name ?? '—'}</div>
+                  return <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{table?.name ?? '—'}</div>
                 })()}
               </div>
             )

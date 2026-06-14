@@ -287,7 +287,7 @@ function AddItemForm({ eventId, onAdded }: { eventId: string; onAdded: (i: Budge
   }
 
   return (
-    <div className="bp-card" style={{ padding: '1rem', marginTop: '1rem' }}>
+    <div className="bp-card" style={{ padding: '1rem', marginTop: '1rem', width: '100%', flexBasis: '100%' }}>
       <div className="bp-grid-2" style={{ marginBottom: '0.75rem' }}>
         <div className="bp-field">
           <label className="bp-label-text">Beschreibung *</label>
@@ -407,8 +407,8 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
         <div className="bp-card-header">
           <h2 className="bp-section-title" style={{ margin: 0 }}>Positionen ({visibleItems.length + 1})</h2>
         </div>
-        <div className="bp-scroll-x bp-budget-scroll">
-        <table className="bp-table bp-budget-table" style={{ minWidth: 560 }}>
+        <div className="bp-scroll-x bp-stack-scroll">
+        <table className="bp-table bp-stack-sm" style={{ minWidth: 560 }}>
           <thead>
             <tr>
               <th>Beschreibung</th>
