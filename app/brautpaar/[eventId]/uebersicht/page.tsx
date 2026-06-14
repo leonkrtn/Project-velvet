@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { requestDownloadUrl } from '@/lib/files/worker-client'
 import BrautpaarUebersicht from './BrautpaarUebersicht'
 
 interface Props {
@@ -30,7 +31,7 @@ export default async function UebersichtPage({ params }: Props) {
   const [eventRes, guestsRes, begleitRes, budgetRes, tasksRes, seatingRes, songsRes] = await Promise.all([
     supabase
       .from('events')
-      .select('id, title, date, couple_name, venue, organizer_fee, organizer_fee_type, budget_total')
+      .select('id, title, date, couple_name, venue, organizer_fee, organizer_fee_type, budget_total, cover_image_r2_key')
       .eq('id', eventId)
       .single(),
     supabase
@@ -97,9 +98,20 @@ export default async function UebersichtPage({ params }: Props) {
     ? Math.ceil((new Date(event.date).getTime() - Date.now()) / 86400000)
     : null
 
+  // Cover image: generate a fresh presigned GET URL (1h) if a key is stored.
+  let coverImageUrl: string | null = null
+  if (event.cover_image_r2_key) {
+    try {
+      coverImageUrl = await requestDownloadUrl(event.cover_image_r2_key)
+    } catch {
+      coverImageUrl = null
+    }
+  }
+
   return (
     <BrautpaarUebersicht
       eventId={eventId}
+      coverImageUrl={coverImageUrl}
       eventTitle={event.title ?? ''}
       eventDate={event.date ?? null}
       coupleName={event.couple_name ?? ''}

@@ -2249,3 +2249,212 @@
   .bp-lightbox-head { padding: 1rem; }
   .bp-lightbox-body { padding: 1rem 1rem 1.25rem; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Übersicht — "Hochzeitsjournal" Magazin-Layout
+   Only the overview page opts into this editorial scale via .bp-mag.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes bp-mag-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes bp-spin { to { transform: rotate(360deg); } }
+.bp-spin { animation: bp-spin 0.9s linear infinite; }
+
+/* ── Hero / Cover ──────────────────────────────────────────────────────────── */
+.bp-mag-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--bp-r-lg);
+  border: 1px solid var(--bp-rule);
+  background:
+    radial-gradient(120% 140% at 50% 0%, var(--bp-gold-pale) 0%, var(--bp-paper) 55%);
+  box-shadow: var(--bp-shadow-card);
+  padding: clamp(2.25rem, 6vw, 4.5rem) 1.5rem clamp(2rem, 5vw, 3.75rem);
+  text-align: center;
+}
+.bp-mag-hero.has-photo { border-color: transparent; }
+.bp-mag-hero-photo {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+.bp-mag-hero-veil { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.bp-mag-hero.has-photo .bp-mag-hero-veil {
+  background:
+    linear-gradient(180deg, rgba(248,248,246,0.55) 0%, rgba(248,248,246,0.78) 60%, rgba(248,248,246,0.95) 100%);
+}
+.bp-mag-hero-inner { position: relative; z-index: 2; animation: bp-mag-rise 0.5s ease both; }
+
+.bp-mag-kicker {
+  margin: 0 0 1rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--bp-gold-deep);
+  font-weight: 600;
+}
+.bp-mag-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: clamp(2.5rem, 7vw, 4.5rem);
+  line-height: 1.04;
+  letter-spacing: -0.015em;
+  color: var(--bp-ink);
+}
+.bp-mag-ornament {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0.875rem; margin: 1rem auto 0.875rem;
+  color: var(--bp-gold);
+}
+.bp-mag-ornament span {
+  display: block; height: 1px; width: clamp(2rem, 8vw, 4.5rem);
+  background: linear-gradient(90deg, transparent, var(--bp-rule-gold));
+}
+.bp-mag-ornament span:last-child { transform: scaleX(-1); }
+
+.bp-mag-meta {
+  margin: 0;
+  font-size: clamp(0.9375rem, 2.2vw, 1.0625rem);
+  color: var(--bp-ink-2);
+}
+
+.bp-mag-countdown { margin-top: clamp(1.5rem, 4vw, 2.5rem); animation: bp-mag-rise 0.5s ease 0.12s both; }
+.bp-mag-countdown-num {
+  font-weight: 600;
+  font-size: clamp(4rem, 12vw, 7rem);
+  line-height: 0.92;
+  color: var(--bp-gold-deep);
+  letter-spacing: -0.02em;
+}
+.bp-mag-countdown-label {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bp-ink-3);
+}
+
+.bp-mag-hero-cover-btn {
+  position: absolute; top: 0.875rem; right: 0.875rem; z-index: 3;
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  padding: 0.4375rem 0.75rem;
+  font-size: 0.75rem; font-weight: 500;
+  color: var(--bp-ink-2);
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--bp-rule);
+  border-radius: var(--bp-r-pill);
+  cursor: pointer;
+  transition: background var(--bp-transition), color var(--bp-transition), box-shadow var(--bp-transition);
+}
+.bp-mag-hero-cover-btn:hover:not(:disabled) { background: #fff; color: var(--bp-gold-deep); box-shadow: var(--bp-shadow-card); }
+.bp-mag-hero-cover-btn:disabled { opacity: 0.7; cursor: default; }
+.bp-mag-hero-error {
+  position: relative; z-index: 2;
+  margin: 1rem 0 0; font-size: 0.8125rem; color: var(--bp-red);
+}
+
+/* ── Editorial-Zahlenleiste ────────────────────────────────────────────────── */
+.bp-mag-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--bp-paper);
+  border: 1px solid var(--bp-rule);
+  border-radius: var(--bp-r-md);
+  box-shadow: var(--bp-shadow-card);
+  overflow: hidden;
+  animation: bp-mag-rise 0.5s ease 0.06s both;
+}
+.bp-mag-figure {
+  position: relative;
+  padding: 1.5rem 1.25rem 1.375rem;
+  text-decoration: none;
+  display: block;
+  transition: background var(--bp-transition);
+}
+.bp-mag-figure + .bp-mag-figure { border-left: 1px solid var(--bp-rule); }
+.bp-mag-figure:hover { background: var(--bp-gold-pale); }
+.bp-mag-figure-num {
+  font-weight: 600;
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  line-height: 1;
+  color: var(--bp-ink);
+  letter-spacing: -0.01em;
+}
+.bp-mag-figure:hover .bp-mag-figure-num { color: var(--bp-gold-deep); }
+.bp-mag-figure-label {
+  margin-top: 0.5rem;
+  font-size: 0.6875rem; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--bp-ink-3);
+}
+.bp-mag-figure-sub { margin-top: 0.25rem; font-size: 0.8125rem; color: var(--bp-ink-2); }
+.bp-mag-figure-bar { margin-top: 0.75rem; height: 3px; background: var(--bp-rule); border-radius: 2px; overflow: hidden; }
+.bp-mag-figure-bar > div { height: 100%; background: var(--bp-gold); border-radius: 2px; transition: width 0.5s ease; }
+
+/* ── Asymmetrischer Block (60/40) ──────────────────────────────────────────── */
+.bp-mag-split {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 1.25rem;
+  align-items: stretch;
+  animation: bp-mag-rise 0.5s ease 0.1s both;
+}
+.bp-mag-block-title { font-size: 1.375rem; font-weight: 600; color: var(--bp-ink); }
+.bp-mag-guest-rows { display: flex; flex-direction: column; gap: 0.5rem; }
+.bp-mag-guest-rows > div {
+  display: flex; align-items: center; gap: 0.625rem;
+  font-size: 0.9375rem; color: var(--bp-ink-2);
+  padding-bottom: 0.5rem; border-bottom: 1px solid var(--bp-rule);
+}
+.bp-mag-guest-rows > div:last-child { border-bottom: none; padding-bottom: 0; }
+.bp-mag-guest-rows b { margin-left: auto; font-family: var(--bp-serif, 'Cormorant Garamond', Georgia, serif); font-size: 1.25rem; font-weight: 600; color: var(--bp-ink); }
+.bp-mag-guest-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── "Eure Planung" Galerie ────────────────────────────────────────────────── */
+.bp-mag-section-head {
+  display: flex; align-items: center; gap: 1.25rem;
+  margin: 0 0 1.5rem;
+}
+.bp-mag-section-rule { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--bp-rule-gold), transparent); }
+.bp-mag-section-title { margin: 0; font-size: 1.75rem; font-weight: 600; color: var(--bp-ink); white-space: nowrap; }
+
+.bp-mag-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.bp-mag-gallery-card {
+  display: flex; align-items: flex-start; gap: 1rem;
+  padding: 1.375rem 1.5rem;
+  text-decoration: none;
+  transition: transform var(--bp-transition), box-shadow var(--bp-transition), border-color var(--bp-transition);
+}
+.bp-mag-gallery-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--bp-shadow-elevated);
+  border-color: var(--bp-rule-gold);
+}
+.bp-mag-gallery-icon {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  background: var(--bp-gold-pale); color: var(--bp-gold-deep);
+  display: flex; align-items: center; justify-content: center;
+}
+.bp-mag-gallery-label { display: block; font-size: 1.25rem; font-weight: 600; color: var(--bp-ink); line-height: 1.1; }
+.bp-mag-gallery-detail { display: block; font-size: 0.8125rem; color: var(--bp-ink-3); margin-top: 0.25rem; }
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .bp-mag-stats { grid-template-columns: repeat(2, 1fr); }
+  .bp-mag-figure:nth-child(3) { border-left: none; }
+  .bp-mag-figure:nth-child(n+3) { border-top: 1px solid var(--bp-rule); }
+  .bp-mag-split { grid-template-columns: 1fr; }
+  .bp-mag-gallery { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 540px) {
+  .bp-mag-stats { grid-template-columns: 1fr 1fr; }
+  .bp-mag-gallery { grid-template-columns: 1fr; }
+  .bp-mag-section-title { font-size: 1.375rem; }
+}
