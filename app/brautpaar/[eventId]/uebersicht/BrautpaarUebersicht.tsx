@@ -76,20 +76,28 @@ function useCountUp(target: number, durationMs = 1100, delayMs = 0) {
 }
 
 // Scroll-reveal: adds `.in` to every `.bp-reveal` inside the ref as it enters.
+// Robust: reveals what's already on screen immediately, lazily reveals the rest
+// on scroll, and a safety net reveals everything after a moment so content can
+// never stay hidden (which on mobile would look like the page won't scroll).
 function useReveal<T extends HTMLElement>() {
   const ref = useRef<T>(null)
   useEffect(() => {
     const root = ref.current
     if (!root) return
     const els = Array.from(root.querySelectorAll<HTMLElement>('.bp-reveal'))
-    if (prefersReduced()) { els.forEach(el => el.classList.add('in')); return }
+    if (prefersReduced() || typeof IntersectionObserver === 'undefined') {
+      els.forEach(el => el.classList.add('in'))
+      return
+    }
     const io = new IntersectionObserver((entries) => {
       entries.forEach(e => {
         if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) }
       })
-    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' })
+    }, { threshold: 0.08, rootMargin: '0px 0px -5% 0px' })
     els.forEach(el => io.observe(el))
-    return () => io.disconnect()
+    // Safety net: nichts darf dauerhaft unsichtbar bleiben.
+    const t = setTimeout(() => els.forEach(el => el.classList.add('in')), 2500)
+    return () => { io.disconnect(); clearTimeout(t) }
   }, [])
   return ref
 }
