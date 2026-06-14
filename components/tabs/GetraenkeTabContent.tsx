@@ -88,6 +88,45 @@ function fmt(n: number, decimals = 2) {
   return n.toLocaleString('de-DE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
 }
 
+// Accepts both German comma and dot as decimal separator → number (0 on empty/invalid).
+// Both "1,20" and "1.20" yield 1.2; the dot is never treated as a thousands separator.
+function parseDecimal(s: string): number {
+  const n = parseFloat(s.replace(',', '.'))
+  return Number.isNaN(n) ? 0 : n
+}
+
+// Decimal text input that tolerates both "," and "." regardless of browser locale.
+// Holds a string buffer while focused so typing "1,20" is never clobbered by the
+// parsed numeric value; displays the value with a German comma.
+function DecimalInput({
+  value, onChange, placeholder, style,
+}: { value: number; onChange: (n: number) => void; placeholder?: string; style?: React.CSSProperties }) {
+  const display = (v: number) => (v ? String(v).replace('.', ',') : '')
+  const [text, setText] = useState(() => display(value))
+  const focused = useRef(false)
+
+  useEffect(() => {
+    if (!focused.current) setText(display(value))
+  }, [value])
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={text}
+      placeholder={placeholder}
+      onFocus={() => { focused.current = true }}
+      onBlur={() => { focused.current = false; setText(display(value)) }}
+      onChange={e => {
+        const t = e.target.value.replace(/[^0-9.,]/g, '')
+        setText(t)
+        onChange(parseDecimal(t))
+      }}
+      style={style}
+    />
+  )
+}
+
 function useDebounce<T>(value: T, delay: number): T {
   const [dv, setDv] = useState(value)
   useEffect(() => {
@@ -98,14 +137,15 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 function FieldInput({
-  value, onChange, placeholder, type = 'text',
-}: { value: string | number; onChange: (v: string) => void; placeholder?: string; type?: string }) {
+  value, onChange, placeholder, type = 'text', inputMode,
+}: { value: string | number; onChange: (v: string) => void; placeholder?: string; type?: string; inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'] }) {
   return (
     <input
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
       type={type}
+      inputMode={inputMode}
       style={{
         width: '100%', height: 40, padding: '0 10px',
         border: '1px solid var(--border, #e5e7eb)',
@@ -310,7 +350,7 @@ function ArtikelCard({
           {/* Pro Person */}
           <InfoBlock label="Pro Person">
             {canEdit ? (
-              <input type="number" value={draft.amount_per_person || ''} onChange={e => setField('amount_per_person', parseFloat(e.target.value) || 0)} placeholder="0"
+              <DecimalInput value={draft.amount_per_person} onChange={n => setField('amount_per_person', n)} placeholder="0"
                 style={{ width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
             ) : (
               <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.amount_per_person || '—'}</div>
@@ -322,7 +362,7 @@ function ArtikelCard({
           <InfoBlock label="Preis BP">
             {canEdit ? (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                <input type="number" value={draft.price_per_unit || ''} onChange={e => setField('price_per_unit', parseFloat(e.target.value) || 0)} placeholder="0"
+                <DecimalInput value={draft.price_per_unit} onChange={n => setField('price_per_unit', n)} placeholder="0"
                   style={{ width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700, border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)', flexShrink: 0 }}>€</span>
               </div>
@@ -336,7 +376,7 @@ function ArtikelCard({
           <InfoBlock label="Kalkulation">
             {canEdit ? (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                <input type="number" value={draft.kalkulationspreis || ''} onChange={e => setField('kalkulationspreis', parseFloat(e.target.value) || 0)} placeholder="0"
+                <DecimalInput value={draft.kalkulationspreis} onChange={n => setField('kalkulationspreis', n)} placeholder="0"
                   style={{ width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700, border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)', flexShrink: 0 }}>€</span>
               </div>
@@ -368,7 +408,7 @@ function ArtikelCard({
 
           <InfoBlock label="Pro Person">
             {canEdit ? (
-              <input type="number" value={draft.amount_per_person || ''} onChange={e => setField('amount_per_person', parseFloat(e.target.value) || 0)} placeholder="0"
+              <DecimalInput value={draft.amount_per_person} onChange={n => setField('amount_per_person', n)} placeholder="0"
                 style={{ width: '100%', fontSize: 17, fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
             ) : (
               <div style={{ fontSize: 17, fontWeight: 700 }}>{draft.amount_per_person || '—'}</div>
@@ -379,7 +419,7 @@ function ArtikelCard({
           <InfoBlock label="Preis / Stk">
             {canEdit ? (
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                <input type="number" value={draft.price_per_unit || ''} onChange={e => setField('price_per_unit', parseFloat(e.target.value) || 0)} placeholder="0"
+                <DecimalInput value={draft.price_per_unit} onChange={n => setField('price_per_unit', n)} placeholder="0"
                   style={{ width: '100%', minWidth: 0, fontSize: 15, fontWeight: 700, border: 'none', background: 'transparent', padding: 0, outline: 'none', fontFamily: 'inherit' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary, #aaa)', flexShrink: 0 }}>€</span>
               </div>
@@ -429,7 +469,7 @@ function KategorieSection({
     if (!addName.trim()) return
     setSaving(true)
     const supabase = createClient()
-    const perPerson = parseFloat(addAmt) || 0
+    const perPerson = parseDecimal(addAmt)
     const total = perPerson > 0 && effectiveGuestCount > 0 ? Math.ceil(perPerson * effectiveGuestCount) : 0
     const { data, error } = await supabase.from('getraenke_artikel').insert({
       event_id:          kat.event_id,
@@ -438,8 +478,8 @@ function KategorieSection({
       unit:              addUnit,
       amount_per_person: perPerson,
       total_planned:     total,
-      price_per_unit:    parseFloat(addPrice) || 0,
-      kalkulationspreis: parseFloat(addKalk) || 0,
+      price_per_unit:    parseDecimal(addPrice),
+      kalkulationspreis: parseDecimal(addKalk),
       sort_order:        artikel.length,
     }).select().single()
     setSaving(false)
@@ -552,14 +592,14 @@ function KategorieSection({
                   </select>
                 </AddField>
                 <AddField label="Pro Person">
-                  <FieldInput value={addAmt} onChange={setAddAmt} placeholder="0" type="number" />
+                  <FieldInput value={addAmt} onChange={setAddAmt} placeholder="0" inputMode="decimal" />
                 </AddField>
                 <AddField label={isVera ? 'Preis BP (€)' : 'Preis / Einheit (€)'}>
-                  <FieldInput value={addPrice} onChange={setAddPrice} placeholder="0,00" type="number" />
+                  <FieldInput value={addPrice} onChange={setAddPrice} placeholder="0,00" inputMode="decimal" />
                 </AddField>
                 {isVera && (
                   <AddField label="Kalk-Preis (€)">
-                    <FieldInput value={addKalk} onChange={setAddKalk} placeholder="0,00" type="number" />
+                    <FieldInput value={addKalk} onChange={setAddKalk} placeholder="0,00" inputMode="decimal" />
                   </AddField>
                 )}
                 <button onClick={addArtikel} disabled={saving || !addName.trim()} style={{ height: 40, padding: '0 16px', background: '#fff', color: addName.trim() ? 'var(--gold, #B89968)' : '#bbb', border: `1px solid ${addName.trim() ? 'var(--gold, #B89968)' : 'var(--border, #ddd)'}`, borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: addName.trim() ? 'pointer' : 'default', fontFamily: 'inherit', opacity: saving ? 0.6 : 1, whiteSpace: 'nowrap' }}>
@@ -669,12 +709,14 @@ function CocktailCard({ cocktail, canEdit, isVera, onChange, onDelete }: {
                   <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 5 }}>
                     {isVera ? 'Preis BP (€)' : 'Preis pro Stück (€)'}
                   </label>
-                  <FieldInput value={draft.price_per_unit || ''} onChange={v => setDraft(p => ({ ...p, price_per_unit: parseFloat(v) || 0 }))} type="number" placeholder="0,00" />
+                  <DecimalInput value={draft.price_per_unit} onChange={n => setDraft(p => ({ ...p, price_per_unit: n }))} placeholder="0,00"
+                    style={{ width: '100%', height: 40, padding: '0 10px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: '#fff', boxSizing: 'border-box' }} />
                 </div>
                 {isVera && (
                   <div>
                     <label style={{ display: 'block', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary, #aaa)', marginBottom: 5 }}>Kalkulation (€)</label>
-                    <FieldInput value={draft.kalkulationspreis || ''} onChange={v => setDraft(p => ({ ...p, kalkulationspreis: parseFloat(v) || 0 }))} type="number" placeholder="0,00" />
+                    <DecimalInput value={draft.kalkulationspreis} onChange={n => setDraft(p => ({ ...p, kalkulationspreis: n }))} placeholder="0,00"
+                      style={{ width: '100%', height: 40, padding: '0 10px', border: '1px solid var(--border, #e5e7eb)', borderRadius: 6, fontSize: 13, fontFamily: 'inherit', outline: 'none', background: '#fff', boxSizing: 'border-box' }} />
                   </div>
                 )}
               </div>
