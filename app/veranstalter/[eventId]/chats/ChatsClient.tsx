@@ -592,7 +592,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
         flexDirection: 'column', background: 'var(--surface)',
       }}>
         {/* Header */}
-        <div style={{ padding: '18px 16px 10px', borderBottom: '1px solid var(--border)', position: 'sticky', top: isMobile ? 56 : 0, background: 'var(--surface)', zIndex: 2 }}>
+        <div style={{ padding: isMobile ? '14px 14px 10px' : '18px 16px 10px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <h2 style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>Chats</h2>
             <button
@@ -619,7 +619,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
               style={{
                 width: '100%', padding: '8px 10px 8px 30px',
                 border: '1px solid var(--border)', borderRadius: 10,
-                fontSize: 13, outline: 'none', fontFamily: 'inherit',
+                fontSize: isMobile ? 16 : 13, outline: 'none', fontFamily: 'inherit',
                 background: '#F5F5F7', boxSizing: 'border-box', color: 'var(--text-primary)',
               }}
             />
@@ -758,8 +758,8 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
           <>
             {/* Chat header */}
             <div style={{
-              padding: '14px 20px', borderBottom: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface)',
+              padding: isMobile ? '12px 12px' : '14px 20px', borderBottom: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, background: 'var(--surface)',
               flexShrink: 0,
             }}>
               {isMobile && (
@@ -798,7 +798,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
             {/* Body: messages + optional info panel */}
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
               {/* Messages */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 6, background: '#FAFAFA' }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '12px 12px' : '16px 20px', display: showInfo && isMobile ? 'none' : 'flex', flexDirection: 'column', gap: 6, background: '#FAFAFA' }}>
                 {messages.map(msg => {
                   const isMe = msg.sender_id === currentUserId
                   const senderName = msg.sender?.name ?? membersById[msg.sender_id ?? '']?.profiles?.name
@@ -813,7 +813,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
                           {initials(senderName ?? 'U')}
                         </div>
                       )}
-                      <div style={{ maxWidth: '68%' }}>
+                      <div style={{ maxWidth: isMobile ? '82%' : '68%' }}>
                         {!isMe && senderName && convIsGroup(activeConv) && (
                           <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 3, marginLeft: 4 }}>{senderName}</div>
                         )}
@@ -848,7 +848,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
                 const nonParticipants = members.filter(m => !participantIds.has(m.user_id))
                 return (
                   <div style={{
-                    width: 250, borderLeft: '1px solid var(--border)', background: 'var(--surface)',
+                    width: isMobile ? '100%' : 250, borderLeft: isMobile ? 'none' : '1px solid var(--border)', background: 'var(--surface)',
                     overflowY: 'auto', flexShrink: 0, display: 'flex', flexDirection: 'column',
                   }}>
                     <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
@@ -898,13 +898,16 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
             </div>
 
             {/* Message input */}
-            <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, background: 'var(--surface)', flexShrink: 0 }}>
+            <div style={{
+              padding: isMobile ? '10px 12px calc(10px + env(safe-area-inset-bottom))' : '12px 20px',
+              borderTop: '1px solid var(--border)', display: 'flex', gap: 10, background: 'var(--surface)', flexShrink: 0,
+            }}>
               <input
                 value={newMsg}
                 onChange={e => setNewMsg(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                 placeholder="Nachricht schreiben…"
-                style={{ flex: 1, padding: '10px 16px', border: 'none', borderRadius: 22, fontSize: 14, outline: 'none', fontFamily: 'inherit', background: '#F0F0F2' }}
+                style={{ flex: 1, minWidth: 0, padding: '10px 16px', border: 'none', borderRadius: 22, fontSize: isMobile ? 16 : 14, outline: 'none', fontFamily: 'inherit', background: '#F0F0F2' }}
               />
               <button
                 onClick={sendMessage}
