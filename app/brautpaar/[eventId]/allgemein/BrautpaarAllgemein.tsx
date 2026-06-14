@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Save, Plus, X, Check } from 'lucide-react'
+import { Save, Check } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
 import SoloInviteSection from './SoloInviteSection'
 
@@ -65,7 +65,6 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
   const [error, setError]   = useState<string | null>(null)
-  const [newMealOption, setNewMealOption] = useState('')
   const [ceremonyTimeStr, setCeremonyTimeStr] = useState(() => {
     const cs = initialData.ceremony_start
     if (!cs) return ''
@@ -110,18 +109,6 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
     if (err) { setError(err.message); return }
     setSaved(true)
     setTimeout(() => setSaved(false), 3000)
-  }
-
-  function addMealOption() {
-    if (!newMealOption.trim()) return
-    const opts = [...(data.meal_options ?? []), newMealOption.trim()]
-    set('meal_options', opts)
-    setNewMealOption('')
-  }
-
-  function removeMealOption(idx: number) {
-    const opts = (data.meal_options ?? []).filter((_, i) => i !== idx)
-    set('meal_options', opts)
   }
 
   return (
@@ -236,39 +223,6 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
             <input className="bp-input" value={data.children_note ?? ''} onChange={e => set('children_note', e.target.value || null)} placeholder="z.B. Kinder bis 12 Jahre kostenfrei" />
           </Field>
         )}
-
-        <div className="bp-divider" />
-
-        <Field label="Menüoptionen">
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            {(data.meal_options ?? []).map((opt, idx) => (
-              <span
-                key={idx}
-                className="bp-badge bp-badge-neutral"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', padding: '0.25rem 0.625rem' }}
-              >
-                {opt}
-                <button onClick={() => removeMealOption(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', lineHeight: 1 }}>
-                  <X size={12} style={{ color: 'var(--bp-ink-3)' }} />
-                </button>
-              </span>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <input
-              className="bp-input"
-              value={newMealOption}
-              onChange={e => setNewMealOption(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMealOption() } }}
-              placeholder="z.B. Vegetarisch, Vegan, Fleisch"
-              style={{ flex: 1 }}
-            />
-            <button className="bp-btn bp-btn-secondary" onClick={addMealOption} disabled={!newMealOption.trim()}>
-              <Plus size={16} />
-            </button>
-          </div>
-        </Field>
-
 
       </Section>
 
