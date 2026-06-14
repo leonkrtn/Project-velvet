@@ -159,6 +159,15 @@ export default function DekoPageClient({
         onMoodboardsChange={setMoodboards}
       />
 
+      {/* ── Element toolbar — docked left, fixed (no longer draggable) ── */}
+      {activeCanvasId && canEdit && !isActiveFrozen && (
+        <DekoFloatingToolbar
+          pendingType={pendingType}
+          onSelect={setPendingType}
+          onCancel={() => setPendingType(null)}
+        />
+      )}
+
       {/* ── Main area ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
 
@@ -233,15 +242,6 @@ export default function DekoPageClient({
           onPendingItemPlaced={() => setPendingType(null)}
         />}
       </div>
-
-      {/* ── Floating toolbar (only when canEdit and canvas selected) ── */}
-      {activeCanvasId && canEdit && !isActiveFrozen && (
-        <DekoFloatingToolbar
-          pendingType={pendingType}
-          onSelect={setPendingType}
-          onCancel={() => setPendingType(null)}
-        />
-      )}
 
       {/* ── Item Lightbox ── */}
       {lightboxItem && (
