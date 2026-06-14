@@ -88,7 +88,6 @@ const RSVP_ITEMS = [
   { key: 'rsvp-geschenke',      label: 'Geschenkliste',       desc: 'Geschenkliste im Bestätigungs-Schritt' },
   { key: 'rsvp-hotel',          label: 'Hotel-Buchung',       desc: 'Hotel-Auswahl-Schritt während der Anmeldung' },
   { key: 'rsvp-begleitpersonen',label: 'Begleitpersonen',     desc: 'Mitreisende Personen angeben' },
-  { key: 'rsvp-menu',           label: 'Menüauswahl',         desc: 'Essensauswahl im Detail-Schritt' },
 ] as const
 
 interface Props {
