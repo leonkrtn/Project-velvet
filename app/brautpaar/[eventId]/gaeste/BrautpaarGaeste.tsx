@@ -440,8 +440,8 @@ function HotelTab({ eventId, hotels: initialHotels }: { eventId: string; hotels:
                       {hotel.hotel_rooms.length === 0 ? (
                         <p className="bp-caption" style={{ fontStyle: 'italic' }}>Noch keine Zimmer angelegt.</p>
                       ) : (
-                        <div className="bp-card bp-scroll-x" style={{ marginBottom: '0.5rem' }}>
-                          <table className="bp-table" style={{ minWidth: 640 }}>
+                        <div className="bp-card bp-scroll-x bp-stack-scroll" style={{ marginBottom: '0.5rem' }}>
+                          <table className="bp-table bp-stack-sm" style={{ minWidth: 640 }}>
                             <thead>
                               <tr>
                                 <th>Typ</th>
@@ -462,11 +462,11 @@ function HotelTab({ eventId, hotels: initialHotels }: { eventId: string; hotels:
                                       <div className="bp-caption" style={{ marginTop: 2 }}>{room.description}</div>
                                     )}
                                   </td>
-                                  <td>{room.room_number ?? '—'}</td>
-                                  <td>{room.total_rooms}</td>
-                                  <td>{room.max_occupancy}</td>
-                                  <td>{room.price_per_night != null ? `€ ${Number(room.price_per_night).toLocaleString('de-DE')}` : '—'}</td>
-                                  <td>
+                                  <td data-label="Zimmer-Nr.">{room.room_number ?? '—'}</td>
+                                  <td data-label="Anzahl">{room.total_rooms}</td>
+                                  <td data-label="Max. Pers.">{room.max_occupancy}</td>
+                                  <td data-label="€/Nacht">{room.price_per_night != null ? `€ ${Number(room.price_per_night).toLocaleString('de-DE')}` : '—'}</td>
+                                  <td data-label="Gebucht">
                                     <span className={room.booked_rooms > 0 ? 'bp-badge bp-badge-gold' : 'bp-badge bp-badge-neutral'}>
                                       {room.booked_rooms} / {room.total_rooms}
                                     </span>
@@ -1574,7 +1574,7 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
             <div className="bp-empty-body">Kein Gast passt zur Suche.</div>
           </div>
         ) : (
-          <table className="bp-table" style={{ minWidth: 560 }}>
+          <table className="bp-table bp-table-min-560">
             <thead>
               <tr>
                 <th style={{ width: 36, paddingRight: 0 }}>

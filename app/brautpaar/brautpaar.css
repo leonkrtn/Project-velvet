@@ -2489,22 +2489,26 @@
 
 /* ── Budget-Tabelle: auf Mobile gestapelt statt seitlich scrollen ── */
 @media (max-width: 640px) {
-  .bp-budget-scroll { overflow-x: visible; }
-  .bp-budget-table { min-width: 0 !important; width: 100%; }
-  .bp-budget-table thead { display: none; }
-  .bp-budget-table tbody,
-  .bp-budget-table tr,
-  .bp-budget-table td { display: block; width: auto; }
-  .bp-budget-table tr { padding: 0.5rem 0; border-bottom: 1px solid var(--bp-rule); }
-  .bp-budget-table tr:last-child { border-bottom: none; }
-  .bp-budget-table td { padding: 0.3rem 1.1rem; text-align: left !important; border: none; }
-  .bp-budget-table td:empty { display: none; }
-  .bp-budget-table td[data-label] {
+  .bp-stack-scroll { overflow-x: visible; }
+  .bp-stack-sm { min-width: 0 !important; width: 100%; }
+  .bp-stack-sm thead { display: none; }
+  .bp-stack-sm tbody,
+  .bp-stack-sm tr,
+  .bp-stack-sm td { display: block; width: auto; }
+  .bp-stack-sm tr { padding: 0.5rem 0; border-bottom: 1px solid var(--bp-rule); }
+  .bp-stack-sm tr:last-child { border-bottom: none; }
+  .bp-stack-sm td { padding: 0.3rem 1.1rem; text-align: left !important; border: none; }
+  .bp-stack-sm td:empty { display: none; }
+  .bp-stack-sm td[data-label] {
     display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
   }
-  .bp-budget-table td[data-label]::before {
+  .bp-stack-sm td[data-label]::before {
     content: attr(data-label);
     color: var(--bp-ink-3); font-size: 0.72rem; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
   }
 }
+
+/* Tabelle, die nur am Desktop eine Mindestbreite braucht (Spalten via bp-hide-mobile reduziert) */
+.bp-table-min-560 { min-width: 560px; }
+@media (max-width: 640px) { .bp-table-min-560 { min-width: 0; } }
