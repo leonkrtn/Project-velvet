@@ -1,7 +1,9 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, Edit2, Check, X, MapPin, Clock, Lightbulb } from 'lucide-react'
+import { Plus, Trash2, Edit2, MapPin, Clock, Lightbulb } from 'lucide-react'
+import { useAutoSave } from '@/hooks/useAutoSave'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,18 +68,18 @@ function SetupItemRow({ item, index, canEdit, mode, onUpdate, onDelete, onPropos
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState(item)
-  const [saving, setSaving]   = useState(false)
 
-  async function save() {
-    setSaving(true)
+  async function save(d: SetupItem) {
     const supabase = createClient()
     const { error } = await supabase.from('decor_setup_items').update({
-      title: draft.title, description: draft.description,
-      location_in_venue: draft.location_in_venue, setup_by: draft.setup_by, teardown_at: draft.teardown_at,
+      title: d.title, description: d.description,
+      location_in_venue: d.location_in_venue, setup_by: d.setup_by, teardown_at: d.teardown_at,
     }).eq('id', item.id)
-    setSaving(false)
-    if (!error) { onUpdate(draft); setEditing(false) }
+    if (error) throw error
+    onUpdate(d)
   }
+
+  const { status: saveStatus } = useAutoSave(draft, save, { enabled: editing })
 
   if (editing) {
     return (
@@ -95,9 +97,9 @@ function SetupItemRow({ item, index, canEdit, mode, onUpdate, onDelete, onPropos
           <div><Label>Aufbau bis</Label><input value={draft.setup_by} onChange={e => setDraft(p => ({ ...p, setup_by: e.target.value }))} placeholder="z.B. 14:00" style={inputStyle()} /></div>
           <div><Label>Abbau ab</Label><input value={draft.teardown_at} onChange={e => setDraft(p => ({ ...p, teardown_at: e.target.value }))} placeholder="z.B. 23:00" style={inputStyle()} /></div>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={save} disabled={saving} style={{ padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>{saving ? '…' : <><Check size={12} /> Speichern</>}</button>
-          <button onClick={() => { setDraft(item); setEditing(false) }} style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer' }}><X size={12} /></button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={() => setEditing(false)} style={{ padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Fertig</button>
+          {saveStatus === 'idle' ? <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Wird automatisch gespeichert.</span> : <SaveStatus status={saveStatus} />}
         </div>
       </div>
     )
@@ -138,17 +140,17 @@ function WishCard({ wish, canEdit, mode, onUpdate, onDelete, onPropose }: {
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft]     = useState(wish)
-  const [saving, setSaving]   = useState(false)
 
-  async function save() {
-    setSaving(true)
+  async function save(d: DekorWish) {
     const supabase = createClient()
     const { error } = await supabase.from('deko_wishes').update({
-      title: draft.title, notes: draft.notes, image_url: draft.image_url,
+      title: d.title, notes: d.notes, image_url: d.image_url,
     }).eq('id', wish.id)
-    setSaving(false)
-    if (!error) { onUpdate(draft); setEditing(false) }
+    if (error) throw error
+    onUpdate(d)
   }
+
+  const { status: saveStatus } = useAutoSave(draft, save, { enabled: editing })
 
   if (editing) {
     return (
@@ -159,9 +161,9 @@ function WishCard({ wish, canEdit, mode, onUpdate, onDelete, onPropose }: {
         <textarea value={draft.notes ?? ''} onChange={e => setDraft(p => ({ ...p, notes: e.target.value }))} rows={2} style={{ ...inputStyle(), resize: 'vertical', marginBottom: 8 }} />
         <Label>Bild-URL</Label>
         <input value={draft.image_url ?? ''} onChange={e => setDraft(p => ({ ...p, image_url: e.target.value }))} placeholder="https://…" style={{ ...inputStyle(), marginBottom: 10 }} />
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={save} disabled={saving} style={{ padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>{saving ? '…' : 'Speichern'}</button>
-          <button onClick={() => { setDraft(wish); setEditing(false) }} style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer' }}>Abbrechen</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={() => setEditing(false)} style={{ padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Fertig</button>
+          {saveStatus === 'idle' ? <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Wird automatisch gespeichert.</span> : <SaveStatus status={saveStatus} />}
         </div>
       </div>
     )

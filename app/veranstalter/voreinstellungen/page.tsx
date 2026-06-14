@@ -5,7 +5,9 @@ export const dynamic = 'force-dynamic'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ChevronLeft, Check } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
+import { useAutoSave } from '@/hooks/useAutoSave'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 // ── Base settings ──
 
@@ -49,8 +51,6 @@ export default function VoreinstellungenPage() {
 
   const [settings, setSettings] = useState<Settings>(EMPTY_SETTINGS)
   const [loading, setLoading]   = useState(true)
-  const [saving, setSaving]     = useState(false)
-  const [saved, setSaved]       = useState(false)
   const [userId, setUserId]     = useState<string | null>(null)
 
   const inp: React.CSSProperties = { ...inputSt }
@@ -101,31 +101,26 @@ export default function VoreinstellungenPage() {
     }))
   }
 
-  async function save() {
+  async function saveSettings(s: Settings) {
     if (!userId) return
-    setSaving(true)
-    try {
-      await supabase.from('organizer_presets').upsert({
-        user_id:              userId,
-        venue:                settings.venue.trim()               || null,
-        location_name:        settings.location_name.trim()       || null,
-        location_street:      settings.location_street.trim()     || null,
-        location_zip:         settings.location_zip.trim()        || null,
-        location_city:        settings.location_city.trim()       || null,
-        location_website:     settings.location_website.trim()    || null,
-        dresscode:            settings.dresscode.trim()           || null,
-        children_allowed:     settings.children_allowed,
-        children_note:        settings.children_note.trim()       || null,
-        max_begleitpersonen:  settings.max_begleitpersonen,
-        meal_options:         settings.meal_options,
-        updated_at:           new Date().toISOString(),
-      }, { onConflict: 'user_id' })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } finally {
-      setSaving(false)
-    }
+    await supabase.from('organizer_presets').upsert({
+      user_id:              userId,
+      venue:                s.venue.trim()               || null,
+      location_name:        s.location_name.trim()       || null,
+      location_street:      s.location_street.trim()     || null,
+      location_zip:         s.location_zip.trim()        || null,
+      location_city:        s.location_city.trim()       || null,
+      location_website:     s.location_website.trim()    || null,
+      dresscode:            s.dresscode.trim()           || null,
+      children_allowed:     s.children_allowed,
+      children_note:        s.children_note.trim()       || null,
+      max_begleitpersonen:  s.max_begleitpersonen,
+      meal_options:         s.meal_options,
+      updated_at:           new Date().toISOString(),
+    }, { onConflict: 'user_id' })
   }
+
+  const { status: saveState } = useAutoSave(settings, saveSettings, { enabled: !loading && !!userId })
 
   // ── Shared card / label styles ──
 
@@ -301,16 +296,9 @@ if (loading) return (
         </div>
       </div>
 
-      {/* Save button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={save} disabled={saving} style={{ padding: '12px 28px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: saving ? 0.6 : 1 }}>
-          {saving ? 'Speichern …' : 'Speichern'}
-        </button>
-        {saved && !saving && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--green)' }}>
-            <Check size={14} /> Gespeichert
-          </div>
-        )}
+      {/* Auto-Save: Änderungen werden automatisch gespeichert */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 20, fontSize: 13, color: 'var(--text-tertiary)' }}>
+        {saveState === 'idle' ? 'Änderungen werden automatisch gespeichert.' : <SaveStatus status={saveState} />}
       </div>
 
     </div>

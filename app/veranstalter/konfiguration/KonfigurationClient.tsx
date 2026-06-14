@@ -3,9 +3,11 @@ import React, { useState, useEffect, useCallback, useId } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
-import { ChevronLeft, Check, Plus, Trash2, Pencil, X, ChevronDown, ChevronRight, Edit2, ArrowLeft } from 'lucide-react'
+import { ChevronLeft, Plus, Trash2, Pencil, X, ChevronDown, ChevronRight, Edit2, ArrowLeft } from 'lucide-react'
 import type { RaumPoint, RaumElement, RaumTablePool, ConceptPlacedTable } from '@/components/room/RaumKonfigurator'
 import type { DekoOrganizerTemplate, DekoOrganizerFlatRate } from '@/lib/deko/types'
+import { useAutoSave } from '@/hooks/useAutoSave'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 const RaumKonfigurator = dynamic(() => import('@/components/room/RaumKonfigurator'), { ssr: false })
 
@@ -215,8 +217,6 @@ export default function KonfigurationClient() {
 
   /* ── Settings ── */
   const [settings, setSettings] = useState<Settings>(EMPTY_SETTINGS)
-  const [settingsSaving, setSettingsSaving] = useState(false)
-  const [settingsSaved, setSettingsSaved] = useState(false)
 
   /* ── Deko templates ── */
   const [dekoTemplates, setDekoTemplates] = useState<DekoOrganizerTemplate[]>([])
@@ -471,31 +471,26 @@ export default function KonfigurationClient() {
   }, [editingConceptId, supabase])
 
   /* ── Settings save ── */
-  async function saveSettings() {
+  async function saveSettings(s: Settings) {
     if (!userId) return
-    setSettingsSaving(true)
-    try {
-      await supabase.from('organizer_presets').upsert({
-        user_id:              userId,
-        venue:                settings.venue.trim()||null,
-        location_name:        settings.location_name.trim()||null,
-        location_street:      settings.location_street.trim()||null,
-        location_zip:         settings.location_zip.trim()||null,
-        location_city:        settings.location_city.trim()||null,
-        location_website:     settings.location_website.trim()||null,
-        dresscode:            settings.dresscode.trim()||null,
-        children_allowed:     settings.children_allowed,
-        children_note:        settings.children_note.trim()||null,
-        max_begleitpersonen:  settings.max_begleitpersonen,
-        meal_options:         settings.meal_options,
-        updated_at:           new Date().toISOString(),
-      }, { onConflict: 'user_id' })
-      setSettingsSaved(true)
-      setTimeout(() => setSettingsSaved(false), 2500)
-    } finally {
-      setSettingsSaving(false)
-    }
+    await supabase.from('organizer_presets').upsert({
+      user_id:              userId,
+      venue:                s.venue.trim()||null,
+      location_name:        s.location_name.trim()||null,
+      location_street:      s.location_street.trim()||null,
+      location_zip:         s.location_zip.trim()||null,
+      location_city:        s.location_city.trim()||null,
+      location_website:     s.location_website.trim()||null,
+      dresscode:            s.dresscode.trim()||null,
+      children_allowed:     s.children_allowed,
+      children_note:        s.children_note.trim()||null,
+      max_begleitpersonen:  s.max_begleitpersonen,
+      meal_options:         s.meal_options,
+      updated_at:           new Date().toISOString(),
+    }, { onConflict: 'user_id' })
   }
+
+  const { status: settingsStatus } = useAutoSave(settings, saveSettings, { enabled: !loading && !!userId })
 
   /* ── Loading ── */
   if (loading) return (
@@ -917,15 +912,8 @@ export default function KonfigurationClient() {
             </div>
           </div>
 
-          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <button onClick={saveSettings} disabled={settingsSaving} style={{ padding:'12px 28px', borderRadius:'var(--radius-sm)', border:'none', background:'var(--accent)', color:'#fff', fontSize:14, fontWeight:600, cursor:settingsSaving?'not-allowed':'pointer', fontFamily:'inherit', opacity:settingsSaving?0.6:1 }}>
-              {settingsSaving ? 'Speichern …' : 'Speichern'}
-            </button>
-            {settingsSaved && !settingsSaving && (
-              <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:13, color:'var(--green)' }}>
-                <Check size={14} /> Gespeichert
-              </div>
-            )}
+          <div style={{ display:'flex', alignItems:'center', gap:12, minHeight:20, fontSize:13, color:'var(--text-tertiary)' }}>
+            {settingsStatus === 'idle' ? 'Änderungen werden automatisch gespeichert.' : <SaveStatus status={settingsStatus} />}
           </div>
         </div>
       )}
