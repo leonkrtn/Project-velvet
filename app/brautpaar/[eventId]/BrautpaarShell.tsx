@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Palette, Music, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
-  Briefcase, Heart, FileDown, CreditCard, Lock, Sparkles, Store,
+  Briefcase, Heart, FileDown, CreditCard, Lock, Sparkles,
 } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 import { createClient } from '@/lib/supabase/client'
@@ -51,8 +51,6 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
         b('dekoration', 'Dekoration', <Palette size={16} />),
         b('musik', 'Musik', <Music size={16} />),
         b('medien', 'Foto & Videograf', <Camera size={16} />),
-        // Marktplatz — für alle Brautpaare (Solo & mit Veranstalter), ohne Pro
-        b('dienstleister/entdecken', 'Marktplatz', <Store size={16} />),
       ],
     },
     {
@@ -61,8 +59,9 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
         b('budget', 'Budget', <Wallet size={16} />),
         b('aufgaben', 'Aufgaben', <CheckSquare size={16} />),
         b('notizen', 'Notizen', <NotebookPen size={16} />),
-        // Solo-Paare verwalten Dienstleister-Zugriffsrechte selbst (kein Veranstalter)
-        ...(isSolo ? [b('dienstleister', 'Dienstleister', <Briefcase size={16} />)] : []),
+        // Dienstleister-Bereich für ALLE Brautpaare: enthält den Marktplatz
+        // ("Entdecken") und – für Solo-Paare – die Verwaltung der Zugriffsrechte.
+        b('dienstleister', 'Dienstleister', <Briefcase size={16} />),
         ...(isSolo ? [b('pdf-export', 'PDF-Export', <FileDown size={16} />)] : []),
         ...(isSolo ? [b('abo', 'Abo & Tarif', <CreditCard size={16} />)] : []),
         b('allgemein', 'Allgemein', <Settings size={16} />),
@@ -209,7 +208,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   const nav = fullNav.map(group => ({
     ...group,
     items: group.items.filter(item =>
-      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'dienstleister/entdecken' || item.key === 'pdf-export' || item.key === 'abo'
+      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'pdf-export' || item.key === 'abo'
         ? true
         : (bpToggles[`bp-${item.key}`] ?? true)
     ),

@@ -68,12 +68,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   }
 
   return (
-    <div className="bp-page">
-      <div className="bp-page-header" style={{ marginBottom: '1.5rem' }}>
-        <h1 className="bp-page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Store size={22} /> Dienstleister entdecken</h1>
-        <p className="bp-page-subtitle">Finde Dienstleister für deine Hochzeit und stelle direkt eine Anfrage.</p>
-      </div>
-
+    <div>
       {/* Filter */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
         <select className="bp-input" value={category} onChange={e => setCategory(e.target.value)} style={{ maxWidth: 200 }}>
