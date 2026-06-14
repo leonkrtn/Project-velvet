@@ -49,6 +49,7 @@ export default async function BrautpaarLayout({ children, params }: Props) {
         status: state.status,
         plan: state.plan,
         daysLeft: state.daysLeft,
+        isPro: state.isPro,
       }
     }
   }

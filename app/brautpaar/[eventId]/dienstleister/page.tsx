@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getSubscriptionState } from '@/lib/subscription'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Briefcase, SlidersHorizontal, Sparkles } from 'lucide-react'
+import { Briefcase, SlidersHorizontal, Sparkles, Search } from 'lucide-react'
 import VendorInviteSection from './VendorInviteSection'
 
 interface Props {
@@ -116,6 +116,46 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
       </div>
 
       <VendorInviteSection eventId={eventId} />
+
+      {/* Marketplace-Teaser — Dienstleister finden (bald verfügbar) */}
+      <div className="bp-card" style={{ padding: '1.25rem 1.4rem', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+          background: 'var(--bp-gold-pale)', color: 'var(--bp-gold-deep)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Search size={20} />
+        </div>
+        <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+          <p style={{ fontWeight: 600, fontSize: 15, margin: '0 0 2px', color: 'var(--bp-ink)' }}>
+            Dienstleister finden
+          </p>
+          <p className="bp-caption" style={{ margin: 0, lineHeight: 1.5 }}>
+            Bald könnt ihr passende Caterer, DJs, Floristen &amp; mehr direkt in Forevr entdecken
+            und unverbindlich anfragen — ohne die App zu verlassen.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled
+          title="Bald verfügbar"
+          className="bp-btn"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            opacity: 0.55, cursor: 'not-allowed', whiteSpace: 'nowrap',
+          }}
+        >
+          <Search size={14} />
+          Dienstleister finden
+          <span style={{
+            fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+            background: 'var(--bp-gold-pale)', color: 'var(--bp-gold-deep)',
+            borderRadius: 999, padding: '1px 7px', marginLeft: 4,
+          }}>
+            Bald
+          </span>
+        </button>
+      </div>
 
       {rows.length === 0 ? (
         <div className="bp-card" style={{ padding: '2.5rem 2rem', textAlign: 'center' }}>

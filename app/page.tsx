@@ -538,11 +538,143 @@ function DemoSection() {
           </div>
         </div>
         <a href={SIGNUP_URL} className="lp-btn-primary" style={{ marginTop: '36px', display: 'block', width: 'fit-content', marginLeft: 'auto', marginRight: 'auto' }}>
-          3 Tage kostenlos testen
+          14 Tage kostenlos testen
         </a>
         <p className="lp-demo-invite-note">
           Ihr habt einen Einladungslink von eurem Veranstalter? Dann seid ihr mit einem Klick drin.
         </p>
+      </div>
+    </section>
+  )
+}
+
+// ─── Funktionen-Erklärung (ersetzt die Demo) ───────────────────────────────────
+
+const FUNKTIONEN = [
+  {
+    num: '01',
+    title: 'Sitzplan',
+    desc: 'Tische frei anordnen und jeden Gast auf einen konkreten Platz setzen — pro Person ein Sitz, per Tausch in Sekunden umgeplant. Ihr seht sofort, wer noch keinen Platz hat.',
+    bullets: ['Jeder Gast auf seinem Platz', 'Plätze per Tausch umordnen', 'Live-Belegung nach Zusagen'],
+    icon: (
+      <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="24" cy="24" r="9"/>
+        <circle cx="24" cy="9" r="2.5"/><circle cx="24" cy="39" r="2.5"/>
+        <circle cx="9" cy="24" r="2.5"/><circle cx="39" cy="24" r="2.5"/>
+        <circle cx="13.5" cy="13.5" r="2.5"/><circle cx="34.5" cy="13.5" r="2.5"/>
+        <circle cx="13.5" cy="34.5" r="2.5"/><circle cx="34.5" cy="34.5" r="2.5"/>
+      </svg>
+    ),
+  },
+  {
+    num: '02',
+    title: 'Einladen',
+    desc: 'Jeder Gast bekommt einen persönlichen Einladungslink. Zu- und Absagen, Menüwahl, Allergien und Begleitpersonen tragen sich automatisch in eure Gästeliste ein.',
+    bullets: ['Persönliche RSVP-Links', 'Zusagen in Echtzeit', 'Menüwahl & Allergien automatisch'],
+    icon: (
+      <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="6" y="11" width="36" height="26" rx="2"/><path d="M6 14l18 13L42 14"/>
+      </svg>
+    ),
+  },
+  {
+    num: '03',
+    title: 'Ablaufplan',
+    desc: 'Euer Hochzeitstag minutengenau — vom Sektempfang bis zum letzten Tanz. Jeder Programmpunkt mit Uhrzeit, Ort und Verantwortlichen, für alle Beteiligten sichtbar.',
+    bullets: ['Minutengenaue Tagesplanung', 'Ort & Verantwortliche je Punkt', 'Mehrtägige Events möglich'],
+    icon: (
+      <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="24" cy="24" r="18"/><path d="M24 12v12l8 4"/>
+      </svg>
+    ),
+  },
+  {
+    num: '04',
+    title: 'Catering',
+    desc: 'Menüs, Gänge und Essenswünsche an einem Ort. Aus den RSVP-Angaben eurer Gäste entstehen automatisch Mengen und eine Allergie-Übersicht für euren Caterer.',
+    bullets: ['Menüs & Gänge planen', 'Essenswünsche je Gast', 'Allergie-Übersicht automatisch'],
+    icon: (
+      <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M16 6v14a4 4 0 01-8 0V6M12 6v36"/><path d="M34 6c-4 0-7 4-7 12s3 9 7 9 7-1 7-9-3-12-7-12zM34 27v15"/>
+      </svg>
+    ),
+  },
+]
+
+function FunktionenSection() {
+  return (
+    <section className="lp-features" id="lp-funktionen">
+      <div className="lp-features-header">
+        <div>
+          <p className="lp-section-eyebrow lp-reveal">So plant ihr mit Forevr</p>
+          <h2 className="lp-section-title">
+            <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">Vier Funktionen, <em>ein roter Faden</em></span></span>
+          </h2>
+        </div>
+        <div>
+          <p className="lp-section-sub lp-reveal lp-reveal-d2">
+            Sitzplan, Einladen, Ablaufplan und Catering greifen ineinander — was ihr einmal
+            erfasst, steht überall dort bereit, wo ihr es braucht.
+          </p>
+        </div>
+      </div>
+      <div className="lp-features-grid lp-funktionen-grid">
+        {FUNKTIONEN.map(f => (
+          <div className="lp-feature-card" key={f.num}>
+            <span className="lp-feature-num">{f.num}</span>
+            {f.icon}
+            <h3 className="lp-feature-title">{f.title}</h3>
+            <p className="lp-feature-desc">{f.desc}</p>
+            <div className="lp-feature-bullets">
+              {f.bullets.map(b => <span className="lp-feature-bullet" key={b}>{b}</span>)}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="lp-features-cta lp-reveal">
+        <a href={SIGNUP_URL} className="lp-text-cta">Alle Funktionen 14 Tage kostenlos ausprobieren &rarr;</a>
+      </div>
+    </section>
+  )
+}
+
+// ─── Veranstalter-Abschnitt ─────────────────────────────────────────────────────
+
+const VERANSTALTER_VORTEILE = [
+  { title: 'Alle Hochzeiten an einem Ort', desc: 'Verwaltet jedes Paar und jedes Event in einem zentralen Dashboard — ohne Zettelwirtschaft und verstreute Tabellen.' },
+  { title: 'Im selben Plan wie das Paar', desc: 'Ihr arbeitet direkt in der Planung des Brautpaars mit — Änderungen sind sofort für alle sichtbar.' },
+  { title: 'Dienstleister koordinieren', desc: 'Ladet Caterer, DJ, Floristen & Co. ein und gebt jedem genau die Module frei, die er sehen darf.' },
+  { title: 'Team & Schichtplanung', desc: 'Plant euer Personal, verteilt Schichten und kommuniziert im integrierten Team-Chat.' },
+]
+
+function VeranstalterSection() {
+  return (
+    <section className="lp-veranstalter" id="lp-veranstalter">
+      <div className="lp-veranstalter-inner">
+        <div className="lp-veranstalter-intro lp-reveal">
+          <p className="lp-section-eyebrow">Für Hochzeitsplaner &amp; Agenturen</p>
+          <h2 className="lp-section-title" style={{ marginBottom: 0 }}>
+            <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">Plant ihr <em>beruflich</em>?</span></span>
+          </h2>
+          <p className="lp-section-sub" style={{ marginTop: '18px' }}>
+            Als Veranstalter steuert ihr mit Forevr mehrere Hochzeiten parallel — gemeinsam mit
+            euren Paaren und Dienstleistern, in einer eleganten Oberfläche.
+          </p>
+          <a href="/signup/veranstalter" className="lp-btn-primary" style={{ marginTop: '28px', display: 'inline-block' }}>
+            Als Veranstalter registrieren
+          </a>
+          <p className="lp-veranstalter-note">
+            Nach der Registrierung schalten wir euren Zugang frei und melden uns bei euch.
+          </p>
+        </div>
+        <div className="lp-veranstalter-grid">
+          {VERANSTALTER_VORTEILE.map(v => (
+            <div className="lp-veranstalter-card lp-reveal" key={v.title}>
+              <h3 className="lp-veranstalter-card-title">{v.title}</h3>
+              <p className="lp-veranstalter-card-desc">{v.desc}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )
@@ -668,12 +800,12 @@ export default function LandingPage() {
         <ul className="nav-links">
           <li><a href="#lp-features">Funktionen</a></li>
           <li><a href="#lp-pricing">Preise</a></li>
-          <li><a href="#lp-demo">So funktioniert&apos;s</a></li>
+          <li><a href="#lp-funktionen">Funktionen</a></li>
           <li><a href="#lp-faq">FAQ</a></li>
         </ul>
         <div className="lp-nav-right">
           <a href="/login" className="lp-nav-login">Anmelden</a>
-          <a href={SIGNUP_URL} className="lp-nav-cta">3 Tage kostenlos testen</a>
+          <a href={SIGNUP_URL} className="lp-nav-cta">14 Tage kostenlos testen</a>
           <button
             type="button"
             className="lp-nav-burger"
@@ -689,10 +821,10 @@ export default function LandingPage() {
           <div id="lp-mobile-menu" className="lp-nav-mobile-menu">
             <a href="#lp-features" onClick={() => setMenuOpen(false)}>Funktionen</a>
             <a href="#lp-pricing" onClick={() => setMenuOpen(false)}>Preise</a>
-            <a href="#lp-demo" onClick={() => setMenuOpen(false)}>So funktioniert&apos;s</a>
+            <a href="#lp-funktionen" onClick={() => setMenuOpen(false)}>Funktionen</a>
             <a href="#lp-faq" onClick={() => setMenuOpen(false)}>FAQ</a>
             <a href="/login" className="lp-nav-mobile-login" onClick={() => setMenuOpen(false)}>Anmelden</a>
-            <a href={SIGNUP_URL} className="lp-nav-mobile-cta" onClick={() => setMenuOpen(false)}>3 Tage kostenlos testen</a>
+            <a href={SIGNUP_URL} className="lp-nav-mobile-cta" onClick={() => setMenuOpen(false)}>14 Tage kostenlos testen</a>
           </div>
         )}
       </nav>
@@ -713,8 +845,8 @@ export default function LandingPage() {
               Gästeliste mit RSVP-Links, Sitzplan, Budget, Aufgaben und Zeitplan — in einem eleganten Dashboard für euch beide. Schluss mit Excel-Tabellen und WhatsApp-Chaos.
             </p>
             <div className="lp-hero-actions">
-              <a href={SIGNUP_URL} className="lp-btn-primary">3 Tage kostenlos testen</a>
-              <a href="#lp-demo" className="lp-btn-ghost">So funktioniert&apos;s</a>
+              <a href={SIGNUP_URL} className="lp-btn-primary">14 Tage kostenlos testen</a>
+              <a href="#lp-funktionen" className="lp-btn-ghost">Funktionen</a>
             </div>
             <ul className="lp-hero-trust">
               <li><Check /> Alle Planungsfunktionen im Test</li>
@@ -875,7 +1007,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="lp-features-cta lp-reveal">
-          <a href={SIGNUP_URL} className="lp-text-cta">Alle Funktionen 3 Tage kostenlos ausprobieren &rarr;</a>
+          <a href={SIGNUP_URL} className="lp-text-cta">Alle Funktionen 14 Tage kostenlos ausprobieren &rarr;</a>
         </div>
       </section>
 
@@ -896,16 +1028,18 @@ export default function LandingPage() {
       </div>
 
       {/* DEMO SECTION */}
-      <DemoSection />
+      <FunktionenSection />
 
       {/* PRICING */}
+      <VeranstalterSection />
+
       <section className="lp-pricing" id="lp-pricing">
         <div className="lp-pricing-header">
           <p className="lp-section-eyebrow lp-reveal">Ein Preis, kein Kleingedrucktes</p>
           <h2 className="lp-section-title">
             <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">Erst testen. <em>Dann planen.</em></span></span>
           </h2>
-          <p className="lp-section-sub lp-reveal lp-reveal-d2">3 Tage voller Zugriff auf alles — danach entscheidet ihr.</p>
+          <p className="lp-section-sub lp-reveal lp-reveal-d2">14 Tage voller Zugriff auf alles — danach entscheidet ihr.</p>
         </div>
         <div className="lp-pricing-grid">
           <div className="lp-price-card lp-reveal">
@@ -920,7 +1054,7 @@ export default function LandingPage() {
               <li><CheckCircle /> Budget, Aufgaben, Zeitplan</li>
               <li><CheckCircle /> Beide Partner, alle Geräte</li>
             </ul>
-            <a href={SIGNUP_URL} className="lp-price-btn lp-price-btn-outline">3 Tage kostenlos testen</a>
+            <a href={SIGNUP_URL} className="lp-price-btn lp-price-btn-outline">14 Tage kostenlos testen</a>
           </div>
           <div className="lp-price-card lp-price-card-pro lp-reveal lp-reveal-d2">
             <span className="lp-price-badge"><Sparkle /> Mit Profi-Team</span>
@@ -935,7 +1069,7 @@ export default function LandingPage() {
               <li><CheckCircle /> Dienstleister einladen — Caterer, DJ, Florist sehen genau das, was sie brauchen</li>
               <li><CheckCircle /> Chat mit eurem ganzen Team</li>
             </ul>
-            <a href={SIGNUP_URL} className="lp-price-btn lp-price-btn-fill">3 Tage kostenlos testen</a>
+            <a href={SIGNUP_URL} className="lp-price-btn lp-price-btn-fill">14 Tage kostenlos testen</a>
           </div>
         </div>
         <div className="lp-pricing-foot lp-reveal">
@@ -985,7 +1119,7 @@ export default function LandingPage() {
             </h2>
           </div>
           {([
-            { q: 'Was kostet Forevr?', a: 'Die ersten 3 Tage sind kostenlos — mit allen Planungsfunktionen und ohne Zahlungsdaten. Danach kostet Forevr 25 € im Monat. Wenn euer Hochzeitsplaner und eure Dienstleister mitarbeiten sollen — inklusive Team-Chat —, gibt es Forevr Pro für 55 € im Monat. Beides ist monatlich kündbar.' },
+            { q: 'Was kostet Forevr?', a: 'Die ersten 14 Tage sind kostenlos — mit allen Planungsfunktionen und ohne Zahlungsdaten. Danach kostet Forevr 25 € im Monat. Wenn euer Hochzeitsplaner und eure Dienstleister mitarbeiten sollen — inklusive Team-Chat —, gibt es Forevr Pro für 55 € im Monat. Beides ist monatlich kündbar.' },
             { q: 'Was passiert nach den 3 Testtagen?', a: 'Ihr entscheidet aktiv, ob ihr weitermacht — es wird nichts automatisch abgebucht, weil wir im Test keine Zahlungsdaten verlangen. Eure Daten bleiben gespeichert, sodass ihr nahtlos weiterplanen könnt.' },
             { q: 'Können wir später von Forevr auf Pro wechseln?', a: 'Jederzeit, mit einem Klick. Viele Paare starten allein für 25 € und holen den Veranstalter oder die Dienstleister später per Upgrade dazu.' },
             { q: 'Können wir beide gemeinsam planen?', a: 'Ja! Das Dashboard ist für beide Partner gleichzeitig zugänglich. Ihr könnt von verschiedenen Geräten aus gleichzeitig arbeiten. Änderungen werden in Echtzeit synchronisiert — so seid ihr immer auf dem gleichen Stand.' },
@@ -1019,9 +1153,9 @@ export default function LandingPage() {
           <p className="lp-cta-eyebrow">Euer Einstieg</p>
           <h2 className="lp-cta-title">Eure Hochzeit. Euer Dashboard. <em>Ab heute.</em></h2>
           <div className="lp-cta-actions">
-            <a href={SIGNUP_URL} className="lp-btn-gold">3 Tage kostenlos testen</a>
+            <a href={SIGNUP_URL} className="lp-btn-gold">14 Tage kostenlos testen</a>
           </div>
-          <p className="lp-cta-foot">3 Tage kostenlos · danach ab 25 €/Monat · monatlich kündbar</p>
+          <p className="lp-cta-foot">14 Tage kostenlos · danach ab 25 €/Monat · monatlich kündbar</p>
         </div>
       </div>
 
@@ -1037,9 +1171,9 @@ export default function LandingPage() {
             <ul className="lp-footer-links">
               <li><a href="#lp-features">Funktionen</a></li>
               <li><a href="#lp-pricing">Preise</a></li>
-              <li><a href="#lp-demo">So funktioniert&apos;s</a></li>
+              <li><a href="#lp-funktionen">Funktionen</a></li>
               <li><a href="#lp-faq">FAQ</a></li>
-              <li><a href="/signup/brautpaar">3 Tage kostenlos testen</a></li>
+              <li><a href="/signup/brautpaar">14 Tage kostenlos testen</a></li>
               <li><a href="/login">Anmelden</a></li>
             </ul>
           </div>

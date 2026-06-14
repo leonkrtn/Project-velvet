@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Pencil, Settings, ChevronDown, ChevronRight, X } from 'lucide-react'
 
@@ -316,6 +315,19 @@ function AddItemForm({ eventId, onAdded }: { eventId: string; onAdded: (i: Budge
 
 export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, initialItems, cateringCosts, effectiveGuestCount, getränkeBilling, getränkeBpTotal }: Props) {
   const [items, setItems] = useState<BudgetItem[]>(initialItems)
+  const [limit, setLimit] = useState<number>(budgetLimit)
+  const [editingLimit, setEditingLimit] = useState(false)
+  const [limitInput, setLimitInput] = useState(String(budgetLimit || ''))
+  const [savingLimit, setSavingLimit] = useState(false)
+
+  async function saveLimit() {
+    const val = Math.max(0, Math.round(parseFloat(limitInput.replace(',', '.')) || 0))
+    setSavingLimit(true)
+    const supabase = createClient()
+    const { error } = await supabase.from('events').update({ budget_total: val }).eq('id', eventId)
+    setSavingLimit(false)
+    if (!error) { setLimit(val); setEditingLimit(false) }
+  }
 
   async function deleteItem(id: string) {
     const supabase = createClient()
@@ -329,7 +341,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
   const actualTotal     = visibleItems.reduce((s, i) => s + (Number(i.actual)  || 0), 0)
   const getränkeInTotal = getränkeBilling === 'einzeln' ? getränkeBpTotal : 0
   const totalWithFee    = plannedTotal + organizerFee + cateringTotal + getränkeInTotal
-  const budgetUsed      = budgetLimit > 0 ? (totalWithFee / budgetLimit) * 100 : 0
+  const budgetUsed      = limit > 0 ? (totalWithFee / limit) * 100 : 0
 
   return (
     <div className="bp-page">
@@ -338,14 +350,33 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
           <h1 className="bp-page-title">Budget</h1>
           <p className="bp-page-subtitle">Ausgaben planen und verfolgen</p>
         </div>
-        <Link
-          href={`/brautpaar/${eventId}/allgemein#budget`}
-          className="bp-btn bp-btn-secondary bp-btn-mobile-full"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
-        >
-          <Settings size={15} />
-          Gesamtbudget anpassen
-        </Link>
+        {editingLimit ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <input
+              type="number" min={0} autoFocus
+              value={limitInput}
+              onChange={e => setLimitInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveLimit(); if (e.key === 'Escape') setEditingLimit(false) }}
+              placeholder="Gesamtbudget (€)"
+              style={{ height: 38, padding: '0 12px', border: '1px solid var(--bp-rule)', borderRadius: 8, fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', width: 160 }}
+            />
+            <button className="bp-btn bp-btn-primary" disabled={savingLimit} onClick={saveLimit} style={{ fontSize: '0.875rem' }}>
+              {savingLimit ? 'Speichert…' : 'Speichern'}
+            </button>
+            <button className="bp-btn bp-btn-secondary" onClick={() => setEditingLimit(false)} style={{ fontSize: '0.875rem' }}>
+              Abbrechen
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => { setLimitInput(String(limit || '')); setEditingLimit(true) }}
+            className="bp-btn bp-btn-secondary bp-btn-mobile-full"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
+          >
+            <Settings size={15} />
+            {limit > 0 ? `Gesamtbudget: ${formatCurrency(limit)}` : 'Gesamtbudget festlegen'}
+          </button>
+        )}
       </div>
 
       {/* Summary */}
@@ -358,7 +389,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
           <div className="bp-stat-value">{formatCurrency(totalWithFee)}</div>
           <div className="bp-stat-label">Gesamt geplant</div>
         </div>
-        {budgetLimit > 0 && (
+        {limit > 0 && (
           <div className="bp-stat-card">
             <div className="bp-stat-value" style={{ color: budgetUsed > 100 ? '#B91C1C' : 'var(--bp-gold-deep)' }}>
               {Math.round(budgetUsed)}%

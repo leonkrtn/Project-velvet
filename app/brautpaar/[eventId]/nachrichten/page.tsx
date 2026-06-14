@@ -18,6 +18,15 @@ export default async function NachrichtenPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Chat ist ein Forevr-Pro-Feature: Solo-Paare ohne Pro haben keinen Zugriff
+  // (Eintrag ist auch aus dem Menü entfernt) → zur Abo-Seite leiten.
+  const { data: ownRole } = await supabase
+    .from('event_members').select('role').eq('event_id', eventId).eq('user_id', user.id).maybeSingle()
+  if (ownRole?.role === 'brautpaar_solo') {
+    const sub = await getSubscriptionState(eventId)
+    if (sub.gated && !sub.isPro) redirect(`/brautpaar/${eventId}/abo`)
+  }
+
   const [conversationsRes, membersRes, ownMemberRes] = await Promise.all([
     supabase
       .from('conversations')

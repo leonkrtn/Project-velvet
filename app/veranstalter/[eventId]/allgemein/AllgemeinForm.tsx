@@ -558,11 +558,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
 
       {/* 6. Budget */}
       <SectionWrap title="Budget">
-        <div className="grid-2col" style={{ ...row, gridTemplateColumns: '1fr 1fr 1fr' }}>
-          <div>
-            <label style={label}>Gesamtbudget (€)</label>
-            <input type="number" min={0} style={input} value={form.budget_total ?? ''} onChange={e => update('budget_total', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0" />
-          </div>
+        <div className="grid-2col" style={{ ...row, gridTemplateColumns: '1fr 1fr' }}>
           <div>
             <label style={label}>Veranstalter-Honorar (€)</label>
             <input type="number" min={0} style={input} value={form.organizer_fee ?? ''} onChange={e => update('organizer_fee', e.target.value ? parseFloat(e.target.value) : null)} placeholder="0" />
