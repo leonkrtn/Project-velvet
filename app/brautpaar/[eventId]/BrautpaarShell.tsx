@@ -170,14 +170,15 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   const [bpToggles, setBpToggles] = useState<Record<string, boolean>>({})
   const [trialDismissed, setTrialDismissed] = useState(false)
 
-  // Trial-Banner: einmal weggeklickt bleibt es weg (auch auf dem Desktop)
+  // Trial-Banner: Wegklicken gilt nur für die aktuelle Sitzung — beim nächsten
+  // Login / in einem neuen Tab erscheint der Hinweis wieder (sessionStorage).
   useEffect(() => {
-    setTrialDismissed(localStorage.getItem('bp-trial-banner-dismissed') === 'true')
+    setTrialDismissed(sessionStorage.getItem('bp-trial-banner-dismissed') === 'true')
   }, [])
 
   const dismissTrialBanner = useCallback(() => {
     setTrialDismissed(true)
-    localStorage.setItem('bp-trial-banner-dismissed', 'true')
+    sessionStorage.setItem('bp-trial-banner-dismissed', 'true')
   }, [])
 
   // Load bp-* feature toggles to filter nav items

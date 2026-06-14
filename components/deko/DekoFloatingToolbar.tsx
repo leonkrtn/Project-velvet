@@ -66,7 +66,7 @@ export default function DekoFloatingToolbar({ pendingType, onSelect, onCancel }:
       flexShrink: 0,
       alignSelf: 'stretch',
       background: 'var(--surface)',
-      borderRight: '1px solid var(--border)',
+      borderLeft: '1px solid var(--border)',
       userSelect: 'none',
       width: collapsed ? 44 : 188,
       transition: 'width 0.15s ease',
@@ -95,7 +95,7 @@ export default function DekoFloatingToolbar({ pendingType, onSelect, onCancel }:
           title={collapsed ? 'Ausklappen' : 'Einklappen'}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: 'var(--text-tertiary)', marginLeft: collapsed ? 'auto' : 0, marginRight: collapsed ? 'auto' : 0 }}
         >
-          {collapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
+          {collapsed ? <ChevronLeft size={11} /> : <ChevronRight size={11} />}
         </button>
       </div>
 

@@ -7,7 +7,7 @@
 // Webhooks die simulate*-Stellen — die State-Berechnung hier bleibt gleich.
 import { createAdminClient } from '@/lib/supabase/admin'
 
-export const TRIAL_DAYS = 3
+export const TRIAL_DAYS = 14
 export const PLAN_PRICES = { basis: 25, pro: 55 } as const
 export const PLAN_LABELS = { trial: 'Testphase', basis: 'Forevr', pro: 'Forevr Pro' } as const
 
@@ -28,11 +28,13 @@ export interface SubscriptionState {
   canceledAt: string | null
   /** Verbleibende volle Tage im Trial bzw. in der bezahlten Periode */
   daysLeft: number
+  /** Angehängter Promo-Code (Prozent-Rabatt) für Preis-Anzeige/Checkout */
+  promo: { percent: number; duration: 'first_month' | 'forever'; appliesTo: 'all' | 'basis' | 'pro' } | null
 }
 
 const UNGATED: SubscriptionState = {
   gated: false, plan: 'pro', status: 'active', isActive: true, isPro: true,
-  trialEndsAt: null, currentPeriodEnd: null, canceledAt: null, daysLeft: 0,
+  trialEndsAt: null, currentPeriodEnd: null, canceledAt: null, daysLeft: 0, promo: null,
 }
 
 function daysUntil(iso: string | null): number {
@@ -47,16 +49,27 @@ interface SubscriptionRow {
   trial_ends_at: string | null
   current_period_end: string | null
   canceled_at: string | null
+  promo_percent?: number | null
+  promo_duration?: string | null
+  promo_applies_to?: string | null
 }
 
 function computeState(row: SubscriptionRow): SubscriptionState {
   const now = Date.now()
+  const promo = row.promo_percent
+    ? {
+        percent: row.promo_percent,
+        duration: (row.promo_duration === 'forever' ? 'forever' : 'first_month') as 'first_month' | 'forever',
+        appliesTo: (['basis', 'pro'].includes(row.promo_applies_to ?? '') ? row.promo_applies_to : 'all') as 'all' | 'basis' | 'pro',
+      }
+    : null
   const base = {
     gated: true,
     plan: row.plan,
     trialEndsAt: row.trial_ends_at,
     currentPeriodEnd: row.current_period_end,
     canceledAt: row.canceled_at,
+    promo,
   }
 
   if (row.status === 'trialing') {
@@ -108,7 +121,7 @@ export async function getSubscriptionState(
 
   const { data: row } = await admin
     .from('event_subscriptions')
-    .select('event_id, plan, status, trial_ends_at, current_period_end, canceled_at')
+    .select('event_id, plan, status, trial_ends_at, current_period_end, canceled_at, promo_percent, promo_duration, promo_applies_to')
     .eq('event_id', eventId)
     .maybeSingle()
 
@@ -118,7 +131,7 @@ export async function getSubscriptionState(
     const { data: created } = await admin
       .from('event_subscriptions')
       .insert({ event_id: eventId, plan: 'trial', status: 'trialing', trial_ends_at: trialEnds })
-      .select('event_id, plan, status, trial_ends_at, current_period_end, canceled_at')
+      .select('event_id, plan, status, trial_ends_at, current_period_end, canceled_at, promo_percent, promo_duration, promo_applies_to')
       .single()
     if (!created) return UNGATED
     return computeState(created as SubscriptionRow)

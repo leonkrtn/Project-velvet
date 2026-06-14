@@ -35,6 +35,7 @@ export default async function AboPage({ params }: Props) {
         currentPeriodEnd: state.currentPeriodEnd,
         daysLeft: state.daysLeft,
         isPro: state.isPro,
+        promo: state.promo,
       }}
     />
   )
