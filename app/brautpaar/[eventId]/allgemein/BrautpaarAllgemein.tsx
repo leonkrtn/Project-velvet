@@ -272,25 +272,6 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
 
       </Section>
 
-      {/* Budget */}
-      <div id="budget" />
-      <Section title="Budget">
-        <Field label="Gesamtbudget (€)">
-          <input
-            className="bp-input"
-            type="number"
-            min={0}
-            step={100}
-            value={data.budget_total ?? ''}
-            onChange={e => set('budget_total', parseFloat(e.target.value) || null)}
-            placeholder="0"
-          />
-        </Field>
-        <p className="bp-caption" style={{ marginTop: '0.375rem' }}>
-          Das Gesamtbudget dient als Richtwert in eurer Budget-Übersicht.
-        </p>
-      </Section>
-
       {isSolo && currentUserId && <SoloInviteSection eventId={eventId} currentUserId={currentUserId} />}
 
       {/* Save footer */}
