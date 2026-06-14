@@ -26,7 +26,7 @@ interface NavGroup {
   items: NavItem[]
 }
 
-function buildNav(eventId: string, isSolo: boolean): NavGroup[] {
+function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGroup[] {
   const b = (key: string, label: string, icon: React.ReactNode, disabled?: boolean): NavItem => ({
     key, label, href: `/brautpaar/${eventId}/${key}`, icon, disabled,
   })
@@ -69,7 +69,9 @@ function buildNav(eventId: string, isSolo: boolean): NavGroup[] {
     {
       label: 'KOMMUNIKATION',
       items: [
-        b('nachrichten', 'Nachrichten', <MessageSquare size={16} />),
+        // Chat nur mit Forevr Pro (bei gegateten Solo-Events). Ungegatete
+        // veranstalter-verwaltete Events behalten den Chat.
+        ...(chatEnabled ? [b('nachrichten', 'Nachrichten', <MessageSquare size={16} />)] : []),
         b('dateien', 'Dateien', <File size={16} />),
       ],
     },
@@ -160,6 +162,7 @@ export interface ShellSubscription {
   status: 'trialing' | 'active' | 'canceled' | 'expired'
   plan: 'trial' | 'basis' | 'pro'
   daysLeft: number
+  isPro: boolean
 }
 
 export default function BrautpaarShell({ children, eventId, eventTitle, userId, showWelcome, isSolo = false, subscription = null }: Props) {
@@ -197,8 +200,10 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
       })
   }, [eventId])
 
+  // Chat (Nachrichten) nur mit Forevr Pro; ungegatete Events behalten ihn.
+  const chatEnabled = !subscription || subscription.isPro
   // Filter nav: uebersicht and allgemein always shown; others follow bp-* toggles
-  const fullNav = buildNav(eventId, isSolo)
+  const fullNav = buildNav(eventId, isSolo, chatEnabled)
   const nav = fullNav.map(group => ({
     ...group,
     items: group.items.filter(item =>
