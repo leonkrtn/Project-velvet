@@ -55,11 +55,11 @@ export function Avatar({ name, size=32 }: { name:string; size?:number }) {
 }
 
 // ── Card ──────────────────────────────────────────────────────────────────
-export function Card({ children, style, onClick, padding=18 }: {
+export function Card({ children, style, onClick, padding }: {
   children:React.ReactNode; style?:React.CSSProperties; onClick?:()=>void; padding?:number
 }) {
   return (
-    <div onClick={onClick} style={{ background:'var(--surface)', borderRadius:'var(--r-md)', border:'1px solid var(--border)', padding, cursor:onClick?'pointer':undefined, ...style }}>
+    <div className="ui-card" onClick={onClick} style={{ background:'var(--surface)', borderRadius:'var(--r-md)', border:'1px solid var(--border)', boxShadow:'var(--ui-card-shadow, none)', padding: padding ?? 'var(--ui-card-pad, 18px)', cursor:onClick?'pointer':undefined, ...style }}>
       {children}
     </div>
   )
@@ -105,7 +105,7 @@ export function Button({ children, variant='primary', onClick, disabled, fullWid
   }
   const ss = { sm:{fontSize:11,padding:'7px 14px'}, md:{fontSize:13,padding:'11px 22px'}, lg:{fontSize:15,padding:'14px 28px'} }
   return (
-    <button type={type} onClick={onClick} disabled={disabled} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, fontWeight:600, borderRadius:100, border:'none', fontFamily:'inherit', width:fullWidth?'100%':undefined, opacity:disabled?0.35:1, cursor:disabled?'not-allowed':'pointer', transition:'opacity 0.15s', ...vs[variant], ...ss[size] }}>
+    <button type={type} onClick={onClick} disabled={disabled} style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8, fontWeight:600, borderRadius:'var(--ui-btn-radius, 100px)', border:'none', fontFamily:'inherit', width:fullWidth?'100%':undefined, opacity:disabled?0.35:1, cursor:disabled?'not-allowed':'pointer', transition:'opacity 0.15s', ...vs[variant], ...ss[size] }}>
       {children}
     </button>
   )

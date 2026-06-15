@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizeSettings, DEFAULT_DISPLAY_SETTINGS } from '@/lib/display-settings'
+import { requestDownloadUrl } from '@/lib/files/worker-client'
 
 const ADMIN_ROLES = ['veranstalter', 'brautpaar', 'brautpaar_solo']
 
@@ -29,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
     { data: displayRow },
   ] = await Promise.all([
     admin.from('events')
-      .select('id, title, couple_name, date, venue, venue_address, dresscode, children_allowed, children_note, meal_options, max_begleitpersonen')
+      .select('id, title, couple_name, date, venue, venue_address, dresscode, children_allowed, children_note, meal_options, max_begleitpersonen, cover_image_r2_key')
       .eq('id', eventId).maybeSingle(),
     admin.from('hotels').select('id, name, address, hotel_rooms(id, room_type, total_rooms, booked_rooms, price_per_night)').eq('event_id', eventId),
     admin.from('rsvp_settings').select('invitation_text, rsvp_deadline, show_meal_choice, show_plus_one, phone_contact').eq('event_id', eventId).maybeSingle(),
@@ -43,9 +44,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ eventId
 
   const tg = Object.fromEntries((featureRows ?? []).map((r: { key: string; enabled: boolean }) => [r.key, r.enabled]))
 
+  const display = displayRow?.settings ? normalizeSettings(displayRow.settings) : DEFAULT_DISPLAY_SETTINGS
+  const [coverUrl, motiveUrl, bgPhotoUrl] = await Promise.all([
+    event.cover_image_r2_key ? requestDownloadUrl(event.cover_image_r2_key).catch(() => null) : Promise.resolve(null),
+    display.invitation.motiveR2Key ? requestDownloadUrl(display.invitation.motiveR2Key).catch(() => null) : Promise.resolve(null),
+    display.bgPhotoR2Key ? requestDownloadUrl(display.bgPhotoR2Key).catch(() => null) : Promise.resolve(null),
+  ])
+
   return NextResponse.json({
     preview: true,
-    display: displayRow?.settings ? normalizeSettings(displayRow.settings) : DEFAULT_DISPLAY_SETTINGS,
+    display,
+    coverUrl,
+    motiveUrl,
+    bgPhotoUrl,
     event: {
       id: event.id,
       coupleName: event.couple_name ?? event.title ?? '',

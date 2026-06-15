@@ -9,7 +9,19 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { titleCaseName } from '@/lib/text'
-import { normalizeSettings, DEFAULT_DISPLAY_SETTINGS } from '@/lib/display-settings'
+import { normalizeSettings, DEFAULT_DISPLAY_SETTINGS, type DisplaySettings } from '@/lib/display-settings'
+import { requestDownloadUrl } from '@/lib/files/worker-client'
+
+// Lädt presigned Download-URLs für Titelbild, Einladungs-Motiv und
+// Hintergrundfoto (alle optional). Fehler werden still zu null.
+async function loadImageUrls(eventId: string, coverKey: string | null, display: DisplaySettings) {
+  const [coverUrl, motiveUrl, bgPhotoUrl] = await Promise.all([
+    coverKey ? requestDownloadUrl(coverKey).catch(() => null) : Promise.resolve(null),
+    display.invitation.motiveR2Key ? requestDownloadUrl(display.invitation.motiveR2Key).catch(() => null) : Promise.resolve(null),
+    display.bgPhotoR2Key ? requestDownloadUrl(display.bgPhotoR2Key).catch(() => null) : Promise.resolve(null),
+  ])
+  return { coverUrl, motiveUrl, bgPhotoUrl }
+}
 
 type MealChoice = 'fleisch' | 'fisch' | 'vegetarisch' | 'vegan'
 type AltersKategorie = 'erwachsen' | '13-17' | '6-12' | '0-6'
@@ -76,7 +88,7 @@ export async function GET(
     { data: displayRow },
   ] = await Promise.all([
     admin.from('events')
-      .select('id, title, couple_name, date, venue, venue_address, dresscode, children_allowed, children_note, meal_options, max_begleitpersonen, data_freeze_at')
+      .select('id, title, couple_name, date, venue, venue_address, dresscode, children_allowed, children_note, meal_options, max_begleitpersonen, data_freeze_at, cover_image_r2_key')
       .eq('id', guest.event_id).maybeSingle(),
     admin.from('begleitpersonen').select('*').eq('guest_id', guest.id),
     admin.from('hotels').select('id, name, address, hotel_rooms(id, room_type, total_rooms, booked_rooms, price_per_night)').eq('event_id', guest.event_id),
@@ -116,6 +128,9 @@ export async function GET(
 
   const rsvpToggleMap = Object.fromEntries((featureRows ?? []).map((r: any) => [r.key, r.enabled]))
 
+  const display = displayRow?.settings ? normalizeSettings(displayRow.settings) : DEFAULT_DISPLAY_SETTINGS
+  const { coverUrl, motiveUrl, bgPhotoUrl } = await loadImageUrls(event.id, event.cover_image_r2_key ?? null, display)
+
   const coupleName = (event.couple_name && event.couple_name.trim())
     || (event.title && event.title.trim())
     || ''
@@ -142,7 +157,10 @@ export async function GET(
   })
 
   return NextResponse.json({
-    display: displayRow?.settings ? normalizeSettings(displayRow.settings) : DEFAULT_DISPLAY_SETTINGS,
+    display,
+    coverUrl,
+    motiveUrl,
+    bgPhotoUrl,
     event: {
       id: event.id,
       coupleName,

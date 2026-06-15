@@ -4,13 +4,44 @@ export const dynamic = 'force-dynamic'
 import React, { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { v4 as uuid } from 'uuid'
-import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink, Music, Camera, UtensilsCrossed } from 'lucide-react'
+import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink, Music, Camera, UtensilsCrossed, Baby } from 'lucide-react'
 import RsvpPhotos from '@/components/rsvp/RsvpPhotos'
 import type {
   Event, Guest, MealChoice, AllergyTag, TransportMode, AltersKategorie,
 } from '@/lib/store'
 import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle, Input } from '@/components/ui'
-import { DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, fontHrefFor, shade, textureStyle, invitationAccent, invitationFont, type DisplaySettings } from '@/lib/display-settings'
+import {
+  DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, BODY_FONTS, fontHrefFor, bodyFontHrefFor,
+  shade, textureStyle, invitationFont, buildRsvpThemeCss,
+  rsvpText, type DisplaySettings,
+} from '@/lib/display-settings'
+
+// Dezenter Ornament-Trenner (nur wenn Ornamente aktiv). Drei Punkte mit Linien.
+function Ornament({ show }: { show: boolean }) {
+  if (!show) return null
+  return (
+    <div aria-hidden style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, margin: '22px 0', opacity: 0.7 }}>
+      <span style={{ height: 1, width: 46, background: 'linear-gradient(to right, transparent, var(--gold))' }} />
+      <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />
+      <span style={{ width: 6, height: 6, borderRadius: '50%', border: '1px solid var(--gold)' }} />
+      <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />
+      <span style={{ height: 1, width: 46, background: 'linear-gradient(to left, transparent, var(--gold))' }} />
+    </div>
+  )
+}
+
+// Berechnet Tage/Stunden/Minuten bis zum Termin (oder null wenn vorbei).
+function countdownParts(dateStr: string): { days: number; hours: number; minutes: number } | null {
+  const target = new Date(dateStr).getTime()
+  if (!isFinite(target)) return null
+  const diff = target - Date.now()
+  if (diff <= 0) return null
+  return {
+    days: Math.floor(diff / 86400000),
+    hours: Math.floor((diff % 86400000) / 3600000),
+    minutes: Math.floor((diff % 3600000) / 60000),
+  }
+}
 
 type Step = 'intro'|'rsvp'|'details'|'hotel'|'musikwunsch'|'geschenke'|'fotos'|'confirmation'
 
@@ -125,8 +156,8 @@ function MealOptionCard({ option, menuCourses, selected, onSelect, disabled }: M
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: courses.length > 0 ? 10 : 0 }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: selected ? '#fff' : 'var(--text)' }}>{label}</span>
         {selected && (
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '2px 8px' }}>
-            ✓ Gewählt
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#fff', background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '2px 8px' }}>
+            <CheckCircle size={12} /> Gewählt
           </span>
         )}
       </div>
@@ -215,6 +246,15 @@ export default function RSVPPage() {
 
   // Anzeigeeinstellungen (Personalisierung durch das Paar)
   const [display, setDisplay] = useState<DisplaySettings>(DEFAULT_DISPLAY_SETTINGS)
+  const [coverUrl,   setCoverUrl]   = useState<string | null>(null)
+  const [motiveUrl,  setMotiveUrl]  = useState<string | null>(null)
+  const [bgPhotoUrl, setBgPhotoUrl] = useState<string | null>(null)
+  // Tickt jede Minute, damit der Countdown aktuell bleibt.
+  const [, setNowTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(n => n + 1), 60000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -232,6 +272,9 @@ export default function RSVPPage() {
         const data = await res.json()
         if (cancelled) return
         if (data.display) setDisplay(data.display as DisplaySettings)
+        setCoverUrl(data.coverUrl ?? null)
+        setMotiveUrl(data.motiveUrl ?? null)
+        setBgPhotoUrl(data.bgPhotoUrl ?? null)
         const ev = data.event
         const g  = data.guest
         setEvent({
@@ -499,35 +542,58 @@ export default function RSVPPage() {
     ? invitationText.replace(/\{\{Name\}\}/g, firstName)
     : `Liebe/r ${firstName}, wir freuen uns auf deine Antwort.`
 
-  const effAccent = invitationAccent(display)
   const effFont = invitationFont(display)
   const tex = textureStyle(display.bgTexture)
-  const themeVars = {
-    '--gold': effAccent,
-    '--gold-deep': shade(effAccent, -0.18),
-    '--gold-pale': shade(effAccent, 0.82),
-    '--accent': effAccent,
-    '--bg': display.bgColor,
-    '--surface2': shade(display.bgColor, -0.03),
-  } as React.CSSProperties
   const headingFamily = HEADING_FONTS[effFont].family
   const headingFontHref = fontHrefFor(effFont)
+  const bodyFontHref = bodyFontHrefFor(display.bodyFont)
+  const themeCss = buildRsvpThemeCss(display)
+
+  // Hintergrund-Priorität: eigenes Foto → Farbverlauf → Textur → einfarbig.
+  const baseBgStyle: React.CSSProperties = !bgPhotoUrl && display.bgGradient
+    ? { backgroundImage: `linear-gradient(165deg, ${display.bgColor}, ${shade(display.bgColor, -0.06)})`, backgroundAttachment: 'fixed' }
+    : (!bgPhotoUrl && tex.image !== 'none')
+      ? { backgroundImage: tex.image, backgroundSize: tex.size, backgroundAttachment: 'fixed' }
+      : {}
+
+  // Beschriftete Schritt-Punkte (intro + confirmation eingeschlossen).
+  const STEP_LABELS: Record<string, string> = {
+    intro: 'Start', rsvp: 'Zusage', details: 'Details', hotel: 'Hotel', confirmation: 'Fertig',
+  }
+  const curStepIdx = progressSteps.indexOf(step)
 
   return (
-    <div style={{
-      backgroundColor: display.bgColor, minHeight: '100dvh',
-      paddingBottom: 'calc(40px + env(safe-area-inset-bottom))', ...themeVars,
-      ...(tex.image !== 'none' ? { backgroundImage: tex.image, backgroundSize: tex.size, backgroundAttachment: 'fixed' } : {}),
+    <div className="rsvp-root" style={{
+      position: 'relative', backgroundColor: display.bgColor, minHeight: '100dvh',
+      paddingBottom: 'calc(40px + env(safe-area-inset-bottom))', color: 'var(--text)',
+      ...baseBgStyle,
     }}>
+      <style>{themeCss}</style>
       {headingFontHref && <link rel="stylesheet" href={headingFontHref} />}
+      {bodyFontHref && <link rel="stylesheet" href={bodyFontHref} />}
+
+      {/* Hintergrundfoto-Ebene (mit Weichzeichner + Farb-Overlay) */}
+      {bgPhotoUrl && (
+        <div aria-hidden style={{
+          position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
+          backgroundImage: `url(${bgPhotoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center',
+          filter: display.bgPhotoBlur > 0 ? `blur(${display.bgPhotoBlur}px)` : undefined,
+          transform: display.bgPhotoBlur > 0 ? 'scale(1.06)' : undefined,
+        }} />
+      )}
+      {bgPhotoUrl && (
+        <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: `${display.bgColor}c9` }} />
+      )}
+
+      <div style={{ position: 'relative', zIndex: 1 }}>
       {isPreview && (
         <div style={{ background: 'var(--gold)', color: '#fff', textAlign: 'center', fontSize: 13, fontWeight: 600, padding: '8px 14px' }}>
           Vorschau – so sehen eure Gäste die Einladung. Eingaben werden hier nicht gespeichert.
         </div>
       )}
       {/* Top bar */}
-      <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: 560, margin: '0 auto', padding: '14px 20px', paddingTop: 'calc(14px + env(safe-area-inset-top))' }}>
+      <div style={{ background: 'color-mix(in srgb, var(--surface) 88%, transparent)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '13px 20px', paddingTop: 'calc(13px + env(safe-area-inset-top))' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {step !== 'intro' && (
               <button onClick={() => {
@@ -541,13 +607,32 @@ export default function RSVPPage() {
                 <ChevronLeft size={20} />
               </button>
             )}
-            <span style={{ fontFamily: headingFamily, fontSize: 16, fontWeight: 500, color: 'var(--text)', flex: 1 }}>
+            <span style={{ fontFamily: headingFamily, fontSize: 17, fontWeight: 500, letterSpacing: '0.04em', color: 'var(--text)', flex: 1 }}>
               {display.monogram || event.coupleName}
             </span>
           </div>
-          {step !== 'intro' && step !== 'confirmation' && (
-            <div style={{ marginTop: 10, height: 2, background: 'var(--border)', borderRadius: 1 }}>
-              <div style={{ height: '100%', width: `${progress}%`, background: 'var(--gold)', borderRadius: 1, transition: 'width 0.3s' }} />
+          {/* Beschriftete Schritt-Punkte */}
+          {step !== 'intro' && step !== 'confirmation' && curStepIdx >= 0 && (
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+              {progressSteps.map((st, i) => {
+                const done = i < curStepIdx
+                const active = i === curStepIdx
+                return (
+                  <React.Fragment key={st}>
+                    {i > 0 && <span style={{ flex: 1, height: 1.5, borderRadius: 1, background: done ? 'var(--gold)' : 'var(--border)' }} />}
+                    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <span style={{
+                        width: active ? 11 : 8, height: active ? 11 : 8, borderRadius: '50%',
+                        background: (done || active) ? 'var(--gold)' : 'var(--border)',
+                        boxShadow: active ? '0 0 0 4px var(--gold-pale)' : undefined, transition: 'all 0.2s',
+                      }} />
+                      <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: active ? 'var(--gold)' : 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                        {STEP_LABELS[st] ?? st}
+                      </span>
+                    </span>
+                  </React.Fragment>
+                )
+              })}
             </div>
           )}
         </div>
@@ -556,14 +641,47 @@ export default function RSVPPage() {
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '24px 16px' }}>
 
         {/* ──────────── INTRO ──────────── */}
-        {step === 'intro' && (
+        {step === 'intro' && (() => {
+          const onImage = !!coverUrl
+          const cd = display.countdown && event.date ? countdownParts(event.date) : null
+          return (
           <div style={{ animation: 'fadeUp 0.4s ease' }}>
-            <div style={{ marginBottom: 20 }}>
-              <p style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.16em', color: 'var(--gold)', marginBottom: 10 }}>Herzliche Einladung</p>
-              <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 400, color: 'var(--text)', lineHeight: 1.2, marginBottom: 8 }}>{event.coupleName}</h1>
-              <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 15, fontStyle: 'italic', color: 'var(--text-light)', marginBottom: 0 }}>
+            {/* Vollflächiger Hero — Titelbild mit Verlauf, sonst Akzent-Verlauf */}
+            <div style={{
+              margin: '-24px -16px 22px', position: 'relative', overflow: 'hidden',
+              display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+              minHeight: onImage ? 340 : 230, padding: '40px 22px 28px', textAlign: 'center',
+              ...(onImage
+                ? { backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0.58) 100%), url(${coverUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                : motiveUrl
+                  ? { backgroundImage: `linear-gradient(to bottom, ${shade(display.bgColor, 0)}cc, ${display.bgColor}f2), url(${motiveUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  : { backgroundImage: `linear-gradient(160deg, var(--gold-pale), transparent 70%)` }),
+            }}>
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.22em', color: onImage ? 'rgba(255,255,255,0.92)' : 'var(--gold)', marginBottom: 12 }}>
+                {rsvpText(display, 'introEyebrow')}
+              </p>
+              <h1 style={{ fontFamily: headingFamily, fontSize: 'clamp(30px, 9vw, 44px)', fontWeight: 500, color: onImage ? '#fff' : 'var(--text)', lineHeight: 1.12, marginBottom: 10, textShadow: onImage ? '0 1px 14px rgba(0,0,0,0.35)' : undefined }}>
+                {event.coupleName}
+              </h1>
+              <Ornament show={display.ornaments && !onImage} />
+              <p style={{ fontFamily: headingFamily, fontSize: 16, fontStyle: 'italic', color: onImage ? 'rgba(255,255,255,0.92)' : 'var(--text-light)', margin: '0 auto', maxWidth: 440, lineHeight: 1.5 }}>
                 {introBody}
               </p>
+              {cd && (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 22 }}>
+                  {[{ v: cd.days, l: 'Tage' }, { v: cd.hours, l: 'Std' }, { v: cd.minutes, l: 'Min' }].map(u => (
+                    <div key={u.l} style={{
+                      minWidth: 56, padding: '10px 8px', borderRadius: 'var(--r-sm)',
+                      background: onImage ? 'rgba(255,255,255,0.16)' : 'var(--surface)',
+                      border: `1px solid ${onImage ? 'rgba(255,255,255,0.3)' : 'var(--border)'}`,
+                      backdropFilter: onImage ? 'blur(4px)' : undefined,
+                    }}>
+                      <div style={{ fontFamily: headingFamily, fontSize: 24, fontWeight: 600, lineHeight: 1, color: onImage ? '#fff' : 'var(--gold)' }}>{u.v}</div>
+                      <div style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 4, color: onImage ? 'rgba(255,255,255,0.85)' : 'var(--text-dim)' }}>{u.l}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Deadline badge */}
@@ -606,12 +724,14 @@ export default function RSVPPage() {
                   value: `${event.venue}${event.venueAddress ? `, ${event.venueAddress}` : ''}`,
                   href: event.venueAddress ? getMapsUrl(`${event.venue} ${event.venueAddress}`) : undefined,
                 },
-                { icon: <Shirt size={13} color="var(--gold)" />,  label: 'Dresscode', value: event.dresscode },
+                { icon: <Shirt size={13} color="var(--gold)" />,  label: 'Dresscode', value: display.hiddenSections.includes('dresscode') ? undefined : event.dresscode },
                 { icon: <Hotel size={13} color="var(--gold)" />,  label: 'Hotel',     value: (event.hotels ?? []).map((h: any) => h.name).filter(Boolean).join(', ') || undefined },
-                { icon: <span style={{ fontSize: 13 }}>👶</span>, label: 'Kinder',
-                  value: (event as any).childrenAllowed === false
-                    ? ((event as any).childrenNote || 'Wir feiern ohne Kinder')
-                    : ((event as any).childrenNote || 'Kinder herzlich willkommen') },
+                { icon: <Baby size={13} color="var(--gold)" />, label: 'Kinder',
+                  value: display.hiddenSections.includes('children')
+                    ? undefined
+                    : (event as any).childrenAllowed === false
+                      ? ((event as any).childrenNote || 'Wir feiern ohne Kinder')
+                      : ((event as any).childrenNote || 'Kinder herzlich willkommen') },
               ].filter(x => x.value).map(item => (
                 <div key={item.label} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
                   <div style={{ marginTop: 1, flexShrink: 0 }}>{item.icon}</div>
@@ -638,7 +758,7 @@ export default function RSVPPage() {
               </div>
             )}
 
-            {(event as any).childrenAllowed !== undefined && (
+            {(event as any).childrenAllowed !== undefined && !display.hiddenSections.includes('children') && (
               <div style={{ background: (event as any).childrenAllowed ? 'var(--green-pale)' : 'var(--red-pale)', border: `1px solid ${(event as any).childrenAllowed ? 'rgba(61,122,86,0.2)' : 'rgba(160,64,64,0.15)'}`, borderRadius: 'var(--r-md)', padding: '12px 16px', marginBottom: 14 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: (event as any).childrenAllowed ? 'var(--green)' : 'var(--red)', marginBottom: (event as any).childrenNote ? 4 : 0 }}>
                   {(event as any).childrenAllowed ? 'Kinder herzlich willkommen' : 'Erwachsenenfeier — ohne Kinder'}
@@ -657,18 +777,20 @@ export default function RSVPPage() {
               {isBlocked ? 'Antwort ansehen' : 'Jetzt antworten'}
             </Button>
           </div>
-        )}
+          )
+        })()}
 
         {/* ──────────── RSVP ──────────── */}
         {step === 'rsvp' && (
           <div style={{ animation: 'fadeUp 0.4s ease' }}>
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Kannst du kommen?</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>{event.coupleName} · {new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <h2 style={{ fontFamily: headingFamily, fontSize: 26, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>{rsvpText(display, 'rsvpTitle')}</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 22 }}>{event.coupleName} · {new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <Ornament show={display.ornaments} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
               {[
-                { v: true,  icon: <CheckCircle size={20} />, title: 'Ja, ich bin dabei!',  sub: 'Ich freue mich auf diesen besonderen Tag.' },
-                { v: false, icon: <XCircle size={20} />,     title: 'Leider nicht',         sub: 'Ich kann leider nicht teilnehmen.' },
+                { v: true,  icon: <CheckCircle size={20} />, title: rsvpText(display, 'yesLabel'), sub: 'Ich freue mich auf diesen besonderen Tag.' },
+                { v: false, icon: <XCircle size={20} />,     title: rsvpText(display, 'noLabel'),  sub: 'Ich kann leider nicht teilnehmen.' },
               ].map(opt => (
                 <button key={String(opt.v)} onClick={() => !isBlocked && setAttending(opt.v)} disabled={isBlocked} data-sel={attending === opt.v ? '' : undefined} style={optBtn(attending === opt.v)}>
                   {opt.icon}
@@ -753,11 +875,13 @@ export default function RSVPPage() {
               </>
             )}
 
-            <Textarea label="Nachricht (optional)" value={message} onChange={setMessage} placeholder="Herzliche Glückwünsche …" />
+            {!display.hiddenSections.includes('message') && (
+              <Textarea label="Nachricht (optional)" value={message} onChange={setMessage} placeholder="Herzliche Glückwünsche …" />
+            )}
 
             <Button fullWidth size="lg" variant="gold" disabled={attending === null || saving || isBlocked}
               onClick={() => { if (attending === false) { save() } else { setStep('details') } }}>
-              {saving ? 'Wird gespeichert…' : attending === false ? 'Absage senden' : 'Weiter'}
+              {saving ? 'Wird gespeichert…' : attending === false ? rsvpText(display, 'declineLabel') : rsvpText(display, 'nextLabel')}
             </Button>
           </div>
         )}
@@ -765,8 +889,8 @@ export default function RSVPPage() {
         {/* ──────────── DETAILS ──────────── */}
         {step === 'details' && (
           <div style={{ animation: 'fadeUp 0.4s ease' }}>
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Deine Details</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 24 }}>Damit wir alles perfekt vorbereiten können.</p>
+            <h2 style={{ fontFamily: headingFamily, fontSize: 26, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>{rsvpText(display, 'detailsTitle')}</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 22 }}>Damit wir alles perfekt vorbereiten können.</p>
 
             {mealRequired && (
               <Card style={{ marginBottom: 10 }}>
@@ -806,11 +930,13 @@ export default function RSVPPage() {
               </Card>
             ))}
 
-            <Card style={{ marginBottom: 10 }}>
-              <AllergyPicker label="Deine Allergien" tags={allergies} onTagsChange={setAllergies} custom={allergyCustom} onCustomChange={setAllergyCustom} />
-            </Card>
+            {!display.hiddenSections.includes('allergies') && (
+              <Card style={{ marginBottom: 10 }}>
+                <AllergyPicker label="Deine Allergien" tags={allergies} onTagsChange={setAllergies} custom={allergyCustom} onCustomChange={setAllergyCustom} />
+              </Card>
+            )}
 
-            {companions.map((c, idx) => (
+            {!display.hiddenSections.includes('allergies') && companions.map((c, idx) => (
               <Card key={`allergy-${c.id}`} style={{ marginBottom: 10 }}>
                 <AllergyPicker
                   label={`Allergien: ${c.name || `Begleitperson ${idx + 1}`}`}
@@ -822,6 +948,7 @@ export default function RSVPPage() {
               </Card>
             ))}
 
+            {!display.hiddenSections.includes('arrival') && (
             <Card style={{ marginBottom: 20 }}>
               <SectionTitle>Anreise</SectionTitle>
               <Input label="Ankunftsdatum" type="date" value={arrivalDate} onChange={setArrivalDate} />
@@ -843,9 +970,10 @@ export default function RSVPPage() {
                 </div>
               </div>
             </Card>
+            )}
 
             <Button fullWidth size="lg" variant="gold" disabled={!detailsOk || saving} onClick={() => { if (hasHotels) setStep('hotel'); else save() }}>
-              {saving ? 'Wird gespeichert…' : 'Weiter'}
+              {saving ? 'Wird gespeichert…' : rsvpText(display, 'nextLabel')}
             </Button>
           </div>
         )}
@@ -853,7 +981,7 @@ export default function RSVPPage() {
         {/* ──────────── HOTEL ──────────── */}
         {step === 'hotel' && (
           <div style={{ animation: 'fadeUp 0.4s ease' }}>
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 24, fontWeight: 400, color: 'var(--text)', marginBottom: 6 }}>Hotelzimmer</h2>
+            <h2 style={{ fontFamily: headingFamily, fontSize: 26, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>{rsvpText(display, 'hotelTitle')}</h2>
             <p style={{ fontSize: 13, color: 'var(--text-light)', marginBottom: 20, lineHeight: 1.5 }}>Möchtest du ein Zimmer reservieren?</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
               <button onClick={() => setHotelRoomId('none')} data-sel={hotelRoomId === 'none' ? '' : undefined} style={{
@@ -1141,48 +1269,45 @@ export default function RSVPPage() {
         {step === 'confirmation' && (
           <div style={{ animation: 'fadeUp 0.5s ease' }}>
 
-            {/* Success banner */}
-            <div style={{
-              background: attending ? 'rgba(201,168,76,0.08)' : 'rgba(0,0,0,0.04)',
-              border: `1.5px solid ${attending ? 'rgba(201,168,76,0.3)' : 'var(--border)'}`,
-              borderRadius: 'var(--r-md)', padding: '18px 20px', marginBottom: 20,
-              display: 'flex', alignItems: 'flex-start', gap: 14,
-            }}>
+            {/* Edler Siegel-Abschluss */}
+            <div style={{ textAlign: 'center', marginBottom: 22, paddingTop: 6 }}>
               <div style={{
-                width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-                background: attending ? 'rgba(201,168,76,0.15)' : 'var(--black3)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: attending ? 'var(--gold)' : 'var(--grey3)',
+                width: 92, height: 92, borderRadius: '50%', margin: '0 auto 18px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
+                background: attending ? `linear-gradient(135deg, var(--gold), var(--gold-deep))` : 'var(--surface2)',
+                color: attending ? '#fff' : 'var(--text-dim)',
+                boxShadow: attending
+                  ? `0 0 0 6px var(--gold-pale), 0 0 0 7px var(--gold), 0 10px 26px color-mix(in srgb, var(--gold) 40%, transparent)`
+                  : `0 0 0 6px var(--surface2), 0 0 0 7px var(--border)`,
+                animation: 'sealPop 0.5s cubic-bezier(0.34,1.56,0.64,1)',
               }}>
-                {attending ? <CheckCircle size={22} /> : <XCircle size={22} />}
+                {display.monogram
+                  ? <span style={{ fontFamily: headingFamily, fontSize: 26, fontWeight: 600, letterSpacing: '0.04em' }}>{display.monogram.slice(0, 3)}</span>
+                  : attending ? <Heart size={36} fill="currentColor" /> : <XCircle size={36} />}
               </div>
-              <div>
-                <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: attending ? 'var(--gold)' : 'var(--text-dim)', marginBottom: 4 }}>
-                  {attending ? 'Alle Angaben erfolgreich übermittelt' : 'Absage übermittelt'}
-                </p>
-                <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 400, color: 'var(--text)', lineHeight: 1.25, marginBottom: 8 }}>
-                  {attending ? 'Danke für deine Zusage!' : 'Schade, dass du nicht kommen kannst.'}
-                </h2>
-                {attending && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    {[
-                      { key: 'rsvp', label: 'Teilnahme & Menü' },
-                      suggestedSongs.length > 0 && { key: 'musik', label: `${suggestedSongs.length} Musikwunsch${suggestedSongs.length > 1 ? '…e' : ''}` },
-                      companions.length > 0 && { key: 'begleitung', label: `${companions.length} Begleitperson${companions.length > 1 ? 'en' : ''}` },
-                      hotelRoomId && hotelRoomId !== 'none' && { key: 'hotel', label: 'Hotelzimmer' },
-                    ].filter(Boolean).map((item: any) => (
-                      <span key={item.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-mid)' }}>
-                        <CheckCircle size={11} color="var(--gold)" style={{ flexShrink: 0 }} />
-                        {item.label} gespeichert
-                      </span>
-                    ))}
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-mid)' }}>
-                      <CheckCircle size={11} color="var(--gold)" style={{ flexShrink: 0 }} />
-                      Angaben beim Brautpaar eingegangen
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.18em', color: attending ? 'var(--gold)' : 'var(--text-dim)', marginBottom: 8 }}>
+                {attending ? 'Übermittelt' : 'Absage übermittelt'}
+              </p>
+              <h2 style={{ fontFamily: headingFamily, fontSize: 'clamp(24px, 7vw, 32px)', fontWeight: 500, color: 'var(--text)', lineHeight: 1.18, margin: '0 auto', maxWidth: 420 }}>
+                {attending ? rsvpText(display, 'thankYouAccept') : rsvpText(display, 'thankYouDecline')}
+              </h2>
+              <Ornament show={display.ornaments} />
+              {attending && (
+                <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
+                  {[
+                    { key: 'rsvp', label: 'Teilnahme & Menü' },
+                    suggestedSongs.length > 0 && { key: 'musik', label: `${suggestedSongs.length} Musikwunsch${suggestedSongs.length > 1 ? '…e' : ''}` },
+                    companions.length > 0 && { key: 'begleitung', label: `${companions.length} Begleitperson${companions.length > 1 ? 'en' : ''}` },
+                    hotelRoomId && hotelRoomId !== 'none' && { key: 'hotel', label: 'Hotelzimmer' },
+                    { key: 'eingegangen', label: 'Angaben beim Brautpaar eingegangen' },
+                  ].filter(Boolean).map((item: any) => (
+                    <span key={item.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: 'var(--text-mid)' }}>
+                      <CheckCircle size={13} color="var(--gold)" style={{ flexShrink: 0 }} />
+                      {item.label}{item.key !== 'eingegangen' ? ' gespeichert' : ''}
                     </span>
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Event info at a glance */}
@@ -1299,9 +1424,10 @@ export default function RSVPPage() {
           </div>
         )}
       </div>
+      </div>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
-      <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes slideUp{from{transform:translate(-50%,16px);opacity:0}to{transform:translate(-50%,0);opacity:1}}`}</style>
+      <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes slideUp{from{transform:translate(-50%,16px);opacity:0}to{transform:translate(-50%,0);opacity:1}}@keyframes sealPop{0%{opacity:0;transform:scale(0.6)}100%{opacity:1;transform:scale(1)}}`}</style>
     </div>
   )
 }
