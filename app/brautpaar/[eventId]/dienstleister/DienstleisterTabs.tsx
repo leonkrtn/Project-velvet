@@ -33,18 +33,19 @@ export default function DienstleisterTabs({
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
         <button style={tabBtn(tab === 'discover')} onClick={() => setTab('discover')}>
           <Store size={15} /> Entdecken
-        </button>
-        <button style={tabBtn(tab === 'requests')} onClick={() => setTab('requests')}>
-          <Inbox size={15} /> Meine Anfragen
         </button>
         {isSolo && (
           <button style={tabBtn(tab === 'manage')} onClick={() => setTab('manage')}>
             <SlidersHorizontal size={15} /> Meine Dienstleister
           </button>
         )}
+        {/* Meine Anfragen — oben rechts in der Ecke */}
+        <button style={{ ...tabBtn(tab === 'requests'), marginLeft: 'auto' }} onClick={() => setTab('requests')}>
+          <Inbox size={15} /> Meine Anfragen
+        </button>
       </div>
       <div style={{ display: tab === 'discover' ? 'block' : 'none' }}>{discover}</div>
       <div style={{ display: tab === 'requests' ? 'block' : 'none' }}>

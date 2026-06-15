@@ -96,10 +96,10 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
             return (
               <button key={v.id} onClick={() => openDetail(v.id)} style={{ textAlign: 'left', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', padding: 12, display: 'flex', gap: 12, alignItems: 'stretch' }}>
                 {/* Quadratisches Logo links (1:1) */}
-                <div style={{ width: 84, height: 84, aspectRatio: '1 / 1', borderRadius: 10, background: '#f3f1ec', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 52, height: 52, aspectRatio: '1 / 1', borderRadius: 10, background: '#f3f1ec', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {v.logo_url
                     ? <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <Store size={26} color="#cbbf99" />}
+                    : <Store size={18} color="#cbbf99" />}
                 </div>
                 {/* Infos rechts */}
                 <div style={{ minWidth: 0, flex: 1 }}>
@@ -173,21 +173,25 @@ function VendorDetailModal({ vendor, eventId, existing, onClose, onSent }: {
           <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 100, border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
         </div>
         <div style={{ padding: 20 }}>
-          {/* Header: quadratisches Logo links + Name/Kategorie/Beschreibung rechts */}
-          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-            <div style={{ width: 72, height: 72, aspectRatio: '1 / 1', borderRadius: 12, background: '#f3f1ec', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {/* Header: quadratisches Logo links + Name/Kategorie rechts */}
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+            <div style={{ width: 56, height: 56, aspectRatio: '1 / 1', borderRadius: 12, background: '#f3f1ec', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {vendor.logo_url
                 ? <img src={vendor.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <Store size={26} color="#cbbf99" />}
+                : <Store size={22} color="#cbbf99" />}
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <h2 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>{vendor.company_name || vendor.name}</h2>
-              <div style={{ fontSize: 13, color: '#888', margin: '4px 0 8px' }}>
+              <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>
                 {categoryLabel(vendor.category)}{vendor.city ? ` · ${vendor.city}` : ''}{vendor.price_range ? ` · ${vendor.price_range}` : ''}
               </div>
-              {vendor.description && <p style={{ fontSize: 14, color: '#333', lineHeight: 1.5, margin: 0 }}>{vendor.description}</p>}
             </div>
           </div>
+
+          {/* Beschreibung über die volle Breite */}
+          {vendor.description && (
+            <p style={{ fontSize: 14, color: '#333', lineHeight: 1.6, margin: '14px 0 0' }}>{vendor.description}</p>
+          )}
 
           {/* Weitere Beispielbilder (ohne das Hero-Bild) als Thumbnails */}
           {restPhotos.length > 0 && (
