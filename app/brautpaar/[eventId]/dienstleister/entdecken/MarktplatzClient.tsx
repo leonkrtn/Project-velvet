@@ -2,8 +2,9 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Search, MapPin, X, Send, Check, Store } from 'lucide-react'
+import { Search, MapPin, Check, Star, ArrowUpDown } from 'lucide-react'
 import { MARKETPLACE_CATEGORIES, categoryLabel } from '@/lib/marketplace/types'
+import CategoryIcon from '@/components/marketplace/CategoryIcon'
 
 interface VendorCard {
   id: string
@@ -14,16 +15,12 @@ interface VendorCard {
   price_range: string | null
   description: string | null
   logo_url: string | null
+  cover_url: string | null
 }
-interface VendorDetail extends VendorCard {
-  email: string | null
-  phone: string | null
-  website: string | null
-  street: string | null
-  zip: string | null
-  photos: { id: string; url: string | null }[]
-}
-interface Req { id: string; dienstleister_id: string; status: string; conversation_id: string | null }
+interface Req { id: string; dienstleister_id: string; status: string }
+
+type Sort = 'name' | 'city' | 'price'
+const PRICE_ORDER: Record<string, number> = { '€': 1, '€€': 2, '€€€': 3 }
 
 export default function MarktplatzClient({ eventId }: { eventId: string }) {
   const [vendors, setVendors] = useState<VendorCard[]>([])
@@ -31,7 +28,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   const [category, setCategory] = useState('')
   const [city, setCity] = useState('')
   const [q, setQ] = useState('')
-  const [detail, setDetail] = useState<VendorDetail | null>(null)
+  const [sort, setSort] = useState<Sort>('name')
   const [requests, setRequests] = useState<Req[]>([])
 
   const loadRequests = useCallback(async () => {
@@ -61,171 +58,109 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     return requests.find(r => r.dienstleister_id === vendorId && (r.status === 'pending' || r.status === 'accepted'))
   }
 
-  async function openDetail(id: string) {
-    const res = await fetch(`/api/marketplace/vendors?id=${id}`)
-    const json = await res.json()
-    if (json.vendor) setDetail(json.vendor)
-  }
+  const sorted = [...vendors].sort((a, b) => {
+    if (sort === 'city') return (a.city ?? '').localeCompare(b.city ?? '', 'de')
+    if (sort === 'price') return (PRICE_ORDER[a.price_range ?? ''] ?? 9) - (PRICE_ORDER[b.price_range ?? ''] ?? 9)
+    return (a.company_name || a.name).localeCompare(b.company_name || b.name, 'de')
+  })
 
   return (
     <div>
-      {/* Filter */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
-        <select className="bp-input" value={category} onChange={e => setCategory(e.target.value)} style={{ maxWidth: 200 }}>
-          <option value="">Alle Kategorien</option>
-          {MARKETPLACE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-        </select>
+      <style>{`
+        .mp-card { display:flex; flex-direction:column; border:1px solid var(--bp-rule,#eee); border-radius:16px; overflow:hidden; background:#fff; text-decoration:none; color:inherit; transition:box-shadow .2s ease, transform .2s ease, border-color .2s ease; }
+        .mp-card:hover { box-shadow:0 14px 34px rgba(0,0,0,0.10); transform:translateY(-3px); border-color:var(--bp-gold-mist,#e5dcc6); }
+        .mp-media { position:relative; aspect-ratio:4/3; overflow:hidden; background:linear-gradient(135deg, var(--bp-gold-pale,#f3efe6), var(--bp-ivory-2,#efe9dd)); }
+        .mp-media img { width:100%; height:100%; object-fit:cover; transition:transform .35s ease; }
+        .mp-card:hover .mp-media img { transform:scale(1.06); }
+        .mp-chip { display:inline-flex; align-items:center; justify-content:center; line-height:1; gap:6px; padding:8px 14px; border-radius:999px; border:1px solid var(--bp-rule,#e5e0d8); background:#fff; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; color:var(--bp-ink-2,#555); white-space:nowrap; transition:all .15s ease; }
+        .mp-chip:hover { border-color:var(--bp-gold,#b89968); color:var(--bp-gold-deep,#8a6f3f); }
+        .mp-chip[data-active="true"] { background:var(--bp-gold,#b89968); border-color:var(--bp-gold,#b89968); color:#fff; }
+      `}</style>
+
+      {/* Kategorie-Schnellfilter als Chips mit Icons */}
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6, marginBottom: 16 }}>
+        <button className="mp-chip" data-active={category === ''} onClick={() => setCategory('')}>Alle</button>
+        {MARKETPLACE_CATEGORIES.map(c => (
+          <button key={c.key} className="mp-chip" data-active={category === c.key} onClick={() => setCategory(category === c.key ? '' : c.key)}>
+            <CategoryIcon category={c.key} size={14} /> {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Suche / Ort / Sortierung */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+        <div style={{ position: 'relative', flex: '1 1 220px' }}>
+          <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#aaa' }} />
+          <input className="bp-input" placeholder="Dienstleister suchen…" value={q} onChange={e => setQ(e.target.value)} style={{ paddingLeft: 32 }} />
+        </div>
         <div style={{ position: 'relative', flex: '1 1 160px' }}>
           <MapPin size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#aaa' }} />
           <input className="bp-input" placeholder="Ort / Stadt" value={city} onChange={e => setCity(e.target.value)} style={{ paddingLeft: 32 }} />
         </div>
-        <div style={{ position: 'relative', flex: '1 1 200px' }}>
-          <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#aaa' }} />
-          <input className="bp-input" placeholder="Suche…" value={q} onChange={e => setQ(e.target.value)} style={{ paddingLeft: 32 }} />
+        <div style={{ position: 'relative', flex: '0 0 190px' }}>
+          <ArrowUpDown size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#aaa' }} />
+          <select className="bp-input" value={sort} onChange={e => setSort(e.target.value as Sort)} style={{ paddingLeft: 32 }}>
+            <option value="name">Name (A–Z)</option>
+            <option value="city">Ort (A–Z)</option>
+            <option value="price">Preis (aufsteigend)</option>
+          </select>
         </div>
       </div>
 
-      {loading ? (
-        <p style={{ color: '#888' }}>Lädt…</p>
-      ) : vendors.length === 0 ? (
-        <p style={{ color: '#888' }}>Keine Dienstleister gefunden.</p>
+      <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3,#888)', margin: '0 0 16px' }}>
+        {loading ? 'Lädt…' : `${sorted.length} ${sorted.length === 1 ? 'Dienstleister' : 'Dienstleister'} gefunden`}
+      </p>
+
+      {!loading && sorted.length === 0 ? (
+        <div className="bp-card" style={{ padding: '2.5rem', textAlign: 'center' }}>
+          <p style={{ fontWeight: 600, margin: '0 0 4px' }}>Keine Dienstleister gefunden</p>
+          <p className="bp-caption" style={{ margin: 0 }}>Passe Kategorie, Ort oder Suchbegriff an.</p>
+        </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: 12 }}>
-          {vendors.map(v => {
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
+          {sorted.map(v => {
             const req = requestFor(v.id)
             return (
-              <button key={v.id} onClick={() => openDetail(v.id)} style={{ textAlign: 'left', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', padding: 12, display: 'flex', gap: 12, alignItems: 'stretch' }}>
-                {/* Quadratisches Logo links (1:1) */}
-                <div style={{ width: 52, height: 52, aspectRatio: '1 / 1', borderRadius: 10, background: '#f3f1ec', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {v.logo_url
-                    ? <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <Store size={18} color="#cbbf99" />}
-                </div>
-                {/* Infos rechts */}
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 14.5, fontWeight: 600 }}>{v.company_name || v.name}</div>
-                  <div style={{ fontSize: 12, color: '#888', margin: '2px 0 6px' }}>
-                    {categoryLabel(v.category)}{v.city ? ` · ${v.city}` : ''}{v.price_range ? ` · ${v.price_range}` : ''}
-                  </div>
-                  {v.description && <p style={{ fontSize: 12.5, color: '#666', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{v.description}</p>}
+              <Link key={v.id} href={`/brautpaar/${eventId}/dienstleister/anbieter/${v.id}`} className="mp-card">
+                <div className="mp-media">
+                  {v.cover_url
+                    ? <img src={v.cover_url} alt="" />
+                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bp-gold-deep,#8a6f3f)', opacity: 0.5 }}><CategoryIcon category={v.category} size={48} /></div>}
+                  {/* Logo-Badge unten links, wenn zusätzlich ein Logo existiert */}
+                  {v.logo_url && v.cover_url && v.logo_url !== v.cover_url && (
+                    <span style={{ position: 'absolute', left: 12, bottom: 12, width: 40, height: 40, borderRadius: 10, overflow: 'hidden', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', background: '#fff' }}>
+                      <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </span>
+                  )}
                   {req && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 11, fontWeight: 700, color: req.status === 'accepted' ? '#1E7E34' : '#B26A00' }}>
-                      <Check size={12} /> {req.status === 'accepted' ? 'Angenommen' : 'Anfrage gesendet'}
+                    <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '5px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4, background: req.status === 'accepted' ? '#1E7E34' : 'rgba(0,0,0,0.65)', color: '#fff' }}>
+                      <Check size={12} /> {req.status === 'accepted' ? 'Angenommen' : 'Angefragt'}
                     </span>
                   )}
                 </div>
-              </button>
+                <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600, color: 'var(--bp-gold-deep,#8a6f3f)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <CategoryIcon category={v.category} size={13} /> {categoryLabel(v.category)}
+                  </div>
+                  <h3 className="bp-font-heading" style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, color: 'var(--bp-ink)', lineHeight: 1.2 }}>
+                    {v.company_name || v.name}
+                  </h3>
+                  {/* Sterne-Platzhalter */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--bp-gold,#b89968)' }}>
+                    {[0, 1, 2, 3, 4].map(i => <Star key={i} size={13} />)}
+                    <span style={{ fontSize: 11, color: 'var(--bp-ink-3,#999)', marginLeft: 2 }}>Neu</span>
+                  </div>
+                  {v.description && <p style={{ fontSize: 12.5, color: 'var(--bp-ink-2,#666)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{v.description}</p>}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 'auto', paddingTop: 6 }}>
+                    {v.city && <span className="bp-badge bp-badge-neutral" style={{ gap: 4 }}><MapPin size={11} /> {v.city}</span>}
+                    {v.price_range && <span className="bp-badge bp-badge-neutral">{v.price_range}</span>}
+                  </div>
+                </div>
+              </Link>
             )
           })}
         </div>
       )}
-
-      {detail && (
-        <VendorDetailModal
-          vendor={detail}
-          eventId={eventId}
-          existing={requestFor(detail.id)}
-          onClose={() => setDetail(null)}
-          onSent={() => { setDetail(null); loadRequests() }}
-        />
-      )}
-    </div>
-  )
-}
-
-function VendorDetailModal({ vendor, eventId, existing, onClose, onSent }: {
-  vendor: VendorDetail; eventId: string; existing?: Req; onClose: () => void; onSent: () => void
-}) {
-  const [message, setMessage] = useState('')
-  const [budget, setBudget] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState('')
-
-  const photos = vendor.photos.filter(p => p.url)
-  const firstPhoto = photos[0]?.url ?? null
-  const restPhotos = photos.slice(1)
-
-  async function send() {
-    setErr(''); setBusy(true)
-    try {
-      const res = await fetch('/api/marketplace/requests', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId, dienstleisterId: vendor.id, message, budget }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      onSent()
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Fehler')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 20, overflowY: 'auto' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 560, width: '100%', marginTop: 30, overflow: 'hidden' }}>
-        {/* Hero: erstes Beispielbild groß (oder neutrale Fläche) */}
-        <div style={{ height: 220, background: '#f3f1ec', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {firstPhoto
-            ? <img src={firstPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <Store size={40} color="#cbbf99" />}
-          <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 100, border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
-        </div>
-        <div style={{ padding: 20 }}>
-          {/* Header: quadratisches Logo links + Name/Kategorie rechts */}
-          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-            <div style={{ width: 56, height: 56, aspectRatio: '1 / 1', borderRadius: 12, background: '#f3f1ec', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {vendor.logo_url
-                ? <img src={vendor.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <Store size={22} color="#cbbf99" />}
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <h2 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>{vendor.company_name || vendor.name}</h2>
-              <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>
-                {categoryLabel(vendor.category)}{vendor.city ? ` · ${vendor.city}` : ''}{vendor.price_range ? ` · ${vendor.price_range}` : ''}
-              </div>
-            </div>
-          </div>
-
-          {/* Beschreibung über die volle Breite */}
-          {vendor.description && (
-            <p style={{ fontSize: 14, color: '#333', lineHeight: 1.6, margin: '14px 0 0' }}>{vendor.description}</p>
-          )}
-
-          {/* Weitere Beispielbilder (ohne das Hero-Bild) als Thumbnails */}
-          {restPhotos.length > 0 && (
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', margin: '14px 0' }}>
-              {restPhotos.map(p => p.url && <img key={p.id} src={p.url} alt="" style={{ height: 84, borderRadius: 8, flexShrink: 0 }} />)}
-            </div>
-          )}
-
-          <div style={{ fontSize: 13, color: '#555', display: 'flex', flexDirection: 'column', gap: 3, margin: '16px 0' }}>
-            {(vendor.street || vendor.zip || vendor.city) && <span>{[vendor.street, [vendor.zip, vendor.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</span>}
-            {vendor.website && <a href={vendor.website} target="_blank" rel="noreferrer" style={{ color: 'var(--gold, #B89968)' }}>{vendor.website}</a>}
-          </div>
-
-          {existing ? (
-            <div style={{ background: '#E6F4EA', borderRadius: 10, padding: '12px 14px', fontSize: 13.5, color: '#1E7E34', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Check size={16} /> {existing.status === 'accepted' ? 'Anfrage angenommen — ihr könnt im Chat schreiben.' : 'Anfrage bereits gesendet. Du wirst benachrichtigt, sobald geantwortet wird.'}
-              {existing.status === 'accepted' && existing.conversation_id && (
-                <Link href={`/brautpaar/${eventId}/chats`} style={{ marginLeft: 'auto', fontWeight: 700, color: '#1E7E34' }}>Zum Chat</Link>
-              )}
-            </div>
-          ) : (
-            <div style={{ borderTop: '1px solid #eee', paddingTop: 16 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Anfrage stellen</p>
-              {err && <p style={{ color: '#C62828', fontSize: 12.5 }}>{err}</p>}
-              <textarea className="bp-textarea" placeholder="Beschreibt euer Anliegen, Wünsche, offene Fragen…" value={message} onChange={e => setMessage(e.target.value)} style={{ minHeight: 90, marginBottom: 8 }} />
-              <input className="bp-input" type="number" placeholder="Budget (optional, €)" value={budget} onChange={e => setBudget(e.target.value)} style={{ marginBottom: 12 }} />
-              <p style={{ fontSize: 11.5, color: '#999', marginBottom: 12 }}>Eure Event-Eckdaten (Datum, Ort, Gästezahl) werden automatisch mitgesendet.</p>
-              <button onClick={send} disabled={busy} className="bp-btn bp-btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Send size={15} /> {busy ? 'Sendet…' : 'Anfrage senden'}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   )
 }
