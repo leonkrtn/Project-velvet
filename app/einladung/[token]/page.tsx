@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Heart } from 'lucide-react'
 import '@/app/brautpaar/brautpaar.css'
 import {
-  DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, fontHrefFor, shade,
+  DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, fontHrefFor, shade, textureStyle,
   invitationAccent, invitationFont, type DisplaySettings,
 } from '@/lib/display-settings'
 
@@ -85,12 +85,15 @@ export default function OpenInvitePage() {
   const effFont = invitationFont(display)
   const headingFamily = HEADING_FONTS[effFont].family
   const headingFontHref = fontHrefFor(effFont)
+  const tex = textureStyle(display.bgTexture)
   const themeVars = {
     '--bp-gold': effAccent,
     '--bp-gold-deep': shade(effAccent, -0.18),
     '--bp-gold-pale': shade(effAccent, 0.82),
     '--bp-gold-mist': shade(effAccent, 0.7),
     '--gold': effAccent,
+    '--bp-ivory': display.bgColor,
+    '--bp-ivory-2': shade(display.bgColor, -0.03),
   } as React.CSSProperties
   const greetingTitle = display.invitation.greetingTitle || 'Ihr seid eingeladen'
   const greetingSubtitle = display.invitation.greetingSubtitle || 'Sag uns kurz, wer du bist — danach kannst du direkt zu- oder absagen.'
@@ -98,7 +101,10 @@ export default function OpenInvitePage() {
   return (
     <div className="bp-auth" style={{
       ...themeVars,
-      ...(motiveUrl ? { backgroundImage: `linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.9)), url(${motiveUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } : {}),
+      backgroundColor: display.bgColor,
+      ...(motiveUrl
+        ? { backgroundImage: `linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.9)), url(${motiveUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }
+        : tex.image !== 'none' ? { backgroundImage: tex.image, backgroundSize: tex.size, backgroundAttachment: 'fixed' } : {}),
     }}>
       {headingFontHref && <link rel="stylesheet" href={headingFontHref} />}
       <div className="bp-auth-inner">

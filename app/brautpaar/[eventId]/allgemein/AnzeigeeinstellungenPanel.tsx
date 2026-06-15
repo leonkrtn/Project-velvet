@@ -2,10 +2,10 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ImagePlus, Loader2, Trash2, Sparkles } from 'lucide-react'
+import { Check, ImagePlus, Loader2, Trash2, Sparkles, Eye } from 'lucide-react'
 import {
-  DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, ACCENT_PRESETS, THEME_PRESETS,
-  fontHrefFor, shade, type DisplaySettings, type HeadingFontKey,
+  DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, ACCENT_PRESETS, BG_COLOR_PRESETS, THEME_PRESETS,
+  fontHrefFor, shade, textureStyle, type DisplaySettings, type HeadingFontKey,
 } from '@/lib/display-settings'
 
 const TEXTURE_LABEL: Record<DisplaySettings['bgTexture'], string> = {
@@ -61,6 +61,12 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
     setMotiveBusy(true)
     try { await fetch(`/api/events/${eventId}/invitation-motive`, { method: 'DELETE' }); setInv('motiveR2Key', null) }
     finally { setMotiveBusy(false) }
+  }
+
+  // Speichert den aktuellen Stand und öffnet die echte RSVP-Vorschau im neuen Tab.
+  async function openPreview() {
+    await save()
+    window.open(`/rsvp/_preview?event=${eventId}`, '_blank', 'noopener')
   }
 
   async function save() {
@@ -159,8 +165,19 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {/* Hintergrund-Textur */}
-          <Field label="Hintergrund-Textur">
+          {/* Hintergrundfarbe (nur helle Pastelltöne) */}
+          <Field label="Hintergrundfarbe">
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {BG_COLOR_PRESETS.map(p => (
+                <button key={p.value} type="button" title={p.label} onClick={() => set('bgColor', p.value)}
+                  style={{ width: 26, height: 26, borderRadius: 8, background: p.value, cursor: 'pointer',
+                    border: s.bgColor.toLowerCase() === p.value.toLowerCase() ? '2px solid var(--bp-ink)' : '1px solid rgba(0,0,0,0.18)' }} />
+              ))}
+            </div>
+          </Field>
+
+          {/* Hintergrund-Muster */}
+          <Field label="Hintergrund-Muster">
             <SegmentRow value={s.bgTexture} onChange={v => set('bgTexture', v as DisplaySettings['bgTexture'])}
               options={(Object.keys(TEXTURE_LABEL) as DisplaySettings['bgTexture'][]).map(k => [k, TEXTURE_LABEL[k]])} />
           </Field>
@@ -203,9 +220,16 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
 
       {/* ── Einladung (individuell) ── */}
       <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1px solid var(--bp-rule)' }}>
-        <h4 className="bp-font-heading" style={{ fontSize: '1.05rem', margin: '0 0 4px' }}>Einladung</h4>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+          <h4 className="bp-font-heading" style={{ fontSize: '1.05rem', margin: 0 }}>Einladung</h4>
+          <button type="button" className="bp-btn" onClick={openPreview} disabled={saving}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Eye size={14} /> RSVP-Vorschau öffnen
+          </button>
+        </div>
         <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3)', margin: '0 0 16px' }}>
           Gestalte die Einladungs- und RSVP-Seite für eure Gäste. Leere Felder erben automatisch die Einstellungen oben.
+          Die Vorschau zeigt den zuletzt gespeicherten Stand.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
@@ -271,10 +295,9 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
         <p className="bp-label-text" style={{ marginBottom: 8 }}>Vorschau</p>
         <div style={{
           border: '1px solid var(--bp-rule)', borderRadius: radius, padding: 22, overflow: 'hidden',
-          backgroundImage: s.bgTexture === 'dots' ? 'radial-gradient(rgba(0,0,0,0.06) 1px, transparent 1px)'
-            : s.bgTexture === 'floral' ? 'radial-gradient(circle at 20% 20%, rgba(0,0,0,0.04) 0 2px, transparent 3px)'
-            : s.bgTexture === 'paper' ? 'linear-gradient(rgba(0,0,0,0.02), rgba(0,0,0,0.02))' : 'none',
-          backgroundSize: s.bgTexture === 'dots' ? '16px 16px' : 'auto',
+          backgroundColor: s.bgColor,
+          backgroundImage: textureStyle(s.bgTexture).image,
+          backgroundSize: textureStyle(s.bgTexture).size,
         }}>
           <p style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: deep, margin: 0 }}>
             {s.monogram || 'FOREVR'} · Hochzeitsjournal

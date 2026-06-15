@@ -14,6 +14,7 @@ export interface DisplaySettings {
   accentGradient: boolean   // Akzent als Farbverlauf
   headingFont: HeadingFontKey
   headingScale: 'kompakt' | 'standard' | 'gross'
+  bgColor: string           // helle Pastell-/Weiß-Hintergrundfarbe
   bgTexture: 'none' | 'paper' | 'dots' | 'floral'
   cornerStyle: 'soft' | 'elegant'   // rund/verspielt ↔ kantig/elegant
   buttonStyle: 'pill' | 'square'
@@ -29,6 +30,7 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   accentGradient: false,
   headingFont: 'cormorant',
   headingScale: 'standard',
+  bgColor: '#F8F8F6',
   bgTexture: 'none',
   cornerStyle: 'soft',
   buttonStyle: 'pill',
@@ -45,6 +47,18 @@ export const HEADING_FONTS: Record<HeadingFontKey, { label: string; family: stri
   sans:      { label: 'Montserrat (clean)', family: "'Montserrat', system-ui, sans-serif", href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&display=swap' },
 }
 
+// Helle Hintergrund-Presets (nah an Weiß)
+export const BG_COLOR_PRESETS: { label: string; value: string }[] = [
+  { label: 'Weiß',      value: '#FFFFFF' },
+  { label: 'Elfenbein', value: '#F8F8F6' },
+  { label: 'Creme',     value: '#FBF7F0' },
+  { label: 'Rosé',      value: '#FBF1F1' },
+  { label: 'Salbei',    value: '#F1F5F0' },
+  { label: 'Himmel',    value: '#EFF4F8' },
+  { label: 'Lavendel',  value: '#F4F1F8' },
+  { label: 'Mint',      value: '#EFF7F3' },
+]
+
 export const ACCENT_PRESETS: { label: string; value: string }[] = [
   { label: 'Gold',       value: '#B89968' },
   { label: 'Rosé',       value: '#C98B9B' },
@@ -57,10 +71,10 @@ export const ACCENT_PRESETS: { label: string; value: string }[] = [
 ]
 
 export const THEME_PRESETS: { key: string; label: string; settings: Partial<DisplaySettings> }[] = [
-  { key: 'klassisch_gold', label: 'Klassisch Gold', settings: { accent: '#B89968', headingFont: 'cormorant', headingScale: 'standard', bgTexture: 'paper',  cornerStyle: 'soft',    buttonStyle: 'pill',   accentGradient: false } },
-  { key: 'boho',           label: 'Boho',           settings: { accent: '#C2724A', headingFont: 'dmserif',   headingScale: 'gross',    bgTexture: 'floral', cornerStyle: 'soft',    buttonStyle: 'pill',   accentGradient: false } },
-  { key: 'modern',         label: 'Modern Minimal', settings: { accent: '#2E3A59', headingFont: 'sans',      headingScale: 'standard', bgTexture: 'none',   cornerStyle: 'elegant', buttonStyle: 'square', accentGradient: false } },
-  { key: 'romantisch',     label: 'Romantisch Rosé',settings: { accent: '#C98B9B', headingFont: 'script',    headingScale: 'gross',    bgTexture: 'none',   cornerStyle: 'soft',    buttonStyle: 'pill',   accentGradient: true  } },
+  { key: 'klassisch_gold', label: 'Klassisch Gold', settings: { accent: '#B89968', headingFont: 'cormorant', headingScale: 'standard', bgColor: '#F8F8F6', bgTexture: 'paper',  cornerStyle: 'soft',    buttonStyle: 'pill',   accentGradient: false } },
+  { key: 'boho',           label: 'Boho',           settings: { accent: '#C2724A', headingFont: 'dmserif',   headingScale: 'gross',    bgColor: '#FBF7F0', bgTexture: 'floral', cornerStyle: 'soft',    buttonStyle: 'pill',   accentGradient: false } },
+  { key: 'modern',         label: 'Modern Minimal', settings: { accent: '#2E3A59', headingFont: 'sans',      headingScale: 'standard', bgColor: '#FFFFFF', bgTexture: 'none',   cornerStyle: 'elegant', buttonStyle: 'square', accentGradient: false } },
+  { key: 'romantisch',     label: 'Romantisch Rosé',settings: { accent: '#C98B9B', headingFont: 'script',    headingScale: 'gross',    bgColor: '#FBF1F1', bgTexture: 'none',   cornerStyle: 'soft',    buttonStyle: 'pill',   accentGradient: true  } },
 ]
 
 const HEADING_SCALE_MAP = { kompakt: 0.9, standard: 1, gross: 1.15 } as const
@@ -76,6 +90,8 @@ export function normalizeSettings(raw: unknown): DisplaySettings {
   const headingFont = (typeof s.headingFont === 'string' && s.headingFont in HEADING_FONTS) ? s.headingFont as HeadingFontKey : DEFAULT_DISPLAY_SETTINGS.headingFont
   const headingScale = (s.headingScale === 'kompakt' || s.headingScale === 'gross') ? s.headingScale : 'standard'
   const bgTexture = (['paper', 'dots', 'floral'].includes(s.bgTexture as string)) ? s.bgTexture as DisplaySettings['bgTexture'] : 'none'
+  // nur helle Hintergrundfarben zulassen (nah an Weiß)
+  const bgColor = (typeof s.bgColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(s.bgColor) && isLightColor(s.bgColor)) ? s.bgColor : DEFAULT_DISPLAY_SETTINGS.bgColor
   const cornerStyle = s.cornerStyle === 'elegant' ? 'elegant' : 'soft'
   const buttonStyle = s.buttonStyle === 'square' ? 'square' : 'pill'
   const monogram = typeof s.monogram === 'string' ? s.monogram.slice(0, 24) : ''
@@ -96,6 +112,7 @@ export function normalizeSettings(raw: unknown): DisplaySettings {
     accentGradient: s.accentGradient === true,
     headingFont,
     headingScale,
+    bgColor,
     bgTexture,
     cornerStyle,
     buttonStyle,
@@ -132,11 +149,23 @@ export function shade(hex: string, amount: number): string {
   return rgbToHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount)
 }
 
-const TEXTURES: Record<DisplaySettings['bgTexture'], string> = {
-  none: 'none',
-  dots: 'radial-gradient(rgba(0,0,0,0.045) 1px, transparent 1px)',
-  paper: 'linear-gradient(rgba(0,0,0,0.015), rgba(0,0,0,0.015))',
-  floral: 'radial-gradient(circle at 20% 20%, rgba(0,0,0,0.03) 0 2px, transparent 3px), radial-gradient(circle at 70% 60%, rgba(0,0,0,0.025) 0 3px, transparent 4px)',
+// Helligkeit grob prüfen (nur sehr helle Farben als Hintergrund zulassen)
+export function isLightColor(hex: string): boolean {
+  const [r, g, b] = hexToRgb(hex)
+  // wahrgenommene Helligkeit
+  return (0.299 * r + 0.587 * g + 0.114 * b) >= 222
+}
+
+const FLORAL = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Cg fill='none' stroke='%23000' stroke-opacity='0.05' stroke-width='1.1'%3E%3Cpath d='M32 10c4 8 4 16 0 24-4-8-4-16 0-24z'/%3E%3Cpath d='M14 44c6-2 12 0 16 6'/%3E%3Cpath d='M50 44c-6-2-12 0-16 6'/%3E%3Ccircle cx='32' cy='38' r='1.5'/%3E%3C/g%3E%3C/svg%3E\")"
+
+// Liefert die Hintergrund-CSS-Werte für eine Textur (für gescoptes + inline-CSS).
+export function textureStyle(key: DisplaySettings['bgTexture']): { image: string; size: string } {
+  switch (key) {
+    case 'dots':   return { image: 'radial-gradient(rgba(0,0,0,0.06) 1.2px, transparent 1.3px)', size: '16px 16px' }
+    case 'paper':  return { image: 'repeating-linear-gradient(45deg, rgba(0,0,0,0.018) 0 1px, transparent 1px 7px)', size: 'auto' }
+    case 'floral': return { image: FLORAL, size: '64px 64px' }
+    default:       return { image: 'none', size: 'auto' }
+  }
 }
 
 /**
@@ -151,16 +180,22 @@ export function buildThemeCss(input: DisplaySettings): string {
   const corner = CORNER_MAP[s.cornerStyle]
   const pill = s.buttonStyle === 'square' ? '8px' : '999px'
   const family = HEADING_FONTS[s.headingFont].family
-  const texture = TEXTURES[s.bgTexture]
+  const tex = textureStyle(s.bgTexture)
+  const ivory2 = shade(s.bgColor, -0.03)
 
   let css = `.bp-display-root{`
     + `--bp-gold:${s.accent};--bp-gold-deep:${deep};--bp-gold-pale:${pale};--bp-gold-mist:${shade(s.accent, 0.7)};--gold:${s.accent};--gold-pale:${pale};`
     + `--bp-rule-gold:${shade(s.accent, 0.5)};`
+    + `--bp-ivory:${s.bgColor};--bp-ivory-2:${ivory2};--bp-surface-2:${ivory2};--bg:${s.bgColor};`
     + `--bp-font-heading:${family};--bp-heading-scale:${scale};`
     + `--bp-r-sm:${corner.sm};--bp-r-md:${corner.md};--bp-r-lg:${corner.lg};--bp-r-pill:${pill};`
+    + `min-height:100dvh;background-color:${s.bgColor};`
     + `}`
-  if (texture !== 'none') {
-    css += `.bp-display-root{background-image:${texture};background-size:${s.bgTexture === 'dots' ? '18px 18px' : 'auto'};background-attachment:fixed;}`
+  // Hintergrundfarbe + Muster über die ganze Fläche (auch hinter dem Inhalt).
+  // .bp-shell trägt den sichtbaren Portal-Hintergrund → Textur dort anwenden.
+  css += `.bp-display-root,.bp-display-root .bp-shell{background-color:${s.bgColor};}`
+  if (tex.image !== 'none') {
+    css += `.bp-display-root,.bp-display-root .bp-shell{background-image:${tex.image};background-size:${tex.size};background-attachment:fixed;background-position:center;}`
   }
   // Überschriften-Font + Skalierung
   css += `.bp-display-root .bp-mag-title,.bp-display-root .bp-font-heading,.bp-display-root .bp-mag-section-title,.bp-display-root .bp-mag-block-title{font-family:var(--bp-font-heading)!important;}`

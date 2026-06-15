@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 import React, { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { v4 as uuid } from 'uuid'
 import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink, Music, Camera, UtensilsCrossed } from 'lucide-react'
 import RsvpPhotos from '@/components/rsvp/RsvpPhotos'
@@ -10,7 +10,7 @@ import type {
   Event, Guest, MealChoice, AllergyTag, TransportMode, AltersKategorie,
 } from '@/lib/store'
 import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle, Input } from '@/components/ui'
-import { DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, fontHrefFor, shade, invitationAccent, invitationFont, type DisplaySettings } from '@/lib/display-settings'
+import { DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, fontHrefFor, shade, textureStyle, invitationAccent, invitationFont, type DisplaySettings } from '@/lib/display-settings'
 
 type Step = 'intro'|'rsvp'|'details'|'hotel'|'musikwunsch'|'geschenke'|'fotos'|'confirmation'
 
@@ -155,6 +155,10 @@ function MealOptionCard({ option, menuCourses, selected, onSelect, disabled }: M
 export default function RSVPPage() {
   const params = useParams()
   const token  = params?.token as string
+  const searchParams = useSearchParams()
+  // Vorschau-Modus (für das Brautpaar): /rsvp/_preview?event=<eventId>
+  const isPreview = token === '_preview'
+  const previewEventId = searchParams?.get('event') ?? ''
 
   const [event, setEvent]   = useState<Event | null>(null)
   const [guest, setGuest]   = useState<Guest | null>(null)
@@ -216,7 +220,10 @@ export default function RSVPPage() {
     let cancelled = false
     async function load() {
       try {
-        const res = await fetch(`/api/rsvp/${encodeURIComponent(token)}`, { cache: 'no-store' })
+        const apiUrl = isPreview
+          ? `/api/rsvp/preview/${encodeURIComponent(previewEventId)}`
+          : `/api/rsvp/${encodeURIComponent(token)}`
+        const res = await fetch(apiUrl, { cache: 'no-store' })
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: 'Einladung nicht gefunden' }))
           if (!cancelled) setLoadError(err.error ?? 'Einladung nicht gefunden')
@@ -341,6 +348,7 @@ export default function RSVPPage() {
 
   const save = async () => {
     if (!event || !guest || saving) return
+    if (isPreview) { setToast('Vorschau – in dieser Ansicht wird nichts gespeichert.'); return }
     if (isBlocked) {
       const msg = isFrozen
         ? 'Das Event ist gesperrt — Änderungen nicht mehr möglich.'
@@ -493,18 +501,30 @@ export default function RSVPPage() {
 
   const effAccent = invitationAccent(display)
   const effFont = invitationFont(display)
+  const tex = textureStyle(display.bgTexture)
   const themeVars = {
     '--gold': effAccent,
     '--gold-deep': shade(effAccent, -0.18),
     '--gold-pale': shade(effAccent, 0.82),
     '--accent': effAccent,
+    '--bg': display.bgColor,
+    '--surface2': shade(display.bgColor, -0.03),
   } as React.CSSProperties
   const headingFamily = HEADING_FONTS[effFont].family
   const headingFontHref = fontHrefFor(effFont)
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100dvh', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))', ...themeVars }}>
+    <div style={{
+      backgroundColor: display.bgColor, minHeight: '100dvh',
+      paddingBottom: 'calc(40px + env(safe-area-inset-bottom))', ...themeVars,
+      ...(tex.image !== 'none' ? { backgroundImage: tex.image, backgroundSize: tex.size, backgroundAttachment: 'fixed' } : {}),
+    }}>
       {headingFontHref && <link rel="stylesheet" href={headingFontHref} />}
+      {isPreview && (
+        <div style={{ background: 'var(--gold)', color: '#fff', textAlign: 'center', fontSize: 13, fontWeight: 600, padding: '8px 14px' }}>
+          Vorschau – so sehen eure Gäste die Einladung. Eingaben werden hier nicht gespeichert.
+        </div>
+      )}
       {/* Top bar */}
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: 560, margin: '0 auto', padding: '14px 20px', paddingTop: 'calc(14px + env(safe-area-inset-top))' }}>

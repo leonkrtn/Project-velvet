@@ -537,7 +537,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
                 borderColor: active ? 'rgba(220,38,38,0.3)' : 'var(--border)',
                 color: active ? '#DC2626' : 'var(--text-secondary)',
                 fontWeight: active ? 600 : 400, fontFamily: 'inherit',
-              }}>{tag}</button>
+              }}>{capitalizeFirst(tag)}</button>
             )
           })}
         </div>
@@ -652,7 +652,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
                   <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.side ? capitalizeFirst(g.side) : '—'}</div>
                   <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.meal_choice ?? '—'}</div>
                   <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).join(', ') || '—'}
+                    {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).map(t => capitalizeFirst(t as string)).join(', ') || '—'}
                   </div>
                 </div>
               )
