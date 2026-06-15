@@ -3,7 +3,7 @@ import React, { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Search, X, Edit2, ChevronDown, ChevronRight, Star, Download, Upload, FileSpreadsheet } from 'lucide-react'
 import ImportModal from '@/components/gaesteliste/ImportModal'
-import { titleCaseName, capitalizeFirst } from '@/lib/text'
+import { titleCaseName, capitalizeFirst, allergyLabel } from '@/lib/text'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -537,7 +537,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
                 borderColor: active ? 'rgba(220,38,38,0.3)' : 'var(--border)',
                 color: active ? '#DC2626' : 'var(--text-secondary)',
                 fontWeight: active ? 600 : 400, fontFamily: 'inherit',
-              }}>{capitalizeFirst(tag)}</button>
+              }}>{allergyLabel(tag)}</button>
             )
           })}
         </div>
@@ -652,7 +652,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
                   <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.side ? capitalizeFirst(g.side) : '—'}</div>
                   <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.meal_choice ?? '—'}</div>
                   <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).map(t => capitalizeFirst(t as string)).join(', ') || '—'}
+                    {[...(g.allergy_tags ?? []).map(allergyLabel), ...(g.allergy_custom ? [g.allergy_custom] : [])].join(', ') || '—'}
                   </div>
                 </div>
               )

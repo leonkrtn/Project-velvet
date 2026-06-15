@@ -8,7 +8,7 @@ import {
   MessageCircle, Share2, Link2, UserCheck, UserPlus2,
 } from 'lucide-react'
 import GeschenkTab from './GeschenkTab'
-import { titleCaseName, capitalizeFirst } from '@/lib/text'
+import { titleCaseName, capitalizeFirst, allergyLabel } from '@/lib/text'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -855,7 +855,7 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
                     <InfoRow label="Alkohol" value={guest.trink_alkohol ? 'Ja' : 'Nein'} />
                   )}
                   {guest.allergy_tags && guest.allergy_tags.length > 0 && (
-                    <InfoRow label="Allergien" value={guest.allergy_tags.map(capitalizeFirst).join(', ')} />
+                    <InfoRow label="Allergien" value={guest.allergy_tags.map(allergyLabel).join(', ')} />
                   )}
                   {guest.allergy_custom && <InfoRow label="Sonstiges" value={guest.allergy_custom} last />}
                 </InfoSection>
@@ -888,7 +888,7 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
                       <p style={{ fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.875rem', margin: '0 0 0.25rem' }}>{b.name || `Person ${i + 1}`}</p>
                       {b.age_category && <InfoRow label="Alter" value={AGE_LABELS[b.age_category] ?? b.age_category} />}
                       {b.meal_choice && <InfoRow label="Menü" value={MEAL_LABELS[b.meal_choice] ?? b.meal_choice} />}
-                      {b.allergy_tags && b.allergy_tags.length > 0 && <InfoRow label="Allergien" value={b.allergy_tags.map(capitalizeFirst).join(', ')} last />}
+                      {b.allergy_tags && b.allergy_tags.length > 0 && <InfoRow label="Allergien" value={b.allergy_tags.map(allergyLabel).join(', ')} last />}
                     </div>
                   ))}
                 </InfoSection>
@@ -1102,7 +1102,7 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
                   <td style={{ color: 'var(--bp-ink-3)' }}>{g.meal_choice ? (MEAL_LABELS[g.meal_choice] ?? g.meal_choice) : '—'}</td>
                   <td>
                     {g.allergy_tags && g.allergy_tags.length > 0
-                      ? g.allergy_tags.map(t => <span key={t} className="bp-badge bp-badge-neutral" style={{ marginRight: 4 }}>{capitalizeFirst(t)}</span>)
+                      ? g.allergy_tags.map(t => <span key={t} className="bp-badge bp-badge-neutral" style={{ marginRight: 4 }}>{allergyLabel(t)}</span>)
                       : '—'}
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
