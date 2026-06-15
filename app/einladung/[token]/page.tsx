@@ -6,6 +6,10 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Heart } from 'lucide-react'
 import '@/app/brautpaar/brautpaar.css'
+import {
+  DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, fontHrefFor, shade,
+  invitationAccent, invitationFont, type DisplaySettings,
+} from '@/lib/display-settings'
 
 // Öffentliche Sammel-Link-Seite: Gäste registrieren sich selbst mit ihrem
 // Namen und werden danach in den normalen persönlichen RSVP-Flow geleitet.
@@ -16,6 +20,8 @@ export default function OpenInvitePage() {
   const router = useRouter()
 
   const [eventInfo, setEventInfo] = useState<{ title: string; coupleName: string | null; date: string | null } | null>(null)
+  const [display, setDisplay] = useState<DisplaySettings>(DEFAULT_DISPLAY_SETTINGS)
+  const [motiveUrl, setMotiveUrl] = useState<string | null>(null)
   const [invalid, setInvalid] = useState(false)
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
@@ -26,7 +32,11 @@ export default function OpenInvitePage() {
   useEffect(() => {
     fetch(`/api/open-invite/${token}`)
       .then(res => res.ok ? res.json() : Promise.reject())
-      .then(data => setEventInfo(data))
+      .then(data => {
+        setEventInfo(data)
+        if (data.display) setDisplay(data.display as DisplaySettings)
+        setMotiveUrl(data.motiveUrl ?? null)
+      })
       .catch(() => setInvalid(true))
       .finally(() => setLoading(false))
   }, [token])
@@ -71,11 +81,32 @@ export default function OpenInvitePage() {
     ? new Date(eventInfo.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
 
+  const effAccent = invitationAccent(display)
+  const effFont = invitationFont(display)
+  const headingFamily = HEADING_FONTS[effFont].family
+  const headingFontHref = fontHrefFor(effFont)
+  const themeVars = {
+    '--bp-gold': effAccent,
+    '--bp-gold-deep': shade(effAccent, -0.18),
+    '--bp-gold-pale': shade(effAccent, 0.82),
+    '--bp-gold-mist': shade(effAccent, 0.7),
+    '--gold': effAccent,
+  } as React.CSSProperties
+  const greetingTitle = display.invitation.greetingTitle || 'Ihr seid eingeladen'
+  const greetingSubtitle = display.invitation.greetingSubtitle || 'Sag uns kurz, wer du bist — danach kannst du direkt zu- oder absagen.'
+
   return (
-    <div className="bp-auth">
+    <div className="bp-auth" style={{
+      ...themeVars,
+      ...(motiveUrl ? { backgroundImage: `linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.9)), url(${motiveUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } : {}),
+    }}>
+      {headingFontHref && <link rel="stylesheet" href={headingFontHref} />}
       <div className="bp-auth-inner">
 
         <div className="bp-auth-logo">
+          {display.monogram && (
+            <p style={{ fontFamily: headingFamily, fontSize: '0.8rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--bp-gold)', margin: '0 0 0.5rem' }}>{display.monogram}</p>
+          )}
           <span style={{
             width: 52, height: 52, borderRadius: '50%', margin: '0 auto 0.875rem',
             background: 'var(--bp-gold-pale)',
@@ -84,7 +115,7 @@ export default function OpenInvitePage() {
             <Heart size={24} fill="var(--bp-gold)" color="var(--bp-gold)" />
           </span>
           <h1 style={{
-            fontFamily: 'Cormorant Garamond, Georgia, serif', fontWeight: 600,
+            fontFamily: headingFamily, fontWeight: 600,
             fontSize: '1.75rem', color: 'var(--bp-ink)', margin: 0, lineHeight: 1.2,
           }}>
             {eventInfo.coupleName || eventInfo.title}
@@ -93,9 +124,9 @@ export default function OpenInvitePage() {
         </div>
 
         <div className="bp-auth-card">
-          <h2 className="bp-auth-title" style={{ marginBottom: '0.5rem' }}>Ihr seid eingeladen</h2>
+          <h2 className="bp-auth-title" style={{ marginBottom: '0.5rem', fontFamily: headingFamily }}>{greetingTitle}</h2>
           <p className="bp-caption" style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-            Sag uns kurz, wer du bist — danach kannst du direkt zu- oder absagen.
+            {greetingSubtitle}
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -113,9 +144,9 @@ export default function OpenInvitePage() {
               <label className="bp-label-text">Ich gehöre zu</label>
               <select className="bp-select" value={side} onChange={e => setSide(e.target.value)}>
                 <option value="">Keine Angabe</option>
-                <option value="braut">Braut</option>
-                <option value="braeutigam">Bräutigam</option>
-                <option value="beide">Beiden</option>
+                <option value="Braut">Braut</option>
+                <option value="Bräutigam">Bräutigam</option>
+                <option value="Gemeinsam">Beiden</option>
               </select>
             </div>
 

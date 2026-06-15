@@ -36,6 +36,32 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
     setS(prev => ({ ...prev, ...partial, preset: key }))
     setSaved(false)
   }
+  function setInv<K extends keyof DisplaySettings['invitation']>(key: K, value: DisplaySettings['invitation'][K]) {
+    setS(prev => ({ ...prev, invitation: { ...prev.invitation, [key]: value }, preset: null }))
+    setSaved(false)
+  }
+
+  const motiveInput = useRef<HTMLInputElement>(null)
+  const [motiveBusy, setMotiveBusy] = useState(false)
+  async function onMotive(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; e.target.value = ''
+    if (!file || !file.type.startsWith('image/')) return
+    setMotiveBusy(true)
+    try {
+      const reqRes = await fetch(`/api/events/${eventId}/invitation-motive`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contentType: file.type }),
+      })
+      const { uploadUrl, key } = await reqRes.json()
+      if (!uploadUrl) return
+      await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })
+      setInv('motiveR2Key', key as string)
+    } finally { setMotiveBusy(false) }
+  }
+  async function removeMotive() {
+    setMotiveBusy(true)
+    try { await fetch(`/api/events/${eventId}/invitation-motive`, { method: 'DELETE' }); setInv('motiveR2Key', null) }
+    finally { setMotiveBusy(false) }
+  }
 
   async function save() {
     setSaving(true); setSaved(false)
@@ -172,6 +198,71 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--bp-red)' }}>
             <Trash2 size={14} /> Entfernen
           </button>
+        </div>
+      </div>
+
+      {/* ── Einladung (individuell) ── */}
+      <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1px solid var(--bp-rule)' }}>
+        <h4 className="bp-font-heading" style={{ fontSize: '1.05rem', margin: '0 0 4px' }}>Einladung</h4>
+        <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3)', margin: '0 0 16px' }}>
+          Gestalte die Einladungs- und RSVP-Seite für eure Gäste. Leere Felder erben automatisch die Einstellungen oben.
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <Field label="Begrüßung – Überschrift">
+              <input className="bp-input" value={s.invitation.greetingTitle} maxLength={120}
+                placeholder="z. B. Wir heiraten!" onChange={e => setInv('greetingTitle', e.target.value)} />
+            </Field>
+            <Field label="Begrüßung – Untertitel">
+              <textarea className="bp-input" value={s.invitation.greetingSubtitle} maxLength={240} rows={2}
+                placeholder="z. B. Feiert mit uns den schönsten Tag unseres Lebens." onChange={e => setInv('greetingSubtitle', e.target.value)} />
+            </Field>
+            <div>
+              <label className="bp-label-text" style={{ display: 'block', marginBottom: 6 }}>Einladungs-Motiv (Hintergrund)</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input ref={motiveInput} type="file" accept="image/*" hidden onChange={onMotive} />
+                <button type="button" className="bp-btn" disabled={motiveBusy} onClick={() => motiveInput.current?.click()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  {motiveBusy ? <Loader2 size={14} className="bp-spin" /> : <ImagePlus size={14} />} Motiv hochladen
+                </button>
+                {s.invitation.motiveR2Key && (
+                  <button type="button" className="bp-btn" disabled={motiveBusy} onClick={removeMotive}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--bp-red)' }}>
+                    <Trash2 size={14} /> Entfernen
+                  </button>
+                )}
+                {s.invitation.motiveR2Key && <span style={{ fontSize: 12, color: 'var(--bp-green)', alignSelf: 'center' }}>Motiv gesetzt</span>}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <Field label="Akzentfarbe der Einladung">
+              <ToggleRow label="Eigene Akzentfarbe verwenden" checked={s.invitation.accent !== null}
+                onChange={v => setInv('accent', v ? s.accent : null)} />
+              {s.invitation.accent !== null && (
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+                  {ACCENT_PRESETS.map(p => (
+                    <button key={p.value} type="button" title={p.label} onClick={() => setInv('accent', p.value)}
+                      style={{ width: 24, height: 24, borderRadius: 999, background: p.value, cursor: 'pointer',
+                        border: (s.invitation.accent ?? '').toLowerCase() === p.value.toLowerCase() ? '2px solid var(--bp-ink)' : '1px solid rgba(0,0,0,0.15)' }} />
+                  ))}
+                  <input type="color" value={s.invitation.accent ?? s.accent} onChange={e => setInv('accent', e.target.value)}
+                    style={{ width: 26, height: 26, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }} />
+                </div>
+              )}
+            </Field>
+            <Field label="Überschriften-Schrift der Einladung">
+              <select className="bp-input" value={s.invitation.headingFont ?? ''}
+                onChange={e => setInv('headingFont', (e.target.value || null) as HeadingFontKey | null)}>
+                <option value="">Wie global ({HEADING_FONTS[s.headingFont].label})</option>
+                {(Object.keys(HEADING_FONTS) as HeadingFontKey[]).map(k => (
+                  <option key={k} value={k}>{HEADING_FONTS[k].label}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
         </div>
       </div>
 

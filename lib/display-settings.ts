@@ -1,6 +1,14 @@
 // Anzeigeeinstellungen — gemeinsame Typen, Defaults & Theme-Erzeugung.
 // Wird im Brautpaar-Portal und auf den Gast-Seiten angewendet.
 
+export interface InvitationSettings {
+  greetingTitle: string         // '' = Standard (Paarname)
+  greetingSubtitle: string      // '' = Standard
+  motiveR2Key: string | null    // eigenes Einladungs-Motiv (R2 key); null = keins
+  accent: string | null         // null = global erben
+  headingFont: HeadingFontKey | null  // null = global erben
+}
+
 export interface DisplaySettings {
   accent: string            // HEX, z. B. '#B89968'
   accentGradient: boolean   // Akzent als Farbverlauf
@@ -11,6 +19,7 @@ export interface DisplaySettings {
   buttonStyle: 'pill' | 'square'
   monogram: string          // '' = Standard-Wordmark (FOREVR)
   preset: string | null
+  invitation: InvitationSettings    // einladungsspezifische Overrides
 }
 
 export type HeadingFontKey = 'cormorant' | 'playfair' | 'dmserif' | 'script' | 'sans'
@@ -25,6 +34,7 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   buttonStyle: 'pill',
   monogram: '',
   preset: null,
+  invitation: { greetingTitle: '', greetingSubtitle: '', motiveR2Key: null, accent: null, headingFont: null },
 }
 
 export const HEADING_FONTS: Record<HeadingFontKey, { label: string; family: string; href: string | null }> = {
@@ -69,6 +79,18 @@ export function normalizeSettings(raw: unknown): DisplaySettings {
   const cornerStyle = s.cornerStyle === 'elegant' ? 'elegant' : 'soft'
   const buttonStyle = s.buttonStyle === 'square' ? 'square' : 'pill'
   const monogram = typeof s.monogram === 'string' ? s.monogram.slice(0, 24) : ''
+
+  const inv = (s.invitation && typeof s.invitation === 'object') ? s.invitation as Record<string, unknown> : {}
+  const invAccent = typeof inv.accent === 'string' && /^#[0-9a-fA-F]{6}$/.test(inv.accent) ? inv.accent : null
+  const invFont = (typeof inv.headingFont === 'string' && inv.headingFont in HEADING_FONTS) ? inv.headingFont as HeadingFontKey : null
+  const invitation: InvitationSettings = {
+    greetingTitle: typeof inv.greetingTitle === 'string' ? inv.greetingTitle.slice(0, 120) : '',
+    greetingSubtitle: typeof inv.greetingSubtitle === 'string' ? inv.greetingSubtitle.slice(0, 240) : '',
+    motiveR2Key: typeof inv.motiveR2Key === 'string' && inv.motiveR2Key ? inv.motiveR2Key : null,
+    accent: invAccent,
+    headingFont: invFont,
+  }
+
   return {
     accent,
     accentGradient: s.accentGradient === true,
@@ -79,7 +101,16 @@ export function normalizeSettings(raw: unknown): DisplaySettings {
     buttonStyle,
     monogram,
     preset: typeof s.preset === 'string' ? s.preset : null,
+    invitation,
   }
+}
+
+// Effektives Gäste-/Einladungs-Theme: Invitation-Overrides auf globale Werte.
+export function invitationAccent(s: DisplaySettings): string {
+  return s.invitation.accent ?? s.accent
+}
+export function invitationFont(s: DisplaySettings): HeadingFontKey {
+  return s.invitation.headingFont ?? s.headingFont
 }
 
 // ── Farb-Hilfen ───────────────────────────────────────────────────────────────

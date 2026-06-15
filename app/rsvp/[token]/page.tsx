@@ -10,7 +10,7 @@ import type {
   Event, Guest, MealChoice, AllergyTag, TransportMode, AltersKategorie,
 } from '@/lib/store'
 import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle, Input } from '@/components/ui'
-import { DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, fontHrefFor, shade, type DisplaySettings } from '@/lib/display-settings'
+import { DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, fontHrefFor, shade, invitationAccent, invitationFont, type DisplaySettings } from '@/lib/display-settings'
 
 type Step = 'intro'|'rsvp'|'details'|'hotel'|'musikwunsch'|'geschenke'|'fotos'|'confirmation'
 
@@ -491,14 +491,16 @@ export default function RSVPPage() {
     ? invitationText.replace(/\{\{Name\}\}/g, firstName)
     : `Liebe/r ${firstName}, wir freuen uns auf deine Antwort.`
 
+  const effAccent = invitationAccent(display)
+  const effFont = invitationFont(display)
   const themeVars = {
-    '--gold': display.accent,
-    '--gold-deep': shade(display.accent, -0.18),
-    '--gold-pale': shade(display.accent, 0.82),
-    '--accent': display.accent,
+    '--gold': effAccent,
+    '--gold-deep': shade(effAccent, -0.18),
+    '--gold-pale': shade(effAccent, 0.82),
+    '--accent': effAccent,
   } as React.CSSProperties
-  const headingFamily = HEADING_FONTS[display.headingFont].family
-  const headingFontHref = fontHrefFor(display.headingFont)
+  const headingFamily = HEADING_FONTS[effFont].family
+  const headingFontHref = fontHrefFor(effFont)
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100dvh', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))', ...themeVars }}>
