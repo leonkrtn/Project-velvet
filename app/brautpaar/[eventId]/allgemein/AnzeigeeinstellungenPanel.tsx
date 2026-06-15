@@ -505,7 +505,8 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
         </div>
       )}
 
-      {/* ── Volle Live-Vorschau (gilt für beide Reiter) ── */}
+      {/* ── Volle Live-Vorschau (nur im Reiter „Einladung & RSVP“) ── */}
+      {tab === 'einladung' && (
       <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1px solid var(--bp-rule)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
           <p className="bp-label-text" style={{ margin: 0 }}>Live-Vorschau der RSVP-Seite</p>
@@ -528,6 +529,7 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
             onLoad={postPreviewNow} style={{ width: '100%', height: 640, border: 'none', display: 'block' }} />
         </div>
       </div>
+      )}
 
       {/* ── Speichern ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18 }}>
