@@ -155,6 +155,8 @@ interface Props {
   showWelcome: boolean
   isSolo?: boolean
   subscription?: ShellSubscription | null
+  /** Persönliches Monogramm/Initialen; ersetzt das FOREVR-Wordmark wenn gesetzt */
+  monogram?: string
 }
 
 // Serialisierbarer Abo-Zustand (vom Server-Layout via lib/subscription.ts)
@@ -166,7 +168,7 @@ export interface ShellSubscription {
   isPro: boolean
 }
 
-export default function BrautpaarShell({ children, eventId, eventTitle, userId, showWelcome, isSolo = false, subscription = null }: Props) {
+export default function BrautpaarShell({ children, eventId, eventTitle, userId, showWelcome, isSolo = false, subscription = null, monogram = '' }: Props) {
   const pathname = usePathname()
   const [expanded, setExpanded] = useState(true)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -265,7 +267,10 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
         role={!expanded ? 'button' : undefined}
         aria-label={!expanded ? 'Sidebar aufklappen' : undefined}
       >
-        <span className="bp-sidebar-couple-name">{eventTitle}</span>
+        <span className="bp-sidebar-couple-name">
+          {monogram && <span className="bp-font-heading" style={{ display: 'block', fontSize: '0.7rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--bp-gold)', marginBottom: 2 }}>{monogram}</span>}
+          {eventTitle}
+        </span>
         <button
           className="bp-sidebar-toggle"
           onClick={e => { e.stopPropagation(); toggleExpanded() }}

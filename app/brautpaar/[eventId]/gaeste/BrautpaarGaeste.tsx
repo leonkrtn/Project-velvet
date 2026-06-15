@@ -8,7 +8,7 @@ import {
   MessageCircle, Share2, Link2, UserCheck, UserPlus2,
 } from 'lucide-react'
 import GeschenkTab from './GeschenkTab'
-import { titleCaseName } from '@/lib/text'
+import { titleCaseName, capitalizeFirst } from '@/lib/text'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -783,7 +783,7 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
               </h2>
               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <AttendingBadge status={guest.status} />
-                {guest.side && <span style={{ fontSize: '0.8rem', color: 'var(--bp-ink-3)' }}>{guest.side}</span>}
+                {guest.side && <span style={{ fontSize: '0.8rem', color: 'var(--bp-ink-3)' }}>{capitalizeFirst(guest.side)}</span>}
                 {respondedLabel && <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>· Geantwortet {respondedLabel}</span>}
               </div>
             </div>
@@ -1098,7 +1098,7 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
                     )}
                   </td>
                   <td><AttendingBadge status={g.status} /></td>
-                  <td style={{ color: 'var(--bp-ink-3)' }}>{g.side ?? '—'}</td>
+                  <td style={{ color: 'var(--bp-ink-3)' }}>{g.side ? capitalizeFirst(g.side) : '—'}</td>
                   <td style={{ color: 'var(--bp-ink-3)' }}>{g.meal_choice ? (MEAL_LABELS[g.meal_choice] ?? g.meal_choice) : '—'}</td>
                   <td>
                     {g.allergy_tags && g.allergy_tags.length > 0
@@ -1154,7 +1154,7 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <AttendingBadge status={g.status} />
-                {g.side && <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>{g.side}</span>}
+                {g.side && <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>{capitalizeFirst(g.side)}</span>}
                 {g.meal_choice && <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>{MEAL_LABELS[g.meal_choice] ?? g.meal_choice}</span>}
               </div>
             </div>

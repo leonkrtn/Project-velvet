@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { titleCaseName } from '@/lib/text'
+import { normalizeSettings, DEFAULT_DISPLAY_SETTINGS } from '@/lib/display-settings'
 
 type MealChoice = 'fleisch' | 'fisch' | 'vegetarisch' | 'vegan'
 type AltersKategorie = 'erwachsen' | '13-17' | '6-12' | '0-6'
@@ -72,6 +73,7 @@ export async function GET(
     { data: rsvpSettings },
     { data: cateringPlan },
     { data: featureRows },
+    { data: displayRow },
   ] = await Promise.all([
     admin.from('events')
       .select('id, title, couple_name, date, venue, venue_address, dresscode, children_allowed, children_note, meal_options, max_begleitpersonen, data_freeze_at')
@@ -96,6 +98,10 @@ export async function GET(
       .select('key, enabled')
       .eq('event_id', guest.event_id)
       .in('key', ['rsvp-musikwunsch', 'rsvp-geschenke', 'rsvp-hotel', 'rsvp-begleitpersonen', 'rsvp-menu']),
+    admin.from('event_display_settings')
+      .select('settings')
+      .eq('event_id', guest.event_id)
+      .maybeSingle(),
   ])
 
   if (evErr || !event) {
@@ -136,6 +142,7 @@ export async function GET(
   })
 
   return NextResponse.json({
+    display: displayRow?.settings ? normalizeSettings(displayRow.settings) : DEFAULT_DISPLAY_SETTINGS,
     event: {
       id: event.id,
       coupleName,

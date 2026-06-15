@@ -1,13 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   Users, LayoutGrid, Calendar, UtensilsCrossed, Palette, Music,
   ArrowRight, Check, Send, UserPlus, CalendarHeart,
-  ImagePlus, Loader2,
 } from 'lucide-react'
 
 interface NextTask {
@@ -18,6 +16,7 @@ interface NextTask {
 interface Props {
   eventId: string
   coverImageUrl: string | null
+  monogram?: string
   eventTitle: string
   eventDate: string | null
   coupleName: string
@@ -110,7 +109,7 @@ function CountUpNum({ value, duration, delay, suffix }: { value: number; duratio
 
 // ── Hero / Cover ───────────────────────────────────────────────────────────────
 
-function Hero({ eventId, coupleName, eventTitle, eventDate, venueName, daysLeft, coverImageUrl }: {
+function Hero({ eventId, coupleName, eventTitle, eventDate, venueName, daysLeft, coverImageUrl, monogram = '' }: {
   eventId: string
   coupleName: string
   eventTitle: string
@@ -118,45 +117,8 @@ function Hero({ eventId, coupleName, eventTitle, eventDate, venueName, daysLeft,
   venueName: string
   daysLeft: number | null
   coverImageUrl: string | null
+  monogram?: string
 }) {
-  const router = useRouter()
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    if (!file.type.startsWith('image/')) { setError('Bitte ein Bild auswählen.'); return }
-    setError(null)
-    setUploading(true)
-    try {
-      const reqRes = await fetch(`/api/events/${eventId}/cover`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentType: file.type }),
-      })
-      if (!reqRes.ok) throw new Error('upload-url')
-      const { uploadUrl, key } = await reqRes.json() as { uploadUrl: string; key: string }
-
-      const putRes = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })
-      if (!putRes.ok) throw new Error('put')
-
-      const saveRes = await fetch(`/api/events/${eventId}/cover`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cover_image_r2_key: key }),
-      })
-      if (!saveRes.ok) throw new Error('save')
-      router.refresh()
-    } catch {
-      setError('Titelbild konnte nicht hochgeladen werden.')
-    } finally {
-      setUploading(false)
-    }
-  }
-
   const heading = coupleName || eventTitle || 'Eure Hochzeit'
   const hasPhoto = !!coverImageUrl
 
@@ -168,20 +130,8 @@ function Hero({ eventId, coupleName, eventTitle, eventDate, venueName, daysLeft,
       )}
       <div className="bp-mag-hero-veil" />
 
-      <input ref={fileRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
-      <button
-        type="button"
-        className="bp-mag-hero-cover-btn"
-        onClick={() => fileRef.current?.click()}
-        disabled={uploading}
-        title={hasPhoto ? 'Titelbild ändern' : 'Titelbild hinzufügen'}
-      >
-        {uploading ? <Loader2 size={14} className="bp-spin" /> : <ImagePlus size={14} />}
-        <span>{hasPhoto ? 'Titelbild ändern' : 'Titelbild'}</span>
-      </button>
-
       <div className="bp-mag-hero-inner">
-        <p className="bp-mag-kicker">FOREVR · Hochzeitsjournal</p>
+        <p className="bp-mag-kicker">{monogram ? `${monogram} · Hochzeitsjournal` : 'FOREVR · Hochzeitsjournal'}</p>
 
         <h1 className="bp-mag-title" style={{ fontFamily: SERIF }}>{heading}</h1>
 
@@ -214,7 +164,6 @@ function Hero({ eventId, coupleName, eventTitle, eventDate, venueName, daysLeft,
         )}
       </div>
 
-      {error && <p className="bp-mag-hero-error">{error}</p>}
     </header>
   )
 }
@@ -401,7 +350,7 @@ function GuestStatusCard({ eventId, guestTotal, guestConfirmed, guestDeclined, g
 // ── Hauptkomponente ───────────────────────────────────────────────────────────
 
 export default function BrautpaarUebersicht({
-  eventId, coverImageUrl, eventTitle, eventDate, coupleName, venueName,
+  eventId, coverImageUrl, monogram = '', eventTitle, eventDate, coupleName, venueName,
   daysLeft, guestTotal, guestConfirmed, guestDeclined, guestPending,
   guestNotInvited, guestApprovalPending,
   budgetPlanned, budgetLimit, tasksDone, tasksTotal, nextTasks,
@@ -437,6 +386,7 @@ export default function BrautpaarUebersicht({
         venueName={venueName}
         daysLeft={daysLeft}
         coverImageUrl={coverImageUrl}
+        monogram={monogram}
       />
 
       {/* Editorial-Zahlenleiste */}

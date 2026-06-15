@@ -3,7 +3,7 @@ import React, { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Search, X, Edit2, ChevronDown, ChevronRight, Star, Download, Upload, FileSpreadsheet } from 'lucide-react'
 import ImportModal from '@/components/gaesteliste/ImportModal'
-import { titleCaseName } from '@/lib/text'
+import { titleCaseName, capitalizeFirst } from '@/lib/text'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -649,7 +649,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
                       {STATUS_LABELS[g.status] ?? g.status}
                     </span>
                   </div>
-                  <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.side ?? '—'}</div>
+                  <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.side ? capitalizeFirst(g.side) : '—'}</div>
                   <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.meal_choice ?? '—'}</div>
                   <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                     {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).join(', ') || '—'}

@@ -10,6 +10,7 @@ import type {
   Event, Guest, MealChoice, AllergyTag, TransportMode, AltersKategorie,
 } from '@/lib/store'
 import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle, Input } from '@/components/ui'
+import { DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, fontHrefFor, shade, type DisplaySettings } from '@/lib/display-settings'
 
 type Step = 'intro'|'rsvp'|'details'|'hotel'|'musikwunsch'|'geschenke'|'fotos'|'confirmation'
 
@@ -208,6 +209,9 @@ export default function RSVPPage() {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([])
   const [contributeAmounts, setContributeAmounts] = useState<Record<string, string>>({})
 
+  // Anzeigeeinstellungen (Personalisierung durch das Paar)
+  const [display, setDisplay] = useState<DisplaySettings>(DEFAULT_DISPLAY_SETTINGS)
+
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -220,6 +224,7 @@ export default function RSVPPage() {
         }
         const data = await res.json()
         if (cancelled) return
+        if (data.display) setDisplay(data.display as DisplaySettings)
         const ev = data.event
         const g  = data.guest
         setEvent({
@@ -486,8 +491,18 @@ export default function RSVPPage() {
     ? invitationText.replace(/\{\{Name\}\}/g, firstName)
     : `Liebe/r ${firstName}, wir freuen uns auf deine Antwort.`
 
+  const themeVars = {
+    '--gold': display.accent,
+    '--gold-deep': shade(display.accent, -0.18),
+    '--gold-pale': shade(display.accent, 0.82),
+    '--accent': display.accent,
+  } as React.CSSProperties
+  const headingFamily = HEADING_FONTS[display.headingFont].family
+  const headingFontHref = fontHrefFor(display.headingFont)
+
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100dvh', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))' }}>
+    <div style={{ background: 'var(--bg)', minHeight: '100dvh', paddingBottom: 'calc(40px + env(safe-area-inset-bottom))', ...themeVars }}>
+      {headingFontHref && <link rel="stylesheet" href={headingFontHref} />}
       {/* Top bar */}
       <div style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: 560, margin: '0 auto', padding: '14px 20px', paddingTop: 'calc(14px + env(safe-area-inset-top))' }}>
@@ -504,8 +519,8 @@ export default function RSVPPage() {
                 <ChevronLeft size={20} />
               </button>
             )}
-            <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontWeight: 400, color: 'var(--text)', flex: 1 }}>
-              {event.coupleName}
+            <span style={{ fontFamily: headingFamily, fontSize: 16, fontWeight: 500, color: 'var(--text)', flex: 1 }}>
+              {display.monogram || event.coupleName}
             </span>
           </div>
           {step !== 'intro' && step !== 'confirmation' && (

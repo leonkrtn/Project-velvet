@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSubscriptionState } from '@/lib/subscription'
 import BrautpaarShell, { type ShellSubscription } from './BrautpaarShell'
+import DisplayTheme from '@/components/brautpaar/DisplayTheme'
+import { normalizeSettings, DEFAULT_DISPLAY_SETTINGS } from '@/lib/display-settings'
 import '@/app/brautpaar/brautpaar.css'
 
 interface Props {
@@ -35,6 +37,14 @@ export default async function BrautpaarLayout({ children, params }: Props) {
 
   if (!event) redirect('/login')
 
+  // Anzeigeeinstellungen (Personalisierung) laden
+  const { data: ds } = await supabase
+    .from('event_display_settings')
+    .select('settings')
+    .eq('event_id', eventId)
+    .maybeSingle()
+  const displaySettings = ds?.settings ? normalizeSettings(ds.settings) : DEFAULT_DISPLAY_SETTINGS
+
   const showWelcome =
     ['brautpaar', 'brautpaar_solo'].includes(member.role) && !member.onboarding_completed_at
 
@@ -55,16 +65,20 @@ export default async function BrautpaarLayout({ children, params }: Props) {
   }
 
   return (
-    <BrautpaarShell
-      eventId={eventId}
-      eventTitle={event.couple_name ?? event.title ?? ''}
-      eventDate={event.date ?? null}
-      userId={user.id}
-      showWelcome={showWelcome}
-      isSolo={member.role === 'brautpaar_solo'}
-      subscription={subscription}
-    >
-      {children}
-    </BrautpaarShell>
+    <div className="bp-display-root">
+      <DisplayTheme settings={displaySettings} />
+      <BrautpaarShell
+        eventId={eventId}
+        eventTitle={event.couple_name ?? event.title ?? ''}
+        eventDate={event.date ?? null}
+        userId={user.id}
+        showWelcome={showWelcome}
+        isSolo={member.role === 'brautpaar_solo'}
+        subscription={subscription}
+        monogram={displaySettings.monogram}
+      >
+        {children}
+      </BrautpaarShell>
+    </div>
   )
 }

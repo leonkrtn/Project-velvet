@@ -108,10 +108,17 @@ export default async function UebersichtPage({ params }: Props) {
     }
   }
 
+  // Monogramm aus den Anzeigeeinstellungen (für den Hero-Kicker)
+  const { data: dsRow } = await supabase
+    .from('event_display_settings').select('settings').eq('event_id', eventId).maybeSingle()
+  const monogram = (dsRow?.settings && typeof (dsRow.settings as Record<string, unknown>).monogram === 'string')
+    ? String((dsRow.settings as Record<string, unknown>).monogram) : ''
+
   return (
     <BrautpaarUebersicht
       eventId={eventId}
       coverImageUrl={coverImageUrl}
+      monogram={monogram}
       eventTitle={event.title ?? ''}
       eventDate={event.date ?? null}
       coupleName={event.couple_name ?? ''}
