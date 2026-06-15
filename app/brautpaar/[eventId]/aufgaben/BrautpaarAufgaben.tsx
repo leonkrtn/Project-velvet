@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
 import { Plus, Check, Trash2, ChevronDown, ChevronRight, X } from 'lucide-react'
 
 interface Task {
@@ -42,37 +43,22 @@ function getActivePhase(weddingDate: string | null): string | null {
   return '12m'
 }
 
-function TaskItem({ task, onUpdate, onDelete }: {
+function TaskItem({ task, onToggle, onDelete }: {
   task: Task
-  onUpdate: (t: Task) => void
+  onToggle: () => void
   onDelete: () => void
 }) {
-  const [saving, setSaving] = useState(false)
   const [delConfirm, setDelConfirm] = useState(false)
-
-  async function toggleDone() {
-    setSaving(true)
-    const supabase = createClient()
-    const done_at = !task.done ? new Date().toISOString() : null
-    const { error } = await supabase
-      .from('brautpaar_tasks')
-      .update({ done: !task.done, done_at })
-      .eq('id', task.id)
-    setSaving(false)
-    if (!error) onUpdate({ ...task, done: !task.done, done_at })
-  }
 
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: '0.75rem',
       padding: '0.75rem 1rem',
       borderBottom: '1px solid var(--bp-rule)',
-      opacity: saving ? 0.6 : 1,
       transition: 'opacity 0.15s',
     }}>
       <button
-        onClick={toggleDone}
-        disabled={saving}
+        onClick={onToggle}
         style={{
           width: 22, height: 22, borderRadius: 6, border: '1.5px solid',
           borderColor: task.done ? 'var(--bp-gold)' : 'var(--bp-rule)',
@@ -111,47 +97,28 @@ function TaskItem({ task, onUpdate, onDelete }: {
   )
 }
 
-function PhaseSection({ phaseKey, label, tasks, eventId, userId, onUpdate, onDelete, onAdded, activePhase }: {
+function PhaseSection({ phaseKey, label, tasks, onToggle, onDelete, onAdd, activePhase }: {
   phaseKey: string | null
   label: string
   tasks: Task[]
-  eventId: string
-  userId: string
-  onUpdate: (t: Task) => void
+  onToggle: (t: Task) => void
   onDelete: (id: string) => void
-  onAdded: (t: Task) => void
+  onAdd: (phaseKey: string | null, title: string, sortOrder: number) => void
   activePhase: string | null
 }) {
   const [open, setOpen] = useState(phaseKey === activePhase || tasks.some(t => !t.done))
   const [adding, setAdding] = useState(false)
   const [newTitle, setNewTitle] = useState('')
-  const [saving, setSaving] = useState(false)
 
   const done = tasks.filter(t => t.done).length
   const isActive = phaseKey === activePhase
 
-  async function addTask() {
-    if (!newTitle.trim()) return
-    setSaving(true)
-    const supabase = createClient()
-    const { data, error } = await supabase
-      .from('brautpaar_tasks')
-      .insert({
-        event_id: eventId,
-        title: newTitle.trim(),
-        phase: phaseKey,
-        done: false,
-        sort_order: tasks.length,
-        created_by: userId,
-      })
-      .select()
-      .single()
-    setSaving(false)
-    if (!error && data) {
-      onAdded(data as Task)
-      setNewTitle('')
-      setAdding(false)
-    }
+  function addTask() {
+    const title = newTitle.trim()
+    if (!title) return
+    onAdd(phaseKey, title, tasks.length)
+    setNewTitle('')
+    setAdding(false)
   }
 
   return (
@@ -185,7 +152,7 @@ function PhaseSection({ phaseKey, label, tasks, eventId, userId, onUpdate, onDel
             <TaskItem
               key={task.id}
               task={task}
-              onUpdate={onUpdate}
+              onToggle={() => onToggle(task)}
               onDelete={() => onDelete(task.id)}
             />
           ))}
@@ -201,8 +168,8 @@ function PhaseSection({ phaseKey, label, tasks, eventId, userId, onUpdate, onDel
                   onKeyDown={e => { if (e.key === 'Enter') addTask(); if (e.key === 'Escape') setAdding(false) }}
                   style={{ flex: 1 }}
                 />
-                <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={addTask} disabled={saving || !newTitle.trim()}>
-                  {saving ? '…' : 'OK'}
+                <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={addTask} disabled={!newTitle.trim()}>
+                  OK
                 </button>
                 <button
                   className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon"
@@ -238,11 +205,65 @@ interface Props {
 export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddingDate }: Props) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const activePhase = getActivePhase(weddingDate)
+  const supabase = createClient()
+
+  async function toggleTask(task: Task) {
+    const snapshot = tasks
+    const done = !task.done
+    const done_at = done ? new Date().toISOString() : null
+    await runOptimistic({
+      apply: () => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, done, done_at } : t)),
+      rollback: () => setTasks(snapshot),
+      commit: () => supabase.from('brautpaar_tasks').update({ done, done_at }).eq('id', task.id),
+      onError: e => console.error('toggleTask failed', e),
+    })
+  }
+
+  async function addTask(phaseKey: string | null, title: string, sortOrder: number) {
+    const placeholderId = tempId()
+    const placeholder: Task = {
+      id: placeholderId,
+      event_id: eventId,
+      title,
+      done: false,
+      phase: phaseKey,
+      sort_order: sortOrder,
+      created_by: userId,
+      created_at: new Date().toISOString(),
+      done_at: null,
+    }
+    await runOptimisticInsert<Task>({
+      apply: () => setTasks(prev => [...prev, placeholder]),
+      commit: async () => {
+        const { data, error } = await supabase
+          .from('brautpaar_tasks')
+          .insert({
+            event_id: eventId,
+            title,
+            phase: phaseKey,
+            done: false,
+            sort_order: sortOrder,
+            created_by: userId,
+          })
+          .select()
+          .single()
+        if (error || !data) throw error ?? new Error('Insert failed')
+        return data as Task
+      },
+      reconcile: real => setTasks(prev => prev.map(t => t.id === placeholderId ? real : t)),
+      rollback: () => setTasks(prev => prev.filter(t => t.id !== placeholderId)),
+      onError: e => console.error('addTask failed', e),
+    })
+  }
 
   async function deleteTask(id: string) {
-    const supabase = createClient()
-    const { error } = await supabase.from('brautpaar_tasks').delete().eq('id', id)
-    if (!error) setTasks(prev => prev.filter(t => t.id !== id))
+    const snapshot = tasks
+    await runOptimistic({
+      apply: () => setTasks(prev => prev.filter(t => t.id !== id)),
+      rollback: () => setTasks(snapshot),
+      commit: () => supabase.from('brautpaar_tasks').delete().eq('id', id),
+      onError: e => console.error('deleteTask failed', e),
+    })
   }
 
   const totalDone = tasks.filter(t => t.done).length
@@ -266,11 +287,9 @@ export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddi
             phaseKey={phase.key}
             label={phase.label}
             tasks={phaseTasks}
-            eventId={eventId}
-            userId={userId}
-            onUpdate={updated => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
+            onToggle={toggleTask}
             onDelete={deleteTask}
-            onAdded={t => setTasks(prev => [...prev, t])}
+            onAdd={addTask}
             activePhase={activePhase}
           />
         )

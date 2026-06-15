@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
 
 interface Todo {
   id: string
@@ -26,22 +27,42 @@ export default function OrganizerTodoList({ eventId, organizerId, initialTodos }
     const title = input.trim()
     if (!title) return
     setInput('')
-    const { data, error } = await supabase
-      .from('organizer_todos')
-      .insert({ event_id: eventId, organizer_id: organizerId, title })
-      .select('id, title, done')
-      .single()
-    if (!error && data) setTodos(prev => [...prev, data])
+    const placeholderId = tempId()
+    await runOptimisticInsert<Todo>({
+      apply: () => setTodos(prev => [...prev, { id: placeholderId, title, done: false }]),
+      commit: async () => {
+        const { data, error } = await supabase
+          .from('organizer_todos')
+          .insert({ event_id: eventId, organizer_id: organizerId, title })
+          .select('id, title, done')
+          .single()
+        if (error || !data) throw error ?? new Error('Insert failed')
+        return data as Todo
+      },
+      reconcile: real => setTodos(prev => prev.map(t => t.id === placeholderId ? real : t)),
+      rollback: () => setTodos(prev => prev.filter(t => t.id !== placeholderId)),
+      onError: e => console.error('addTodo failed', e),
+    })
   }
 
   async function toggleTodo(id: string, done: boolean) {
-    setTodos(prev => prev.map(t => t.id === id ? { ...t, done } : t))
-    await supabase.from('organizer_todos').update({ done }).eq('id', id)
+    const snapshot = todos
+    await runOptimistic({
+      apply: () => setTodos(prev => prev.map(t => t.id === id ? { ...t, done } : t)),
+      rollback: () => setTodos(snapshot),
+      commit: () => supabase.from('organizer_todos').update({ done }).eq('id', id),
+      onError: e => console.error('toggleTodo failed', e),
+    })
   }
 
   async function deleteTodo(id: string) {
-    setTodos(prev => prev.filter(t => t.id !== id))
-    await supabase.from('organizer_todos').delete().eq('id', id)
+    const snapshot = todos
+    await runOptimistic({
+      apply: () => setTodos(prev => prev.filter(t => t.id !== id)),
+      rollback: () => setTodos(snapshot),
+      commit: () => supabase.from('organizer_todos').delete().eq('id', id),
+      onError: e => console.error('deleteTodo failed', e),
+    })
   }
 
   const open = todos.filter(t => !t.done)
