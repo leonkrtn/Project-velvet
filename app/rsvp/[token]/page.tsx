@@ -256,27 +256,6 @@ export default function RSVPPage() {
     return () => clearInterval(id)
   }, [])
 
-  // Live-Vorschau: im Vorschau-Modus ungespeicherte Einstellungen aus dem
-  // Einstell-Panel per postMessage übernehmen (sofortige Aktualisierung).
-  useEffect(() => {
-    if (!isPreview) return
-    function onMessage(e: MessageEvent) {
-      if (e.origin !== window.location.origin) return
-      const d = e.data
-      if (!d || d.type !== 'forevr-preview') return
-      if (d.display) setDisplay(d.display as DisplaySettings)
-      if (d.rsvp) {
-        setInvitationText(d.rsvp.invitation_text ?? '')
-        setRsvpDeadline(d.rsvp.rsvp_deadline ?? null)
-        setPhoneContact(d.rsvp.phone_contact?.trim() || null)
-        setShowMealChoice(d.rsvp.show_meal_choice ?? true)
-        setShowPlusOne(d.rsvp.show_plus_one ?? true)
-      }
-    }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [isPreview])
-
   useEffect(() => {
     let cancelled = false
     async function load() {
