@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import TimeInput from '@/components/ui/TimeInput'
 import SoloInviteSection from './SoloInviteSection'
+import AnzeigeeinstellungenPanel from './AnzeigeeinstellungenPanel'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 
@@ -217,6 +218,12 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
       </Section>
 
       {isSolo && currentUserId && <SoloInviteSection eventId={eventId} currentUserId={currentUserId} />}
+
+      {isSolo && (
+        <Section title="Anzeigeeinstellungen">
+          <AnzeigeeinstellungenPanel eventId={eventId} />
+        </Section>
+      )}
 
       {/* Auto-Save footer */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', minHeight: 20, paddingTop: '0.5rem', paddingBottom: '2rem', fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
