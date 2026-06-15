@@ -81,7 +81,7 @@ export default function MeineAnfragen({ eventId }: { eventId: string }) {
                 <p style={{ fontWeight: 600, fontSize: 14.5, margin: 0 }}>{name}</p>
                 <p className="bp-caption" style={{ margin: '2px 0 0' }}>{categoryLabel(r.dienstleister_profiles?.category)}</p>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, display: 'inline-flex', alignItems: 'center', gap: 4, background: pending ? '#FEF3E0' : '#E6F4EA', color: pending ? '#B26A00' : '#1E7E34' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '4px 10px', borderRadius: 100, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, background: pending ? '#FEF3E0' : '#E6F4EA', color: pending ? '#B26A00' : '#1E7E34' }}>
                 {pending ? <Clock size={12} /> : <Check size={12} />} {pending ? 'Offen' : 'Angenommen'}
               </span>
             </div>
