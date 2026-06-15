@@ -8,6 +8,8 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { titleCaseName } from '@/lib/text'
+import { normalizeSettings, DEFAULT_DISPLAY_SETTINGS } from '@/lib/display-settings'
+import { requestDownloadUrl } from '@/lib/files/worker-client'
 
 function getServiceClient() {
   return createServiceClient(
@@ -31,16 +33,26 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params
-  const { event } = await findEvent(token)
+  const { admin, event } = await findEvent(token)
 
   if (!event || !event.open_invite_enabled) {
     return NextResponse.json({ error: 'Link ungültig oder deaktiviert' }, { status: 404 })
+  }
+
+  const { data: dsRow } = await admin
+    .from('event_display_settings').select('settings').eq('event_id', event.id).maybeSingle()
+  const display = dsRow?.settings ? normalizeSettings(dsRow.settings) : DEFAULT_DISPLAY_SETTINGS
+  let motiveUrl: string | null = null
+  if (display.invitation.motiveR2Key) {
+    motiveUrl = await requestDownloadUrl(display.invitation.motiveR2Key).catch(() => null)
   }
 
   return NextResponse.json({
     title: event.title,
     coupleName: event.couple_name,
     date: event.date,
+    display,
+    motiveUrl,
   })
 }
 

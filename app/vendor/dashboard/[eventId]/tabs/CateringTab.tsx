@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { AlertTriangle, Plus, X, TrendingUp } from 'lucide-react'
+import { capitalizeFirst } from '@/lib/text'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -570,7 +571,7 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms,
                         borderRadius: 20, padding: '4px 10px', fontSize: 12, color: '#DC2626',
                       }}>
                         <AlertTriangle size={11} />
-                        {tag} · {n}×
+                        {capitalizeFirst(tag)} · {n}×
                       </span>
                     ))}
                 </div>
@@ -582,7 +583,7 @@ export default function CateringTab({ eventId, tabAccess = 'read', sectionPerms,
                     <div key={g.id} style={{ padding: '7px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
                       <span style={{ fontWeight: 500, marginRight: 10 }}>{g.name}</span>
                       <span style={{ color: 'var(--text-secondary)' }}>
-                        {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).join(', ')}
+                        {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).map(t => capitalizeFirst(t as string)).join(', ')}
                       </span>
                     </div>
                   ))}
