@@ -310,10 +310,10 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
           </p>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{
-              display: 'inline-flex', alignItems: 'center', padding: '9px 18px', borderRadius: btnRadius, color: '#fff', fontSize: 13, fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: '9px 18px', borderRadius: btnRadius, color: '#fff', fontSize: 13, fontWeight: 600,
               background: s.accentGradient ? `linear-gradient(135deg, ${s.accent}, ${deep})` : s.accent,
             }}>Beispiel-Button</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: 999, background: pale, color: deep, fontSize: 12, fontWeight: 700 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: '5px 12px', borderRadius: 999, background: pale, color: deep, fontSize: 12, fontWeight: 700 }}>
               Akzent-Chip
             </span>
           </div>
@@ -335,7 +335,7 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
 
 // ── kleine UI-Helfer ──────────────────────────────────────────────────────────
 const chip: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 999,
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, gap: 6, padding: '7px 14px', borderRadius: 999,
   border: '1px solid var(--bp-rule)', background: '#fff', cursor: 'pointer', fontFamily: 'inherit',
   fontSize: 13, fontWeight: 600, color: 'var(--bp-ink-2)',
 }

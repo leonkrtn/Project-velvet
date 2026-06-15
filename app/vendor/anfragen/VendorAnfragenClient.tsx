@@ -72,7 +72,7 @@ export default function VendorAnfragenClient() {
                     <div style={{ fontSize: 15, fontWeight: 600 }}>{r.events?.couple_name || r.events?.title || 'Hochzeit'}</div>
                     <div style={{ fontSize: 12.5, color: '#888', marginTop: 2 }}>von {r.requester?.name ?? 'Brautpaar'}</div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: m.bg, color: m.fg }}>{m.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '4px 10px', borderRadius: 100, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: m.bg, color: m.fg }}>{m.label}</span>
                 </div>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, margin: '10px 0', fontSize: 12.5, color: '#555' }}>

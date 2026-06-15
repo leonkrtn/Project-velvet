@@ -621,6 +621,7 @@
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.9375rem;
   font-weight: 500;
+  line-height: 1;
   cursor: pointer;
   border: none;
   transition: background var(--bp-transition), color var(--bp-transition), box-shadow var(--bp-transition);
@@ -944,11 +945,13 @@
 .bp-badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.25rem;
   padding: 0.125rem 0.5rem;
   border-radius: var(--bp-r-pill);
   font-size: 0.75rem;
   font-weight: 500;
+  line-height: 1;
   font-family: 'DM Sans', system-ui, sans-serif;
 }
 

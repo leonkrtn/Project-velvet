@@ -105,7 +105,7 @@ export default function MarketplaceVendorsSection() {
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{v.company_name || v.name}</div>
                   <div style={{ fontSize: 12, color: '#888', wordBreak: 'break-word' }}>{categoryLabel(v.category)}{v.city ? ` · ${v.city}` : ''}{v.login_email ? ` · ${v.login_email}` : ''}</div>
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: v.published ? '#E6F4EA' : '#FCE8E6', color: v.published ? '#1E7E34' : '#C5221F', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '5px 9px', borderRadius: 100, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: v.published ? '#E6F4EA' : '#FCE8E6', color: v.published ? '#1E7E34' : '#C5221F', whiteSpace: 'nowrap' }}>
                   {v.published ? 'Veröffentlicht' : 'Entwurf'}
                 </span>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
