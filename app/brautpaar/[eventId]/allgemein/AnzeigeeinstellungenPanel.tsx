@@ -2,11 +2,12 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ImagePlus, Loader2, Trash2, Sparkles, Eye, RefreshCw, Palette, Mail } from 'lucide-react'
+import { Check, ImagePlus, Loader2, Trash2, Sparkles, Eye, Palette, Mail, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import {
   DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, BODY_FONTS, ACCENT_PRESETS, BG_COLOR_PRESETS, THEME_PRESETS,
-  RSVP_SECTIONS, fontHrefFor, shade, textureStyle,
+  RSVP_SECTIONS, RSVP_TEXT_DEFAULTS, fontHrefFor, bodyFontHrefFor, shade, textureStyle,
+  invitationFont, buildRsvpThemeCss,
   type DisplaySettings, type HeadingFontKey, type BodyFontKey,
 } from '@/lib/display-settings'
 
@@ -45,8 +46,6 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
   const [saved, setSaved] = useState(false)
   const [coverBusy, setCoverBusy] = useState(false)
   const coverInput = useRef<HTMLInputElement>(null)
-  const [previewKey, setPreviewKey] = useState(0)  // erzwingt iframe-Reload (für Bilder / finalen Stand)
-  const previewRef = useRef<HTMLIFrameElement>(null)
   const bgPhotoInput = useRef<HTMLInputElement>(null)
   const [bgPhotoBusy, setBgPhotoBusy] = useState(false)
 
@@ -69,22 +68,6 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
     }).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [eventId])
-
-  // Live-Vorschau: aktuellen (ungespeicherten) Stand an das iframe posten.
-  useEffect(() => {
-    const win = previewRef.current?.contentWindow
-    if (!win) return
-    const t = setTimeout(() => {
-      win.postMessage({ type: 'forevr-preview', display: s, rsvp }, window.location.origin)
-    }, 120)
-    return () => clearTimeout(t)
-  }, [s, rsvp])
-
-  function postPreviewNow() {
-    previewRef.current?.contentWindow?.postMessage(
-      { type: 'forevr-preview', display: s, rsvp }, window.location.origin,
-    )
-  }
 
   function set<K extends keyof DisplaySettings>(key: K, value: DisplaySettings[K]) {
     setS(prev => ({ ...prev, [key]: value, preset: null })); setSaved(false)
@@ -162,12 +145,12 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
       await fetch(`/api/events/${eventId}/cover`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cover_image_r2_key: key }),
       })
-      setPreviewKey(k => k + 1); router.refresh()
+      router.refresh()
     } finally { setCoverBusy(false) }
   }
   async function removeCover() {
     setCoverBusy(true)
-    try { await fetch(`/api/events/${eventId}/cover`, { method: 'DELETE' }); setPreviewKey(k => k + 1); router.refresh() }
+    try { await fetch(`/api/events/${eventId}/cover`, { method: 'DELETE' }); router.refresh() }
     finally { setCoverBusy(false) }
   }
 
@@ -199,7 +182,7 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
         }),
         saveRsvp(),
       ])
-      if (dispRes.ok) { setSaved(true); setPreviewKey(k => k + 1); router.refresh() }
+      if (dispRes.ok) { setSaved(true); router.refresh() }
     } finally { setSaving(false) }
   }
 
@@ -505,29 +488,21 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
         </div>
       )}
 
-      {/* ── Volle Live-Vorschau (nur im Reiter „Einladung & RSVP“) ── */}
+      {/* ── Exemplarische RSVP-Vorschau (nur im Reiter „Einladung & RSVP“) ── */}
       {tab === 'einladung' && (
       <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1px solid var(--bp-rule)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-          <p className="bp-label-text" style={{ margin: 0 }}>Live-Vorschau der RSVP-Seite</p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button type="button" className="bp-btn" onClick={() => setPreviewKey(k => k + 1)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <RefreshCw size={14} /> Neu laden
-            </button>
-            <button type="button" className="bp-btn" onClick={saveAndOpen} disabled={saving}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Eye size={14} /> In neuem Tab öffnen
-            </button>
-          </div>
+          <p className="bp-label-text" style={{ margin: 0 }}>Beispielansicht der RSVP-Seite</p>
+          <button type="button" className="bp-btn" onClick={saveAndOpen} disabled={saving}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Eye size={14} /> Echte Vorschau im Tab
+          </button>
         </div>
-        <p style={{ fontSize: 12, color: 'var(--bp-ink-3)', margin: '0 0 10px' }}>
-          Änderungen erscheinen sofort. Nur neu hochgeladene Bilder werden erst nach „Übernehmen“ bzw. „Neu laden“ sichtbar.
+        <p style={{ fontSize: 12, color: 'var(--bp-ink-3)', margin: '0 0 12px' }}>
+          Beispielhafte Darstellung mit euren Einstellungen — aktualisiert sich sofort. Titelbild/Motiv werden
+          in der echten Vorschau (Tab) gezeigt.
         </p>
-        <div style={{ border: '1px solid var(--bp-rule)', borderRadius: radius, overflow: 'hidden', background: s.bgColor }}>
-          <iframe key={previewKey} ref={previewRef} src={`/rsvp/_preview?event=${eventId}`} title="RSVP-Vorschau"
-            onLoad={postPreviewNow} style={{ width: '100%', height: 640, border: 'none', display: 'block' }} />
-        </div>
+        <RsvpExamplePreview s={s} rsvp={rsvp} />
       </div>
       )}
 
@@ -627,6 +602,109 @@ function CompactPreview({ s, radius }: { s: DisplaySettings; radius: number }) {
         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, padding: '5px 12px', borderRadius: 999, background: pale, color: deep, fontSize: 12, fontWeight: 700 }}>
           Akzent-Chip
         </span>
+      </div>
+    </div>
+  )
+}
+
+// Exemplarische, sofort aktualisierende RSVP-Beispielansicht — rendert eine
+// repräsentative Antwortseite (Hero, Buttons, Karte) aus den aktuellen
+// Einstellungen, ganz ohne iframe/Neuladen. Nutzt dieselben Theme-Tokens
+// (.rsvp-root) wie die echte RSVP-Seite.
+function RsvpExamplePreview({ s, rsvp }: { s: DisplaySettings; rsvp: RsvpSettings }) {
+  const effFont = invitationFont(s)
+  const headingFamily = HEADING_FONTS[effFont].family
+  const headingHref = fontHrefFor(effFont)
+  const bodyHref = bodyFontHrefFor(s.bodyFont)
+  const themeCss = buildRsvpThemeCss(s)
+  const radius = s.cornerStyle === 'elegant' ? 6 : 18
+  const intro = (rsvp.invitation_text?.trim() || 'Liebe/r {{Name}}, wir freuen uns auf deine Antwort.')
+    .replace(/\{\{\s*Name\s*\}\}/g, 'Anna')
+
+  return (
+    <div className="rsvp-root" style={{
+      maxWidth: 460, margin: '0 auto', borderRadius: radius, overflow: 'hidden',
+      border: '1px solid var(--bp-rule)', background: s.bgColor,
+      boxShadow: '0 8px 28px rgba(0,0,0,0.08)',
+    }}>
+      <style>{themeCss}</style>
+      {headingHref && <link rel="stylesheet" href={headingHref} />}
+      {bodyHref && <link rel="stylesheet" href={bodyHref} />}
+
+      {/* Hero */}
+      <div style={{
+        padding: '34px 22px 26px', textAlign: 'center',
+        backgroundImage: 'linear-gradient(160deg, var(--gold-pale), transparent 72%)',
+      }}>
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.22em', color: 'var(--gold)', margin: '0 0 10px' }}>
+          {RSVP_TEXT_DEFAULTS.introEyebrow}
+        </p>
+        <h1 style={{ fontFamily: headingFamily, fontSize: 'clamp(26px, 7vw, 38px)', fontWeight: 500, color: 'var(--text)', lineHeight: 1.12, margin: '0 0 8px' }}>
+          Anna &amp; Max
+        </h1>
+        {s.ornaments && (
+          <div aria-hidden style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, margin: '14px 0', opacity: 0.75 }}>
+            <span style={{ height: 1, width: 40, background: 'linear-gradient(to right, transparent, var(--gold))' }} />
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />
+            <span style={{ height: 1, width: 40, background: 'linear-gradient(to left, transparent, var(--gold))' }} />
+          </div>
+        )}
+        <p style={{ fontFamily: headingFamily, fontSize: 15, fontStyle: 'italic', color: 'var(--text-light)', maxWidth: 380, margin: '8px auto 0', lineHeight: 1.5 }}>
+          {intro}
+        </p>
+        {s.countdown && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 18 }}>
+            {[['120', 'Tage'], ['06', 'Std'], ['30', 'Min']].map(([v, l]) => (
+              <div key={l} style={{ minWidth: 50, padding: '8px 6px', borderRadius: 'var(--r-sm)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <div style={{ fontFamily: headingFamily, fontSize: 20, fontWeight: 600, color: 'var(--gold)', lineHeight: 1 }}>{v}</div>
+                <div style={{ fontSize: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)', marginTop: 3 }}>{l}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Body: Antwort-Buttons + Detailkarte + Primär-Button */}
+      <div style={{ padding: '16px 18px 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {[
+          { sel: true, icon: <CheckCircle size={18} color="var(--gold)" />, t: 'Ja, ich bin dabei!', sub: 'Ich freue mich auf diesen besonderen Tag.' },
+          { sel: false, icon: <XCircle size={18} color="var(--text-dim)" />, t: 'Leider nicht', sub: 'Ich kann leider nicht teilnehmen.' },
+        ].map((o, i) => (
+          <div key={i} style={{
+            padding: '14px 16px', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: 12,
+            border: `1.5px solid ${o.sel ? 'var(--gold)' : 'var(--border)'}`,
+            background: o.sel ? 'var(--gold-pale)' : 'var(--surface)',
+            boxShadow: 'var(--ui-card-shadow, none)',
+          }}>
+            {o.icon}
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: o.sel ? 'var(--gold)' : 'var(--text)' }}>{o.t}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{o.sub}</div>
+            </div>
+          </div>
+        ))}
+
+        <div style={{ marginTop: 4, padding: 'var(--ui-card-pad, 16px)', borderRadius: 'var(--r-md)', background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--ui-card-shadow, none)' }}>
+          {[
+            { icon: <Clock size={13} color="var(--gold)" />, label: 'Datum', value: 'Samstag, 12. Juli 2026' },
+          ].map(row => (
+            <div key={row.label} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ marginTop: 1 }}>{row.icon}</span>
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-dim)' }}>{row.label}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-mid)' }}>{row.value}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button type="button" disabled style={{
+          marginTop: 4, padding: '13px', borderRadius: 'var(--ui-btn-radius, 999px)', border: 'none', cursor: 'default',
+          color: '#fff', fontWeight: 700, fontSize: 14, fontFamily: 'inherit',
+          background: s.accentGradient ? `linear-gradient(135deg, var(--gold), var(--gold-deep))` : 'var(--gold)',
+        }}>
+          Jetzt antworten
+        </button>
       </div>
     </div>
   )
