@@ -56,15 +56,36 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query.order('name')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const vendors = await Promise.all((data ?? []).map(async v => ({
-    id: v.id,
-    name: v.name,
-    company_name: v.company_name,
-    category: v.category,
-    city: v.city,
-    price_range: v.price_range,
-    description: v.description,
-    logo_url: v.logo_r2_key ? await requestDownloadUrl(v.logo_r2_key).catch(() => null) : null,
-  })))
-  return NextResponse.json({ vendors })
+  // Erstes Galerie-Foto je Vendor als Cover ermitteln (für bildgeführte Karten)
+  const ids = (data ?? []).map(v => v.id)
+  const coverByVendor: Record<string, string> = {}
+  if (ids.length) {
+    const { data: photos } = await admin
+      .from('marketplace_vendor_photos')
+      .select('dienstleister_id, r2_key, sort_order')
+      .in('dienstleister_id', ids)
+      .order('sort_order')
+    for (const p of photos ?? []) {
+      const dlId = (p as { dienstleister_id: string }).dienstleister_id
+      if (!coverByVendor[dlId]) coverByVendor[dlId] = (p as { r2_key: string }).r2_key
+    }
+  }
+
+  const vendors = await Promise.all((data ?? []).map(async v => {
+    const logoUrl = v.logo_r2_key ? await requestDownloadUrl(v.logo_r2_key).catch(() => null) : null
+    const coverKey = coverByVendor[v.id]
+    const coverUrl = coverKey ? await requestDownloadUrl(coverKey).catch(() => null) : null
+    return {
+      id: v.id,
+      name: v.name,
+      company_name: v.company_name,
+      category: v.category,
+      city: v.city,
+      price_range: v.price_range,
+      description: v.description,
+      logo_url: logoUrl,
+      cover_url: coverUrl ?? logoUrl,
+    }
+  }))
+  return NextResponse.json({ vendors, count: vendors.length })
 }
