@@ -216,7 +216,7 @@ function VendorDetailModal({ vendor, eventId, existing, onClose, onSent }: {
             <div style={{ borderTop: '1px solid #eee', paddingTop: 16 }}>
               <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Anfrage stellen</p>
               {err && <p style={{ color: '#C62828', fontSize: 12.5 }}>{err}</p>}
-              <textarea className="bp-input" placeholder="Beschreibt euer Anliegen, Wünsche, offene Fragen…" value={message} onChange={e => setMessage(e.target.value)} style={{ minHeight: 90, resize: 'vertical', marginBottom: 8 }} />
+              <textarea className="bp-textarea" placeholder="Beschreibt euer Anliegen, Wünsche, offene Fragen…" value={message} onChange={e => setMessage(e.target.value)} style={{ minHeight: 90, marginBottom: 8 }} />
               <input className="bp-input" type="number" placeholder="Budget (optional, €)" value={budget} onChange={e => setBudget(e.target.value)} style={{ marginBottom: 12 }} />
               <p style={{ fontSize: 11.5, color: '#999', marginBottom: 12 }}>Eure Event-Eckdaten (Datum, Ort, Gästezahl) werden automatisch mitgesendet.</p>
               <button onClick={send} disabled={busy} className="bp-btn bp-btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
