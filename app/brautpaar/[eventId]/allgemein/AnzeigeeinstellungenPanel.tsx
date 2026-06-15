@@ -239,7 +239,8 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
                 placeholder="z. B. Wir heiraten!" onChange={e => setInv('greetingTitle', e.target.value)} />
             </Field>
             <Field label="Begrüßung – Untertitel">
-              <textarea className="bp-input" value={s.invitation.greetingSubtitle} maxLength={240} rows={2}
+              <textarea className="bp-textarea" value={s.invitation.greetingSubtitle} maxLength={240} rows={2}
+                style={{ minHeight: 64 }}
                 placeholder="z. B. Feiert mit uns den schönsten Tag unseres Lebens." onChange={e => setInv('greetingSubtitle', e.target.value)} />
             </Field>
             <div>

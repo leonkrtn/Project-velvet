@@ -136,7 +136,7 @@ function EndDialog({ req, onClose, onConfirm, busy }: { req: Req; onClose: () =>
           {END_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
         {isOther && (
-          <textarea value={freeText} onChange={e => setFreeText(e.target.value)} placeholder="Grund eingeben…" className="bp-input" style={{ minHeight: 70, resize: 'vertical', marginBottom: 10 }} />
+          <textarea value={freeText} onChange={e => setFreeText(e.target.value)} placeholder="Grund eingeben…" className="bp-textarea" style={{ minHeight: 70, marginBottom: 10 }} />
         )}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button onClick={onClose} className="bp-btn">Abbrechen</button>
