@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Search } from 'lucide-react'
-import { capitalizeFirst } from '@/lib/text'
+import { allergyLabel } from '@/lib/text'
 
 type Access = 'none' | 'read' | 'write'
 
@@ -152,7 +152,7 @@ export default function GuestsTab({ eventId, tabAccess = 'read', sectionPerms }:
                 {showEssen && <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{g.meal_choice ?? '—'}</div>}
                 {showAllergien && (
                   <div className="va-guest-sec" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                    {[...(g.allergy_tags ?? []), g.allergy_custom].filter(Boolean).map(t => capitalizeFirst(t as string)).join(', ') || '—'}
+                    {[...(g.allergy_tags ?? []).map(allergyLabel), ...(g.allergy_custom ? [g.allergy_custom] : [])].join(', ') || '—'}
                   </div>
                 )}
                 {showTische && (() => {

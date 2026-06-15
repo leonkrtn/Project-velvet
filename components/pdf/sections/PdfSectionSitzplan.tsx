@@ -2,6 +2,7 @@ import { Page, View, Text } from '@react-pdf/renderer'
 import { S, COLORS } from '../PdfStyles'
 import { PageHeader, SectionTitle, PageFooter, StatusBadge } from '../PdfShared'
 import type { PdfEventData, PdfMode } from '../PdfTypes'
+import { allergyLabel } from '@/lib/text'
 
 interface Props {
   data: PdfEventData
@@ -9,15 +10,6 @@ interface Props {
   sectionIndex: number
   headerTitle: string
   exportTimestamp: string
-}
-
-function allergyLabel(tag: string) {
-  const map: Record<string, string> = {
-    gluten: 'Gluten', lactose: 'Laktose', nuts: 'Nüsse', egg: 'Eier',
-    fish: 'Fisch', shellfish: 'Schalentiere', soy: 'Soja',
-    vegetarian: 'Vegetarisch', vegan: 'Vegan', halal: 'Halal', kosher: 'Koscher',
-  }
-  return map[tag] || tag
 }
 
 function tableStatus(assigned: number, capacity: number) {

@@ -6,7 +6,7 @@ import {
   AlertTriangle, UtensilsCrossed, Baby,
   Utensils, HandPlatter, BookOpen, Sandwich, Flame, Trash2,
 } from 'lucide-react'
-import { titleCaseName, capitalizeFirst } from '@/lib/text'
+import { titleCaseName, capitalizeFirst, allergyLabel } from '@/lib/text'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -1205,7 +1205,7 @@ export default function CateringForm({
                             borderRadius: 20, padding: '4px 10px', fontSize: 12, color: '#DC2626',
                           }}>
                             <AlertTriangle size={11} />
-                            {tag} · {n}×
+                            {allergyLabel(tag)} · {n}×
                           </span>
                         ))}
                         {hidden > 0 && (
