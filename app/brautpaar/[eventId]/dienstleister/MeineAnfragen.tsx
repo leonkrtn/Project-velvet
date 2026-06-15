@@ -58,7 +58,24 @@ export default function MeineAnfragen({ eventId }: { eventId: string }) {
     setBusyId(null)
   }
 
-  if (loading) return <p style={{ color: 'var(--bp-ink-3, #888)' }}>Lädt…</p>
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bp-card" style={{ padding: '1rem 1.1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div className="bp-skeleton" style={{ height: 16, width: '45%', marginBottom: 8 }} />
+                <div className="bp-skeleton" style={{ height: 12, width: '30%' }} />
+              </div>
+              <div className="bp-skeleton" style={{ height: 20, width: 80, borderRadius: 999 }} />
+            </div>
+            <div className="bp-skeleton" style={{ height: 40, width: '100%', marginTop: 12 }} />
+          </div>
+        ))}
+      </div>
+    )
+  }
   if (requests.length === 0) {
     return (
       <div className="bp-card" style={{ padding: '2rem', textAlign: 'center' }}>
