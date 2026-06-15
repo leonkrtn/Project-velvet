@@ -76,7 +76,7 @@ export default function MarketplaceVendorsSection() {
 
   return (
     <section style={{ marginTop: 32 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Marktplatz · Dienstleister</h2>
         <button style={btnP} onClick={() => { setShowCreate(s => !s); setEditId(null) }}>
           <Plus size={15} /> Vendor anlegen
@@ -95,20 +95,20 @@ export default function MarketplaceVendorsSection() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {vendors.map(v => (
             <div key={v.id} style={{ border: '1px solid var(--border, #eee)', borderRadius: 10, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, flexWrap: 'wrap' }}>
                 <div style={{ width: 44, height: 44, borderRadius: 8, background: '#f3f3f3', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {v.logo_url
                     ? <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <span style={{ fontSize: 16, fontWeight: 700, color: '#bbb' }}>{v.name.charAt(0)}</span>}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: '1 1 150px', minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{v.company_name || v.name}</div>
-                  <div style={{ fontSize: 12, color: '#888' }}>{categoryLabel(v.category)}{v.city ? ` · ${v.city}` : ''}{v.login_email ? ` · ${v.login_email}` : ''}</div>
+                  <div style={{ fontSize: 12, color: '#888', wordBreak: 'break-word' }}>{categoryLabel(v.category)}{v.city ? ` · ${v.city}` : ''}{v.login_email ? ` · ${v.login_email}` : ''}</div>
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: v.published ? '#E6F4EA' : '#FCE8E6', color: v.published ? '#1E7E34' : '#C5221F' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: v.published ? '#E6F4EA' : '#FCE8E6', color: v.published ? '#1E7E34' : '#C5221F', whiteSpace: 'nowrap' }}>
                   {v.published ? 'Veröffentlicht' : 'Entwurf'}
                 </span>
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <button style={btnS} onClick={() => togglePublish(v)} title={v.published ? 'Verstecken' : 'Veröffentlichen'}>
                     {v.published ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>

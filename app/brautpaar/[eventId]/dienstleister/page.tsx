@@ -51,7 +51,7 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
     return (
       <div className="bp-page">
         {header}
-        <DienstleisterTabs isSolo={false} discover={discover} />
+        <DienstleisterTabs eventId={eventId} isSolo={false} discover={discover} />
       </div>
     )
   }
@@ -159,7 +159,7 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
   return (
     <div className="bp-page">
       {header}
-      <DienstleisterTabs isSolo discover={discover} manage={manage} />
+      <DienstleisterTabs eventId={eventId} isSolo discover={discover} manage={manage} />
     </div>
   )
 }
