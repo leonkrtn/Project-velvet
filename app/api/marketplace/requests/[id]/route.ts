@@ -10,7 +10,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })
   const { id } = await params
-  const { action } = await req.json().catch(() => ({})) as { action?: string }
+  const body = await req.json().catch(() => ({})) as { action?: string; reason?: string }
+  const { action } = body
 
   const admin = createAdminClient()
   const { data: request } = await admin
@@ -42,6 +43,36 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!isMember) return NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 })
     if (request.status !== 'pending') return NextResponse.json({ error: 'Anfrage ist nicht mehr offen' }, { status: 409 })
     await admin.from('marketplace_requests').update({ status: 'cancelled', responded_at: new Date().toISOString() }).eq('id', id)
+    return NextResponse.json({ success: true })
+  }
+
+  if (action === 'end') {
+    // Bereits angenommene Zusammenarbeit beenden — Begründung erforderlich.
+    if (!isMember) return NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 })
+    if (request.status !== 'accepted') return NextResponse.json({ error: 'Anfrage ist nicht angenommen' }, { status: 409 })
+    const bodyReason = (body.reason ?? '').trim()
+    if (!bodyReason) return NextResponse.json({ error: 'Bitte einen Grund angeben' }, { status: 400 })
+
+    await admin.from('marketplace_requests')
+      .update({ status: 'cancelled', cancel_reason: bodyReason, responded_at: new Date().toISOString() })
+      .eq('id', id)
+
+    // Verknüpfung + Berechtigungen des Vendors für dieses Event entfernen
+    const { data: vendorLinkUser } = await admin
+      .from('user_dienstleister')
+      .select('user_id')
+      .eq('dienstleister_id', request.dienstleister_id)
+    const vendorUserIds = (vendorLinkUser ?? []).map(l => (l as { user_id: string }).user_id)
+    await admin.from('event_dienstleister')
+      .delete()
+      .eq('event_id', request.event_id)
+      .eq('dienstleister_id', request.dienstleister_id)
+    if (vendorUserIds.length) {
+      await admin.from('dienstleister_permissions')
+        .delete()
+        .eq('event_id', request.event_id)
+        .in('dienstleister_user_id', vendorUserIds)
+    }
     return NextResponse.json({ success: true })
   }
 

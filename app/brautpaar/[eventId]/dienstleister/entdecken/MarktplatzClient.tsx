@@ -90,17 +90,19 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
       ) : vendors.length === 0 ? (
         <p style={{ color: '#888' }}>Keine Dienstleister gefunden.</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: 12 }}>
           {vendors.map(v => {
             const req = requestFor(v.id)
             return (
-              <button key={v.id} onClick={() => openDetail(v.id)} style={{ textAlign: 'left', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
-                <div style={{ height: 120, background: '#f3f1ec', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button key={v.id} onClick={() => openDetail(v.id)} style={{ textAlign: 'left', border: '1px solid #eee', borderRadius: 14, overflow: 'hidden', background: '#fff', cursor: 'pointer', fontFamily: 'inherit', padding: 12, display: 'flex', gap: 12, alignItems: 'stretch' }}>
+                {/* Quadratisches Logo links (1:1) */}
+                <div style={{ width: 84, height: 84, aspectRatio: '1 / 1', borderRadius: 10, background: '#f3f1ec', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {v.logo_url
                     ? <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <Store size={32} color="#cbbf99" />}
+                    : <Store size={26} color="#cbbf99" />}
                 </div>
-                <div style={{ padding: 12 }}>
+                {/* Infos rechts */}
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 14.5, fontWeight: 600 }}>{v.company_name || v.name}</div>
                   <div style={{ fontSize: 12, color: '#888', margin: '2px 0 6px' }}>
                     {categoryLabel(v.category)}{v.city ? ` · ${v.city}` : ''}{v.price_range ? ` · ${v.price_range}` : ''}
@@ -139,6 +141,10 @@ function VendorDetailModal({ vendor, eventId, existing, onClose, onSent }: {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
+  const photos = vendor.photos.filter(p => p.url)
+  const firstPhoto = photos[0]?.url ?? null
+  const restPhotos = photos.slice(1)
+
   async function send() {
     setErr(''); setBusy(true)
     try {
@@ -159,24 +165,38 @@ function VendorDetailModal({ vendor, eventId, existing, onClose, onSent }: {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 20, overflowY: 'auto' }}>
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 560, width: '100%', marginTop: 30, overflow: 'hidden' }}>
-        <div style={{ height: 160, background: '#f3f1ec', position: 'relative' }}>
-          {vendor.logo_url && <img src={vendor.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+        {/* Hero: erstes Beispielbild groß (oder neutrale Fläche) */}
+        <div style={{ height: 220, background: '#f3f1ec', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {firstPhoto
+            ? <img src={firstPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <Store size={40} color="#cbbf99" />}
           <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 100, border: 'none', background: 'rgba(0,0,0,0.5)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
         </div>
         <div style={{ padding: 20 }}>
-          <h2 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>{vendor.company_name || vendor.name}</h2>
-          <div style={{ fontSize: 13, color: '#888', margin: '4px 0 12px' }}>
-            {categoryLabel(vendor.category)}{vendor.city ? ` · ${vendor.city}` : ''}{vendor.price_range ? ` · ${vendor.price_range}` : ''}
+          {/* Header: quadratisches Logo links + Name/Kategorie/Beschreibung rechts */}
+          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+            <div style={{ width: 72, height: 72, aspectRatio: '1 / 1', borderRadius: 12, background: '#f3f1ec', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {vendor.logo_url
+                ? <img src={vendor.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <Store size={26} color="#cbbf99" />}
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h2 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>{vendor.company_name || vendor.name}</h2>
+              <div style={{ fontSize: 13, color: '#888', margin: '4px 0 8px' }}>
+                {categoryLabel(vendor.category)}{vendor.city ? ` · ${vendor.city}` : ''}{vendor.price_range ? ` · ${vendor.price_range}` : ''}
+              </div>
+              {vendor.description && <p style={{ fontSize: 14, color: '#333', lineHeight: 1.5, margin: 0 }}>{vendor.description}</p>}
+            </div>
           </div>
-          {vendor.description && <p style={{ fontSize: 14, color: '#333', lineHeight: 1.5 }}>{vendor.description}</p>}
 
-          {vendor.photos.length > 0 && (
-            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', margin: '12px 0' }}>
-              {vendor.photos.map(p => p.url && <img key={p.id} src={p.url} alt="" style={{ height: 100, borderRadius: 8, flexShrink: 0 }} />)}
+          {/* Weitere Beispielbilder (ohne das Hero-Bild) als Thumbnails */}
+          {restPhotos.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', margin: '14px 0' }}>
+              {restPhotos.map(p => p.url && <img key={p.id} src={p.url} alt="" style={{ height: 84, borderRadius: 8, flexShrink: 0 }} />)}
             </div>
           )}
 
-          <div style={{ fontSize: 13, color: '#555', display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: '#555', display: 'flex', flexDirection: 'column', gap: 3, margin: '16px 0' }}>
             {(vendor.street || vendor.zip || vendor.city) && <span>{[vendor.street, [vendor.zip, vendor.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</span>}
             {vendor.website && <a href={vendor.website} target="_blank" rel="noreferrer" style={{ color: 'var(--gold, #B89968)' }}>{vendor.website}</a>}
           </div>
