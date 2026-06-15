@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
 import { Plus, Trash2, Check, Square, CheckSquare, FileText, List, Tag, X } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ function NoteEditor({
 }: {
   note: Note
   onUpdate: (id: string, patch: Partial<Note>) => void
-  onDelete: (id: string) => void
+  onDelete: (note: Note) => void
 }) {
   const supabase = createClient()
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -64,12 +65,18 @@ function NoteEditor({
   function scheduleSave(patch: Partial<Note>) {
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('brautpaar_notes')
         .update({ ...patch, updated_at: new Date().toISOString() })
         .eq('id', note.id)
         .select()
         .single()
+      // Live-Text-Felder werden bewusst nicht zurückgerollt (würde aktuelle
+      // Tastatureingaben überschreiben) — nur Fehler protokollieren.
+      if (error) {
+        console.error('Notiz speichern fehlgeschlagen', error)
+        return
+      }
       if (data) onUpdate(note.id, data as Note)
     }, 400)
   }
@@ -85,29 +92,42 @@ function NoteEditor({
     scheduleSave({ content: v })
   }
 
+  // Speichert eine neue Checklist-Liste optimistisch (Snapshot-Rollback bei Fehler).
+  function saveChecklist(prev: ChecklistItem[], next: ChecklistItem[]) {
+    clearTimeout(saveTimer.current)
+    runOptimistic({
+      apply: () => setChecklist(next),
+      rollback: () => setChecklist(prev),
+      commit: () => supabase
+        .from('brautpaar_notes')
+        .update({ checklist_items: next as unknown as ChecklistItem[], updated_at: new Date().toISOString() })
+        .eq('id', note.id),
+      onError: (e) => console.error('Checkliste speichern fehlgeschlagen', e),
+    })
+  }
+
   function toggleItem(id: string) {
+    const prev = checklist
     const next = checklist.map(i => i.id === id ? { ...i, done: !i.done } : i)
-    setChecklist(next)
-    scheduleSave({ checklist_items: next as unknown as ChecklistItem[] })
+    saveChecklist(prev, next)
   }
 
   function addItem() {
     if (!newItem.trim()) return
+    const prev = checklist
     const next = [...checklist, { id: uuid(), text: newItem.trim(), done: false }]
-    setChecklist(next)
     setNewItem('')
-    scheduleSave({ checklist_items: next as unknown as ChecklistItem[] })
+    saveChecklist(prev, next)
   }
 
   function deleteItem(id: string) {
+    const prev = checklist
     const next = checklist.filter(i => i.id !== id)
-    setChecklist(next)
-    scheduleSave({ checklist_items: next as unknown as ChecklistItem[] })
+    saveChecklist(prev, next)
   }
 
-  async function del() {
-    await supabase.from('brautpaar_notes').delete().eq('id', note.id)
-    onDelete(note.id)
+  function del() {
+    onDelete(note)
   }
 
   const doneCount = checklist.filter(i => i.done).length
@@ -258,36 +278,75 @@ export default function NotizenPage() {
 
   async function addNote() {
     setAdding(false)
-    const { data } = await supabase
-      .from('brautpaar_notes')
-      .insert({
-        event_id: eventId,
-        title: newTitle.trim() || (newType === 'checklist' ? 'Checkliste' : 'Neue Notiz'),
-        category: newCategory,
-        note_type: newType,
-        content: '',
-        checklist_items: [],
-        sort_order: notes.length,
-      })
-      .select()
-      .single()
-    if (data) {
-      setNotes(prev => [...prev, data as Note])
-      if (!categories.includes(newCategory)) {
-        setCategories(prev => [...prev, newCategory])
-      }
-      setActiveCategory(newCategory)
-    }
+    const title = newTitle.trim() || (newType === 'checklist' ? 'Checkliste' : 'Neue Notiz')
+    const type = newType
+    const category = newCategory
+    const sortOrder = notes.length
+    const placeholderId = tempId()
+    const now = new Date().toISOString()
+
     setNewTitle('')
     setNewType('text')
+
+    await runOptimisticInsert<Note>({
+      apply: () => {
+        const placeholder: Note = {
+          id: placeholderId,
+          event_id: eventId,
+          category,
+          title,
+          content: '',
+          note_type: type,
+          checklist_items: [],
+          sort_order: sortOrder,
+          created_at: now,
+          updated_at: now,
+        }
+        setNotes(prev => [...prev, placeholder])
+        if (!categories.includes(category)) {
+          setCategories(prev => [...prev, category])
+        }
+        setActiveCategory(category)
+      },
+      commit: async () => {
+        const { data, error } = await supabase
+          .from('brautpaar_notes')
+          .insert({
+            event_id: eventId,
+            title,
+            category,
+            note_type: type,
+            content: '',
+            checklist_items: [],
+            sort_order: sortOrder,
+          })
+          .select()
+          .single()
+        if (error || !data) throw error ?? new Error('Insert lieferte keine Daten')
+        return data as Note
+      },
+      reconcile: (saved) => {
+        setNotes(prev => prev.map(n => n.id === placeholderId ? saved : n))
+      },
+      rollback: () => {
+        setNotes(prev => prev.filter(n => n.id !== placeholderId))
+      },
+      onError: (e) => console.error('Notiz anlegen fehlgeschlagen', e),
+    })
   }
 
   function updateNote(id: string, patch: Partial<Note>) {
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch } : n))
   }
 
-  function deleteNote(id: string) {
-    setNotes(prev => prev.filter(n => n.id !== id))
+  function deleteNote(note: Note) {
+    const prev = notes
+    runOptimistic({
+      apply: () => setNotes(cur => cur.filter(n => n.id !== note.id)),
+      rollback: () => setNotes(prev),
+      commit: () => supabase.from('brautpaar_notes').delete().eq('id', note.id),
+      onError: (e) => console.error('Notiz löschen fehlgeschlagen', e),
+    })
   }
 
   const filtered = activeCategory === 'Alle'

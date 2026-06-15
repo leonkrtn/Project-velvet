@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { runOptimistic, runOptimisticInsert, tempId, isTempId } from '@/lib/optimistic'
 import {
   Plus, Trash2, X, GlassWater, Wine, Calculator, Users, RotateCcw, ChevronDown, ChevronUp,
 } from 'lucide-react'
@@ -192,18 +193,25 @@ function ArtikelCard({
 
   useEffect(() => {
     if (JSON.stringify(debouncedDraft) === JSON.stringify(savedRef.current)) return
+    // Solange der Datensatz nur optimistisch existiert (tempId), kein Update —
+    // die echte DB-ID kommt erst nach dem Insert-Reconcile.
+    if (isTempId(artikel.id)) return
+    const prevSaved = savedRef.current
     savedRef.current = debouncedDraft
-    createClient().from('getraenke_artikel').update({
-      name:              debouncedDraft.name,
-      unit:              debouncedDraft.unit,
-      amount_per_person: debouncedDraft.amount_per_person,
-      total_planned:     debouncedDraft.total_planned,
-      price_per_unit:    debouncedDraft.price_per_unit,
-      kalkulationspreis: debouncedDraft.kalkulationspreis,
-      notes:             debouncedDraft.notes,
-      is_alcoholic:      debouncedDraft.is_alcoholic,
-    }).eq('id', artikel.id).then(({ error }) => {
-      if (!error) onChange(debouncedDraft)
+    runOptimistic({
+      apply: () => onChange(debouncedDraft),
+      rollback: () => { savedRef.current = prevSaved; onChange(prevSaved) },
+      commit: () => createClient().from('getraenke_artikel').update({
+        name:              debouncedDraft.name,
+        unit:              debouncedDraft.unit,
+        amount_per_person: debouncedDraft.amount_per_person,
+        total_planned:     debouncedDraft.total_planned,
+        price_per_unit:    debouncedDraft.price_per_unit,
+        kalkulationspreis: debouncedDraft.kalkulationspreis,
+        notes:             debouncedDraft.notes,
+        is_alcoholic:      debouncedDraft.is_alcoholic,
+      }).eq('id', artikel.id),
+      onError: e => console.error('Artikel speichern fehlgeschlagen', e),
     })
   }, [debouncedDraft]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -438,7 +446,8 @@ function ArtikelCard({
 
 function KategorieSection({
   kat, artikel, canEdit, isVera, effectiveGuestCount, grandTotal,
-  onArtikelChange, onArtikelDelete, onArtikelAdd, onKatDelete, onKatAlcoholicToggle,
+  onArtikelChange, onArtikelDelete, onArtikelAdd, onArtikelReconcile, onArtikelRollback,
+  onKatDelete, onKatAlcoholicToggle,
 }: {
   kat: Kategorie
   artikel: Artikel[]
@@ -449,6 +458,8 @@ function KategorieSection({
   onArtikelChange: (a: Artikel) => void
   onArtikelDelete: (id: string) => void
   onArtikelAdd: (a: Artikel) => void
+  onArtikelReconcile: (tempId: string, real: Artikel) => void
+  onArtikelRollback: (tempId: string) => void
   onKatDelete: () => void
   onKatAlcoholicToggle: () => void
 }) {
@@ -471,7 +482,7 @@ function KategorieSection({
     const supabase = createClient()
     const perPerson = parseDecimal(addAmt)
     const total = perPerson > 0 && effectiveGuestCount > 0 ? Math.ceil(perPerson * effectiveGuestCount) : 0
-    const { data, error } = await supabase.from('getraenke_artikel').insert({
+    const payload = {
       event_id:          kat.event_id,
       kategorie_id:      kat.id,
       name:              addName.trim(),
@@ -481,13 +492,29 @@ function KategorieSection({
       price_per_unit:    parseDecimal(addPrice),
       kalkulationspreis: parseDecimal(addKalk),
       sort_order:        artikel.length,
-    }).select().single()
-    setSaving(false)
-    if (!error && data) {
-      onArtikelAdd({ ...data, kalkulationspreis: data.kalkulationspreis ?? 0 } as Artikel)
-      setAddName(''); setAddAmt(''); setAddPrice(''); setAddKalk(''); setAddUnit('Flasche')
-      setShowAddForm(false)
     }
+    const tmpId = tempId()
+    const placeholder: Artikel = {
+      id: tmpId, notes: '', is_alcoholic: null, ...payload,
+    } as Artikel
+
+    await runOptimisticInsert<Artikel>({
+      apply: () => {
+        onArtikelAdd(placeholder)
+        // Formular sofort zurücksetzen — Verhalten wie zuvor bei Erfolg
+        setAddName(''); setAddAmt(''); setAddPrice(''); setAddKalk(''); setAddUnit('Flasche')
+        setShowAddForm(false)
+      },
+      commit: async () => {
+        const { data, error } = await supabase.from('getraenke_artikel').insert(payload).select().single()
+        if (error || !data) throw error ?? new Error('Insert fehlgeschlagen')
+        return { ...data, kalkulationspreis: data.kalkulationspreis ?? 0 } as Artikel
+      },
+      reconcile: real => onArtikelReconcile(tmpId, real),
+      rollback: () => onArtikelRollback(tmpId),
+      onError: e => console.error('Artikel hinzufügen fehlgeschlagen', e),
+    })
+    setSaving(false)
   }
 
   return (
@@ -632,18 +659,24 @@ function CocktailCard({ cocktail, canEdit, isVera, onChange, onDelete }: {
   const [newIngr, setNewIngr] = useState<Ingredient>({ name: '', amount: '', unit: 'ml' })
 
   async function save() {
+    if (isTempId(cocktail.id)) return
     setSaving(true)
-    const { error } = await createClient().from('getraenke_cocktails').update({
-      name:              draft.name,
-      description:       draft.description,
-      is_alcoholic:      draft.is_alcoholic,
-      planned_count:     draft.planned_count,
-      price_per_unit:    draft.price_per_unit,
-      kalkulationspreis: draft.kalkulationspreis,
-      ingredients:       draft.ingredients,
-    }).eq('id', cocktail.id)
+    const committed = draft
+    await runOptimistic({
+      apply: () => { onChange(committed); setOpen(false) },
+      rollback: () => { onChange(cocktail); setOpen(true) },
+      commit: () => createClient().from('getraenke_cocktails').update({
+        name:              committed.name,
+        description:       committed.description,
+        is_alcoholic:      committed.is_alcoholic,
+        planned_count:     committed.planned_count,
+        price_per_unit:    committed.price_per_unit,
+        kalkulationspreis: committed.kalkulationspreis,
+        ingredients:       committed.ingredients,
+      }).eq('id', cocktail.id),
+      onError: e => console.error('Cocktail speichern fehlgeschlagen', e),
+    })
     setSaving(false)
-    if (!error) { onChange(draft); setOpen(false) }
   }
 
   function addIngr() {
@@ -998,9 +1031,14 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
   }
 
   async function toggleKatAlcoholic(kat: Kategorie) {
+    if (isTempId(kat.id)) return
     const next = !kat.is_alcoholic
-    await createClient().from('getraenke_kategorien').update({ is_alcoholic: next }).eq('id', kat.id)
-    setKategorien(prev => prev.map(k => k.id === kat.id ? { ...k, is_alcoholic: next } : k))
+    await runOptimistic({
+      apply: () => setKategorien(prev => prev.map(k => k.id === kat.id ? { ...k, is_alcoholic: next } : k)),
+      rollback: () => setKategorien(prev => prev.map(k => k.id === kat.id ? { ...k, is_alcoholic: kat.is_alcoholic } : k)),
+      commit: () => createClient().from('getraenke_kategorien').update({ is_alcoholic: next }).eq('id', kat.id),
+      onError: e => console.error('Kategorie-Alkohol umschalten fehlgeschlagen', e),
+    })
   }
 
   async function addPresetKategorien() {
@@ -1008,49 +1046,114 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
     const inserts = PRESET_KATEGORIEN.map((p, i) => ({
       event_id: eventId, name: p.name, color: p.color, is_alcoholic: p.is_alcoholic, sort_order: kategorien.length + i,
     }))
-    const { data, error } = await supabase.from('getraenke_kategorien').insert(inserts).select()
-    if (!error && data) setKategorien(prev => [...prev, ...data as Kategorie[]])
+    const tmpIds = inserts.map(() => tempId())
+    const placeholders: Kategorie[] = inserts.map((row, i) => ({ id: tmpIds[i], ...row }))
+
+    await runOptimisticInsert<Kategorie[]>({
+      apply: () => setKategorien(prev => [...prev, ...placeholders]),
+      commit: async () => {
+        const { data, error } = await supabase.from('getraenke_kategorien').insert(inserts).select()
+        if (error || !data) throw error ?? new Error('Insert fehlgeschlagen')
+        return data as Kategorie[]
+      },
+      reconcile: real => setKategorien(prev => {
+        const tmpSet = new Set(tmpIds)
+        return [...prev.filter(k => !tmpSet.has(k.id)), ...real]
+      }),
+      rollback: () => setKategorien(prev => {
+        const tmpSet = new Set(tmpIds)
+        return prev.filter(k => !tmpSet.has(k.id))
+      }),
+      onError: e => console.error('Standard-Sortiment laden fehlgeschlagen', e),
+    })
   }
 
   async function addKategorie() {
     if (!newKatName.trim()) return
     setAddingKat(true)
-    const { data, error } = await createClient().from('getraenke_kategorien').insert({
+    const payload = {
       event_id: eventId, name: newKatName.trim(), color: newKatColor, is_alcoholic: newKatAlcoholic, sort_order: kategorien.length,
-    }).select().single()
-    setAddingKat(false)
-    if (!error && data) {
-      setKategorien(prev => [...prev, data as Kategorie])
-      setNewKatName(''); setShowKatForm(false)
     }
+    const tmpId = tempId()
+    const placeholder: Kategorie = { id: tmpId, ...payload }
+
+    await runOptimisticInsert<Kategorie>({
+      apply: () => {
+        setKategorien(prev => [...prev, placeholder])
+        setNewKatName(''); setShowKatForm(false)
+      },
+      commit: async () => {
+        const { data, error } = await createClient().from('getraenke_kategorien').insert(payload).select().single()
+        if (error || !data) throw error ?? new Error('Insert fehlgeschlagen')
+        return data as Kategorie
+      },
+      reconcile: real => setKategorien(prev => prev.map(k => k.id === tmpId ? real : k)),
+      rollback: () => setKategorien(prev => prev.filter(k => k.id !== tmpId)),
+      onError: e => console.error('Kategorie hinzufügen fehlgeschlagen', e),
+    })
+    setAddingKat(false)
   }
 
   async function deleteKategorie(id: string) {
-    await createClient().from('getraenke_kategorien').delete().eq('id', id)
-    setKategorien(prev => prev.filter(k => k.id !== id))
+    const snapshot = kategorien
+    if (isTempId(id)) { setKategorien(prev => prev.filter(k => k.id !== id)); return }
+    await runOptimistic({
+      apply: () => setKategorien(prev => prev.filter(k => k.id !== id)),
+      rollback: () => setKategorien(snapshot),
+      commit: () => createClient().from('getraenke_kategorien').delete().eq('id', id),
+      onError: e => console.error('Kategorie löschen fehlgeschlagen', e),
+    })
   }
 
   async function deleteArtikel(id: string) {
-    await createClient().from('getraenke_artikel').delete().eq('id', id)
-    setArtikel(prev => prev.filter(a => a.id !== id))
+    const snapshot = artikel
+    if (isTempId(id)) { setArtikel(prev => prev.filter(a => a.id !== id)); return }
+    await runOptimistic({
+      apply: () => setArtikel(prev => prev.filter(a => a.id !== id)),
+      rollback: () => setArtikel(snapshot),
+      commit: () => createClient().from('getraenke_artikel').delete().eq('id', id),
+      onError: e => console.error('Artikel löschen fehlgeschlagen', e),
+    })
   }
 
   async function addCocktail() {
     if (!newCocktailName.trim()) return
     setAddingCocktail(true)
-    const { data, error } = await createClient().from('getraenke_cocktails').insert({
+    const payload = {
       event_id: eventId, name: newCocktailName.trim(), is_alcoholic: newCocktailAlcoholic, sort_order: cocktails.length,
-    }).select().single()
-    setAddingCocktail(false)
-    if (!error && data) {
-      setCocktails(prev => [...prev, { ...(data as Omit<Cocktail, 'ingredients' | 'price_per_unit' | 'kalkulationspreis'>), ingredients: [], price_per_unit: 0, kalkulationspreis: 0 } as Cocktail])
-      setNewCocktailName('')
     }
+    const tmpId = tempId()
+    const placeholder: Cocktail = {
+      id: tmpId, description: '', planned_count: 0,
+      ingredients: [], price_per_unit: 0, kalkulationspreis: 0, ...payload,
+    }
+
+    await runOptimisticInsert<Cocktail>({
+      apply: () => {
+        setCocktails(prev => [...prev, placeholder])
+        setNewCocktailName('')
+      },
+      commit: async () => {
+        const { data, error } = await createClient().from('getraenke_cocktails').insert(payload).select().single()
+        if (error || !data) throw error ?? new Error('Insert fehlgeschlagen')
+        return { ...(data as Omit<Cocktail, 'ingredients' | 'price_per_unit' | 'kalkulationspreis'>), ingredients: [], price_per_unit: 0, kalkulationspreis: 0 } as Cocktail
+      },
+      reconcile: real => setCocktails(prev => prev.map(c => c.id === tmpId ? real : c)),
+      rollback: () => setCocktails(prev => prev.filter(c => c.id !== tmpId)),
+      onError: e => console.error('Cocktail hinzufügen fehlgeschlagen', e),
+    })
+    setAddingCocktail(false)
   }
 
   async function deleteCocktail(id: string) {
-    await createClient().from('getraenke_cocktails').delete().eq('id', id)
-    setCocktails(prev => prev.filter(c => c.id !== id))
+    const snapshot = cocktails
+    if (isTempId(id)) { setCocktails(prev => prev.filter(c => c.id !== id)); return }
+    await runOptimistic({
+      apply: () => setCocktails(prev => prev.filter(c => c.id !== id)),
+      rollback: () => setCocktails(snapshot),
+      commit: () => createClient().from('getraenke_cocktails').delete().eq('id', id),
+      onError: e => console.error('Cocktail löschen fehlgeschlagen', e),
+    })
   }
 
   if (loading) {
@@ -1220,6 +1323,8 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
                   onArtikelChange={updated => setArtikel(prev => prev.map(a => a.id === updated.id ? updated : a))}
                   onArtikelDelete={deleteArtikel}
                   onArtikelAdd={a => setArtikel(prev => [...prev, a])}
+                  onArtikelReconcile={(tmpId, real) => setArtikel(prev => prev.map(a => a.id === tmpId ? real : a))}
+                  onArtikelRollback={tmpId => setArtikel(prev => prev.filter(a => a.id !== tmpId))}
                   onKatDelete={() => deleteKategorie(k.id)}
                   onKatAlcoholicToggle={() => toggleKatAlcoholic(k)}
                 />

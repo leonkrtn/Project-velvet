@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Pencil, Settings, ChevronDown, ChevronRight, X } from 'lucide-react'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { SaveStatus } from '@/components/ui/SaveStatus'
+import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
 
 type PaymentStatus = 'offen' | 'angezahlt' | 'bezahlt'
 
@@ -65,20 +66,26 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
   const [delConfirm, setDelConfirm] = useState(false)
 
   async function save(d: BudgetItem) {
+    const prev = item // letzter committeter Stand → Rollback-Snapshot
     const supabase = createClient()
-    const { error } = await supabase
-      .from('budget_items')
-      .update({
-        description:    d.description,
-        category:       d.category,
-        planned:        d.planned,
-        actual:         d.actual,
-        payment_status: d.payment_status,
-        notes:          d.notes,
-      })
-      .eq('id', item.id)
-    if (error) throw error
-    onUpdate(d)
+    const ok = await runOptimistic({
+      apply: () => onUpdate(d),
+      rollback: () => onUpdate(prev),
+      commit: () => supabase
+        .from('budget_items')
+        .update({
+          description:    d.description,
+          category:       d.category,
+          planned:        d.planned,
+          actual:         d.actual,
+          payment_status: d.payment_status,
+          notes:          d.notes,
+        })
+        .eq('id', item.id),
+      onError: (e) => console.error('Budget-Position speichern fehlgeschlagen', e),
+    })
+    // useAutoSave erwartet Throw bei Fehler, um Status 'error' zu zeigen
+    if (!ok) throw new Error('save failed')
   }
 
   const { status: saveStatus } = useAutoSave(draft, save, { enabled: editing })
@@ -252,7 +259,12 @@ function GetränkeRow({ total }: { total: number }) {
   )
 }
 
-function AddItemForm({ eventId, onAdded }: { eventId: string; onAdded: (i: BudgetItem) => void }) {
+function AddItemForm({ eventId, onInsert, onReconcile, onRemove }: {
+  eventId: string
+  onInsert: (i: BudgetItem) => void
+  onReconcile: (tempId: string, real: BudgetItem) => void
+  onRemove: (id: string) => void
+}) {
   const [open, setOpen]           = useState(false)
   const [description, setDescription] = useState('')
   const [category, setCategory]   = useState('')
@@ -261,23 +273,44 @@ function AddItemForm({ eventId, onAdded }: { eventId: string; onAdded: (i: Budge
 
   async function submit() {
     if (!description.trim() || !planned) return
-    setSaving(true)
     const supabase = createClient()
-    const { data, error } = await supabase
-      .from('budget_items')
-      .insert({
-        event_id:       eventId,
-        description:    description.trim(),
-        category:       category || null,
-        planned:        parseFloat(planned),
-        actual:         0,
-        payment_status: 'offen',
-      })
-      .select()
-      .single()
+    const tmpId = tempId()
+    const placeholder: BudgetItem = {
+      id:             tmpId,
+      event_id:       eventId,
+      description:    description.trim(),
+      category:       category || null,
+      planned:        parseFloat(planned),
+      actual:         0,
+      payment_status: 'offen',
+      notes:          null,
+      created_at:     new Date().toISOString(),
+    }
+    setSaving(true)
+    const result = await runOptimisticInsert<BudgetItem>({
+      apply: () => onInsert(placeholder),
+      commit: async () => {
+        const { data, error } = await supabase
+          .from('budget_items')
+          .insert({
+            event_id:       eventId,
+            description:    placeholder.description,
+            category:       placeholder.category,
+            planned:        placeholder.planned,
+            actual:         0,
+            payment_status: 'offen',
+          })
+          .select()
+          .single()
+        if (error || !data) throw error ?? new Error('insert failed')
+        return data as BudgetItem
+      },
+      reconcile: (real) => onReconcile(tmpId, real),
+      rollback: () => onRemove(tmpId),
+      onError: (e) => console.error('Budget-Position hinzufügen fehlgeschlagen', e),
+    })
     setSaving(false)
-    if (!error && data) {
-      onAdded(data as BudgetItem)
+    if (result) {
       setDescription(''); setCategory(''); setPlanned(''); setOpen(false)
     }
   }
@@ -334,9 +367,14 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
   }
 
   async function deleteItem(id: string) {
+    const snapshot = items // Rollback-Snapshot der Liste
     const supabase = createClient()
-    const { error } = await supabase.from('budget_items').delete().eq('id', id)
-    if (!error) setItems(prev => prev.filter(i => i.id !== id))
+    await runOptimistic({
+      apply: () => setItems(prev => prev.filter(i => i.id !== id)),
+      rollback: () => setItems(snapshot),
+      commit: () => supabase.from('budget_items').delete().eq('id', id),
+      onError: (e) => console.error('Budget-Position löschen fehlgeschlagen', e),
+    })
   }
 
   const visibleItems    = items.filter(i => i.category?.toLowerCase() !== 'catering')
@@ -465,7 +503,12 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
         </table>
         </div>
         <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--bp-rule)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <AddItemForm eventId={eventId} onAdded={i => setItems(prev => [...prev, i])} />
+          <AddItemForm
+            eventId={eventId}
+            onInsert={i => setItems(prev => [...prev, i])}
+            onReconcile={(tmpId, real) => setItems(prev => prev.map(i => i.id === tmpId ? real : i))}
+            onRemove={id => setItems(prev => prev.filter(i => i.id !== id))}
+          />
           <div style={{ textAlign: 'right', marginLeft: 'auto' }}>
             <div className="bp-label">Gesamt geplant</div>
             <div style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1.5rem', fontWeight: 600, color: 'var(--bp-ink)' }}>

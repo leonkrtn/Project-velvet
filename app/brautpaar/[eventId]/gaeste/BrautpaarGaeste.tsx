@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   Users, Hotel as HotelIcon, Mail, Settings, Plus, Copy, Check,
@@ -92,13 +93,12 @@ interface Props {
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'gaesteliste' | 'geschenke' | 'hotel' | 'rsvp' | 'einstellungen'
+type Tab = 'gaesteliste' | 'geschenke' | 'hotel' | 'rsvp'
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: 'gaesteliste',   label: 'Gästeliste',         icon: <Users size={15} /> },
   { key: 'geschenke',     label: 'Geschenkliste',       icon: <Gift size={15} /> },
   { key: 'hotel',         label: 'Hotel',               icon: <HotelIcon size={15} /> },
-  { key: 'einstellungen', label: 'Gäste-Einstellungen', icon: <Settings size={15} /> },
   { key: 'rsvp',          label: 'Einladungen',         icon: <Mail size={15} /> },
 ]
 
@@ -1449,6 +1449,27 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
 
   return (
     <div>
+      {/* Verweis: Einladungstext, Frist & RSVP-Gestaltung leben jetzt unter Allgemein */}
+      <div className="bp-card" style={{ padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.875rem', flexWrap: 'wrap' }}>
+        <span style={{
+          width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+          background: 'var(--bp-gold-pale)', color: 'var(--bp-gold-deep)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Settings size={16} />
+        </span>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--bp-ink)', margin: 0 }}>Einladungstext & RSVP-Gestaltung</p>
+          <p className="bp-caption" style={{ margin: '2px 0 0' }}>
+            Einladungstext, Frist und das Aussehen der Antwortseite stellst du jetzt unter „Allgemein“ ein.
+          </p>
+        </div>
+        <Link href={`/brautpaar/${eventId}/allgemein#einladung`} className="bp-btn bp-btn-primary"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
+          <Settings size={14} /> Einladung & RSVP einstellen
+        </Link>
+      </div>
+
       {/* Sammel-Link: Gäste registrieren sich selbst (mit Bestätigung) */}
       <div className="bp-card" style={{ padding: '1rem 1.25rem', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -1800,72 +1821,6 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
 
 // ── Einstellungen tab ─────────────────────────────────────────────────────────
 
-function EinstellungenTab({ eventId, rsvpSettings: initialSettings }: { eventId: string; rsvpSettings: RsvpSettings | null }) {
-  const [settings, setSettings] = useState(initialSettings)
-  const [saving, setSaving]     = useState(false)
-  const [saved, setSaved]       = useState(false)
-
-  async function save() {
-    setSaving(true)
-    const supabase = createClient()
-    const payload = {
-      event_id: eventId,
-      invitation_text: settings?.invitation_text ?? '',
-      rsvp_deadline: settings?.rsvp_deadline ?? null,
-      show_meal_choice: settings?.show_meal_choice ?? true,
-      show_plus_one: settings?.show_plus_one ?? true,
-      phone_contact: settings?.phone_contact?.trim() || null,
-    }
-    if (settings?.id) {
-      await supabase.from('rsvp_settings').update(payload).eq('id', settings.id)
-    } else {
-      const { data } = await supabase.from('rsvp_settings').insert(payload).select().single()
-      if (data) setSettings(data as RsvpSettings)
-    }
-    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 3000)
-  }
-
-  const s = settings
-  return (
-    <div style={{ maxWidth: 600 }}>
-      <div className="bp-field">
-        <label className="bp-label-text">Einladungstext</label>
-        <p className="bp-caption" style={{ marginBottom: '0.5rem' }}>{'Verwende {{Name}} als Platzhalter für den Gastnamen.'}</p>
-        <textarea className="bp-textarea" rows={6} value={s?.invitation_text ?? ''} onChange={e => setSettings(prev => ({ ...(prev ?? {} as RsvpSettings), invitation_text: e.target.value }))} />
-      </div>
-      <div className="bp-field">
-        <label className="bp-label-text">RSVP-Frist</label>
-        <input className="bp-input" type="date" value={s?.rsvp_deadline ?? ''} onChange={e => setSettings(prev => ({ ...(prev ?? {} as RsvpSettings), rsvp_deadline: e.target.value || null }))} />
-      </div>
-      <div className="bp-field">
-        <label className="bp-label-text">Kontaktnummer (bei Fragen)</label>
-        <p className="bp-caption" style={{ marginBottom: '0.5rem' }}>Wird auf der RSVP-Seite angezeigt, wenn die Frist abgelaufen ist.</p>
-        <input
-          className="bp-input"
-          type="tel"
-          value={s?.phone_contact ?? ''}
-          onChange={e => setSettings(prev => ({ ...(prev ?? {} as RsvpSettings), phone_contact: e.target.value }))}
-          placeholder="+49 123 456789"
-        />
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9375rem', color: 'var(--bp-ink-2)' }}>
-          <input type="checkbox" className="bp-checkbox" checked={s?.show_meal_choice ?? true} onChange={e => setSettings(prev => ({ ...(prev ?? {} as RsvpSettings), show_meal_choice: e.target.checked }))} />
-          Menüwahl im RSVP-Formular anzeigen
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9375rem', color: 'var(--bp-ink-2)' }}>
-          <input type="checkbox" className="bp-checkbox" checked={s?.show_plus_one ?? true} onChange={e => setSettings(prev => ({ ...(prev ?? {} as RsvpSettings), show_plus_one: e.target.checked }))} />
-          Begleitperson-Option anzeigen
-        </label>
-      </div>
-      <button className="bp-btn bp-btn-primary bp-btn-mobile-full" onClick={save} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-        {saved && <Check size={16} />}
-        {saving ? 'Speichert…' : saved ? 'Gespeichert' : 'Einstellungen speichern'}
-      </button>
-    </div>
-  )
-}
-
 // ── Main Component ────────────────────────────────────────────────────────────
 
 // Selbstregistrierte Gäste (Sammel-Link) — Bestätigungs-Schritt
@@ -1973,7 +1928,6 @@ export default function BrautpaarGaeste({ eventId, userId, initialGuests, initia
             openInviteEnabled={openInviteEnabled}
           />
         )}
-        {activeTab === 'einstellungen' && <EinstellungenTab eventId={eventId} rsvpSettings={rsvpSettings} />}
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Edit2, Check, X, Heart, Ban, ListMusic, Lightbulb, Music2, Link, ExternalLink } from 'lucide-react'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { SaveStatus } from '@/components/ui/SaveStatus'
+import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -255,11 +256,16 @@ function SongRow({
   async function save() {
     setSaving(true)
     const supabase = createClient()
-    const { error } = await supabase.from('music_songs').update({
-      title: draft.title, artist: draft.artist, type: draft.type, moment: draft.moment,
-    }).eq('id', song.id)
+    const ok = await runOptimistic({
+      apply: () => { onUpdate(draft); setEditing(false) },
+      rollback: () => { onUpdate(song); setEditing(true) },
+      commit: () => supabase.from('music_songs').update({
+        title: draft.title, artist: draft.artist, type: draft.type, moment: draft.moment,
+      }).eq('id', song.id),
+      onError: e => console.error('Song speichern fehlgeschlagen', e),
+    })
     setSaving(false)
-    if (!error) { onUpdate(draft); setEditing(false) }
+    void ok
   }
 
   if (editing) {
@@ -333,7 +339,12 @@ function SongRow({
 
 // ── Add Song Form ─────────────────────────────────────────────────────────────
 
-function AddSongForm({ eventId, onAdded }: { eventId: string; onAdded: (s: Song) => void }) {
+function AddSongForm({ eventId, onInsertPlaceholder, onReconcile, onRollback }: {
+  eventId: string
+  onInsertPlaceholder: (s: Song) => void
+  onReconcile: (tid: string, real: Song) => void
+  onRollback: (tid: string) => void
+}) {
   const [open, setOpen]   = useState(false)
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
@@ -345,15 +356,26 @@ function AddSongForm({ eventId, onAdded }: { eventId: string; onAdded: (s: Song)
     if (!title.trim()) return
     setSaving(true)
     const supabase = createClient()
-    const { data, error } = await supabase.from('music_songs')
-      .insert({ event_id: eventId, title: title.trim(), artist: artist.trim(), type, moment, sort_order: 0 })
-      .select().single()
+    const tid = tempId()
+    const placeholder: Song = { id: tid, title: title.trim(), artist: artist.trim(), type, moment, sort_order: 0 }
+    await runOptimisticInsert<Song>({
+      apply: () => {
+        onInsertPlaceholder(placeholder)
+        setTitle(''); setArtist(''); setType('wish'); setMoment('Allgemein')
+        setOpen(false)
+      },
+      commit: async () => {
+        const { data, error } = await supabase.from('music_songs')
+          .insert({ event_id: eventId, title: placeholder.title, artist: placeholder.artist, type: placeholder.type, moment: placeholder.moment, sort_order: 0 })
+          .select().single()
+        if (error || !data) throw error ?? new Error('Insert lieferte keine Daten')
+        return data as Song
+      },
+      reconcile: real => onReconcile(tid, real),
+      rollback: () => onRollback(tid),
+      onError: e => console.error('Song hinzufügen fehlgeschlagen', e),
+    })
     setSaving(false)
-    if (!error && data) {
-      onAdded(data as Song)
-      setTitle(''); setArtist(''); setType('wish'); setMoment('Allgemein')
-      setOpen(false)
-    }
   }
 
   if (!open) {
@@ -411,12 +433,14 @@ const BP_SECTION_CFG: Record<string, { icon: React.ReactNode; label: string; acc
 }
 
 function BrautpaarSongSection({
-  type, songs, eventId, onAdded, onUpdate, onDelete,
+  type, songs, eventId, onInsertPlaceholder, onReconcile, onRollbackInsert, onUpdate, onDelete,
 }: {
   type: Song['type']
   songs: Song[]
   eventId: string
-  onAdded: (s: Song) => void
+  onInsertPlaceholder: (s: Song) => void
+  onReconcile: (tempId: string, real: Song) => void
+  onRollbackInsert: (tempId: string) => void
   onUpdate: (s: Song) => void
   onDelete: (id: string) => void
 }) {
@@ -432,22 +456,36 @@ function BrautpaarSongSection({
     if (!title.trim()) return
     setSaving(true)
     const supabase = createClient()
-    const { data, error } = await supabase.from('music_songs')
-      .insert({ event_id: eventId, title: title.trim(), artist: artist.trim(), type, moment: 'Allgemein', sort_order: 0 })
-      .select().single()
+    const tid = tempId()
+    const placeholder: Song = { id: tid, title: title.trim(), artist: artist.trim(), type, moment: 'Allgemein', sort_order: 0 }
+    await runOptimisticInsert<Song>({
+      apply: () => { onInsertPlaceholder(placeholder); setTitle(''); setArtist('') },
+      commit: async () => {
+        const { data, error } = await supabase.from('music_songs')
+          .insert({ event_id: eventId, title: placeholder.title, artist: placeholder.artist, type, moment: 'Allgemein', sort_order: 0 })
+          .select().single()
+        if (error || !data) throw error ?? new Error('Insert lieferte keine Daten')
+        return data as Song
+      },
+      reconcile: real => onReconcile(tid, real),
+      rollback: () => onRollbackInsert(tid),
+      onError: e => console.error('Song hinzufügen fehlgeschlagen', e),
+    })
     setSaving(false)
-    if (!error && data) { onAdded(data as Song); setTitle(''); setArtist('') }
   }
 
   async function saveEdit(id: string) {
     if (!editTitle.trim()) return
+    const song = songs.find(s => s.id === id)
+    if (!song) return
     const supabase = createClient()
-    const { error } = await supabase.from('music_songs').update({ title: editTitle.trim(), artist: editArtist.trim() }).eq('id', id)
-    if (!error) {
-      const song = songs.find(s => s.id === id)
-      if (song) onUpdate({ ...song, title: editTitle.trim(), artist: editArtist.trim() })
-      setEditId(null)
-    }
+    const updated = { ...song, title: editTitle.trim(), artist: editArtist.trim() }
+    await runOptimistic({
+      apply: () => { onUpdate(updated); setEditId(null) },
+      rollback: () => { onUpdate(song); setEditId(id); setEditTitle(song.title); setEditArtist(song.artist) },
+      commit: () => supabase.from('music_songs').update({ title: updated.title, artist: updated.artist }).eq('id', id),
+      onError: e => console.error('Song speichern fehlgeschlagen', e),
+    })
   }
 
   function startEdit(song: Song) {
@@ -547,8 +585,13 @@ function BrautpaarSongSection({
 function BrautpaarMusikView({ eventId, songs, setSongs }: { eventId: string; songs: Song[]; setSongs: React.Dispatch<React.SetStateAction<Song[]>> }) {
   async function deleteSong(id: string) {
     const supabase = createClient()
-    const { error } = await supabase.from('music_songs').delete().eq('id', id)
-    if (!error) setSongs(prev => prev.filter(s => s.id !== id))
+    const snapshot = songs
+    await runOptimistic({
+      apply: () => setSongs(prev => prev.filter(s => s.id !== id)),
+      rollback: () => setSongs(snapshot),
+      commit: () => supabase.from('music_songs').delete().eq('id', id),
+      onError: e => console.error('Song löschen fehlgeschlagen', e),
+    })
   }
 
   return (
@@ -559,7 +602,9 @@ function BrautpaarMusikView({ eventId, songs, setSongs }: { eventId: string; son
           type={type}
           songs={songs.filter(s => s.type === type)}
           eventId={eventId}
-          onAdded={s => setSongs(prev => [...prev, s])}
+          onInsertPlaceholder={s => setSongs(prev => [...prev, s])}
+          onReconcile={(tid, real) => setSongs(prev => prev.map(x => x.id === tid ? real : x))}
+          onRollbackInsert={tid => setSongs(prev => prev.filter(x => x.id !== tid))}
           onUpdate={updated => setSongs(prev => prev.map(x => x.id === updated.id ? updated : x))}
           onDelete={deleteSong}
         />
@@ -833,21 +878,37 @@ function PlaylistSection({
     setAdding(true)
     const platform = detectPlatform(trimmed)
     const supabase = createClient()
-    const { data, error } = await supabase
-      .from('musik_playlisten')
-      .insert({ event_id: eventId, url: trimmed, title: title.trim(), platform, sort_order: playlists.length })
-      .select().single()
+    const tid = tempId()
+    const placeholder: Playlist = { id: tid, event_id: eventId, url: trimmed, title: title.trim(), platform, sort_order: playlists.length }
+    await runOptimisticInsert<Playlist>({
+      apply: () => {
+        setPlaylists(prev => [...prev, placeholder])
+        setUrl(''); setTitle(''); setOpen(false)
+      },
+      commit: async () => {
+        const { data, error } = await supabase
+          .from('musik_playlisten')
+          .insert({ event_id: eventId, url: placeholder.url, title: placeholder.title, platform, sort_order: placeholder.sort_order })
+          .select().single()
+        if (error || !data) throw error ?? new Error('Insert lieferte keine Daten')
+        return data as Playlist
+      },
+      reconcile: real => setPlaylists(prev => prev.map(p => p.id === tid ? real : p)),
+      rollback: () => setPlaylists(prev => prev.filter(p => p.id !== tid)),
+      onError: e => console.error('Playlist hinzufügen fehlgeschlagen', e),
+    })
     setAdding(false)
-    if (!error && data) {
-      setPlaylists(prev => [...prev, data as Playlist])
-      setUrl(''); setTitle(''); setOpen(false)
-    }
   }
 
   async function del(id: string) {
     const supabase = createClient()
-    const { error } = await supabase.from('musik_playlisten').delete().eq('id', id)
-    if (!error) setPlaylists(prev => prev.filter(p => p.id !== id))
+    const snapshot = playlists
+    await runOptimistic({
+      apply: () => setPlaylists(prev => prev.filter(p => p.id !== id)),
+      rollback: () => setPlaylists(snapshot),
+      commit: () => supabase.from('musik_playlisten').delete().eq('id', id),
+      onError: e => console.error('Playlist löschen fehlgeschlagen', e),
+    })
   }
 
   const accentColor = 'var(--bp-gold, #B89968)'
@@ -965,8 +1026,13 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
 
   async function deleteSong(id: string) {
     const supabase = createClient()
-    const { error } = await supabase.from('music_songs').delete().eq('id', id)
-    if (!error) setSongs(prev => prev.filter(s => s.id !== id))
+    const snapshot = songs
+    await runOptimistic({
+      apply: () => setSongs(prev => prev.filter(s => s.id !== id)),
+      rollback: () => setSongs(snapshot),
+      commit: () => supabase.from('music_songs').delete().eq('id', id),
+      onError: e => console.error('Song löschen fehlgeschlagen', e),
+    })
   }
 
   async function openVorschlaege() {
@@ -1133,7 +1199,12 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
             )}
 
             {mode !== 'dienstleister' && (
-              <AddSongForm eventId={eventId} onAdded={s => setSongs(prev => [...prev, s])} />
+              <AddSongForm
+                eventId={eventId}
+                onInsertPlaceholder={s => setSongs(prev => [...prev, s])}
+                onReconcile={(tid, real) => setSongs(prev => prev.map(x => x.id === tid ? real : x))}
+                onRollback={tid => setSongs(prev => prev.filter(x => x.id !== tid))}
+              />
             )}
           </div>
           )}
