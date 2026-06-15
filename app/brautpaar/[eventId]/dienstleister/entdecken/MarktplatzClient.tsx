@@ -108,10 +108,28 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
       </div>
 
       <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3,#888)', margin: '0 0 16px' }}>
-        {loading ? 'Lädt…' : `${sorted.length} ${sorted.length === 1 ? 'Dienstleister' : 'Dienstleister'} gefunden`}
+        {loading ? ' ' : `${sorted.length} ${sorted.length === 1 ? 'Dienstleister' : 'Dienstleister'} gefunden`}
       </p>
 
-      {!loading && sorted.length === 0 ? (
+      {loading ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} style={{ border: '1px solid var(--bp-rule,#eee)', borderRadius: 16, overflow: 'hidden', background: '#fff' }}>
+              <div className="bp-skeleton" style={{ aspectRatio: '4/3', borderRadius: 0 }} />
+              <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="bp-skeleton" style={{ height: 11, width: '40%' }} />
+                <div className="bp-skeleton" style={{ height: 18, width: '75%' }} />
+                <div className="bp-skeleton" style={{ height: 12, width: '55%' }} />
+                <div className="bp-skeleton" style={{ height: 12, width: '90%' }} />
+                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <div className="bp-skeleton" style={{ height: 18, width: 64, borderRadius: 999 }} />
+                  <div className="bp-skeleton" style={{ height: 18, width: 34, borderRadius: 999 }} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : sorted.length === 0 ? (
         <div className="bp-card" style={{ padding: '2.5rem', textAlign: 'center' }}>
           <p style={{ fontWeight: 600, margin: '0 0 4px' }}>Keine Dienstleister gefunden</p>
           <p className="bp-caption" style={{ margin: 0 }}>Passe Kategorie, Ort oder Suchbegriff an.</p>
