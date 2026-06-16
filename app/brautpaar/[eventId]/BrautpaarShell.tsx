@@ -88,40 +88,12 @@ interface WelcomeOverlayProps {
   onDone: () => void
 }
 
-// Bereiche, die beim Onboarding optional mit einem minimalen Gerüst
-// vorbefüllt werden können (siehe seed_brautpaar_solo_basics, Migration 0102).
-const SEED_AREAS: { key: string; label: string; icon: React.ReactNode }[] = [
-  { key: 'ablaufplan', label: 'Ablaufplan', icon: <Calendar size={16} /> },
-  { key: 'aufgaben',   label: 'Aufgaben-Checkliste', icon: <CheckSquare size={16} /> },
-  { key: 'sitzplan',   label: 'Sitzplan (Tische)', icon: <LayoutGrid size={16} /> },
-  { key: 'getraenke',  label: 'Getränke', icon: <GlassWater size={16} /> },
-  { key: 'catering',   label: 'Catering & Menü', icon: <UtensilsCrossed size={16} /> },
-  { key: 'budget',     label: 'Budget-Posten', icon: <Wallet size={16} /> },
-]
-
 function WelcomeOverlay({ eventTitle, eventId, userId, onDone }: WelcomeOverlayProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(SEED_AREAS.map(a => a.key)))
-
-  const toggleArea = (key: string) => setSelected(prev => {
-    const next = new Set(prev)
-    if (next.has(key)) next.delete(key); else next.add(key)
-    return next
-  })
 
   async function handleStart() {
     setLoading(true)
-    // Ausgewählte Bereiche mit Beispielinhalten vorbefüllen (nicht fatal).
-    if (selected.size > 0) {
-      try {
-        const supabase = createClient()
-        await supabase.rpc('seed_brautpaar_solo_basics', {
-          p_event_id: eventId,
-          p_areas: Array.from(selected),
-        })
-      } catch { /* non-fatal — Onboarding läuft trotzdem weiter */ }
-    }
     try {
       await fetch('/api/brautpaar/complete-onboarding', {
         method: 'POST',
@@ -141,9 +113,8 @@ function WelcomeOverlay({ eventTitle, eventId, userId, onDone }: WelcomeOverlayP
       flexDirection: 'column',
       padding: '2rem',
       textAlign: 'center',
-      overflowY: 'auto',
     }}>
-      <div style={{ maxWidth: 480, width: '100%' }}>
+      <div style={{ maxWidth: 480 }}>
         <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}>
           <span
             aria-hidden
@@ -162,23 +133,9 @@ function WelcomeOverlay({ eventTitle, eventId, userId, onDone }: WelcomeOverlayP
         <p className="bp-body" style={{ marginBottom: '0.25rem', color: 'var(--bp-gold-deep)', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.125rem' }}>
           {eventTitle}
         </p>
-        <p className="bp-body" style={{ marginBottom: '1.75rem' }}>
-          Euer persönlicher Hochzeitsplaner ist bereit. Wir richten ein paar Bereiche schon mit Beispielen für euch ein — wählt ab, was ihr lieber selbst anlegt.
+        <p className="bp-body" style={{ marginBottom: '2.5rem' }}>
+          Euer persönlicher Hochzeitsplaner ist bereit. Als nächstes könnt ihr die Details eurer Feier eintragen.
         </p>
-
-        <div style={{ textAlign: 'left', margin: '0 0 1.75rem', border: '1px solid var(--bp-line)', borderRadius: 14, padding: '8px 14px' }}>
-          {SEED_AREAS.map(a => {
-            const checked = selected.has(a.key)
-            return (
-              <label key={a.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 2px', cursor: 'pointer' }}>
-                <input type="checkbox" className="bp-checkbox" checked={checked} onChange={() => toggleArea(a.key)} />
-                <span style={{ color: checked ? 'var(--bp-gold)' : 'var(--bp-ink-3)', display: 'flex' }}>{a.icon}</span>
-                <span style={{ fontSize: '0.875rem', color: 'var(--bp-ink)' }}>{a.label}</span>
-              </label>
-            )
-          })}
-        </div>
-
         <button
           className="bp-btn bp-btn-primary bp-btn-lg"
           onClick={handleStart}

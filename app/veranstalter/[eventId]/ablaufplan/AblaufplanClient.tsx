@@ -347,6 +347,7 @@ export default function AblaufplanClient({
         <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px' }}>Ablaufplan</h1>
         {!readOnly && role !== 'dienstleister' && (
           <button
+            data-tour="bp-add-entry"
             onClick={() => setModal({ entry: null, prefill: { startMinutes: currentDay.start_hour * 60, duration: 60 } })}
             className="mob-touch"
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}

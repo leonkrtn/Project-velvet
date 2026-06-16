@@ -317,7 +317,7 @@ function AddItemForm({ eventId, onInsert, onReconcile, onRemove }: {
 
   if (!open) {
     return (
-      <button className="bp-btn bp-btn-secondary bp-btn-mobile-full" onClick={() => setOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <button data-tour="bp-add-budget" className="bp-btn bp-btn-secondary bp-btn-mobile-full" onClick={() => setOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <Plus size={16} /> Position hinzufügen
       </button>
     )

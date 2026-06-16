@@ -97,7 +97,7 @@ function TaskItem({ task, onToggle, onDelete }: {
   )
 }
 
-function PhaseSection({ phaseKey, label, tasks, onToggle, onDelete, onAdd, activePhase }: {
+function PhaseSection({ phaseKey, label, tasks, onToggle, onDelete, onAdd, activePhase, tourAnchor }: {
   phaseKey: string | null
   label: string
   tasks: Task[]
@@ -105,6 +105,7 @@ function PhaseSection({ phaseKey, label, tasks, onToggle, onDelete, onAdd, activ
   onDelete: (id: string) => void
   onAdd: (phaseKey: string | null, title: string, sortOrder: number) => void
   activePhase: string | null
+  tourAnchor?: boolean
 }) {
   const [open, setOpen] = useState(phaseKey === activePhase || tasks.some(t => !t.done))
   const [adding, setAdding] = useState(false)
@@ -181,6 +182,7 @@ function PhaseSection({ phaseKey, label, tasks, onToggle, onDelete, onAdd, activ
               </div>
             ) : (
               <button
+                data-tour={tourAnchor ? 'bp-add-task' : undefined}
                 className="bp-btn bp-btn-ghost bp-btn-sm"
                 onClick={() => setAdding(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: 'var(--bp-gold-deep)' }}
@@ -291,6 +293,7 @@ export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddi
             onDelete={deleteTask}
             onAdd={addTask}
             activePhase={activePhase}
+            tourAnchor={phase.key === activePhase}
           />
         )
       })}

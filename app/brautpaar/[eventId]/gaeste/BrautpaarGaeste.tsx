@@ -1028,7 +1028,7 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
           <option value="abgesagt">Abgesagt</option>
           <option value="ausstehend">Ausstehend</option>
         </select>
-        <button className="bp-btn bp-btn-primary bp-btn-mobile-full" onClick={() => setAdding(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button data-tour="bp-add-guest" className="bp-btn bp-btn-primary bp-btn-mobile-full" onClick={() => setAdding(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Plus size={16} /> Gast hinzufügen
         </button>
       </div>
