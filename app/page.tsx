@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Menu, X } from 'lucide-react'
+import ForevrHeart from '@/components/ForevrHeart'
 import './landing.css'
 
 const SIGNUP_URL = '/signup/brautpaar'
@@ -795,6 +796,7 @@ export default function LandingPage() {
       {/* NAV */}
       <nav className="lp-nav">
         <a href="#" className="nav-logo">
+          <ForevrHeart size={24} color="#FFFDF9" style={{ marginRight: 8 }} />
           <span className="lp-logo-text">FOREVR</span>
         </a>
         <ul className="nav-links">
@@ -1163,7 +1165,10 @@ export default function LandingPage() {
       <footer className="lp-footer">
         <div className="lp-footer-top">
           <div>
-            <div className="lp-footer-logo"><span className="lp-logo-text">FOREVR</span></div>
+            <div className="lp-footer-logo" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ForevrHeart size={20} color="#3A3A45" />
+              <span className="lp-logo-text">FOREVR</span>
+            </div>
             <p className="lp-footer-tagline">Euer großer Tag.<br />Einfach unvergesslich geplant.</p>
           </div>
           <div>

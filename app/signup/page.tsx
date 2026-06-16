@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import React, { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import ForevrHeart from '@/components/ForevrHeart'
 import { Check, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import '@/app/brautpaar/brautpaar.css'
@@ -144,7 +145,10 @@ function SignupForm() {
     return (
       <div className="bp-auth">
         <div className="bp-auth-inner" style={{ textAlign: 'center' }}>
-          <p className="bp-auth-wordmark" style={{ marginBottom: 24 }}>FOREVR</p>
+          <div style={{ marginBottom: 24, textAlign: 'center' }}>
+            <ForevrHeart size={36} color="#9C7F4F" style={{ marginBottom: 8 }} />
+            <p className="bp-auth-wordmark" style={{ margin: 0 }}>FOREVR</p>
+          </div>
           <h2 className="bp-h2" style={{ marginBottom: 8 }}>Account erstellt!</h2>
           <p className="bp-body">Du wirst zum Login weitergeleitet…</p>
         </div>
@@ -157,6 +161,7 @@ function SignupForm() {
       <div className="bp-auth-inner bp-auth-inner-wide">
 
         <div className="bp-auth-logo">
+          <ForevrHeart size={40} color="#9C7F4F" style={{ marginBottom: 10 }} />
           <p className="bp-auth-wordmark">FOREVR</p>
           <p className="bp-auth-tagline">Konto erstellen</p>
         </div>

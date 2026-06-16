@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import ForevrHeart from '@/components/ForevrHeart'
 import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import '@/app/brautpaar/brautpaar.css'
@@ -40,6 +41,7 @@ export default function PasswordResetUpdatePage() {
       <div className="bp-auth-inner">
 
         <div className="bp-auth-logo">
+          <ForevrHeart size={40} color="#9C7F4F" style={{ marginBottom: 10 }} />
           <p className="bp-auth-wordmark">FOREVR</p>
           <p className="bp-auth-tagline">Neues Passwort festlegen</p>
         </div>
