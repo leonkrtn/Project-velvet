@@ -34,11 +34,8 @@ const EMPTY_RSVP: RsvpSettings = {
   invitation_text: '', rsvp_deadline: null, show_meal_choice: true, show_plus_one: true, phone_contact: null,
 }
 
-type PanelTab = 'anzeige' | 'einladung'
-
 export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string }) {
   const router = useRouter()
-  const [tab, setTab] = useState<PanelTab>('anzeige')
   const [s, setS] = useState<DisplaySettings>(DEFAULT_DISPLAY_SETTINGS)
   const [rsvp, setRsvp] = useState<RsvpSettings>(EMPTY_RSVP)
   const [loading, setLoading] = useState(true)
@@ -48,11 +45,15 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
   const coverInput = useRef<HTMLInputElement>(null)
   const bgPhotoInput = useRef<HTMLInputElement>(null)
   const [bgPhotoBusy, setBgPhotoBusy] = useState(false)
+  const einladungRef = useRef<HTMLDivElement>(null)
 
-  // Tab aus URL-Hash (#einladung) übernehmen — Deep-Link aus dem Gäste-Bereich.
+  // Deep-Link aus dem Gäste-Bereich (#einladung) — zur Einladungs-Karte scrollen.
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.hash === '#einladung') setTab('einladung')
-  }, [])
+    if (loading) return
+    if (typeof window !== 'undefined' && window.location.hash === '#einladung') {
+      einladungRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [loading])
 
   // Anzeigeeinstellungen + RSVP-Einstellungen laden.
   useEffect(() => {
@@ -191,54 +192,107 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
     window.open(`/rsvp/_preview?event=${eventId}`, '_blank', 'noopener')
   }
 
-  if (loading) return <p style={{ color: 'var(--bp-ink-3)', fontSize: 14 }}>Lädt…</p>
+  if (loading) {
+    return (
+      <div className="bp-card" style={{ padding: '1.25rem' }}>
+        <p style={{ color: 'var(--bp-ink-3)', fontSize: 14, margin: 0 }}>Lädt…</p>
+      </div>
+    )
+  }
 
   const fontHref = fontHrefFor(s.headingFont)
   const radius = s.cornerStyle === 'elegant' ? 4 : 14
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {fontHref && <link rel="stylesheet" href={fontHref} />}
 
-      {/* ── Reiter ── */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 22, borderBottom: '1px solid var(--bp-rule)' }}>
-        <TabButton active={tab === 'anzeige'} onClick={() => setTab('anzeige')} icon={<Palette size={15} />} label="Anzeige & Stil" />
-        <TabButton active={tab === 'einladung'} onClick={() => setTab('einladung')} icon={<Mail size={15} />} label="Einladung & RSVP" />
-      </div>
-
-      {/* ════════════ TAB: ANZEIGE & STIL ════════════ */}
-      {tab === 'anzeige' && (
-        <div>
-          {/* Theme-Presets */}
-          <p className="bp-label-text" style={{ marginBottom: 8 }}>Stilpaket (1 Klick)</p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-            {THEME_PRESETS.map(p => (
-              <button key={p.key} type="button" onClick={() => applyPreset(p.key, p.settings)}
-                style={{ ...chip, ...(s.preset === p.key ? chipActive : {}) }}>
-                <Sparkles size={13} /> {p.label}
-              </button>
-            ))}
+      {/* ════════════ KARTE 1: ANZEIGE & STIL ════════════ */}
+      <div className="bp-card" style={{ overflow: 'hidden' }}>
+        <div className="bp-card-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Palette size={18} style={{ color: 'var(--bp-gold-deep)' }} />
+            <div>
+              <h2 className="bp-section-title" style={{ margin: 0 }}>Anzeige &amp; Stil</h2>
+              <p className="bp-caption" style={{ margin: '2px 0 0' }}>Farben, Schriften und das Erscheinungsbild eurer Seiten.</p>
+            </div>
           </div>
+        </div>
+        <div className="bp-card-body" style={{ padding: '1.5rem' }}>
+          {/* Stilpaket */}
+          <SubSection title="Stilpaket" hint="Wähle einen fertigen Look — die Details darunter kannst du danach feinjustieren.">
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {THEME_PRESETS.map(p => (
+                <button key={p.key} type="button" onClick={() => applyPreset(p.key, p.settings)}
+                  style={{ ...chip, ...(s.preset === p.key ? chipActive : {}) }}>
+                  <Sparkles size={13} /> {p.label}
+                </button>
+              ))}
+            </div>
+          </SubSection>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <Field label="Akzentfarbe">
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {ACCENT_PRESETS.map(p => (
-                    <button key={p.value} type="button" title={p.label} onClick={() => set('accent', p.value)}
-                      style={{ width: 26, height: 26, borderRadius: 999, background: p.value, cursor: 'pointer',
-                        border: s.accent.toLowerCase() === p.value.toLowerCase() ? '2px solid var(--bp-ink)' : '1px solid rgba(0,0,0,0.15)' }} />
-                  ))}
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--bp-ink-2)', cursor: 'pointer' }}>
-                    <input type="color" value={s.accent} onChange={e => set('accent', e.target.value)}
-                      style={{ width: 28, height: 28, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }} />
-                    Eigene
-                  </label>
-                </div>
-              </Field>
+          <Divider />
 
-              <ToggleRow label="Akzent als Farbverlauf" checked={s.accentGradient} onChange={v => set('accentGradient', v)} />
+          {/* Farben */}
+          <SubSection title="Farben">
+            <div style={twoCol}>
+              <div style={col}>
+                <Field label="Akzentfarbe">
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    {ACCENT_PRESETS.map(p => (
+                      <button key={p.value} type="button" title={p.label} onClick={() => set('accent', p.value)}
+                        style={{ width: 26, height: 26, borderRadius: 999, background: p.value, cursor: 'pointer',
+                          border: s.accent.toLowerCase() === p.value.toLowerCase() ? '2px solid var(--bp-ink)' : '1px solid rgba(0,0,0,0.15)' }} />
+                    ))}
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--bp-ink-2)', cursor: 'pointer' }}>
+                      <input type="color" value={s.accent} onChange={e => set('accent', e.target.value)}
+                        style={{ width: 28, height: 28, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }} />
+                      Eigene
+                    </label>
+                  </div>
+                </Field>
+                <ToggleRow label="Akzent als Farbverlauf" checked={s.accentGradient} onChange={v => set('accentGradient', v)} />
+                <Field label="Zweite Akzentfarbe (Badges, Links)">
+                  <ToggleRow label="Eigene zweite Farbe verwenden" checked={s.accent2 !== null}
+                    onChange={v => set('accent2', v ? shade(s.accent, -0.3) : null)} />
+                  {s.accent2 !== null && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+                      {ACCENT_PRESETS.map(p => (
+                        <button key={p.value} type="button" title={p.label} onClick={() => set('accent2', p.value)}
+                          style={{ width: 24, height: 24, borderRadius: 999, background: p.value, cursor: 'pointer',
+                            border: (s.accent2 ?? '').toLowerCase() === p.value.toLowerCase() ? '2px solid var(--bp-ink)' : '1px solid rgba(0,0,0,0.15)' }} />
+                      ))}
+                      <input type="color" value={s.accent2 ?? s.accent} onChange={e => set('accent2', e.target.value)}
+                        style={{ width: 26, height: 26, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }} />
+                    </div>
+                  )}
+                </Field>
+              </div>
 
+              <div style={col}>
+                <Field label="Hintergrundfarbe">
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {BG_COLOR_PRESETS.map(p => (
+                      <button key={p.value} type="button" title={p.label} onClick={() => set('bgColor', p.value)}
+                        style={{ width: 26, height: 26, borderRadius: 8, background: p.value, cursor: 'pointer',
+                          border: s.bgColor.toLowerCase() === p.value.toLowerCase() ? '2px solid var(--bp-ink)' : '1px solid rgba(0,0,0,0.18)' }} />
+                    ))}
+                  </div>
+                </Field>
+                <Field label="Hintergrund-Muster">
+                  <SegmentRow value={s.bgTexture} onChange={v => set('bgTexture', v as DisplaySettings['bgTexture'])}
+                    options={(Object.keys(TEXTURE_LABEL) as DisplaySettings['bgTexture'][]).map(k => [k, TEXTURE_LABEL[k]])} />
+                </Field>
+                <ToggleRow label="Sanfter Farbverlauf-Hintergrund" checked={s.bgGradient} onChange={v => set('bgGradient', v)} />
+              </div>
+            </div>
+          </SubSection>
+
+          <Divider />
+
+          {/* Schrift */}
+          <SubSection title="Schrift">
+            <div style={twoCol}>
               <Field label="Schriftart der Überschriften">
                 <select className="bp-input" value={s.headingFont} onChange={e => set('headingFont', e.target.value as HeadingFontKey)}>
                   {(Object.keys(HEADING_FONTS) as HeadingFontKey[]).map(k => (
@@ -246,12 +300,6 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
                   ))}
                 </select>
               </Field>
-
-              <Field label="Größe der Überschriften">
-                <SegmentRow value={s.headingScale} onChange={v => set('headingScale', v as DisplaySettings['headingScale'])}
-                  options={[['kompakt', 'Kompakt'], ['standard', 'Standard'], ['gross', 'Groß']]} />
-              </Field>
-
               <Field label="Schriftart des Fließtexts">
                 <select className="bp-input" value={s.bodyFont} onChange={e => set('bodyFont', e.target.value as BodyFontKey)}>
                   {(Object.keys(BODY_FONTS) as BodyFontKey[]).map(k => (
@@ -259,198 +307,186 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
                   ))}
                 </select>
               </Field>
-
-              <Field label="Zweite Akzentfarbe (Badges, Links)">
-                <ToggleRow label="Eigene zweite Farbe verwenden" checked={s.accent2 !== null}
-                  onChange={v => set('accent2', v ? shade(s.accent, -0.3) : null)} />
-                {s.accent2 !== null && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
-                    {ACCENT_PRESETS.map(p => (
-                      <button key={p.value} type="button" title={p.label} onClick={() => set('accent2', p.value)}
-                        style={{ width: 24, height: 24, borderRadius: 999, background: p.value, cursor: 'pointer',
-                          border: (s.accent2 ?? '').toLowerCase() === p.value.toLowerCase() ? '2px solid var(--bp-ink)' : '1px solid rgba(0,0,0,0.15)' }} />
-                    ))}
-                    <input type="color" value={s.accent2 ?? s.accent} onChange={e => set('accent2', e.target.value)}
-                      style={{ width: 26, height: 26, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }} />
-                  </div>
-                )}
+              <Field label="Größe der Überschriften">
+                <SegmentRow value={s.headingScale} onChange={v => set('headingScale', v as DisplaySettings['headingScale'])}
+                  options={[['kompakt', 'Kompakt'], ['standard', 'Standard'], ['gross', 'Groß']]} />
               </Field>
             </div>
+          </SubSection>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <Field label="Hintergrundfarbe">
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {BG_COLOR_PRESETS.map(p => (
-                    <button key={p.value} type="button" title={p.label} onClick={() => set('bgColor', p.value)}
-                      style={{ width: 26, height: 26, borderRadius: 8, background: p.value, cursor: 'pointer',
-                        border: s.bgColor.toLowerCase() === p.value.toLowerCase() ? '2px solid var(--bp-ink)' : '1px solid rgba(0,0,0,0.18)' }} />
-                  ))}
-                </div>
-              </Field>
+          <Divider />
 
-              <Field label="Hintergrund-Muster">
-                <SegmentRow value={s.bgTexture} onChange={v => set('bgTexture', v as DisplaySettings['bgTexture'])}
-                  options={(Object.keys(TEXTURE_LABEL) as DisplaySettings['bgTexture'][]).map(k => [k, TEXTURE_LABEL[k]])} />
-              </Field>
-
-              <ToggleRow label="Sanfter Farbverlauf-Hintergrund" checked={s.bgGradient} onChange={v => set('bgGradient', v)} />
-
+          {/* Form & Layout */}
+          <SubSection title="Form &amp; Layout">
+            <div style={twoCol}>
               <Field label="Karten-Stil">
                 <SegmentRow value={s.cardStyle} onChange={v => set('cardStyle', v as DisplaySettings['cardStyle'])}
                   options={(Object.keys(CARD_STYLE_LABEL) as DisplaySettings['cardStyle'][]).map(k => [k, CARD_STYLE_LABEL[k]])} />
               </Field>
-
               <Field label="Abstände (Dichte)">
                 <SegmentRow value={s.density} onChange={v => set('density', v as DisplaySettings['density'])}
                   options={[['kompakt', 'Kompakt'], ['standard', 'Standard'], ['luftig', 'Luftig']]} />
               </Field>
-
               <Field label="Form (Ecken)">
                 <SegmentRow value={s.cornerStyle} onChange={v => set('cornerStyle', v as DisplaySettings['cornerStyle'])}
                   options={[['soft', 'Verspielt'], ['elegant', 'Elegant']]} />
               </Field>
-
               <Field label="Button-Stil">
                 <SegmentRow value={s.buttonStyle} onChange={v => set('buttonStyle', v as DisplaySettings['buttonStyle'])}
                   options={[['pill', 'Rund'], ['square', 'Eckig']]} />
               </Field>
-
+            </div>
+            <div style={{ marginTop: 18 }}>
               <Field label="Monogramm / Initialen (Wordmark)">
                 <input className="bp-input" value={s.monogram} maxLength={24} placeholder="z. B. A & M"
                   onChange={e => set('monogram', e.target.value)} />
               </Field>
-
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}>
               <ToggleRow label="Dezente Ornamente & Trennlinien" checked={s.ornaments} onChange={v => set('ornaments', v)} />
               <ToggleRow label="Countdown zum Termin anzeigen" checked={s.countdown} onChange={v => set('countdown', v)} />
             </div>
-          </div>
+          </SubSection>
 
-          {/* Titelbild */}
-          <div style={{ marginTop: 22 }}>
-            <p className="bp-label-text" style={{ marginBottom: 8 }}>Titelbild (Hero)</p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <input ref={coverInput} type="file" accept="image/*" hidden onChange={onCover} />
-              <button type="button" className="bp-btn" disabled={coverBusy} onClick={() => coverInput.current?.click()}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {coverBusy ? <Loader2 size={14} className="bp-spin" /> : <ImagePlus size={14} />} Titelbild hochladen
-              </button>
-              <button type="button" className="bp-btn" disabled={coverBusy} onClick={removeCover}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--bp-red)' }}>
-                <Trash2 size={14} /> Entfernen
-              </button>
-            </div>
-            <p style={{ fontSize: 12, color: 'var(--bp-ink-3)', margin: '8px 0 0' }}>Erscheint als großflächiger Kopf der RSVP-Seite. Bildwechsel werden in der Vorschau nach „Übernehmen“ sichtbar.</p>
-          </div>
+          <Divider />
 
-          {/* Hintergrundfoto */}
-          <div style={{ marginTop: 20 }}>
-            <p className="bp-label-text" style={{ marginBottom: 8 }}>Hintergrundfoto (ganze Seite)</p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <input ref={bgPhotoInput} type="file" accept="image/*" hidden onChange={onBgPhoto} />
-              <button type="button" className="bp-btn" disabled={bgPhotoBusy} onClick={() => bgPhotoInput.current?.click()}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {bgPhotoBusy ? <Loader2 size={14} className="bp-spin" /> : <ImagePlus size={14} />} Foto hochladen
-              </button>
-              {s.bgPhotoR2Key && (
-                <button type="button" className="bp-btn" disabled={bgPhotoBusy} onClick={removeBgPhoto}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--bp-red)' }}>
-                  <Trash2 size={14} /> Entfernen
-                </button>
-              )}
-              {s.bgPhotoR2Key && <span style={{ fontSize: 12, color: 'var(--bp-green)' }}>Foto gesetzt</span>}
-            </div>
-            {s.bgPhotoR2Key && (
-              <div style={{ marginTop: 12, maxWidth: 280 }}>
-                <label className="bp-label-text" style={{ display: 'block', marginBottom: 6 }}>Weichzeichnung: {s.bgPhotoBlur}px</label>
-                <input type="range" min={0} max={30} value={s.bgPhotoBlur} onChange={e => set('bgPhotoBlur', Number(e.target.value))}
-                  style={{ width: '100%', accentColor: 'var(--bp-gold)' }} />
-              </div>
-            )}
-          </div>
-
-          {/* Kompakte Live-Stil-Vorschau */}
-          <div style={{ marginTop: 24 }}>
-            <p className="bp-label-text" style={{ marginBottom: 8 }}>Stil-Vorschau</p>
-            <CompactPreview s={s} radius={radius} />
-          </div>
-        </div>
-      )}
-
-      {/* ════════════ TAB: EINLADUNG & RSVP ════════════ */}
-      {tab === 'einladung' && (
-        <div>
-          {/* Einladungs-Gestaltung */}
-          <h4 className="bp-font-heading" style={{ fontSize: '1.05rem', margin: '0 0 4px' }}>Einladungs-Gestaltung</h4>
-          <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3)', margin: '0 0 16px' }}>
-            Begrüßung und Motiv der Einladungs-/RSVP-Seite. Leere Felder erben automatisch die Einstellungen aus „Anzeige & Stil“.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <Field label="Begrüßung – Überschrift">
-                <input className="bp-input" value={s.invitation.greetingTitle} maxLength={120}
-                  placeholder="z. B. Wir heiraten!" onChange={e => setInv('greetingTitle', e.target.value)} />
-              </Field>
-              <Field label="Begrüßung – Untertitel">
-                <textarea className="bp-textarea" value={s.invitation.greetingSubtitle} maxLength={240} rows={2}
-                  style={{ minHeight: 64 }}
-                  placeholder="z. B. Feiert mit uns den schönsten Tag unseres Lebens." onChange={e => setInv('greetingSubtitle', e.target.value)} />
-              </Field>
+          {/* Bilder */}
+          <SubSection title="Bilder">
+            <div style={twoCol}>
               <div>
-                <label className="bp-label-text" style={{ display: 'block', marginBottom: 6 }}>Einladungs-Motiv (Hintergrund)</label>
+                <label className="bp-label-text">Titelbild (Hero)</label>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <input ref={motiveInput} type="file" accept="image/*" hidden onChange={onMotive} />
-                  <button type="button" className="bp-btn" disabled={motiveBusy} onClick={() => motiveInput.current?.click()}
+                  <input ref={coverInput} type="file" accept="image/*" hidden onChange={onCover} />
+                  <button type="button" className="bp-btn" disabled={coverBusy} onClick={() => coverInput.current?.click()}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {motiveBusy ? <Loader2 size={14} className="bp-spin" /> : <ImagePlus size={14} />} Motiv hochladen
+                    {coverBusy ? <Loader2 size={14} className="bp-spin" /> : <ImagePlus size={14} />} Hochladen
                   </button>
-                  {s.invitation.motiveR2Key && (
-                    <button type="button" className="bp-btn" disabled={motiveBusy} onClick={removeMotive}
+                  <button type="button" className="bp-btn" disabled={coverBusy} onClick={removeCover}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--bp-red)' }}>
+                    <Trash2 size={14} /> Entfernen
+                  </button>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--bp-ink-3)', margin: '8px 0 0' }}>
+                  Großflächiger Kopf der RSVP-Seite. Sichtbar in der Vorschau nach „Übernehmen“.
+                </p>
+              </div>
+
+              <div>
+                <label className="bp-label-text">Hintergrundfoto (ganze Seite)</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input ref={bgPhotoInput} type="file" accept="image/*" hidden onChange={onBgPhoto} />
+                  <button type="button" className="bp-btn" disabled={bgPhotoBusy} onClick={() => bgPhotoInput.current?.click()}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {bgPhotoBusy ? <Loader2 size={14} className="bp-spin" /> : <ImagePlus size={14} />} Hochladen
+                  </button>
+                  {s.bgPhotoR2Key && (
+                    <button type="button" className="bp-btn" disabled={bgPhotoBusy} onClick={removeBgPhoto}
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--bp-red)' }}>
                       <Trash2 size={14} /> Entfernen
                     </button>
                   )}
-                  {s.invitation.motiveR2Key && <span style={{ fontSize: 12, color: 'var(--bp-green)', alignSelf: 'center' }}>Motiv gesetzt</span>}
+                  {s.bgPhotoR2Key && <span style={{ fontSize: 12, color: 'var(--bp-green)' }}>Foto gesetzt</span>}
                 </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <Field label="Akzentfarbe der Einladung">
-                <ToggleRow label="Eigene Akzentfarbe verwenden" checked={s.invitation.accent !== null}
-                  onChange={v => setInv('accent', v ? s.accent : null)} />
-                {s.invitation.accent !== null && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
-                    {ACCENT_PRESETS.map(p => (
-                      <button key={p.value} type="button" title={p.label} onClick={() => setInv('accent', p.value)}
-                        style={{ width: 24, height: 24, borderRadius: 999, background: p.value, cursor: 'pointer',
-                          border: (s.invitation.accent ?? '').toLowerCase() === p.value.toLowerCase() ? '2px solid var(--bp-ink)' : '1px solid rgba(0,0,0,0.15)' }} />
-                    ))}
-                    <input type="color" value={s.invitation.accent ?? s.accent} onChange={e => setInv('accent', e.target.value)}
-                      style={{ width: 26, height: 26, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }} />
+                {s.bgPhotoR2Key && (
+                  <div style={{ marginTop: 12, maxWidth: 280 }}>
+                    <label className="bp-label-text" style={{ marginBottom: 6 }}>Weichzeichnung: {s.bgPhotoBlur}px</label>
+                    <input type="range" min={0} max={30} value={s.bgPhotoBlur} onChange={e => set('bgPhotoBlur', Number(e.target.value))}
+                      style={{ width: '100%', accentColor: 'var(--bp-gold)' }} />
                   </div>
                 )}
-              </Field>
-              <Field label="Überschriften-Schrift der Einladung">
-                <select className="bp-input" value={s.invitation.headingFont ?? ''}
-                  onChange={e => setInv('headingFont', (e.target.value || null) as HeadingFontKey | null)}>
-                  <option value="">Wie global ({HEADING_FONTS[s.headingFont].label})</option>
-                  {(Object.keys(HEADING_FONTS) as HeadingFontKey[]).map(k => (
-                    <option key={k} value={k}>{HEADING_FONTS[k].label}</option>
-                  ))}
-                </select>
-              </Field>
+              </div>
+            </div>
+          </SubSection>
+
+          <Divider />
+
+          {/* Stil-Vorschau */}
+          <SubSection title="Stil-Vorschau" hint="So wirken eure Einstellungen — aktualisiert sich sofort.">
+            <CompactPreview s={s} radius={radius} />
+          </SubSection>
+        </div>
+      </div>
+
+      {/* ════════════ KARTE 2: EINLADUNG & RSVP ════════════ */}
+      <div className="bp-card" id="einladung" ref={einladungRef} style={{ overflow: 'hidden', scrollMarginTop: 16 }}>
+        <div className="bp-card-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Mail size={18} style={{ color: 'var(--bp-gold-deep)' }} />
+            <div>
+              <h2 className="bp-section-title" style={{ margin: 0 }}>Einladung &amp; RSVP</h2>
+              <p className="bp-caption" style={{ margin: '2px 0 0' }}>Texte, Motiv und Formularoptionen der Antwortseite eurer Gäste.</p>
             </div>
           </div>
+        </div>
+        <div className="bp-card-body" style={{ padding: '1.5rem' }}>
+          {/* Einladungs-Gestaltung */}
+          <SubSection title="Einladungs-Gestaltung" hint="Begrüßung und Motiv der Einladungsseite. Leere Felder erben automatisch „Anzeige & Stil“.">
+            <div style={twoCol}>
+              <div style={col}>
+                <Field label="Begrüßung – Überschrift">
+                  <input className="bp-input" value={s.invitation.greetingTitle} maxLength={120}
+                    placeholder="z. B. Wir heiraten!" onChange={e => setInv('greetingTitle', e.target.value)} />
+                </Field>
+                <Field label="Begrüßung – Untertitel">
+                  <textarea className="bp-textarea" value={s.invitation.greetingSubtitle} maxLength={240} rows={2}
+                    style={{ minHeight: 64 }}
+                    placeholder="z. B. Feiert mit uns den schönsten Tag unseres Lebens." onChange={e => setInv('greetingSubtitle', e.target.value)} />
+                </Field>
+              </div>
 
-          {/* RSVP-Einstellungen (ehemals im Gäste-Bereich) */}
-          <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1px solid var(--bp-rule)' }}>
-            <h4 className="bp-font-heading" style={{ fontSize: '1.05rem', margin: '0 0 4px' }}>RSVP-Einstellungen</h4>
-            <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3)', margin: '0 0 16px' }}>
-              Einladungstext, Frist und Formularoptionen für die Antwortseite eurer Gäste.
-            </p>
+              <div style={col}>
+                <div>
+                  <label className="bp-label-text">Einladungs-Motiv (Hintergrund)</label>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <input ref={motiveInput} type="file" accept="image/*" hidden onChange={onMotive} />
+                    <button type="button" className="bp-btn" disabled={motiveBusy} onClick={() => motiveInput.current?.click()}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {motiveBusy ? <Loader2 size={14} className="bp-spin" /> : <ImagePlus size={14} />} Motiv hochladen
+                    </button>
+                    {s.invitation.motiveR2Key && (
+                      <button type="button" className="bp-btn" disabled={motiveBusy} onClick={removeMotive}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--bp-red)' }}>
+                        <Trash2 size={14} /> Entfernen
+                      </button>
+                    )}
+                    {s.invitation.motiveR2Key && <span style={{ fontSize: 12, color: 'var(--bp-green)', alignSelf: 'center' }}>Motiv gesetzt</span>}
+                  </div>
+                </div>
+                <Field label="Akzentfarbe der Einladung">
+                  <ToggleRow label="Eigene Akzentfarbe verwenden" checked={s.invitation.accent !== null}
+                    onChange={v => setInv('accent', v ? s.accent : null)} />
+                  {s.invitation.accent !== null && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 8 }}>
+                      {ACCENT_PRESETS.map(p => (
+                        <button key={p.value} type="button" title={p.label} onClick={() => setInv('accent', p.value)}
+                          style={{ width: 24, height: 24, borderRadius: 999, background: p.value, cursor: 'pointer',
+                            border: (s.invitation.accent ?? '').toLowerCase() === p.value.toLowerCase() ? '2px solid var(--bp-ink)' : '1px solid rgba(0,0,0,0.15)' }} />
+                      ))}
+                      <input type="color" value={s.invitation.accent ?? s.accent} onChange={e => setInv('accent', e.target.value)}
+                        style={{ width: 26, height: 26, border: 'none', background: 'none', cursor: 'pointer', padding: 0 }} />
+                    </div>
+                  )}
+                </Field>
+                <Field label="Überschriften-Schrift der Einladung">
+                  <select className="bp-input" value={s.invitation.headingFont ?? ''}
+                    onChange={e => setInv('headingFont', (e.target.value || null) as HeadingFontKey | null)}>
+                    <option value="">Wie global ({HEADING_FONTS[s.headingFont].label})</option>
+                    {(Object.keys(HEADING_FONTS) as HeadingFontKey[]).map(k => (
+                      <option key={k} value={k}>{HEADING_FONTS[k].label}</option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            </div>
+          </SubSection>
+
+          <Divider />
+
+          {/* RSVP-Einstellungen */}
+          <SubSection title="RSVP-Einstellungen" hint="Einladungstext, Frist und Formularoptionen für die Antwortseite.">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 620 }}>
               <Field label="Einladungstext">
-                <p className="bp-caption" style={{ marginBottom: '0.5rem' }}>{'Wird als Einleitung auf der RSVP-Seite gezeigt. {{Name}} = Gastname.'}</p>
+                <p className="bp-caption" style={{ marginBottom: '0.5rem' }}>{'Einleitung auf der RSVP-Seite. {{Name}} = Gastname.'}</p>
                 <textarea className="bp-textarea" rows={5} value={rsvp.invitation_text ?? ''}
                   onChange={e => setRsvpField('invitation_text', e.target.value)} />
               </Field>
@@ -464,19 +500,19 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
                     onChange={e => setRsvpField('phone_contact', e.target.value)} />
                 </Field>
               </div>
-              <ToggleRow label="Menüwahl im RSVP-Formular anzeigen" checked={rsvp.show_meal_choice}
-                onChange={v => setRsvpField('show_meal_choice', v)} />
-              <ToggleRow label="Begleitperson-Option anzeigen" checked={rsvp.show_plus_one}
-                onChange={v => setRsvpField('show_plus_one', v)} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <ToggleRow label="Menüwahl im RSVP-Formular anzeigen" checked={rsvp.show_meal_choice}
+                  onChange={v => setRsvpField('show_meal_choice', v)} />
+                <ToggleRow label="Begleitperson-Option anzeigen" checked={rsvp.show_plus_one}
+                  onChange={v => setRsvpField('show_plus_one', v)} />
+              </div>
             </div>
-          </div>
+          </SubSection>
+
+          <Divider />
 
           {/* Abschnitte ein-/ausblenden */}
-          <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1px solid var(--bp-rule)' }}>
-            <h4 className="bp-font-heading" style={{ fontSize: '1.05rem', margin: '0 0 4px' }}>Abschnitte ein-/ausblenden</h4>
-            <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3)', margin: '0 0 16px' }}>
-              Blende einzelne Abschnitte der RSVP-Seite für eure Gäste aus.
-            </p>
+          <SubSection title="Sichtbare Abschnitte" hint="Lege fest, welche Abschnitte eure Gäste auf der RSVP-Seite sehen.">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
               {RSVP_SECTIONS.map(sec => (
                 <ToggleRow key={sec.key} label={sec.label}
@@ -484,30 +520,32 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
                   onChange={v => toggleSection(sec.key, !v)} />
               ))}
             </div>
-          </div>
-        </div>
-      )}
+          </SubSection>
 
-      {/* ── Exemplarische RSVP-Vorschau (nur im Reiter „Einladung & RSVP“) ── */}
-      {tab === 'einladung' && (
-      <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1px solid var(--bp-rule)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-          <p className="bp-label-text" style={{ margin: 0 }}>Beispielansicht der RSVP-Seite</p>
-          <button type="button" className="bp-btn" onClick={saveAndOpen} disabled={saving}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Eye size={14} /> Echte Vorschau im Tab
-          </button>
+          <Divider />
+
+          {/* Beispielansicht */}
+          <SubSection title="Beispielansicht der RSVP-Seite"
+            hint="Beispielhafte Darstellung mit euren Einstellungen — Titelbild/Motiv zeigt die echte Vorschau.">
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <button type="button" className="bp-btn" onClick={saveAndOpen} disabled={saving}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Eye size={14} /> Echte Vorschau im Tab
+              </button>
+            </div>
+            <RsvpExamplePreview s={s} rsvp={rsvp} />
+          </SubSection>
         </div>
-        <p style={{ fontSize: 12, color: 'var(--bp-ink-3)', margin: '0 0 12px' }}>
-          Beispielhafte Darstellung mit euren Einstellungen — aktualisiert sich sofort. Titelbild/Motiv werden
-          in der echten Vorschau (Tab) gezeigt.
-        </p>
-        <RsvpExamplePreview s={s} rsvp={rsvp} />
       </div>
-      )}
 
-      {/* ── Speichern ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 18 }}>
+      {/* ── Speicher-Leiste (für beide Karten) ── */}
+      <div style={{
+        position: 'sticky', bottom: 0, zIndex: 5,
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+        padding: '0.875rem 1.25rem', background: 'var(--bp-paper)',
+        border: '1px solid var(--bp-rule)', borderRadius: 'var(--bp-r-md)',
+        boxShadow: 'var(--bp-shadow-card)',
+      }}>
         <button type="button" className="bp-btn bp-btn-primary" onClick={save} disabled={saving}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           {saving ? <Loader2 size={14} className="bp-spin" /> : saved ? <Check size={14} /> : null}
@@ -527,17 +565,28 @@ const chip: React.CSSProperties = {
 }
 const chipActive: React.CSSProperties = { background: 'var(--bp-ink)', color: '#fff', borderColor: 'var(--bp-ink)' }
 
-function TabButton({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+// Zwei-Spalten-Raster (bricht auf schmalen Karten automatisch auf eine Spalte um).
+const twoCol: React.CSSProperties = {
+  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, alignItems: 'start',
+}
+const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 18 }
+
+function SubSection({ title, hint, children }: { title: React.ReactNode; hint?: string; children: React.ReactNode }) {
   return (
-    <button type="button" onClick={onClick} style={{
-      display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', border: 'none', background: 'none',
-      cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
-      color: active ? 'var(--bp-ink)' : 'var(--bp-ink-3)',
-      borderBottom: `2px solid ${active ? 'var(--bp-gold)' : 'transparent'}`, marginBottom: -1,
-    }}>
-      {icon} {label}
-    </button>
+    <section>
+      <h3 style={{ fontFamily: "'DM Sans', system-ui, sans-serif", fontSize: '0.9375rem', fontWeight: 600, color: 'var(--bp-ink)', margin: 0 }}>
+        {title}
+      </h3>
+      {hint
+        ? <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3)', margin: '4px 0 16px' }}>{hint}</p>
+        : <div style={{ height: 14 }} />}
+      {children}
+    </section>
   )
+}
+
+function Divider() {
+  return <div style={{ height: 1, background: 'var(--bp-rule)', margin: '24px 0' }} />
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -564,9 +613,9 @@ function SegmentRow({ value, onChange, options }: { value: string; onChange: (v:
 
 function ToggleRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: 14, color: 'var(--bp-ink)' }}>
+    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, cursor: 'pointer', fontSize: 14, color: 'var(--bp-ink)' }}>
       {label}
-      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--bp-gold)' }} />
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--bp-gold)', flexShrink: 0 }} />
     </label>
   )
 }
