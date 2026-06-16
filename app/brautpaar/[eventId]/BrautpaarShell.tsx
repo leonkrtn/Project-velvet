@@ -267,7 +267,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
         role={!expanded ? 'button' : undefined}
         aria-label={!expanded ? 'Sidebar aufklappen' : undefined}
       >
-        <span className="bp-sidebar-couple-name">
+        <span className="bp-sidebar-couple-name" style={isSolo ? { color: 'var(--bp-ink)' } : undefined}>
           {monogram && <span className="bp-font-heading" style={{ display: 'block', fontSize: '0.7rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--bp-gold)', marginBottom: 2 }}>{monogram}</span>}
           {eventTitle}
         </span>
