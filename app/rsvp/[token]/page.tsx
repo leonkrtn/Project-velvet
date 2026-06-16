@@ -12,7 +12,7 @@ import type {
 import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle, Input } from '@/components/ui'
 import {
   DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, BODY_FONTS, fontHrefFor, bodyFontHrefFor,
-  shade, textureStyle, invitationFont, buildRsvpThemeCss,
+  shade, textureStyle, invitationFont, invitationBgColor, buildRsvpThemeCss,
   rsvpText, focusPosition, focusSize, alphaHex, type DisplaySettings,
 } from '@/lib/display-settings'
 
@@ -548,10 +548,11 @@ export default function RSVPPage() {
   const headingFontHref = fontHrefFor(effFont)
   const bodyFontHref = bodyFontHrefFor(display.bodyFont)
   const themeCss = buildRsvpThemeCss(display)
+  const bgColor = invitationBgColor(display)
 
   // Hintergrund-Priorität: eigenes Foto → Farbverlauf → Textur → einfarbig.
   const baseBgStyle: React.CSSProperties = !bgPhotoUrl && display.bgGradient
-    ? { backgroundImage: `linear-gradient(165deg, ${display.bgColor}, ${shade(display.bgColor, -0.06)})`, backgroundAttachment: 'fixed' }
+    ? { backgroundImage: `linear-gradient(165deg, ${bgColor}, ${shade(bgColor, -0.06)})`, backgroundAttachment: 'fixed' }
     : (!bgPhotoUrl && tex.image !== 'none')
       ? { backgroundImage: tex.image, backgroundSize: tex.size, backgroundAttachment: 'fixed' }
       : {}
@@ -564,7 +565,7 @@ export default function RSVPPage() {
 
   return (
     <div className="rsvp-root" style={{
-      position: 'relative', backgroundColor: display.bgColor, minHeight: '100dvh',
+      position: 'relative', backgroundColor: bgColor, minHeight: '100dvh',
       paddingBottom: 'calc(40px + env(safe-area-inset-bottom))', color: 'var(--text)',
       ...baseBgStyle,
     }}>
@@ -582,7 +583,7 @@ export default function RSVPPage() {
         }} />
       )}
       {bgPhotoUrl && (
-        <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: `${display.bgColor}${alphaHex(display.bgPhotoOverlay)}` }} />
+        <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: `${bgColor}${alphaHex(display.bgPhotoOverlay)}` }} />
       )}
 
       <div style={{ position: 'relative', zIndex: 1 }}>
@@ -654,7 +655,7 @@ export default function RSVPPage() {
               ...(onImage
                 ? { backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0.58) 100%), url(${coverUrl})`, backgroundSize: `cover, ${focusSize(display.coverFocus)}`, backgroundPosition: `center, ${focusPosition(display.coverFocus)}` }
                 : motiveUrl
-                  ? { backgroundImage: `linear-gradient(to bottom, ${shade(display.bgColor, 0)}cc, ${display.bgColor}f2), url(${motiveUrl})`, backgroundSize: `cover, ${focusSize(display.invitation.motiveFocus)}`, backgroundPosition: `center, ${focusPosition(display.invitation.motiveFocus)}` }
+                  ? { backgroundImage: `linear-gradient(to bottom, ${shade(bgColor, 0)}cc, ${bgColor}f2), url(${motiveUrl})`, backgroundSize: `cover, ${focusSize(display.invitation.motiveFocus)}`, backgroundPosition: `center, ${focusPosition(display.invitation.motiveFocus)}` }
                   : { backgroundImage: `linear-gradient(160deg, var(--gold-pale), transparent 70%)` }),
             }}>
               <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.22em', color: onImage ? 'rgba(255,255,255,0.92)' : 'var(--gold)', marginBottom: 12 }}>

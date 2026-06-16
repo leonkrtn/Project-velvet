@@ -20,6 +20,7 @@ import {
 import { Help, Row, Stack, Toggle, Segment, Swatches, Slider, GroupTitle, Hr, chip, chipActive } from './ui'
 import ImagePositioner from './ImagePositioner'
 import DisplayPreview, { type PreviewImages } from './DisplayPreview'
+import AppMenuPreview from './AppMenuPreview'
 
 interface RsvpSettings {
   id?: string
@@ -37,20 +38,23 @@ type GroupKey = 'anzeige' | 'rsvp' | 'allgemein'
 
 // Strikte Trennung: „Anzeige" (Optik der Seite) vs. „RSVP" (Antwort-Formular).
 const GROUPS: { key: GroupKey; label: string }[] = [
-  { key: 'anzeige',   label: 'Anzeige' },
-  { key: 'rsvp',      label: 'RSVP' },
+  { key: 'anzeige',   label: 'Anzeige · Menü' },
+  { key: 'rsvp',      label: 'RSVP · Einladungsseite' },
   { key: 'allgemein', label: 'Allgemein' },
 ]
 
 const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon; group: GroupKey; kw: string[] }[] = [
+  // Anzeige (Portal-Menü): theming des Brautpaar-Portals.
   { key: 'stilpakete', label: 'Stilpakete',           icon: Sparkles,      group: 'anzeige',   kw: ['preset', 'stil', 'vorlage', 'theme', 'look'] },
   { key: 'farben',     label: 'Farben',               icon: Palette,       group: 'anzeige',   kw: ['farbe', 'akzent', 'hintergrund', 'muster', 'verlauf', 'harmonie'] },
   { key: 'schrift',    label: 'Schrift',              icon: Type,          group: 'anzeige',   kw: ['schrift', 'font', 'überschrift', 'fließtext', 'größe', 'paarung'] },
-  { key: 'layout',     label: 'Layout & Form',        icon: LayoutGrid,    group: 'anzeige',   kw: ['layout', 'karte', 'ecken', 'button', 'dichte', 'abstand', 'ornament', 'countdown', 'monogramm'] },
-  { key: 'bilder',     label: 'Bilder',               icon: ImageIcon,     group: 'anzeige',   kw: ['bild', 'titelbild', 'hintergrundfoto', 'foto', 'cover', 'zuschnitt', 'overlay', 'tönung', 'weichzeichnen', 'blur'] },
-  { key: 'einladung',  label: 'Einladung',            icon: Mail,          group: 'anzeige',   kw: ['einladung', 'begrüßung', 'motiv'] },
+  // RSVP (Einladungs-/Antwortseite der Gäste).
+  { key: 'einladung',  label: 'Einladung',            icon: Mail,          group: 'rsvp',      kw: ['einladung', 'begrüßung', 'motiv'] },
+  { key: 'bilder',     label: 'Bilder',               icon: ImageIcon,     group: 'rsvp',      kw: ['bild', 'titelbild', 'hintergrundfoto', 'foto', 'cover', 'zuschnitt', 'overlay', 'tönung', 'weichzeichnen', 'blur'] },
+  { key: 'layout',     label: 'Layout & Form',        icon: LayoutGrid,    group: 'rsvp',      kw: ['layout', 'karte', 'ecken', 'button', 'dichte', 'abstand', 'ornament', 'countdown', 'monogramm'] },
   { key: 'rsvp',       label: 'RSVP-Formular',        icon: ClipboardList, group: 'rsvp',      kw: ['rsvp', 'antwort', 'frist', 'menü', 'begleit', 'kontakt', 'telefon', 'einladungstext'] },
   { key: 'abschnitte', label: 'Sichtbare Abschnitte', icon: Eye,           group: 'rsvp',      kw: ['abschnitt', 'sichtbar', 'ausblenden', 'dresscode', 'kinder', 'allergie', 'anreise', 'nachricht'] },
+  // Allgemein.
   { key: 'code',       label: 'Sichern & Code',       icon: Code,          group: 'allgemein', kw: ['code', 'export', 'import', 'sichern', 'zurücksetzen', 'reset', 'standard'] },
 ]
 
@@ -243,6 +247,11 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
 
   const fontHref = fontHrefFor(s.headingFont)
 
+  // Vorschau-Modus automatisch nach Bereich: RSVP-Bereiche → RSVP-Seite,
+  // sonst Portal-Menü („Anzeige").
+  const activeGroup = SECTIONS.find(sec => sec.key === active)?.group ?? 'anzeige'
+  const previewMode: 'rsvp' | 'anzeige' = activeGroup === 'rsvp' ? 'rsvp' : 'anzeige'
+
   const overlay = (
     <div role="dialog" aria-modal="true" aria-label="Anzeige & RSVP gestalten"
       style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(30,28,26,0.55)', backdropFilter: 'blur(2px)',
@@ -332,7 +341,7 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
           <aside style={{ width: 470, flexShrink: 0, borderLeft: '1px solid var(--bp-rule)', display: 'flex', flexDirection: 'column', background: 'var(--bp-ivory-2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--bp-rule)' }}>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--bp-ink-2)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Eye size={14} /> Live-Vorschau
+                <Eye size={14} /> Vorschau · {previewMode === 'rsvp' ? 'RSVP' : 'Menü'}
               </span>
               <div style={{ display: 'inline-flex', gap: 4 }}>
                 <button type="button" onClick={() => setDevice('desktop')} title="Desktop"
@@ -342,7 +351,9 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
               </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
-              {!loading && <DisplayPreview s={s} rsvp={rsvp} images={images} device={device} coupleName={event.coupleName || 'Anna & Max'} dateLabel={dateLabel} />}
+              {!loading && (previewMode === 'rsvp'
+                ? <DisplayPreview s={s} rsvp={rsvp} images={images} device={device} coupleName={event.coupleName || 'Anna & Max'} dateLabel={dateLabel} />
+                : <AppMenuPreview s={s} device={device} coupleName={event.coupleName || 'Anna & Max'} />)}
             </div>
           </aside>
         </div>
@@ -602,6 +613,38 @@ function PaneBilder({ s, setS, images, busy, pickCover, removeCover, pickBg, rem
   )
 }
 
+// Isolierte Farben nur für die Einladungs-/RSVP-Seite (unabhängig vom Menü).
+function InvitationColors({ s, setInv }: { s: DisplaySettings; setInv: (p: Partial<DisplaySettings['invitation']>, k?: string) => void }) {
+  const inv = s.invitation
+  const ownColors = inv.accent !== null || inv.accent2 !== null || inv.bgColor !== null || inv.accentGradient !== null
+  const toggle = (on: boolean) => on
+    ? setInv({ accent: s.accent, accent2: s.accent2, bgColor: s.bgColor, accentGradient: s.accentGradient })
+    : setInv({ accent: null, accent2: null, bgColor: null, accentGradient: null })
+  return (
+    <Stack label="Eigene Farben für die Einladungsseite" help="Gibt der Einladungs-/RSVP-Seite eigene Farben – unabhängig von den Menü-Farben unter Anzeige. Aus = die Seite erbt die Menü-Farben.">
+      <Row label="Eigene Farben verwenden">
+        <Toggle checked={ownColors} onChange={toggle} />
+      </Row>
+      {ownColors && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 14 }}>
+          <Stack label="Akzentfarbe">
+            <Swatches value={inv.accent ?? s.accent} presets={ACCENT_PRESETS} onChange={v => setInv({ accent: v }, 'invAccent')} />
+          </Stack>
+          <Stack label="Zweite Akzentfarbe (Badges, Links)">
+            <Swatches value={inv.accent2 ?? effectiveAccent2(s)} presets={ACCENT_PRESETS} onChange={v => setInv({ accent2: v }, 'invAccent2')} />
+          </Stack>
+          <Stack label="Hintergrundfarbe">
+            <Swatches value={inv.bgColor ?? s.bgColor} presets={BG_COLOR_PRESETS} allowCustom={false} onChange={v => setInv({ bgColor: v }, 'invBg')} />
+          </Stack>
+          <Row label="Akzent als Farbverlauf">
+            <Toggle checked={inv.accentGradient ?? s.accentGradient} onChange={v => setInv({ accentGradient: v })} />
+          </Row>
+        </div>
+      )}
+    </Stack>
+  )
+}
+
 function PaneEinladung({ s, setInv, images, busy, pickMotive, removeMotive }: {
   s: DisplaySettings; setInv: (p: Partial<DisplaySettings['invitation']>, k?: string) => void; images: PreviewImages
   busy: { motive?: boolean }; pickMotive: (f: File) => void; removeMotive: () => void
@@ -623,14 +666,7 @@ function PaneEinladung({ s, setInv, images, busy, pickMotive, removeMotive }: {
           onPick={pickMotive} onRemove={removeMotive} busy={busy.motive} aspect={3 / 4} uploadLabel="Motiv hochladen" />
       </Stack>
       <Hr />
-      <Stack label="Akzentfarbe der Einladung" help="Überschreibt die globale Akzentfarbe nur für die Einladungsseite. Aus = wie global.">
-        <Row label="Eigene Akzentfarbe verwenden">
-          <Toggle checked={s.invitation.accent !== null} onChange={v => setInv({ accent: v ? s.accent : null })} />
-        </Row>
-        {s.invitation.accent !== null && (
-          <div style={{ marginTop: 10 }}><Swatches value={s.invitation.accent} presets={ACCENT_PRESETS} onChange={v => setInv({ accent: v }, 'invAccent')} /></div>
-        )}
-      </Stack>
+      <InvitationColors s={s} setInv={setInv} />
       <Hr />
       <Stack label="Überschriften-Schrift der Einladung" help="Eigene Schrift nur für die Einladungsseite. Wie global übernimmt die allgemeine Wahl.">
         <select className="bp-input" value={s.invitation.headingFont ?? ''} onChange={e => setInv({ headingFont: (e.target.value || null) as HeadingFontKey | null })}>

@@ -4,9 +4,11 @@ import React from 'react'
 import { CheckCircle, XCircle, Clock, Phone, CalendarClock } from 'lucide-react'
 import {
   HEADING_FONTS, RSVP_TEXT_DEFAULTS, fontHrefFor, bodyFontHrefFor,
-  buildRsvpThemeCss, invitationFont, alphaHex, focusPosition, focusSize,
+  buildRsvpThemeCss, invitationFont, invitationBgColor, invitationGradient,
+  alphaHex, focusPosition, focusSize,
   type DisplaySettings,
 } from '@/lib/display-settings'
+import { DeviceFrame, screenHeightFor } from './DeviceMock'
 
 export interface PreviewRsvp {
   invitation_text: string
@@ -40,6 +42,8 @@ export default function DisplayPreview({
   const headingHref = fontHrefFor(effFont)
   const bodyHref = bodyFontHrefFor(s.bodyFont)
   const themeCss = buildRsvpThemeCss(s)
+  const bg = invitationBgColor(s)
+  const grad = invitationGradient(s)
   const intro = (rsvp.invitation_text?.trim() || 'Liebe/r {{Name}}, wir freuen uns sehr, mit dir zu feiern.')
     .replace(/\{\{\s*Name\s*\}\}/g, 'Anna')
 
@@ -48,10 +52,10 @@ export default function DisplayPreview({
   const heroFocus = heroIsCover ? s.coverFocus : s.invitation.motiveFocus
   const textOnImage = !!heroImg
 
-  const screenHeight = device === 'mobile' ? 600 : 340
+  const screenHeight = screenHeightFor(device)
 
   const screen = (
-      <div className="rsvp-root" style={{ position: 'relative', height: screenHeight, overflowY: 'auto', background: s.bgColor }}>
+      <div className="rsvp-root" style={{ position: 'relative', height: screenHeight, overflowY: 'auto', background: bg }}>
         <style>{themeCss}</style>
         {headingHref && <link rel="stylesheet" href={headingHref} />}
         {bodyHref && <link rel="stylesheet" href={bodyHref} />}
@@ -66,7 +70,7 @@ export default function DisplayPreview({
               filter: s.bgPhotoBlur ? `blur(${s.bgPhotoBlur}px)` : undefined,
               transform: s.bgPhotoBlur ? 'scale(1.06)' : undefined,
             }} />
-            <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', background: `${s.bgColor}${alphaHex(s.bgPhotoOverlay)}` }} />
+            <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', background: `${bg}${alphaHex(s.bgPhotoOverlay)}` }} />
           </>
         )}
 
@@ -79,7 +83,7 @@ export default function DisplayPreview({
             backgroundImage: heroImg
               ? (heroIsCover
                   ? `linear-gradient(to bottom, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0.58) 100%), url(${heroImg})`
-                  : `linear-gradient(${s.bgColor}cc, ${s.bgColor}f2), url(${heroImg})`)
+                  : `linear-gradient(${bg}cc, ${bg}f2), url(${heroImg})`)
               : 'linear-gradient(160deg, var(--gold-pale), transparent 72%)',
             backgroundSize: heroImg ? `cover, ${focusSize(heroFocus)}` : undefined,
             backgroundPosition: heroImg ? `center, ${focusPosition(heroFocus)}` : undefined,
@@ -158,7 +162,7 @@ export default function DisplayPreview({
             <button type="button" disabled style={{
               marginTop: 4, padding: '13px', borderRadius: 'var(--ui-btn-radius, 999px)', border: 'none', cursor: 'default',
               color: '#fff', fontWeight: 700, fontSize: 14, fontFamily: 'inherit',
-              background: s.accentGradient ? 'linear-gradient(135deg, var(--gold), var(--gold-deep))' : 'var(--gold)',
+              background: grad ? 'linear-gradient(135deg, var(--gold), var(--gold-deep))' : 'var(--gold)',
             }}>
               Jetzt antworten
             </button>
@@ -167,53 +171,7 @@ export default function DisplayPreview({
       </div>
   )
 
-  return device === 'mobile'
-    ? <IPhoneMock>{screen}</IPhoneMock>
-    : <IMacMock>{screen}</IMacMock>
-}
-
-// ── Geräte-Mockups ──────────────────────────────────────────────────────────────
-function IPhoneMock({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ width: 300, maxWidth: '100%', margin: '0 auto', flexShrink: 0 }}>
-      <div style={{
-        position: 'relative', padding: 11, borderRadius: 50,
-        background: 'linear-gradient(155deg, #43434a, #1b1b1d)',
-        boxShadow: '0 22px 55px rgba(0,0,0,0.38), inset 0 0 0 2px rgba(255,255,255,0.06)',
-      }}>
-        {/* Seitentasten */}
-        <span style={{ position: 'absolute', left: -3, top: 116, width: 3, height: 30, borderRadius: 2, background: '#2a2a2c' }} />
-        <span style={{ position: 'absolute', left: -3, top: 158, width: 3, height: 50, borderRadius: 2, background: '#2a2a2c' }} />
-        <span style={{ position: 'absolute', right: -3, top: 142, width: 3, height: 66, borderRadius: 2, background: '#2a2a2c' }} />
-        {/* Bildschirm */}
-        <div style={{ position: 'relative', borderRadius: 40, overflow: 'hidden', background: '#000' }}>
-          {/* Dynamic Island */}
-          <div style={{ position: 'absolute', top: 9, left: '50%', transform: 'translateX(-50%)', width: 90, height: 25, background: '#000', borderRadius: 999, zIndex: 6 }} />
-          {children}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function IMacMock({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ width: 420, maxWidth: '100%', margin: '0 auto', flexShrink: 0 }}>
-      {/* Gehäuse mit dünnem schwarzem Bildschirmrahmen + Aluminium-Kinn */}
-      <div style={{
-        padding: '12px 12px 28px', borderRadius: 16,
-        background: 'linear-gradient(#f2f3f5, #d9dce0)',
-        boxShadow: '0 16px 44px rgba(0,0,0,0.22), inset 0 1px 0 #ffffff',
-      }}>
-        <div style={{ borderRadius: 6, overflow: 'hidden', background: '#0a0a0b', padding: 6 }}>
-          <div style={{ borderRadius: 2, overflow: 'hidden' }}>{children}</div>
-        </div>
-      </div>
-      {/* Standfuß */}
-      <div style={{ width: 92, height: 24, margin: '0 auto', background: 'linear-gradient(#e8eaed, #c2c6cc)' }} />
-      <div style={{ width: 188, height: 12, margin: '0 auto', borderRadius: '0 0 9px 9px', background: 'linear-gradient(#cdd1d6, #b0b5bb)', boxShadow: '0 8px 14px rgba(0,0,0,0.16)' }} />
-    </div>
-  )
+  return <DeviceFrame device={device}>{screen}</DeviceFrame>
 }
 
 function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
