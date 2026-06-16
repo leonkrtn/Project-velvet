@@ -1525,6 +1525,68 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
     )
   }
 
+  // Kompakte Aktionsleiste für die Mobile-Kartenansicht: eine Zeile,
+  // WhatsApp als primäre Aktion + gleich große Icon-Buttons für den Rest.
+  function actionBarMobile(guest: Guest) {
+    const iconBtnStyle = { width: 42, minWidth: 42 }
+    return (
+      <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center' }}>
+        <button
+          className="bp-btn bp-btn-secondary bp-btn-sm"
+          onClick={() => shareWhatsApp(guest)}
+          disabled={!guest.token}
+          title="Einladung per WhatsApp teilen"
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem' }}
+        >
+          <MessageCircle size={15} /> WhatsApp
+        </button>
+        {canNativeShare && (
+          <button
+            className="bp-btn bp-btn-secondary bp-btn-sm bp-btn-icon"
+            onClick={() => shareNative(guest)}
+            disabled={!guest.token}
+            aria-label="Einladung teilen"
+            style={iconBtnStyle}
+          >
+            <Share2 size={15} />
+          </button>
+        )}
+        <button
+          className="bp-btn bp-btn-secondary bp-btn-sm bp-btn-icon"
+          onClick={() => copyLink(guest)}
+          disabled={!guest.token}
+          aria-label={copiedId === guest.id ? 'Link kopiert' : 'Link kopieren'}
+          title="Link kopieren"
+          style={iconBtnStyle}
+        >
+          {copiedId === guest.id ? <Check size={15} /> : <Copy size={15} />}
+        </button>
+        <button
+          className="bp-btn bp-btn-secondary bp-btn-sm bp-btn-icon"
+          onClick={() => toggleQr(guest)}
+          disabled={!guest.token}
+          aria-label="QR-Code anzeigen"
+          title="QR-Code"
+          style={iconBtnStyle}
+        >
+          <QrCode size={15} />
+        </button>
+        {guest.email && guest.token && (
+          <a
+            href={`mailto:${guest.email}?subject=${encodeURIComponent('Eure Hochzeitseinladung')}&body=${encodeURIComponent(buildMessage(guest))}`}
+            onClick={() => void markInvited(guest)}
+            className="bp-btn bp-btn-secondary bp-btn-sm bp-btn-icon"
+            aria-label="Einladung per E-Mail senden"
+            title="Per E-Mail senden"
+            style={iconBtnStyle}
+          >
+            <Mail size={15} />
+          </a>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div>
       {/* Verweis: Einladungstext, Frist & RSVP-Gestaltung leben jetzt unter Allgemein */}
@@ -1732,32 +1794,42 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
               <div className="bp-empty-body">Kein Gast passt zur Suche.</div>
             </div>
           </div>
-        ) : filtered.map(guest => (
-          <div key={guest.id} className="bp-card" style={{ padding: '0.875rem 1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+        ) : filtered.map(guest => {
+          const isSelected = selected.has(guest.id)
+          return (
+          <div
+            key={guest.id}
+            className="bp-card"
+            style={{
+              padding: '0.75rem 0.875rem',
+              border: isSelected ? '1px solid var(--bp-gold)' : undefined,
+              background: isSelected ? 'var(--bp-gold-pale)' : undefined,
+            }}
+          >
+            {/* Kopfzeile: Auswahl + Name + Status */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.625rem' }}>
               <input
                 type="checkbox"
-                checked={selected.has(guest.id)}
+                checked={isSelected}
                 onChange={() => toggleOne(guest.id)}
-                style={{ cursor: 'pointer', accentColor: 'var(--bp-gold)', flexShrink: 0, marginTop: '0.25rem' }}
+                style={{ cursor: 'pointer', accentColor: 'var(--bp-gold)', flexShrink: 0, width: 18, height: 18 }}
               />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {guest.name}
-                  </span>
-                  <span style={{ flexShrink: 0 }}><InviteBadge guest={guest} /></span>
-                </div>
-                <div style={{ marginBottom: '0.625rem' }}>
-                  {emailEditor(guest)}
-                </div>
-                <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
-                  {actionButtons(guest)}
-                </div>
-              </div>
+              <span style={{ flex: 1, minWidth: 0, fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {guest.name}
+              </span>
+              <span style={{ flexShrink: 0 }}><InviteBadge guest={guest} /></span>
             </div>
+
+            {/* E-Mail */}
+            <div style={{ marginBottom: '0.5rem' }}>
+              {emailEditor(guest)}
+            </div>
+
+            {/* Aktionen */}
+            {actionBarMobile(guest)}
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* QR panel */}
