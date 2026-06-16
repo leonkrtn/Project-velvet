@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 import React, { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
+import ForevrHeart from '@/components/ForevrHeart'
 import { v4 as uuid } from 'uuid'
 import { CheckCircle, XCircle, ChevronLeft, MapPin, Clock, Shirt, Hotel, Gift, Heart, Ban, ListMusic, ExternalLink, Music, Camera, UtensilsCrossed, Baby } from 'lucide-react'
 import RsvpPhotos from '@/components/rsvp/RsvpPhotos'
@@ -365,6 +366,7 @@ export default function RSVPPage() {
 
   if (!event || !guest) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh', background: 'var(--bg)', flexDirection: 'column', gap: 12 }}>
+      <ForevrHeart size={40} color="#B89968" />
       <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, letterSpacing: '0.16em', fontSize: 26, color: 'var(--gold)' }}>FOREVR</span>
       <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>
         {loadError ?? 'Einladung wird geladen…'}

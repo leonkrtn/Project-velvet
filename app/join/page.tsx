@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 import React, { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Check } from 'lucide-react'
+import ForevrHeart from '@/components/ForevrHeart'
 import { createClient } from '@/lib/supabase/client'
 import '@/app/brautpaar/brautpaar.css'
 
@@ -102,6 +103,7 @@ function JoinForm() {
       <div className="bp-auth-inner bp-auth-inner-wide">
 
         <div className="bp-auth-logo">
+          <ForevrHeart size={40} color="#9C7F4F" style={{ marginBottom: 10 }} />
           <p className="bp-auth-wordmark">FOREVR</p>
           <p className="bp-auth-tagline">Event beitreten</p>
         </div>

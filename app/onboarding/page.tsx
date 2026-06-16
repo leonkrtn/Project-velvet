@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import ForevrHeart from '@/components/ForevrHeart'
 import {
   saveEvent, createEmptyEvent,
   type Event, type HotelRoom, type BudgetItem, type Vendor,
@@ -159,7 +160,10 @@ export default function OnboardingPage() {
       <div style={{background:'var(--surface)',borderBottom:'1px solid var(--border)',padding:'16px 20px',paddingTop:'calc(16px + env(safe-area-inset-top))',position:'sticky',top:0,zIndex:10}}>
         <div style={{maxWidth:600,margin:'0 auto'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-            <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif",fontWeight:500,letterSpacing:'0.16em',fontSize:17,color:'var(--gold)'}}>FOREVR</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ForevrHeart size={16} color="#B89968" />
+              <span style={{fontFamily:"'Cormorant Garamond', Georgia, serif",fontWeight:500,letterSpacing:'0.16em',fontSize:17,color:'var(--gold)'}}>FOREVR</span>
+            </span>
             <span style={{fontSize:11,color:'var(--text-dim)'}}>{step} / {STEPS.length} — {STEPS[step-1].label}</span>
           </div>
           <div style={{display:'flex',gap:5}}>

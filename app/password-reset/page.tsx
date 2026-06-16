@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import React, { useState } from 'react'
 import { MailCheck } from 'lucide-react'
+import ForevrHeart from '@/components/ForevrHeart'
 import { createClient } from '@/lib/supabase/client'
 import '@/app/brautpaar/brautpaar.css'
 
@@ -37,7 +38,10 @@ export default function PasswordResetPage() {
     return (
       <div className="bp-auth">
         <div className="bp-auth-inner" style={{ textAlign: 'center' }}>
-          <p className="bp-auth-wordmark" style={{ marginBottom: 24 }}>FOREVR</p>
+          <div style={{ marginBottom: 24, textAlign: 'center' }}>
+            <ForevrHeart size={36} color="#9C7F4F" style={{ marginBottom: 8 }} />
+            <p className="bp-auth-wordmark" style={{ margin: 0 }}>FOREVR</p>
+          </div>
           <MailCheck size={40} style={{ color: 'var(--bp-gold-deep)', marginBottom: 12 }} />
           <h2 className="bp-h2" style={{ marginBottom: 8 }}>E-Mail unterwegs</h2>
           <p className="bp-body">
@@ -55,6 +59,7 @@ export default function PasswordResetPage() {
       <div className="bp-auth-inner">
 
         <div className="bp-auth-logo">
+          <ForevrHeart size={40} color="#9C7F4F" style={{ marginBottom: 10 }} />
           <p className="bp-auth-wordmark">FOREVR</p>
           <p className="bp-auth-tagline">Passwort zurücksetzen</p>
         </div>

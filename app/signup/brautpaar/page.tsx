@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import ForevrHeart from '@/components/ForevrHeart'
 import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ensureSoloEvent } from '@/lib/brautpaar-solo'
@@ -70,7 +71,10 @@ export default function BrautpaarSignupPage() {
     return (
       <div className="bp-auth">
         <div className="bp-auth-inner" style={{ textAlign: 'center' }}>
-          <p className="bp-auth-wordmark" style={{ marginBottom: 24 }}>FOREVR</p>
+          <div style={{ marginBottom: 24, textAlign: 'center' }}>
+            <ForevrHeart size={36} color="#9C7F4F" style={{ marginBottom: 8 }} />
+            <p className="bp-auth-wordmark" style={{ margin: 0 }}>FOREVR</p>
+          </div>
           <h2 className="bp-h2" style={{ marginBottom: 8 }}>Fast geschafft!</h2>
           <p className="bp-body">
             Bitte bestätigt eure E-Mail-Adresse über den Link, den wir euch geschickt haben.
@@ -87,6 +91,7 @@ export default function BrautpaarSignupPage() {
       <div className="bp-auth-inner bp-auth-inner-wide">
 
         <div className="bp-auth-logo">
+          <ForevrHeart size={40} color="#9C7F4F" style={{ marginBottom: 10 }} />
           <p className="bp-auth-wordmark">FOREVR</p>
           <p className="bp-auth-tagline">Eure Hochzeit, selbst geplant.</p>
         </div>
