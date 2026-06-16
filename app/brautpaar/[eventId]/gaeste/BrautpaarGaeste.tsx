@@ -1447,6 +1447,84 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
   const withEmail     = selectedGuests.filter(g => g.email && g.token).length
   const withoutEmail  = selectedGuests.filter(g => !g.email).length
 
+  // Inline E-Mail-Editor — geteilt zwischen Tabellen- und Karten-Ansicht
+  function emailEditor(guest: Guest) {
+    if (editingEmailId === guest.id) {
+      return (
+        <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center' }}>
+          <input
+            className="bp-input"
+            type="email"
+            value={emailInput}
+            onChange={e => setEmailInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') saveEmail(guest); if (e.key === 'Escape') setEditingEmailId(null) }}
+            autoFocus
+            style={{ maxWidth: 200, padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+            placeholder="email@beispiel.de"
+          />
+          <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={() => saveEmail(guest)} disabled={savingEmail}>
+            {savingEmail ? '…' : <Check size={13} />}
+          </button>
+          <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={() => setEditingEmailId(null)}><X size={13} /></button>
+        </div>
+      )
+    }
+    return (
+      <button
+        className="bp-btn bp-btn-ghost bp-btn-sm"
+        onClick={() => { setEditingEmailId(guest.id); setEmailInput(guest.email ?? '') }}
+        style={{ color: guest.email ? 'var(--bp-ink-2)' : 'var(--bp-ink-3)', fontSize: '0.875rem' }}
+      >
+        {guest.email ?? '+ E-Mail eintragen'}
+      </button>
+    )
+  }
+
+  // Aktions-Buttons (WhatsApp, Teilen, Link, QR, Mail) — geteilt zwischen
+  // Tabellen- und Karten-Ansicht
+  function actionButtons(guest: Guest) {
+    return (
+      <>
+        <button
+          className="bp-btn bp-btn-secondary bp-btn-sm"
+          onClick={() => shareWhatsApp(guest)}
+          disabled={!guest.token}
+          title="Einladung per WhatsApp teilen"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+        >
+          <MessageCircle size={13} /> WhatsApp
+        </button>
+        {canNativeShare && (
+          <button
+            className="bp-btn bp-btn-secondary bp-btn-sm bp-btn-icon"
+            onClick={() => shareNative(guest)}
+            disabled={!guest.token}
+            aria-label="Einladung teilen"
+          >
+            <Share2 size={13} />
+          </button>
+        )}
+        <button className="bp-btn bp-btn-secondary bp-btn-sm" onClick={() => copyLink(guest)} disabled={!guest.token} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+          {copiedId === guest.id ? <Check size={13} /> : <Copy size={13} />}
+          {copiedId === guest.id ? 'Kopiert' : 'Link'}
+        </button>
+        <button className="bp-btn bp-btn-secondary bp-btn-sm" onClick={() => toggleQr(guest)} disabled={!guest.token} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+          <QrCode size={13} /> QR
+        </button>
+        {guest.email && guest.token && (
+          <a
+            href={`mailto:${guest.email}?subject=${encodeURIComponent('Eure Hochzeitseinladung')}&body=${encodeURIComponent(buildMessage(guest))}`}
+            onClick={() => void markInvited(guest)}
+            className="bp-btn bp-btn-secondary bp-btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', textDecoration: 'none' }}
+          >
+            <Mail size={13} /> Mail
+          </a>
+        )}
+      </>
+    )
+  }
+
   return (
     <div>
       {/* Verweis: Einladungstext, Frist & RSVP-Gestaltung leben jetzt unter Allgemein */}
@@ -1583,7 +1661,7 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
         </div>
       )}
 
-      <div className="bp-card bp-scroll-x">
+      <div className="bp-hide-mobile bp-card bp-scroll-x">
         {guests.length === 0 ? (
           <div className="bp-empty">
             <div className="bp-empty-title">Noch keine Gäste</div>
@@ -1624,71 +1702,11 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
                   <td style={{ fontWeight: 500, color: 'var(--bp-ink)' }}>{guest.name}</td>
                   <td><InviteBadge guest={guest} /></td>
                   <td className="bp-hide-mobile" onClick={e => e.stopPropagation()}>
-                    {editingEmailId === guest.id ? (
-                      <div style={{ display: 'flex', gap: '0.375rem', alignItems: 'center' }}>
-                        <input
-                          className="bp-input"
-                          type="email"
-                          value={emailInput}
-                          onChange={e => setEmailInput(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') saveEmail(guest); if (e.key === 'Escape') setEditingEmailId(null) }}
-                          autoFocus
-                          style={{ maxWidth: 200, padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
-                          placeholder="email@beispiel.de"
-                        />
-                        <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={() => saveEmail(guest)} disabled={savingEmail}>
-                          {savingEmail ? '…' : <Check size={13} />}
-                        </button>
-                        <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={() => setEditingEmailId(null)}><X size={13} /></button>
-                      </div>
-                    ) : (
-                      <button
-                        className="bp-btn bp-btn-ghost bp-btn-sm"
-                        onClick={() => { setEditingEmailId(guest.id); setEmailInput(guest.email ?? '') }}
-                        style={{ color: guest.email ? 'var(--bp-ink-2)' : 'var(--bp-ink-3)', fontSize: '0.875rem' }}
-                      >
-                        {guest.email ?? '+ E-Mail eintragen'}
-                      </button>
-                    )}
+                    {emailEditor(guest)}
                   </td>
                   <td onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: '0.375rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                      <button
-                        className="bp-btn bp-btn-secondary bp-btn-sm"
-                        onClick={() => shareWhatsApp(guest)}
-                        disabled={!guest.token}
-                        title="Einladung per WhatsApp teilen"
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
-                      >
-                        <MessageCircle size={13} /> WhatsApp
-                      </button>
-                      {canNativeShare && (
-                        <button
-                          className="bp-btn bp-btn-secondary bp-btn-sm bp-btn-icon"
-                          onClick={() => shareNative(guest)}
-                          disabled={!guest.token}
-                          aria-label="Einladung teilen"
-                        >
-                          <Share2 size={13} />
-                        </button>
-                      )}
-                      <button className="bp-btn bp-btn-secondary bp-btn-sm" onClick={() => copyLink(guest)} disabled={!guest.token} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                        {copiedId === guest.id ? <Check size={13} /> : <Copy size={13} />}
-                        {copiedId === guest.id ? 'Kopiert' : 'Link'}
-                      </button>
-                      <button className="bp-btn bp-btn-secondary bp-btn-sm" onClick={() => toggleQr(guest)} disabled={!guest.token} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                        <QrCode size={13} /> QR
-                      </button>
-                      {guest.email && guest.token && (
-                        <a
-                          href={`mailto:${guest.email}?subject=${encodeURIComponent('Eure Hochzeitseinladung')}&body=${encodeURIComponent(buildMessage(guest))}`}
-                          onClick={() => void markInvited(guest)}
-                          className="bp-btn bp-btn-secondary bp-btn-sm"
-                          style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', textDecoration: 'none' }}
-                        >
-                          <Mail size={13} /> Mail
-                        </a>
-                      )}
+                      {actionButtons(guest)}
                     </div>
                   </td>
                 </tr>
@@ -1696,6 +1714,50 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
             </tbody>
           </table>
         )}
+      </div>
+
+      {/* Mobile-Kartenansicht */}
+      <div className="bp-mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {guests.length === 0 ? (
+          <div className="bp-card">
+            <div className="bp-empty">
+              <div className="bp-empty-title">Noch keine Gäste</div>
+              <div className="bp-empty-body">Fügt Gäste in der Gästeliste hinzu.</div>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="bp-card">
+            <div className="bp-empty">
+              <div className="bp-empty-title">Keine Ergebnisse</div>
+              <div className="bp-empty-body">Kein Gast passt zur Suche.</div>
+            </div>
+          </div>
+        ) : filtered.map(guest => (
+          <div key={guest.id} className="bp-card" style={{ padding: '0.875rem 1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <input
+                type="checkbox"
+                checked={selected.has(guest.id)}
+                onChange={() => toggleOne(guest.id)}
+                style={{ cursor: 'pointer', accentColor: 'var(--bp-gold)', flexShrink: 0, marginTop: '0.25rem' }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {guest.name}
+                  </span>
+                  <span style={{ flexShrink: 0 }}><InviteBadge guest={guest} /></span>
+                </div>
+                <div style={{ marginBottom: '0.625rem' }}>
+                  {emailEditor(guest)}
+                </div>
+                <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                  {actionButtons(guest)}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* QR panel */}
