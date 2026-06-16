@@ -11,8 +11,8 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import {
   DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, BODY_FONTS, ACCENT_PRESETS, BG_COLOR_PRESETS, THEME_PRESETS,
-  RSVP_SECTIONS, fontHrefFor, shade, effectiveAccent2, normalizeSettings, DEFAULT_FOCUS,
-  type DisplaySettings, type HeadingFontKey, type BodyFontKey, type ImageFocus,
+  RSVP_SECTIONS, fontHrefFor, shade, effectiveAccent2, normalizeSettings, resolveRsvpSettings, DEFAULT_FOCUS,
+  type DisplaySettings, type HeadingFontKey, type BodyFontKey,
 } from '@/lib/display-settings'
 import {
   FONT_PAIRINGS, generateHarmonies, encodeStyleCode, decodeStyleCode, resetSectionPatch,
@@ -32,8 +32,28 @@ interface RsvpSettings {
 }
 const EMPTY_RSVP: RsvpSettings = { invitation_text: '', rsvp_deadline: null, show_meal_choice: true, show_plus_one: true, phone_contact: null }
 
+// Stil-Felder, die App und RSVP-Seite gemeinsam kennen (RSVP als Overrides).
+type StyleKey =
+  | 'accent' | 'accent2' | 'accentGradient' | 'headingFont' | 'bodyFont' | 'headingScale'
+  | 'bgColor' | 'bgTexture' | 'bgGradient' | 'cornerStyle' | 'buttonStyle' | 'cardStyle'
+  | 'density' | 'ornaments' | 'countdown' | 'monogram'
+type StylePatch = Partial<Pick<DisplaySettings, StyleKey>>
+
+// Adapter, damit dieselben Stil-Panes sowohl die App (global) als auch die
+// RSVP-Seite (invitation-Overrides) bearbeiten können.
+interface StyleCtl {
+  v: DisplaySettings                                            // effektive Werte zum Anzeigen
+  set: (patch: StylePatch, ck?: string) => void
+  applyPreset: (key: string, partial: Partial<DisplaySettings>) => void
+  preset: string | null
+}
+
 type Doc = { s: DisplaySettings; rsvp: RsvpSettings }
-type SectionKey = 'stilpakete' | 'farben' | 'schrift' | 'layout' | 'bilder' | 'einladung' | 'rsvp' | 'abschnitte' | 'code'
+type SectionKey =
+  | 'app-stil' | 'app-farben' | 'app-schrift' | 'app-layout'
+  | 'rsvp-design' | 'rsvp-stil' | 'rsvp-farben' | 'rsvp-schrift' | 'rsvp-layout'
+  | 'einladung' | 'bilder' | 'rsvp-formular' | 'abschnitte'
+  | 'code'
 type GroupKey = 'anzeige' | 'rsvp' | 'allgemein'
 
 // Strikte Trennung: „Anzeige" (Optik der Seite) vs. „RSVP" (Antwort-Formular).
@@ -43,19 +63,25 @@ const GROUPS: { key: GroupKey; label: string }[] = [
   { key: 'allgemein', label: 'Allgemein' },
 ]
 
-const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon; group: GroupKey; kw: string[] }[] = [
-  // Anzeige (Portal-Menü): theming des Brautpaar-Portals.
-  { key: 'stilpakete', label: 'Stilpakete',           icon: Sparkles,      group: 'anzeige',   kw: ['preset', 'stil', 'vorlage', 'theme', 'look'] },
-  { key: 'farben',     label: 'Farben',               icon: Palette,       group: 'anzeige',   kw: ['farbe', 'akzent', 'hintergrund', 'muster', 'verlauf', 'harmonie'] },
-  { key: 'schrift',    label: 'Schrift',              icon: Type,          group: 'anzeige',   kw: ['schrift', 'font', 'überschrift', 'fließtext', 'größe', 'paarung'] },
+// rsvpDesign: true = nur sichtbar, wenn eigenes RSVP-Design aktiv ist.
+const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon; group: GroupKey; rsvpDesign?: boolean; kw: string[] }[] = [
+  // Anzeige (App / Portal-Menü).
+  { key: 'app-stil',     label: 'Stilpakete',           icon: Sparkles,      group: 'anzeige',   kw: ['preset', 'stil', 'vorlage', 'theme', 'look'] },
+  { key: 'app-farben',   label: 'Farben',               icon: Palette,       group: 'anzeige',   kw: ['farbe', 'akzent', 'hintergrund', 'muster', 'verlauf', 'harmonie'] },
+  { key: 'app-schrift',  label: 'Schrift',              icon: Type,          group: 'anzeige',   kw: ['schrift', 'font', 'überschrift', 'größe'] },
+  { key: 'app-layout',   label: 'Form & Ecken',         icon: LayoutGrid,    group: 'anzeige',   kw: ['form', 'ecken', 'rundung', 'button'] },
   // RSVP (Einladungs-/Antwortseite der Gäste).
-  { key: 'einladung',  label: 'Einladung',            icon: Mail,          group: 'rsvp',      kw: ['einladung', 'begrüßung', 'motiv'] },
-  { key: 'bilder',     label: 'Bilder',               icon: ImageIcon,     group: 'rsvp',      kw: ['bild', 'titelbild', 'hintergrundfoto', 'foto', 'cover', 'zuschnitt', 'overlay', 'tönung', 'weichzeichnen', 'blur'] },
-  { key: 'layout',     label: 'Layout & Form',        icon: LayoutGrid,    group: 'rsvp',      kw: ['layout', 'karte', 'ecken', 'button', 'dichte', 'abstand', 'ornament', 'countdown', 'monogramm'] },
-  { key: 'rsvp',       label: 'RSVP-Formular',        icon: ClipboardList, group: 'rsvp',      kw: ['rsvp', 'antwort', 'frist', 'menü', 'begleit', 'kontakt', 'telefon', 'einladungstext'] },
-  { key: 'abschnitte', label: 'Sichtbare Abschnitte', icon: Eye,           group: 'rsvp',      kw: ['abschnitt', 'sichtbar', 'ausblenden', 'dresscode', 'kinder', 'allergie', 'anreise', 'nachricht'] },
+  { key: 'rsvp-design',  label: 'Design',               icon: Wand2,         group: 'rsvp',      kw: ['design', 'eigenes', 'unabhängig', 'übernehmen'] },
+  { key: 'rsvp-stil',    label: 'Stilpakete',           icon: Sparkles,      group: 'rsvp', rsvpDesign: true, kw: ['preset', 'stil', 'vorlage', 'theme'] },
+  { key: 'rsvp-farben',  label: 'Farben',               icon: Palette,       group: 'rsvp', rsvpDesign: true, kw: ['farbe', 'akzent', 'hintergrund', 'muster', 'verlauf', 'harmonie'] },
+  { key: 'rsvp-schrift', label: 'Schrift',              icon: Type,          group: 'rsvp', rsvpDesign: true, kw: ['schrift', 'font', 'überschrift', 'fließtext', 'größe', 'paarung'] },
+  { key: 'rsvp-layout',  label: 'Layout & Form',        icon: LayoutGrid,    group: 'rsvp', rsvpDesign: true, kw: ['layout', 'karte', 'ecken', 'button', 'dichte', 'ornament', 'countdown', 'monogramm'] },
+  { key: 'einladung',    label: 'Einladung',            icon: Mail,          group: 'rsvp',      kw: ['einladung', 'begrüßung', 'motiv'] },
+  { key: 'bilder',       label: 'Bilder',               icon: ImageIcon,     group: 'rsvp',      kw: ['bild', 'titelbild', 'hintergrundfoto', 'foto', 'cover', 'zuschnitt', 'overlay', 'tönung', 'weichzeichnen', 'blur'] },
+  { key: 'rsvp-formular',label: 'RSVP-Formular',        icon: ClipboardList, group: 'rsvp',      kw: ['rsvp', 'antwort', 'frist', 'menü', 'begleit', 'kontakt', 'telefon', 'einladungstext'] },
+  { key: 'abschnitte',   label: 'Sichtbare Abschnitte', icon: Eye,           group: 'rsvp',      kw: ['abschnitt', 'sichtbar', 'ausblenden', 'dresscode', 'kinder', 'allergie', 'anreise', 'nachricht'] },
   // Allgemein.
-  { key: 'code',       label: 'Sichern & Code',       icon: Code,          group: 'allgemein', kw: ['code', 'export', 'import', 'sichern', 'zurücksetzen', 'reset', 'standard'] },
+  { key: 'code',         label: 'Sichern & Code',       icon: Code,          group: 'allgemein', kw: ['code', 'export', 'import', 'sichern', 'zurücksetzen', 'reset', 'standard'] },
 ]
 
 export default function DesignStudioModal({ eventId, onClose }: { eventId: string; onClose: () => void }) {
@@ -70,7 +96,7 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [active, setActive] = useState<SectionKey>('stilpakete')
+  const [active, setActive] = useState<SectionKey>('app-stil')
   const [query, setQuery] = useState('')
   const [device, setDevice] = useState<'desktop' | 'mobile'>('mobile')
   const [confirmClose, setConfirmClose] = useState(false)
@@ -126,14 +152,38 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
 
   const setS = useCallback((patch: Partial<DisplaySettings>, coalesceKey?: string) =>
     commit({ s: { ...doc.s, ...patch, preset: null }, rsvp: doc.rsvp }, coalesceKey), [doc, commit])
-  const setInv = useCallback((patch: Partial<DisplaySettings['invitation']>, coalesceKey?: string) =>
-    commit({ s: { ...doc.s, invitation: { ...doc.s.invitation, ...patch }, preset: null }, rsvp: doc.rsvp }, coalesceKey), [doc, commit])
+  // RSVP-Inhalte (Begrüßung, Motiv, customDesign-Snapshot) — ohne Preset-Reset.
+  const setInvContent = useCallback((patch: Partial<DisplaySettings['invitation']>, coalesceKey?: string) =>
+    commit({ s: { ...doc.s, invitation: { ...doc.s.invitation, ...patch } }, rsvp: doc.rsvp }, coalesceKey), [doc, commit])
+  // RSVP-Stil-Overrides — setzt invitation.preset zurück (manuelle Änderung).
+  const setInvStyle = useCallback((patch: Partial<DisplaySettings['invitation']>, coalesceKey?: string) =>
+    commit({ s: { ...doc.s, invitation: { ...doc.s.invitation, ...patch, preset: null } }, rsvp: doc.rsvp }, coalesceKey), [doc, commit])
+  const applyInvPreset = useCallback((key: string, partial: Partial<DisplaySettings>) =>
+    commit({ s: { ...doc.s, invitation: { ...doc.s.invitation, ...partial, preset: key } }, rsvp: doc.rsvp }), [doc, commit])
   const setRsvp = useCallback((patch: Partial<RsvpSettings>, coalesceKey?: string) =>
     commit({ s: doc.s, rsvp: { ...doc.rsvp, ...patch } }, coalesceKey), [doc, commit])
   const applyPreset = useCallback((key: string, partial: Partial<DisplaySettings>) =>
     commit({ s: { ...doc.s, ...partial, preset: key }, rsvp: doc.rsvp }), [doc, commit])
   const replaceSettings = useCallback((next: DisplaySettings) =>
     commit({ s: next, rsvp: doc.rsvp }), [doc, commit])
+
+  // Master-Schalter „Eigenes Design für die RSVP-Seite". An → Snapshot der
+  // App-Stilwerte in die invitation-Overrides; Aus → Overrides bleiben inaktiv.
+  const setCustomDesign = useCallback((on: boolean) => {
+    if (on) {
+      const g = doc.s
+      setInvContent({
+        customDesign: true,
+        accent: g.accent, accent2: g.accent2, accentGradient: g.accentGradient,
+        headingFont: g.headingFont, bodyFont: g.bodyFont, headingScale: g.headingScale,
+        bgColor: g.bgColor, bgTexture: g.bgTexture, bgGradient: g.bgGradient,
+        cornerStyle: g.cornerStyle, buttonStyle: g.buttonStyle, cardStyle: g.cardStyle,
+        density: g.density, ornaments: g.ornaments, countdown: g.countdown, monogram: g.monogram, preset: g.preset,
+      })
+    } else {
+      setInvContent({ customDesign: false })
+    }
+  }, [doc, setInvContent])
 
   const undo = () => { coalesce.current = null; setHist(h => h.past.length ? { past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] } : h); setSaved(false) }
   const redo = () => { coalesce.current = null; setHist(h => h.future.length ? { past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) } : h); setSaved(false) }
@@ -182,12 +232,12 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
     setBusy(b => ({ ...b, motive: true }))
     const blob = URL.createObjectURL(file)
     setImages(im => ({ ...im, motiveUrl: blob }))
-    try { const key = await uploadTo(`/api/events/${eventId}/invitation-motive`, file); if (key) setInv({ motiveR2Key: key }) }
+    try { const key = await uploadTo(`/api/events/${eventId}/invitation-motive`, file); if (key) setInvContent({ motiveR2Key: key }) }
     finally { setBusy(b => ({ ...b, motive: false })) }
   }
   async function removeMotive() {
     setBusy(b => ({ ...b, motive: true }))
-    try { await fetch(`/api/events/${eventId}/invitation-motive`, { method: 'DELETE' }); setInv({ motiveR2Key: null }); setImages(im => ({ ...im, motiveUrl: null })) }
+    try { await fetch(`/api/events/${eventId}/invitation-motive`, { method: 'DELETE' }); setInvContent({ motiveR2Key: null }); setImages(im => ({ ...im, motiveUrl: null })) }
     finally { setBusy(b => ({ ...b, motive: false })) }
   }
 
@@ -237,9 +287,11 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
   })
 
   const q = query.trim().toLowerCase()
+  // RSVP-Design-Unterbereiche nur zeigen, wenn eigenes RSVP-Design aktiv ist.
+  const availableSections = SECTIONS.filter(sec => !sec.rsvpDesign || s.invitation.customDesign)
   const visibleSections = q
-    ? SECTIONS.filter(sec => sec.label.toLowerCase().includes(q) || sec.kw.some(k => k.includes(q)))
-    : SECTIONS
+    ? availableSections.filter(sec => sec.label.toLowerCase().includes(q) || sec.kw.some(k => k.includes(q)))
+    : availableSections
 
   const dateLabel = event.date
     ? new Date(event.date).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
@@ -251,6 +303,10 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
   // sonst Portal-Menü („Anzeige").
   const activeGroup = SECTIONS.find(sec => sec.key === active)?.group ?? 'anzeige'
   const previewMode: 'rsvp' | 'anzeige' = activeGroup === 'rsvp' ? 'rsvp' : 'anzeige'
+
+  // Stil-Adapter für App (global) und RSVP-Seite (invitation-Overrides).
+  const appCtl: StyleCtl = { v: s, set: setS, applyPreset, preset: s.preset }
+  const rsvpCtl: StyleCtl = { v: resolveRsvpSettings(s), set: setInvStyle, applyPreset: applyInvPreset, preset: s.invitation.preset }
 
   const overlay = (
     <div role="dialog" aria-modal="true" aria-label="Anzeige & RSVP gestalten"
@@ -323,14 +379,21 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
               ? <p style={{ color: 'var(--bp-ink-3)', fontSize: 14 }}>Lädt…</p>
               : (
                 <div style={{ maxWidth: 640 }}>
-                  {active === 'stilpakete' && <PaneStilpakete s={s} applyPreset={applyPreset} />}
-                  {active === 'farben' && <PaneFarben s={s} setS={setS} />}
-                  {active === 'schrift' && <PaneSchrift s={s} setS={setS} />}
-                  {active === 'layout' && <PaneLayout s={s} setS={setS} />}
+                  {/* Anzeige (App) */}
+                  {active === 'app-stil' && <PaneStilpakete ctl={appCtl} scope="app" />}
+                  {active === 'app-farben' && <PaneFarben ctl={appCtl} full={false} />}
+                  {active === 'app-schrift' && <PaneSchrift ctl={appCtl} full={false} />}
+                  {active === 'app-layout' && <PaneLayout ctl={appCtl} full={false} />}
+                  {/* RSVP */}
+                  {active === 'rsvp-design' && <PaneRsvpDesign s={s} setCustomDesign={setCustomDesign} />}
+                  {active === 'rsvp-stil' && <PaneStilpakete ctl={rsvpCtl} scope="rsvp" />}
+                  {active === 'rsvp-farben' && <PaneFarben ctl={rsvpCtl} full />}
+                  {active === 'rsvp-schrift' && <PaneSchrift ctl={rsvpCtl} full />}
+                  {active === 'rsvp-layout' && <PaneLayout ctl={rsvpCtl} full />}
+                  {active === 'einladung' && <PaneEinladung s={s} setInv={setInvContent} images={images} busy={busy} pickMotive={pickMotive} removeMotive={removeMotive} />}
                   {active === 'bilder' && <PaneBilder s={s} setS={setS} images={images} busy={busy}
                     pickCover={pickCover} removeCover={removeCover} pickBg={pickBg} removeBg={removeBg} />}
-                  {active === 'einladung' && <PaneEinladung s={s} setInv={setInv} images={images} busy={busy} pickMotive={pickMotive} removeMotive={removeMotive} />}
-                  {active === 'rsvp' && <PaneRsvp rsvp={rsvp} setRsvp={setRsvp} />}
+                  {active === 'rsvp-formular' && <PaneRsvp rsvp={rsvp} setRsvp={setRsvp} />}
                   {active === 'abschnitte' && <PaneAbschnitte s={s} toggleSection={toggleSection} />}
                   {active === 'code' && <PaneCode s={s} replaceSettings={replaceSettings} />}
                 </div>
@@ -400,19 +463,19 @@ function IconBtn({ children, onClick, title, disabled }: { children: React.React
 
 // ════════════════════════════ PANES ════════════════════════════
 
-function PaneStilpakete({ s, applyPreset }: {
-  s: DisplaySettings
-  applyPreset: (key: string, partial: Partial<DisplaySettings>) => void
-}) {
+function PaneStilpakete({ ctl, scope }: { ctl: StyleCtl; scope: 'app' | 'rsvp' }) {
   return (
     <div>
-      <GroupTitle title="Stilpakete" hint="Wähle einen fertigen Look als Startpunkt – Farben, Schriften und Form werden in einem Klick gesetzt. Danach kannst du alles frei anpassen." />
+      <GroupTitle title="Stilpakete"
+        hint={scope === 'app'
+          ? 'Fertiger Look für die App (Farben, Schriften, Form) – in einem Klick gesetzt.'
+          : 'Fertiger Look nur für die RSVP-Seite. Überschreibt deren Farben, Schriften und Form.'} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14 }}>
         {THEME_PRESETS.map(p => {
-          const merged = normalizeSettings({ ...s, ...p.settings })
-          const on = s.preset === p.key
+          const merged = normalizeSettings({ ...ctl.v, ...p.settings })
+          const on = ctl.preset === p.key
           return (
-            <button key={p.key} type="button" onClick={() => applyPreset(p.key, p.settings)}
+            <button key={p.key} type="button" onClick={() => ctl.applyPreset(p.key, p.settings)}
               style={{ textAlign: 'left', border: on ? '2px solid var(--bp-gold-deep)' : '1px solid var(--bp-rule)', borderRadius: 12,
                 overflow: 'hidden', cursor: 'pointer', background: '#fff', padding: 0, boxShadow: on ? '0 4px 14px rgba(156,127,79,0.18)' : 'var(--bp-shadow-card)' }}>
               <PresetThumb s={merged} />
@@ -424,10 +487,6 @@ function PaneStilpakete({ s, applyPreset }: {
           )
         })}
       </div>
-      <Hr />
-      <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3)', margin: 0 }}>
-        Tipp: Feinschliff für Farben und Schriften findest du in den Bereichen links. Die Vorschau rechts zeigt sofort, wie es bei euren Gästen aussieht.
-      </p>
     </div>
   )
 }
@@ -447,25 +506,25 @@ function PresetThumb({ s }: { s: DisplaySettings }) {
   )
 }
 
-function PaneFarben({ s, setS }: { s: DisplaySettings; setS: (p: Partial<DisplaySettings>, k?: string) => void }) {
+function PaneFarben({ ctl, full }: { ctl: StyleCtl; full: boolean }) {
+  const v = ctl.v
   const [showHarmony, setShowHarmony] = useState(false)
-  const harmonies = useMemo(() => generateHarmonies(s.accent), [s.accent])
+  const harmonies = useMemo(() => generateHarmonies(v.accent), [v.accent])
   return (
     <div>
-      <GroupTitle title="Farben" hint="Akzentfarbe, Zweitfarbe und Hintergrund. Der Harmonie-Generator schlägt passende Kombinationen aus deiner Akzentfarbe vor."
-        onReset={() => setS(resetSectionPatch('farben'))} />
+      <GroupTitle title="Farben" hint="Akzentfarbe und Hintergrund. Der Harmonie-Generator schlägt passende Kombinationen aus deiner Akzentfarbe vor." />
 
-      <Stack label="Akzentfarbe" help="Hauptfarbe für Buttons, Überschriften-Akzente und Links auf der Gäste-Seite.">
-        <Swatches value={s.accent} presets={ACCENT_PRESETS} onChange={v => setS({ accent: v }, 'accent')} />
+      <Stack label="Akzentfarbe" help="Hauptfarbe für Buttons, Akzente und aktive Elemente.">
+        <Swatches value={v.accent} presets={ACCENT_PRESETS} onChange={c => ctl.set({ accent: c }, 'accent')} />
       </Stack>
 
       <div style={{ marginTop: 12 }}>
-        <button type="button" onClick={() => setShowHarmony(v => !v)}
+        <button type="button" onClick={() => setShowHarmony(x => !x)}
           style={{ ...chip, gap: 6 }}><Wand2 size={14} /> {showHarmony ? 'Harmonien ausblenden' : 'Passende Harmonien vorschlagen'}</button>
         {showHarmony && (
           <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
             {harmonies.map((h, i) => (
-              <button key={h.key} type="button" onClick={() => setS({ accent: h.accent, accent2: h.accent2, bgColor: h.bgColor })}
+              <button key={h.key} type="button" onClick={() => ctl.set({ accent: h.accent, accent2: h.accent2, bgColor: h.bgColor })}
                 style={{ border: '1px solid var(--bp-rule)', borderRadius: 10, padding: 10, background: '#fff', cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
                   {h.swatches.map((c, j) => <span key={j} style={{ flex: 1, height: 22, borderRadius: 5, background: c, border: '1px solid rgba(0,0,0,0.08)' }} />)}
@@ -479,99 +538,111 @@ function PaneFarben({ s, setS }: { s: DisplaySettings; setS: (p: Partial<Display
 
       <Hr />
       <Row label="Akzent als Farbverlauf" help="Buttons erhalten statt einer Vollfarbe einen sanften Verlauf.">
-        <Toggle checked={s.accentGradient} onChange={v => setS({ accentGradient: v })} />
+        <Toggle checked={v.accentGradient} onChange={b => ctl.set({ accentGradient: b })} />
       </Row>
+      {full && (
+        <>
+          <Hr />
+          <Stack label="Zweite Akzentfarbe" help="Für Badges, Links und feine Details.">
+            <Swatches value={v.accent2 ?? effectiveAccent2(v)} presets={ACCENT_PRESETS} onChange={c => ctl.set({ accent2: c }, 'accent2')} />
+          </Stack>
+        </>
+      )}
       <Hr />
-      <Stack label="Zweite Akzentfarbe" help="Für Badges, Links und feine Details. Aus = automatisch aus der Akzentfarbe abgeleitet.">
-        <Row label="Eigene Zweitfarbe verwenden">
-          <Toggle checked={s.accent2 !== null} onChange={v => setS({ accent2: v ? shade(s.accent, -0.3) : null })} />
-        </Row>
-        {s.accent2 !== null && (
-          <div style={{ marginTop: 10 }}>
-            <Swatches value={s.accent2} presets={ACCENT_PRESETS} onChange={v => setS({ accent2: v }, 'accent2')} />
-          </div>
-        )}
-      </Stack>
-
-      <Hr />
-      <Stack label="Hintergrundfarbe" help="Grundfläche der Seite. Es sind nur sehr helle Töne erlaubt, damit Text immer gut lesbar bleibt.">
-        <Swatches value={s.bgColor} presets={BG_COLOR_PRESETS} onChange={v => setS({ bgColor: v }, 'bg')} allowCustom={false} />
+      <Stack label="Hintergrundfarbe" help="Grundfläche. Nur sehr helle Töne, damit Text gut lesbar bleibt.">
+        <Swatches value={v.bgColor} presets={BG_COLOR_PRESETS} onChange={c => ctl.set({ bgColor: c }, 'bg')} allowCustom={false} />
       </Stack>
       <Hr />
-      <Row label="Hintergrund-Muster" help="Dezente Textur über der Hintergrundfarbe (Papier, Punkte, Floral …).">
-        <Segment value={s.bgTexture} onChange={v => setS({ bgTexture: v })}
+      <Row label="Hintergrund-Muster" help="Dezente Textur über der Hintergrundfarbe.">
+        <Segment value={v.bgTexture} onChange={t => ctl.set({ bgTexture: t })}
           options={[['none', 'Keine'], ['paper', 'Papier'], ['dots', 'Punkte'], ['floral', 'Floral'], ['marble', 'Marmor'], ['linen', 'Leinen'], ['watercolor', 'Aquarell']]} />
       </Row>
-      <Hr />
-      <Row label="Sanfter Farbverlauf-Hintergrund" help="Legt einen weichen Verlauf über die Hintergrundfarbe.">
-        <Toggle checked={s.bgGradient} onChange={v => setS({ bgGradient: v })} />
-      </Row>
+      {full && (
+        <>
+          <Hr />
+          <Row label="Sanfter Farbverlauf-Hintergrund" help="Legt einen weichen Verlauf über die Hintergrundfarbe.">
+            <Toggle checked={v.bgGradient} onChange={b => ctl.set({ bgGradient: b })} />
+          </Row>
+        </>
+      )}
     </div>
   )
 }
 
-function PaneSchrift({ s, setS }: { s: DisplaySettings; setS: (p: Partial<DisplaySettings>, k?: string) => void }) {
+function PaneSchrift({ ctl, full }: { ctl: StyleCtl; full: boolean }) {
+  const v = ctl.v
   return (
     <div>
-      <GroupTitle title="Schrift" hint="Überschriften- und Fließtext-Schrift. Mit den Paarungen wählst du eine stimmige Kombination in einem Klick."
-        onReset={() => setS(resetSectionPatch('schrift'))} />
+      <GroupTitle title="Schrift" hint="Überschriften-Schrift und -Größe." />
 
-      <Stack label="Schrift-Paarungen" help="Kuratierte Kombinationen aus Überschrift + Fließtext, die gut zusammenpassen.">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 10 }}>
-          {FONT_PAIRINGS.map(fp => {
-            const on = s.headingFont === fp.heading && s.bodyFont === fp.body
-            return (
-              <button key={fp.key} type="button" onClick={() => setS({ headingFont: fp.heading, bodyFont: fp.body })}
-                style={{ border: on ? '2px solid var(--bp-gold-deep)' : '1px solid var(--bp-rule)', borderRadius: 10, padding: '10px 12px', background: '#fff', cursor: 'pointer', textAlign: 'left' }}>
-                <div style={{ fontFamily: HEADING_FONTS[fp.heading].family, fontSize: 18, color: 'var(--bp-ink)', lineHeight: 1.1 }}>{fp.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--bp-ink-3)', marginTop: 3 }}>{fp.hint}</div>
-              </button>
-            )
-          })}
-        </div>
-      </Stack>
-
-      <Hr />
+      {full && (
+        <>
+          <Stack label="Schrift-Paarungen" help="Kuratierte Kombinationen aus Überschrift + Fließtext.">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 10 }}>
+              {FONT_PAIRINGS.map(fp => {
+                const on = v.headingFont === fp.heading && v.bodyFont === fp.body
+                return (
+                  <button key={fp.key} type="button" onClick={() => ctl.set({ headingFont: fp.heading, bodyFont: fp.body })}
+                    style={{ border: on ? '2px solid var(--bp-gold-deep)' : '1px solid var(--bp-rule)', borderRadius: 10, padding: '10px 12px', background: '#fff', cursor: 'pointer', textAlign: 'left' }}>
+                    <div style={{ fontFamily: HEADING_FONTS[fp.heading].family, fontSize: 18, color: 'var(--bp-ink)', lineHeight: 1.1 }}>{fp.label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--bp-ink-3)', marginTop: 3 }}>{fp.hint}</div>
+                  </button>
+                )
+              })}
+            </div>
+          </Stack>
+          <Hr />
+        </>
+      )}
       <Stack label="Schrift der Überschriften">
-        <select className="bp-input" value={s.headingFont} onChange={e => setS({ headingFont: e.target.value as HeadingFontKey })}>
+        <select className="bp-input" value={v.headingFont} onChange={e => ctl.set({ headingFont: e.target.value as HeadingFontKey })}>
           {(Object.keys(HEADING_FONTS) as HeadingFontKey[]).map(k => <option key={k} value={k}>{HEADING_FONTS[k].label}</option>)}
         </select>
       </Stack>
-      <Hr />
-      <Stack label="Schrift des Fließtexts">
-        <select className="bp-input" value={s.bodyFont} onChange={e => setS({ bodyFont: e.target.value as BodyFontKey })}>
-          {(Object.keys(BODY_FONTS) as BodyFontKey[]).map(k => <option key={k} value={k}>{BODY_FONTS[k].label}</option>)}
-        </select>
-      </Stack>
+      {full && (
+        <>
+          <Hr />
+          <Stack label="Schrift des Fließtexts">
+            <select className="bp-input" value={v.bodyFont} onChange={e => ctl.set({ bodyFont: e.target.value as BodyFontKey })}>
+              {(Object.keys(BODY_FONTS) as BodyFontKey[]).map(k => <option key={k} value={k}>{BODY_FONTS[k].label}</option>)}
+            </select>
+          </Stack>
+        </>
+      )}
       <Hr />
       <Row label="Größe der Überschriften" help="Skaliert alle Überschriften gemeinsam.">
-        <Segment value={s.headingScale} onChange={v => setS({ headingScale: v })}
+        <Segment value={v.headingScale} onChange={x => ctl.set({ headingScale: x })}
           options={[['kompakt', 'Kompakt'], ['standard', 'Standard'], ['gross', 'Groß']]} />
       </Row>
     </div>
   )
 }
 
-function PaneLayout({ s, setS }: { s: DisplaySettings; setS: (p: Partial<DisplaySettings>, k?: string) => void }) {
+function PaneLayout({ ctl, full }: { ctl: StyleCtl; full: boolean }) {
+  const v = ctl.v
   return (
     <div>
-      <GroupTitle title="Layout & Form" hint="Karten, Ecken, Buttons und Abstände bestimmen die Anmutung der Seite."
-        onReset={() => setS(resetSectionPatch('layout'))} />
-      <Row label="Karten-Stil" help="Wie Karten/Boxen wirken: mit Rahmen, mit Schatten oder flach."><Segment value={s.cardStyle} onChange={v => setS({ cardStyle: v })} options={[['border', 'Rahmen'], ['shadow', 'Schatten'], ['flat', 'Flach']]} /></Row>
+      <GroupTitle title={full ? 'Layout & Form' : 'Form & Ecken'}
+        hint={full ? 'Karten, Ecken, Buttons, Abstände und Ornamente der RSVP-Seite.' : 'Eckenform und Button-Form der App.'} />
+      <Row label="Form (Ecken)" help="Verspielt = runde Ecken, Elegant = kantig."><Segment value={v.cornerStyle} onChange={x => ctl.set({ cornerStyle: x })} options={[['soft', 'Verspielt'], ['elegant', 'Elegant']]} /></Row>
       <Hr />
-      <Row label="Abstände (Dichte)" help="Wie luftig Inhalte gesetzt werden."><Segment value={s.density} onChange={v => setS({ density: v })} options={[['kompakt', 'Kompakt'], ['standard', 'Standard'], ['luftig', 'Luftig']]} /></Row>
-      <Hr />
-      <Row label="Form (Ecken)" help="Verspielt = runde Ecken, Elegant = kantig."><Segment value={s.cornerStyle} onChange={v => setS({ cornerStyle: v })} options={[['soft', 'Verspielt'], ['elegant', 'Elegant']]} /></Row>
-      <Hr />
-      <Row label="Button-Stil"><Segment value={s.buttonStyle} onChange={v => setS({ buttonStyle: v })} options={[['pill', 'Rund'], ['square', 'Eckig']]} /></Row>
-      <Hr />
-      <Stack label="Monogramm / Initialen" help="Kleine Wortmarke über dem Paarnamen. Leer = Standard.">
-        <input className="bp-input" value={s.monogram} maxLength={24} placeholder="z. B. A & M" onChange={e => setS({ monogram: e.target.value }, 'monogram')} />
-      </Stack>
-      <Hr />
-      <Row label="Dezente Ornamente & Trennlinien"><Toggle checked={s.ornaments} onChange={v => setS({ ornaments: v })} /></Row>
-      <Hr />
-      <Row label="Countdown zum Termin anzeigen"><Toggle checked={s.countdown} onChange={v => setS({ countdown: v })} /></Row>
+      <Row label="Button-Stil"><Segment value={v.buttonStyle} onChange={x => ctl.set({ buttonStyle: x })} options={[['pill', 'Rund'], ['square', 'Eckig']]} /></Row>
+      {full && (
+        <>
+          <Hr />
+          <Row label="Karten-Stil" help="Wie Karten/Boxen wirken: mit Rahmen, mit Schatten oder flach."><Segment value={v.cardStyle} onChange={x => ctl.set({ cardStyle: x })} options={[['border', 'Rahmen'], ['shadow', 'Schatten'], ['flat', 'Flach']]} /></Row>
+          <Hr />
+          <Row label="Abstände (Dichte)" help="Wie luftig Inhalte gesetzt werden."><Segment value={v.density} onChange={x => ctl.set({ density: x })} options={[['kompakt', 'Kompakt'], ['standard', 'Standard'], ['luftig', 'Luftig']]} /></Row>
+          <Hr />
+          <Stack label="Monogramm / Initialen" help="Kleine Wortmarke über dem Paarnamen. Leer = Standard.">
+            <input className="bp-input" value={v.monogram} maxLength={24} placeholder="z. B. A & M" onChange={e => ctl.set({ monogram: e.target.value }, 'monogram')} />
+          </Stack>
+          <Hr />
+          <Row label="Dezente Ornamente & Trennlinien"><Toggle checked={v.ornaments} onChange={b => ctl.set({ ornaments: b })} /></Row>
+          <Hr />
+          <Row label="Countdown zum Termin anzeigen"><Toggle checked={v.countdown} onChange={b => ctl.set({ countdown: b })} /></Row>
+        </>
+      )}
     </div>
   )
 }
@@ -613,35 +684,24 @@ function PaneBilder({ s, setS, images, busy, pickCover, removeCover, pickBg, rem
   )
 }
 
-// Isolierte Farben nur für die Einladungs-/RSVP-Seite (unabhängig vom Menü).
-function InvitationColors({ s, setInv }: { s: DisplaySettings; setInv: (p: Partial<DisplaySettings['invitation']>, k?: string) => void }) {
-  const inv = s.invitation
-  const ownColors = inv.accent !== null || inv.accent2 !== null || inv.bgColor !== null || inv.accentGradient !== null
-  const toggle = (on: boolean) => on
-    ? setInv({ accent: s.accent, accent2: s.accent2, bgColor: s.bgColor, accentGradient: s.accentGradient })
-    : setInv({ accent: null, accent2: null, bgColor: null, accentGradient: null })
+// Master-Schalter: eigenes Design für die RSVP-Seite ein/aus.
+function PaneRsvpDesign({ s, setCustomDesign }: { s: DisplaySettings; setCustomDesign: (on: boolean) => void }) {
+  const on = s.invitation.customDesign
   return (
-    <Stack label="Eigene Farben für die Einladungsseite" help="Gibt der Einladungs-/RSVP-Seite eigene Farben – unabhängig von den Menü-Farben unter Anzeige. Aus = die Seite erbt die Menü-Farben.">
-      <Row label="Eigene Farben verwenden">
-        <Toggle checked={ownColors} onChange={toggle} />
+    <div>
+      <GroupTitle title="Design der RSVP-Seite" hint="Bestimmt, ob die RSVP-/Einladungsseite ein eigenes Design hat oder das Design der App übernimmt." />
+      <Row label="Eigenes Design für die RSVP-Seite"
+        help="An: Die RSVP-Seite hat ein komplett eigenes Design (Farben, Schrift, Layout) – einstellbar in den Bereichen darunter. Aus: Sie übernimmt das Design der App.">
+        <Toggle checked={on} onChange={setCustomDesign} />
       </Row>
-      {ownColors && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 14 }}>
-          <Stack label="Akzentfarbe">
-            <Swatches value={inv.accent ?? s.accent} presets={ACCENT_PRESETS} onChange={v => setInv({ accent: v }, 'invAccent')} />
-          </Stack>
-          <Stack label="Zweite Akzentfarbe (Badges, Links)">
-            <Swatches value={inv.accent2 ?? effectiveAccent2(s)} presets={ACCENT_PRESETS} onChange={v => setInv({ accent2: v }, 'invAccent2')} />
-          </Stack>
-          <Stack label="Hintergrundfarbe">
-            <Swatches value={inv.bgColor ?? s.bgColor} presets={BG_COLOR_PRESETS} allowCustom={false} onChange={v => setInv({ bgColor: v }, 'invBg')} />
-          </Stack>
-          <Row label="Akzent als Farbverlauf">
-            <Toggle checked={inv.accentGradient ?? s.accentGradient} onChange={v => setInv({ accentGradient: v })} />
-          </Row>
-        </div>
-      )}
-    </Stack>
+      <div style={{ marginTop: 16, padding: 14, borderRadius: 10, background: 'var(--bp-ivory-2)', border: '1px solid var(--bp-rule)' }}>
+        <p style={{ fontSize: 13, color: 'var(--bp-ink-2)', margin: 0, lineHeight: 1.5 }}>
+          {on
+            ? 'Die RSVP-Seite nutzt ihr eigenes Design. Die Bereiche „Stilpakete“, „Farben“, „Schrift“ und „Layout & Form“ unter RSVP wirken ausschließlich auf die RSVP-/Einladungsseite – nicht auf die App.'
+            : 'Die RSVP-Seite übernimmt aktuell das Design der App. Aktiviere den Schalter, um sie davon unabhängig zu gestalten.'}
+        </p>
+      </div>
+    </div>
   )
 }
 
@@ -651,7 +711,7 @@ function PaneEinladung({ s, setInv, images, busy, pickMotive, removeMotive }: {
 }) {
   return (
     <div>
-      <GroupTitle title="Einladung" hint="Begrüßung und Motiv der Einladungs-/RSVP-Seite. Leere Felder erben automatisch die Einstellungen aus Schrift und Farben." />
+      <GroupTitle title="Einladung" hint="Begrüßung und Motiv der RSVP-/Einladungsseite." />
       <Stack label="Begrüßung – Überschrift">
         <input className="bp-input" value={s.invitation.greetingTitle} maxLength={120} placeholder="z. B. Wir heiraten!" onChange={e => setInv({ greetingTitle: e.target.value }, 'gt')} />
       </Stack>
@@ -664,15 +724,6 @@ function PaneEinladung({ s, setInv, images, busy, pickMotive, removeMotive }: {
       <Stack label="Einladungs-Motiv" help="Hintergrundbild der Einladungsseite. Ziehen zum Positionieren, Zoom über den Regler.">
         <ImagePositioner url={images.motiveUrl} focus={s.invitation.motiveFocus} onFocusChange={f => setInv({ motiveFocus: f }, 'motiveFocus')}
           onPick={pickMotive} onRemove={removeMotive} busy={busy.motive} aspect={3 / 4} uploadLabel="Motiv hochladen" />
-      </Stack>
-      <Hr />
-      <InvitationColors s={s} setInv={setInv} />
-      <Hr />
-      <Stack label="Überschriften-Schrift der Einladung" help="Eigene Schrift nur für die Einladungsseite. Wie global übernimmt die allgemeine Wahl.">
-        <select className="bp-input" value={s.invitation.headingFont ?? ''} onChange={e => setInv({ headingFont: (e.target.value || null) as HeadingFontKey | null })}>
-          <option value="">Wie global ({HEADING_FONTS[s.headingFont].label})</option>
-          {(Object.keys(HEADING_FONTS) as HeadingFontKey[]).map(k => <option key={k} value={k}>{HEADING_FONTS[k].label}</option>)}
-        </select>
       </Stack>
     </div>
   )
