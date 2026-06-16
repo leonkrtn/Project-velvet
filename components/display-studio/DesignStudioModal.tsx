@@ -33,17 +33,25 @@ const EMPTY_RSVP: RsvpSettings = { invitation_text: '', rsvp_deadline: null, sho
 
 type Doc = { s: DisplaySettings; rsvp: RsvpSettings }
 type SectionKey = 'stilpakete' | 'farben' | 'schrift' | 'layout' | 'bilder' | 'einladung' | 'rsvp' | 'abschnitte' | 'code'
+type GroupKey = 'anzeige' | 'rsvp' | 'allgemein'
 
-const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon; kw: string[] }[] = [
-  { key: 'stilpakete', label: 'Stilpakete',           icon: Sparkles,      kw: ['preset', 'stil', 'vorlage', 'theme', 'look'] },
-  { key: 'farben',     label: 'Farben',               icon: Palette,       kw: ['farbe', 'akzent', 'hintergrund', 'muster', 'verlauf', 'harmonie'] },
-  { key: 'schrift',    label: 'Schrift',              icon: Type,          kw: ['schrift', 'font', 'überschrift', 'fließtext', 'größe', 'paarung'] },
-  { key: 'layout',     label: 'Layout & Form',        icon: LayoutGrid,    kw: ['layout', 'karte', 'ecken', 'button', 'dichte', 'abstand', 'ornament', 'countdown', 'monogramm'] },
-  { key: 'bilder',     label: 'Bilder',               icon: ImageIcon,     kw: ['bild', 'titelbild', 'hintergrundfoto', 'foto', 'cover', 'zuschnitt', 'overlay', 'tönung', 'weichzeichnen', 'blur'] },
-  { key: 'einladung',  label: 'Einladung',            icon: Mail,          kw: ['einladung', 'begrüßung', 'motiv'] },
-  { key: 'rsvp',       label: 'RSVP-Formular',        icon: ClipboardList, kw: ['rsvp', 'antwort', 'frist', 'menü', 'begleit', 'kontakt', 'telefon', 'einladungstext'] },
-  { key: 'abschnitte', label: 'Sichtbare Abschnitte', icon: Eye,           kw: ['abschnitt', 'sichtbar', 'ausblenden', 'dresscode', 'kinder', 'allergie', 'anreise', 'nachricht'] },
-  { key: 'code',       label: 'Sichern & Code',       icon: Code,          kw: ['code', 'export', 'import', 'sichern', 'zurücksetzen', 'reset', 'standard'] },
+// Strikte Trennung: „Anzeige" (Optik der Seite) vs. „RSVP" (Antwort-Formular).
+const GROUPS: { key: GroupKey; label: string }[] = [
+  { key: 'anzeige',   label: 'Anzeige' },
+  { key: 'rsvp',      label: 'RSVP' },
+  { key: 'allgemein', label: 'Allgemein' },
+]
+
+const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon; group: GroupKey; kw: string[] }[] = [
+  { key: 'stilpakete', label: 'Stilpakete',           icon: Sparkles,      group: 'anzeige',   kw: ['preset', 'stil', 'vorlage', 'theme', 'look'] },
+  { key: 'farben',     label: 'Farben',               icon: Palette,       group: 'anzeige',   kw: ['farbe', 'akzent', 'hintergrund', 'muster', 'verlauf', 'harmonie'] },
+  { key: 'schrift',    label: 'Schrift',              icon: Type,          group: 'anzeige',   kw: ['schrift', 'font', 'überschrift', 'fließtext', 'größe', 'paarung'] },
+  { key: 'layout',     label: 'Layout & Form',        icon: LayoutGrid,    group: 'anzeige',   kw: ['layout', 'karte', 'ecken', 'button', 'dichte', 'abstand', 'ornament', 'countdown', 'monogramm'] },
+  { key: 'bilder',     label: 'Bilder',               icon: ImageIcon,     group: 'anzeige',   kw: ['bild', 'titelbild', 'hintergrundfoto', 'foto', 'cover', 'zuschnitt', 'overlay', 'tönung', 'weichzeichnen', 'blur'] },
+  { key: 'einladung',  label: 'Einladung',            icon: Mail,          group: 'anzeige',   kw: ['einladung', 'begrüßung', 'motiv'] },
+  { key: 'rsvp',       label: 'RSVP-Formular',        icon: ClipboardList, group: 'rsvp',      kw: ['rsvp', 'antwort', 'frist', 'menü', 'begleit', 'kontakt', 'telefon', 'einladungstext'] },
+  { key: 'abschnitte', label: 'Sichtbare Abschnitte', icon: Eye,           group: 'rsvp',      kw: ['abschnitt', 'sichtbar', 'ausblenden', 'dresscode', 'kinder', 'allergie', 'anreise', 'nachricht'] },
+  { key: 'code',       label: 'Sichern & Code',       icon: Code,          group: 'allgemein', kw: ['code', 'export', 'import', 'sichern', 'zurücksetzen', 'reset', 'standard'] },
 ]
 
 export default function DesignStudioModal({ eventId, onClose }: { eventId: string; onClose: () => void }) {
@@ -273,17 +281,28 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
         <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           {/* Sidebar */}
           <nav style={{ width: 224, flexShrink: 0, borderRight: '1px solid var(--bp-rule)', padding: 10, overflowY: 'auto', background: 'var(--bp-ivory-2)' }}>
-            {visibleSections.map(sec => {
-              const Icon = sec.icon
-              const on = active === sec.key
+            {GROUPS.map(group => {
+              const items = visibleSections.filter(sec => sec.group === group.key)
+              if (!items.length) return null
               return (
-                <button key={sec.key} type="button" onClick={() => setActive(sec.key)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '9px 11px', marginBottom: 3,
-                    borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: on ? 600 : 500,
-                    color: on ? 'var(--bp-ink)' : 'var(--bp-ink-2)', background: on ? 'var(--bp-paper)' : 'transparent',
-                    boxShadow: on ? 'var(--bp-shadow-card)' : 'none' }}>
-                  <Icon size={16} /> {sec.label}
-                </button>
+                <div key={group.key} style={{ marginBottom: 12 }}>
+                  <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--bp-ink-3)', margin: '4px 11px 6px' }}>
+                    {group.label}
+                  </p>
+                  {items.map(sec => {
+                    const Icon = sec.icon
+                    const on = active === sec.key
+                    return (
+                      <button key={sec.key} type="button" onClick={() => setActive(sec.key)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '9px 11px', marginBottom: 3,
+                          borderRadius: 9, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: on ? 600 : 500,
+                          color: on ? 'var(--bp-ink)' : 'var(--bp-ink-2)', background: on ? 'var(--bp-paper)' : 'transparent',
+                          boxShadow: on ? 'var(--bp-shadow-card)' : 'none' }}>
+                        <Icon size={16} /> {sec.label}
+                      </button>
+                    )
+                  })}
+                </div>
               )
             })}
             {!visibleSections.length && <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3)', padding: '8px 11px' }}>Keine Treffer.</p>}

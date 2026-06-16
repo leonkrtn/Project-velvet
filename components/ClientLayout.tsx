@@ -1,6 +1,7 @@
 'use client'
 import { usePathname } from 'next/navigation'
 import FrozenBanner from './FrozenBanner'
+import SessionGuard from './auth/SessionGuard'
 import { EventProvider } from '@/lib/event-context'
 
 // Hinweis: Das alte Brautpaar-Portal (AppHeader + BottomNav + EventProvider
@@ -20,11 +21,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     pathname === '/signup'
 
   if (skipEventProvider) {
-    return <>{children}</>
+    return <><SessionGuard />{children}</>
   }
 
   return (
     <EventProvider>
+      <SessionGuard />
       <FrozenBanner />
       {children}
     </EventProvider>
