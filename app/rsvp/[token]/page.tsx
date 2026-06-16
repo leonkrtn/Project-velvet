@@ -12,7 +12,7 @@ import type {
 import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle, Input } from '@/components/ui'
 import {
   DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, BODY_FONTS, fontHrefFor, bodyFontHrefFor,
-  shade, textureStyle, invitationFont, invitationBgColor, buildRsvpThemeCss,
+  shade, textureStyle, resolveRsvpSettings, buildRsvpThemeCss,
   rsvpText, focusPosition, focusSize, alphaHex, type DisplaySettings,
 } from '@/lib/display-settings'
 
@@ -542,16 +542,19 @@ export default function RSVPPage() {
     ? invitationText.replace(/\{\{Name\}\}/g, firstName)
     : `Liebe/r ${firstName}, wir freuen uns auf deine Antwort.`
 
-  const effFont = invitationFont(display)
-  const tex = textureStyle(display.bgTexture)
+  // Effektive RSVP-Settings: bei eigenem RSVP-Design greifen die invitation-
+  // Overrides, sonst werden die App-Einstellungen geerbt.
+  const d = resolveRsvpSettings(display)
+  const effFont = d.headingFont
+  const tex = textureStyle(d.bgTexture)
   const headingFamily = HEADING_FONTS[effFont].family
   const headingFontHref = fontHrefFor(effFont)
-  const bodyFontHref = bodyFontHrefFor(display.bodyFont)
+  const bodyFontHref = bodyFontHrefFor(d.bodyFont)
   const themeCss = buildRsvpThemeCss(display)
-  const bgColor = invitationBgColor(display)
+  const bgColor = d.bgColor
 
   // Hintergrund-Priorität: eigenes Foto → Farbverlauf → Textur → einfarbig.
-  const baseBgStyle: React.CSSProperties = !bgPhotoUrl && display.bgGradient
+  const baseBgStyle: React.CSSProperties = !bgPhotoUrl && d.bgGradient
     ? { backgroundImage: `linear-gradient(165deg, ${bgColor}, ${shade(bgColor, -0.06)})`, backgroundAttachment: 'fixed' }
     : (!bgPhotoUrl && tex.image !== 'none')
       ? { backgroundImage: tex.image, backgroundSize: tex.size, backgroundAttachment: 'fixed' }
@@ -609,7 +612,7 @@ export default function RSVPPage() {
               </button>
             )}
             <span style={{ fontFamily: headingFamily, fontSize: 17, fontWeight: 500, letterSpacing: '0.04em', color: 'var(--text)', flex: 1 }}>
-              {display.monogram || event.coupleName}
+              {d.monogram || event.coupleName}
             </span>
           </div>
           {/* Beschriftete Schritt-Punkte */}
@@ -644,7 +647,7 @@ export default function RSVPPage() {
         {/* ──────────── INTRO ──────────── */}
         {step === 'intro' && (() => {
           const onImage = !!coverUrl
-          const cd = display.countdown && event.date ? countdownParts(event.date) : null
+          const cd = d.countdown && event.date ? countdownParts(event.date) : null
           return (
           <div style={{ animation: 'fadeUp 0.4s ease' }}>
             {/* Vollflächiger Hero — Titelbild mit Verlauf, sonst Akzent-Verlauf */}
@@ -664,7 +667,7 @@ export default function RSVPPage() {
               <h1 style={{ fontFamily: headingFamily, fontSize: 'clamp(30px, 9vw, 44px)', fontWeight: 500, color: onImage ? '#fff' : 'var(--text)', lineHeight: 1.12, marginBottom: 10, textShadow: onImage ? '0 1px 14px rgba(0,0,0,0.35)' : undefined }}>
                 {event.coupleName}
               </h1>
-              <Ornament show={display.ornaments && !onImage} />
+              <Ornament show={d.ornaments && !onImage} />
               <p style={{ fontFamily: headingFamily, fontSize: 16, fontStyle: 'italic', color: onImage ? 'rgba(255,255,255,0.92)' : 'var(--text-light)', margin: '0 auto', maxWidth: 440, lineHeight: 1.5 }}>
                 {introBody}
               </p>
@@ -786,7 +789,7 @@ export default function RSVPPage() {
           <div style={{ animation: 'fadeUp 0.4s ease' }}>
             <h2 style={{ fontFamily: headingFamily, fontSize: 26, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>{rsvpText(display, 'rsvpTitle')}</h2>
             <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 22 }}>{event.coupleName} · {new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-            <Ornament show={display.ornaments} />
+            <Ornament show={d.ornaments} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
               {[
@@ -1282,8 +1285,8 @@ export default function RSVPPage() {
                   : `0 0 0 6px var(--surface2), 0 0 0 7px var(--border)`,
                 animation: 'sealPop 0.5s cubic-bezier(0.34,1.56,0.64,1)',
               }}>
-                {display.monogram
-                  ? <span style={{ fontFamily: headingFamily, fontSize: 26, fontWeight: 600, letterSpacing: '0.04em' }}>{display.monogram.slice(0, 3)}</span>
+                {d.monogram
+                  ? <span style={{ fontFamily: headingFamily, fontSize: 26, fontWeight: 600, letterSpacing: '0.04em' }}>{d.monogram.slice(0, 3)}</span>
                   : attending ? <Heart size={36} fill="currentColor" /> : <XCircle size={36} />}
               </div>
               <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.18em', color: attending ? 'var(--gold)' : 'var(--text-dim)', marginBottom: 8 }}>
@@ -1292,7 +1295,7 @@ export default function RSVPPage() {
               <h2 style={{ fontFamily: headingFamily, fontSize: 'clamp(24px, 7vw, 32px)', fontWeight: 500, color: 'var(--text)', lineHeight: 1.18, margin: '0 auto', maxWidth: 420 }}>
                 {attending ? rsvpText(display, 'thankYouAccept') : rsvpText(display, 'thankYouDecline')}
               </h2>
-              <Ornament show={display.ornaments} />
+              <Ornament show={d.ornaments} />
               {attending && (
                 <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, textAlign: 'left' }}>
                   {[

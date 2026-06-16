@@ -8,7 +8,7 @@ import { Heart } from 'lucide-react'
 import '@/app/brautpaar/brautpaar.css'
 import {
   DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, fontHrefFor, shade, textureStyle,
-  invitationAccent, invitationFont, focusPosition, focusSize, type DisplaySettings,
+  resolveRsvpSettings, focusPosition, focusSize, type DisplaySettings,
 } from '@/lib/display-settings'
 
 // Öffentliche Sammel-Link-Seite: Gäste registrieren sich selbst mit ihrem
@@ -81,19 +81,20 @@ export default function OpenInvitePage() {
     ? new Date(eventInfo.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
 
-  const effAccent = invitationAccent(display)
-  const effFont = invitationFont(display)
+  const d = resolveRsvpSettings(display)
+  const effAccent = d.accent
+  const effFont = d.headingFont
   const headingFamily = HEADING_FONTS[effFont].family
   const headingFontHref = fontHrefFor(effFont)
-  const tex = textureStyle(display.bgTexture)
+  const tex = textureStyle(d.bgTexture)
   const themeVars = {
     '--bp-gold': effAccent,
     '--bp-gold-deep': shade(effAccent, -0.18),
     '--bp-gold-pale': shade(effAccent, 0.82),
     '--bp-gold-mist': shade(effAccent, 0.7),
     '--gold': effAccent,
-    '--bp-ivory': display.bgColor,
-    '--bp-ivory-2': shade(display.bgColor, -0.03),
+    '--bp-ivory': d.bgColor,
+    '--bp-ivory-2': shade(d.bgColor, -0.03),
   } as React.CSSProperties
   const greetingTitle = display.invitation.greetingTitle || 'Ihr seid eingeladen'
   const greetingSubtitle = display.invitation.greetingSubtitle || 'Sag uns kurz, wer du bist — danach kannst du direkt zu- oder absagen.'
@@ -101,7 +102,7 @@ export default function OpenInvitePage() {
   return (
     <div className="bp-auth" style={{
       ...themeVars,
-      backgroundColor: display.bgColor,
+      backgroundColor: d.bgColor,
       ...(motiveUrl
         ? { backgroundImage: `linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.9)), url(${motiveUrl})`, backgroundSize: `cover, ${focusSize(display.invitation.motiveFocus)}`, backgroundPosition: `center, ${focusPosition(display.invitation.motiveFocus)}`, backgroundAttachment: 'fixed' }
         : tex.image !== 'none' ? { backgroundImage: tex.image, backgroundSize: tex.size, backgroundAttachment: 'fixed' } : {}),
@@ -110,8 +111,8 @@ export default function OpenInvitePage() {
       <div className="bp-auth-inner">
 
         <div className="bp-auth-logo">
-          {display.monogram && (
-            <p style={{ fontFamily: headingFamily, fontSize: '0.8rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--bp-gold)', margin: '0 0 0.5rem' }}>{display.monogram}</p>
+          {d.monogram && (
+            <p style={{ fontFamily: headingFamily, fontSize: '0.8rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--bp-gold)', margin: '0 0 0.5rem' }}>{d.monogram}</p>
           )}
           <span style={{
             width: 52, height: 52, borderRadius: '50%', margin: '0 auto 0.875rem',

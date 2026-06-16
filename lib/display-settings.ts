@@ -6,11 +6,27 @@ export interface InvitationSettings {
   greetingSubtitle: string      // '' = Standard
   motiveR2Key: string | null    // eigenes Einladungs-Motiv (R2 key); null = keins
   motiveFocus: ImageFocus       // Bildausschnitt/Position des Motivs
-  accent: string | null         // null = global erben — isolierte RSVP-Akzentfarbe
-  accent2: string | null        // null = global erben — isolierte zweite Farbe
-  bgColor: string | null        // null = global erben — isolierte Hintergrundfarbe
-  accentGradient: boolean | null// null = global erben — Akzent als Verlauf
-  headingFont: HeadingFontKey | null  // null = global erben
+  // Vollständig eigenes Design für die RSVP-/Einladungsseite. Ist customDesign
+  // false, erbt die RSVP-Seite ALLE Stiloptionen aus der App (DisplaySettings
+  // oben). Ist es true, gelten die folgenden Overrides (null = jeweils erben).
+  customDesign: boolean
+  accent: string | null
+  accent2: string | null
+  bgColor: string | null
+  accentGradient: boolean | null
+  headingFont: HeadingFontKey | null
+  bodyFont: BodyFontKey | null
+  headingScale: 'kompakt' | 'standard' | 'gross' | null
+  bgTexture: BgTextureKey | null
+  bgGradient: boolean | null
+  cornerStyle: 'soft' | 'elegant' | null
+  buttonStyle: 'pill' | 'square' | null
+  cardStyle: 'border' | 'shadow' | 'flat' | null
+  density: 'kompakt' | 'standard' | 'luftig' | null
+  ornaments: boolean | null
+  countdown: boolean | null
+  monogram: string | null
+  preset: string | null
 }
 
 // Bildausschnitt: Fokuspunkt (0–100 %) + Zoom (1 = Vollbild, >1 herangezoomt).
@@ -116,7 +132,13 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   hiddenSections: [],
   texts: {},
   preset: null,
-  invitation: { greetingTitle: '', greetingSubtitle: '', motiveR2Key: null, motiveFocus: { ...DEFAULT_FOCUS }, accent: null, accent2: null, bgColor: null, accentGradient: null, headingFont: null },
+  invitation: {
+    greetingTitle: '', greetingSubtitle: '', motiveR2Key: null, motiveFocus: { ...DEFAULT_FOCUS },
+    customDesign: false,
+    accent: null, accent2: null, bgColor: null, accentGradient: null, headingFont: null, bodyFont: null,
+    headingScale: null, bgTexture: null, bgGradient: null, cornerStyle: null, buttonStyle: null,
+    cardStyle: null, density: null, ornaments: null, countdown: null, monogram: null, preset: null,
+  },
 }
 
 export const HEADING_FONTS: Record<HeadingFontKey, { label: string; family: string; href: string | null }> = {
@@ -206,21 +228,32 @@ export function normalizeSettings(raw: unknown): DisplaySettings {
   }
 
   const inv = (s.invitation && typeof s.invitation === 'object') ? s.invitation as Record<string, unknown> : {}
-  const invAccent = typeof inv.accent === 'string' && /^#[0-9a-fA-F]{6}$/.test(inv.accent) ? inv.accent : null
-  const invAccent2 = typeof inv.accent2 === 'string' && /^#[0-9a-fA-F]{6}$/.test(inv.accent2) ? inv.accent2 : null
-  const invBg = typeof inv.bgColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(inv.bgColor) && isLightColor(inv.bgColor) ? inv.bgColor : null
-  const invGradient = typeof inv.accentGradient === 'boolean' ? inv.accentGradient : null
-  const invFont = (typeof inv.headingFont === 'string' && inv.headingFont in HEADING_FONTS) ? inv.headingFont as HeadingFontKey : null
+  const hexOrNull = (v: unknown) => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v) ? v : null
+  const enumOrNull = <T extends string>(v: unknown, allowed: readonly T[]) => allowed.includes(v as T) ? v as T : null
+  const boolOrNull = (v: unknown) => typeof v === 'boolean' ? v : null
   const invitation: InvitationSettings = {
     greetingTitle: typeof inv.greetingTitle === 'string' ? inv.greetingTitle.slice(0, 120) : '',
     greetingSubtitle: typeof inv.greetingSubtitle === 'string' ? inv.greetingSubtitle.slice(0, 240) : '',
     motiveR2Key: typeof inv.motiveR2Key === 'string' && inv.motiveR2Key ? inv.motiveR2Key : null,
     motiveFocus: normalizeFocus(inv.motiveFocus),
-    accent: invAccent,
-    accent2: invAccent2,
-    bgColor: invBg,
-    accentGradient: invGradient,
-    headingFont: invFont,
+    customDesign: inv.customDesign === true,
+    accent: hexOrNull(inv.accent),
+    accent2: hexOrNull(inv.accent2),
+    bgColor: (typeof inv.bgColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(inv.bgColor) && isLightColor(inv.bgColor)) ? inv.bgColor : null,
+    accentGradient: boolOrNull(inv.accentGradient),
+    headingFont: (typeof inv.headingFont === 'string' && inv.headingFont in HEADING_FONTS) ? inv.headingFont as HeadingFontKey : null,
+    bodyFont: (typeof inv.bodyFont === 'string' && inv.bodyFont in BODY_FONTS) ? inv.bodyFont as BodyFontKey : null,
+    headingScale: enumOrNull(inv.headingScale, ['kompakt', 'standard', 'gross'] as const),
+    bgTexture: enumOrNull(inv.bgTexture, ['none', 'paper', 'dots', 'floral', 'marble', 'linen', 'watercolor'] as const),
+    bgGradient: boolOrNull(inv.bgGradient),
+    cornerStyle: enumOrNull(inv.cornerStyle, ['soft', 'elegant'] as const),
+    buttonStyle: enumOrNull(inv.buttonStyle, ['pill', 'square'] as const),
+    cardStyle: enumOrNull(inv.cardStyle, ['border', 'shadow', 'flat'] as const),
+    density: enumOrNull(inv.density, ['kompakt', 'standard', 'luftig'] as const),
+    ornaments: boolOrNull(inv.ornaments),
+    countdown: boolOrNull(inv.countdown),
+    monogram: typeof inv.monogram === 'string' ? inv.monogram.slice(0, 24) : null,
+    preset: typeof inv.preset === 'string' ? inv.preset : null,
   }
 
   return {
@@ -252,21 +285,46 @@ export function normalizeSettings(raw: unknown): DisplaySettings {
   }
 }
 
-// Effektives Gäste-/Einladungs-Theme: Invitation-Overrides auf globale Werte.
-export function invitationAccent(s: DisplaySettings): string {
-  return s.invitation.accent ?? s.accent
+/**
+ * Liefert die effektiven Settings für die RSVP-/Einladungsseite. Bei
+ * `invitation.customDesign === false` erbt die Seite ALLE Stiloptionen aus der
+ * App (globale DisplaySettings). Bei `true` überschreiben die gesetzten
+ * invitation-Felder die jeweiligen App-Werte (null = einzeln erben).
+ * RSVP-eigene Inhalte (Begrüßung, Motiv, Bilder, Texte, Abschnitte) bleiben
+ * unverändert erhalten.
+ */
+export function resolveRsvpSettings(input: DisplaySettings): DisplaySettings {
+  const s = normalizeSettings(input)
+  const inv = s.invitation
+  if (!inv.customDesign) return s
+  return {
+    ...s,
+    accent: inv.accent ?? s.accent,
+    accent2: inv.accent2 ?? s.accent2,
+    accentGradient: inv.accentGradient ?? s.accentGradient,
+    headingFont: inv.headingFont ?? s.headingFont,
+    bodyFont: inv.bodyFont ?? s.bodyFont,
+    headingScale: inv.headingScale ?? s.headingScale,
+    bgColor: inv.bgColor ?? s.bgColor,
+    bgTexture: inv.bgTexture ?? s.bgTexture,
+    bgGradient: inv.bgGradient ?? s.bgGradient,
+    cornerStyle: inv.cornerStyle ?? s.cornerStyle,
+    buttonStyle: inv.buttonStyle ?? s.buttonStyle,
+    cardStyle: inv.cardStyle ?? s.cardStyle,
+    density: inv.density ?? s.density,
+    ornaments: inv.ornaments ?? s.ornaments,
+    countdown: inv.countdown ?? s.countdown,
+    monogram: inv.monogram ?? s.monogram,
+    preset: inv.preset ?? s.preset,
+  }
 }
+
+// Effektive Einzelwerte der RSVP-Seite (für die einladung-Seite weiter genutzt).
 export function invitationFont(s: DisplaySettings): HeadingFontKey {
-  return s.invitation.headingFont ?? s.headingFont
+  return resolveRsvpSettings(s).headingFont
 }
-export function invitationBgColor(s: DisplaySettings): string {
-  return s.invitation.bgColor ?? s.bgColor
-}
-export function invitationGradient(s: DisplaySettings): boolean {
-  return s.invitation.accentGradient ?? s.accentGradient
-}
-export function invitationAccent2(s: DisplaySettings): string {
-  return s.invitation.accent2 ?? s.accent2 ?? shade(invitationAccent(s), -0.3)
+export function invitationAccent(s: DisplaySettings): string {
+  return resolveRsvpSettings(s).accent
 }
 
 // ── Bildausschnitt-Hilfen ──────────────────────────────────────────────────────
@@ -367,10 +425,10 @@ const DENSITY_GAP = { kompakt: '10px', standard: '14px', luftig: '20px' } as con
  * für den gesamten RSVP-Teilbaum. Reiner String aus validierten Werten.
  */
 export function buildRsvpThemeCss(input: DisplaySettings): string {
-  const s = normalizeSettings(input)
-  const accent = invitationAccent(s)
-  const acc2 = invitationAccent2(s)
-  const bg = invitationBgColor(s)
+  const s = resolveRsvpSettings(input)
+  const accent = s.accent
+  const acc2 = s.accent2 ?? shade(accent, -0.3)
+  const bg = s.bgColor
   const deep = shade(accent, -0.18)
   const pale = shade(accent, 0.82)
   const corner = CORNER_MAP[s.cornerStyle]

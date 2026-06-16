@@ -4,7 +4,7 @@ import React from 'react'
 import { CheckCircle, XCircle, Clock, Phone, CalendarClock } from 'lucide-react'
 import {
   HEADING_FONTS, RSVP_TEXT_DEFAULTS, fontHrefFor, bodyFontHrefFor,
-  buildRsvpThemeCss, invitationFont, invitationBgColor, invitationGradient,
+  buildRsvpThemeCss, resolveRsvpSettings,
   alphaHex, focusPosition, focusSize,
   type DisplaySettings,
 } from '@/lib/display-settings'
@@ -37,19 +37,20 @@ export default function DisplayPreview({
   coupleName: string
   dateLabel: string
 }) {
-  const effFont = invitationFont(s)
+  const r = resolveRsvpSettings(s)
+  const effFont = r.headingFont
   const headingFamily = HEADING_FONTS[effFont].family
   const headingHref = fontHrefFor(effFont)
-  const bodyHref = bodyFontHrefFor(s.bodyFont)
+  const bodyHref = bodyFontHrefFor(r.bodyFont)
   const themeCss = buildRsvpThemeCss(s)
-  const bg = invitationBgColor(s)
-  const grad = invitationGradient(s)
+  const bg = r.bgColor
+  const grad = r.accentGradient
   const intro = (rsvp.invitation_text?.trim() || 'Liebe/r {{Name}}, wir freuen uns sehr, mit dir zu feiern.')
     .replace(/\{\{\s*Name\s*\}\}/g, 'Anna')
 
   const heroImg = images.coverUrl || images.motiveUrl
   const heroIsCover = !!images.coverUrl
-  const heroFocus = heroIsCover ? s.coverFocus : s.invitation.motiveFocus
+  const heroFocus = heroIsCover ? r.coverFocus : r.invitation.motiveFocus
   const textOnImage = !!heroImg
 
   const screenHeight = screenHeightFor(device)
@@ -66,11 +67,11 @@ export default function DisplayPreview({
             <div aria-hidden style={{
               position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
               backgroundImage: `url(${images.bgPhotoUrl})`,
-              backgroundSize: focusSize(s.bgPhotoFocus), backgroundPosition: focusPosition(s.bgPhotoFocus),
-              filter: s.bgPhotoBlur ? `blur(${s.bgPhotoBlur}px)` : undefined,
-              transform: s.bgPhotoBlur ? 'scale(1.06)' : undefined,
+              backgroundSize: focusSize(r.bgPhotoFocus), backgroundPosition: focusPosition(r.bgPhotoFocus),
+              filter: r.bgPhotoBlur ? `blur(${r.bgPhotoBlur}px)` : undefined,
+              transform: r.bgPhotoBlur ? 'scale(1.06)' : undefined,
             }} />
-            <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', background: `${bg}${alphaHex(s.bgPhotoOverlay)}` }} />
+            <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', background: `${bg}${alphaHex(r.bgPhotoOverlay)}` }} />
           </>
         )}
 
@@ -91,7 +92,7 @@ export default function DisplayPreview({
             <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.22em',
               color: textOnImage && heroIsCover ? '#fff' : 'var(--gold)', margin: '0 0 10px',
               textShadow: textOnImage && heroIsCover ? '0 1px 6px rgba(0,0,0,0.5)' : undefined }}>
-              {s.monogram || RSVP_TEXT_DEFAULTS.introEyebrow}
+              {r.monogram || RSVP_TEXT_DEFAULTS.introEyebrow}
             </p>
             <h1 style={{ fontFamily: headingFamily, fontSize: device === 'mobile' ? 'clamp(26px,7vw,34px)' : '30px',
               fontWeight: 500, lineHeight: 1.12, margin: '0 0 8px',
@@ -99,7 +100,7 @@ export default function DisplayPreview({
               textShadow: textOnImage && heroIsCover ? '0 2px 14px rgba(0,0,0,0.45)' : undefined }}>
               {coupleName}
             </h1>
-            {s.ornaments && (
+            {r.ornaments && (
               <div aria-hidden style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, margin: '12px 0', opacity: 0.8 }}>
                 <span style={{ height: 1, width: 40, background: 'linear-gradient(to right, transparent, var(--gold))' }} />
                 <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)' }} />
@@ -111,7 +112,7 @@ export default function DisplayPreview({
               textShadow: textOnImage && heroIsCover ? '0 1px 8px rgba(0,0,0,0.45)' : undefined }}>
               {intro}
             </p>
-            {s.countdown && (
+            {r.countdown && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 18 }}>
                 {[['120', 'Tage'], ['06', 'Std'], ['30', 'Min']].map(([v, l]) => (
                   <div key={l} style={{ minWidth: 52, padding: '8px 6px', borderRadius: 'var(--r-sm)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
@@ -146,14 +147,14 @@ export default function DisplayPreview({
               <DetailRow icon={<Clock size={13} color="var(--gold)" />} label="Datum" value={dateLabel} />
               {rsvp.rsvp_deadline && <DetailRow icon={<CalendarClock size={13} color="var(--gold)" />} label="Bitte antworten bis" value={formatDate(rsvp.rsvp_deadline)} />}
               {rsvp.phone_contact && <DetailRow icon={<Phone size={13} color="var(--gold)" />} label="Fragen?" value={rsvp.phone_contact} />}
-              {!hidden(s, 'dresscode') && <DetailRow icon={<Dot />} label="Dresscode" value="Elegant" />}
-              {!hidden(s, 'children') && <DetailRow icon={<Dot />} label="Kinder" value="Herzlich willkommen" />}
+              {!hidden(r, 'dresscode') && <DetailRow icon={<Dot />} label="Dresscode" value="Elegant" />}
+              {!hidden(r, 'children') && <DetailRow icon={<Dot />} label="Kinder" value="Herzlich willkommen" />}
             </div>
 
-            {rsvp.show_meal_choice && !hidden(s, 'allergies') && (
+            {rsvp.show_meal_choice && !hidden(r, 'allergies') && (
               <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '0 2px' }}>Menüwahl &amp; Allergien werden im Formular abgefragt.</div>
             )}
-            {!hidden(s, 'message') && (
+            {!hidden(r, 'message') && (
               <div style={{ padding: 'var(--ui-card-pad, 14px)', borderRadius: 'var(--r-md)', background: 'var(--surface)', border: '1px dashed var(--border)', fontSize: 12.5, color: 'var(--text-dim)' }}>
                 Nachricht an das Brautpaar …
               </div>
