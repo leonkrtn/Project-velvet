@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react'
 import { SOLO_TOUR_STEPS, type TourStep } from '@/lib/tour/solo-tour-steps'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   eventId: string
@@ -18,9 +19,18 @@ const PAD = 8           // Spotlight-Innenabstand um das Zielelement
 const CARD_W = 340
 const POLL_MS = 120
 const MAX_TRIES = 45    // ~5,4 s warten, bis ein Zielelement erscheint
+const ACTION_POLL_MS = 1500   // Takt der Eintrags-Erkennung bei Anlege-Schritten
+
+// Status eines begleiteten Anlege-Schritts:
+//  none     – kein Anlege-Schritt
+//  waiting  – wartet auf den ersten Eintrag
+//  pre      – schon vorhanden (z. B. bei erneutem Tour-Start) → kein Auto-Weiter
+//  new      – soeben angelegt → Auto-Weiter
+type ActionState = 'none' | 'waiting' | 'pre' | 'new'
 
 export default function ProductTour({ eventId, available }: Props) {
   const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
 
   const steps = useMemo(
     () => SOLO_TOUR_STEPS.filter(s => available[s.module] === true),
@@ -33,12 +43,15 @@ export default function ProductTour({ eventId, available }: Props) {
   const [index, setIndex] = useState(0)
   const [rect, setRect] = useState<DOMRect | null>(null)
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
+  const [actionState, setActionState] = useState<ActionState>('none')
 
   const step: TourStep | null = active ? steps[index] ?? null : null
   // Primitive Ableitungen für stabile Effekt-Abhängigkeiten (das step-Objekt
   // wechselt bei jedem Render die Identität, da `available` neu erzeugt wird).
   const stepModule = step?.module
   const stepTarget = step?.target
+  const stepArea = step?.action?.area
+  const isAction = !!stepArea
 
   useEffect(() => {
     setMounted(true)
@@ -56,6 +69,13 @@ export default function ProductTour({ eventId, available }: Props) {
     setRect(null)
     try { localStorage.setItem(doneKey, 'done') } catch { /* ignore */ }
   }, [doneKey])
+
+  const advance = useCallback(() => {
+    setIndex(i => {
+      if (i >= steps.length - 1) { finish(); return i }
+      return i + 1
+    })
+  }, [steps.length, finish])
 
   // Manueller Start über die Hilfe-Schaltfläche.
   useEffect(() => {
@@ -110,6 +130,47 @@ export default function ProductTour({ eventId, available }: Props) {
     return () => { cancelled = true; window.clearTimeout(id) }
   }, [active, index, stepModule, stepTarget, eventId, router])
 
+  // Begleitetes Anlegen: Baseline ermitteln und auf den ersten Eintrag warten.
+  useEffect(() => {
+    if (!active || !stepArea) { setActionState('none'); return }
+    let cancelled = false
+    let timer: number | undefined
+    setActionState('waiting')
+
+    const countRows = async (): Promise<number> => {
+      const { count } = await supabase
+        .from(stepArea)
+        .select('id', { count: 'exact', head: true })
+        .eq('event_id', eventId)
+      return count ?? 0
+    }
+
+    ;(async () => {
+      let baseline = 0
+      try { baseline = await countRows() } catch { /* ignore */ }
+      if (cancelled) return
+      if (baseline > 0) { setActionState('pre'); return }   // schon vorhanden
+      const poll = async () => {
+        if (cancelled) return
+        let c = baseline
+        try { c = await countRows() } catch { /* ignore */ }
+        if (cancelled) return
+        if (c > baseline) setActionState('new')
+        else timer = window.setTimeout(poll, ACTION_POLL_MS)
+      }
+      timer = window.setTimeout(poll, ACTION_POLL_MS)
+    })()
+
+    return () => { cancelled = true; if (timer) window.clearTimeout(timer) }
+  }, [active, index, stepArea, eventId, supabase])
+
+  // Nach erkanntem Neu-Eintrag automatisch zum nächsten Schritt.
+  useEffect(() => {
+    if (actionState !== 'new') return
+    const t = window.setTimeout(() => advance(), 1400)
+    return () => window.clearTimeout(t)
+  }, [actionState, advance])
+
   // Spotlight bei Scroll/Resize nachführen.
   useEffect(() => {
     if (!active) return
@@ -143,15 +204,20 @@ export default function ProductTour({ eventId, available }: Props) {
   if (!mounted || !active || !step) return null
 
   const isLast = index === steps.length - 1
+  const actionSatisfied = actionState === 'pre' || actionState === 'new'
   const next = () => { if (isLast) finish(); else setIndex(i => i + 1) }
   const back = () => setIndex(i => Math.max(0, i - 1))
 
   const { w: vw, h: vh } = viewport
 
-  // Karten-Position berechnen: unter dem Spotlight, sonst darüber, sonst zentriert.
+  // Karten-Position berechnen.
+  const CARD_EST_H = isAction ? 240 : 200
   let cardTop: number, cardLeft: number
-  const CARD_EST_H = 200
-  if (rect) {
+  if (isAction) {
+    // Anlege-Schritte: Karte unten zentriert — stört das echte Formular nicht.
+    cardLeft = Math.max(12, (vw - CARD_W) / 2)
+    cardTop = Math.max(12, vh - CARD_EST_H - 24)
+  } else if (rect) {
     cardLeft = Math.min(Math.max(12, rect.left), vw - CARD_W - 12)
     if (rect.bottom + CARD_EST_H + 16 < vh) {
       cardTop = rect.bottom + 14
@@ -167,18 +233,23 @@ export default function ProductTour({ eventId, available }: Props) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 4000 }} aria-live="polite" role="dialog" aria-label="Produkt-Tour">
-      {/* Klick-Blocker (fängt Interaktionen mit der Seite ab) */}
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          position: 'fixed', inset: 0,
-          background: rect ? 'transparent' : 'rgba(31,26,22,0.55)',
-          pointerEvents: 'auto',
-        }}
-      />
+    <div style={{ position: 'fixed', inset: 0, zIndex: 4000, pointerEvents: 'none' }} aria-live="polite" role="dialog" aria-label="Produkt-Tour">
+      {/* Hintergrund.
+          • Anlege-Schritt: transparent + klick-durchlässig, damit das Paar das
+            echte Formular bedienen kann.
+          • Erklär-Schritt: abdunkeln und Klicks abfangen. */}
+      {!isAction && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: 'fixed', inset: 0,
+            background: rect ? 'transparent' : 'rgba(31,26,22,0.55)',
+            pointerEvents: 'auto',
+          }}
+        />
+      )}
 
-      {/* Spotlight: heller „Ausschnitt" via großem Box-Shadow */}
+      {/* Spotlight */}
       {rect && (
         <div
           style={{
@@ -188,16 +259,19 @@ export default function ProductTour({ eventId, available }: Props) {
             width: rect.width + PAD * 2,
             height: rect.height + PAD * 2,
             borderRadius: 14,
-            boxShadow: '0 0 0 9999px rgba(31,26,22,0.55)',
+            // Erklär-Schritt dunkelt rundherum ab; Anlege-Schritt nur Ring + Glow.
+            boxShadow: isAction
+              ? '0 0 0 4px rgba(156,127,79,0.28)'
+              : '0 0 0 9999px rgba(31,26,22,0.55)',
             outline: '2px solid var(--bp-gold, #9C7F4F)',
             outlineOffset: 2,
             transition: 'all 0.25s ease',
-            pointerEvents: 'auto',
+            pointerEvents: 'none',
           }}
         />
       )}
 
-      {/* Erklär-Karte */}
+      {/* Erklär-/Anlege-Karte */}
       <div
         style={{
           position: 'fixed',
@@ -234,6 +308,28 @@ export default function ProductTour({ eventId, available }: Props) {
           {step.body}
         </p>
 
+        {/* Status-Zeile beim begleiteten Anlegen */}
+        {isAction && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, fontSize: '0.8125rem', fontWeight: 600 }}>
+            {actionState === 'waiting' && (
+              <>
+                <Loader2 size={15} className="animate-spin" style={{ color: 'var(--bp-gold, #9C7F4F)' }} />
+                <span style={{ color: 'var(--bp-ink-3, #9b9085)' }}>Warte auf euren ersten Eintrag…</span>
+              </>
+            )}
+            {actionSatisfied && (
+              <>
+                <span style={{ display: 'inline-flex', width: 18, height: 18, borderRadius: '50%', background: '#2f8f5b', color: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+                  <Check size={12} />
+                </span>
+                <span style={{ color: '#2f8f5b' }}>
+                  {actionState === 'new' ? 'Eintrag erstellt!' : 'Schon vorhanden'}
+                </span>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Fortschrittsbalken */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 14 }}>
           {steps.map((_, i) => (
@@ -251,10 +347,10 @@ export default function ProductTour({ eventId, available }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <button
             type="button"
-            onClick={finish}
+            onClick={isAction ? advance : finish}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-3, #9b9085)', fontFamily: 'inherit', padding: '6px 2px' }}
           >
-            Überspringen
+            {isAction ? 'Überspringen' : 'Tour beenden'}
           </button>
           <div style={{ display: 'flex', gap: 8 }}>
             {index > 0 && (
@@ -269,7 +365,14 @@ export default function ProductTour({ eventId, available }: Props) {
             <button
               type="button"
               onClick={next}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 999, border: 'none', background: 'var(--bp-gold, #9C7F4F)', color: '#fff', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit' }}
+              disabled={isAction && !actionSatisfied}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 999, border: 'none',
+                background: isAction && !actionSatisfied ? 'var(--bp-line, #e7e0d6)' : 'var(--bp-gold, #9C7F4F)',
+                color: isAction && !actionSatisfied ? 'var(--bp-ink-3, #9b9085)' : '#fff',
+                cursor: isAction && !actionSatisfied ? 'default' : 'pointer',
+                fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit',
+              }}
             >
               {isLast ? (<><Check size={15} /> Fertig</>) : (<>Weiter <ChevronRight size={15} /></>)}
             </button>

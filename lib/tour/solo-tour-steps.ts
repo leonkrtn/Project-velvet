@@ -12,6 +12,9 @@
 // bewusst NICHT enthalten — die Engine blendet zusätzlich Module aus, die für
 // das Event nicht freigeschaltet sind.
 
+/** Tabellen, deren erster Eintrag während der Tour begleitet angelegt wird. */
+export type GuidedArea = 'guests' | 'timeline_entries' | 'brautpaar_tasks' | 'budget_items'
+
 export interface TourStep {
   /** Modul-Schlüssel = Route-Segment unter /brautpaar/[eventId]/ */
   module: string
@@ -19,6 +22,12 @@ export interface TourStep {
   target?: string
   title: string
   body: string
+  /**
+   * Markiert einen begleiteten Anlege-Schritt: Die Engine macht die Seite
+   * bedienbar, hebt das echte „Hinzufügen"-Element hervor und geht erst weiter,
+   * sobald das Paar einen ersten Eintrag in `area` angelegt hat.
+   */
+  action?: { area: GuidedArea }
 }
 
 export const SOLO_TOUR_STEPS: TourStep[] = [
@@ -40,9 +49,9 @@ export const SOLO_TOUR_STEPS: TourStep[] = [
   { module: 'gaeste', target: 'bp-content',
     title: 'Gästeliste',
     body: 'Hier verwaltet ihr alle Gäste, deren Begleitpersonen sowie Zu- und Absagen.' },
-  { module: 'gaeste',
-    title: 'Einladen & RSVP',
-    body: 'Legt Gäste an und verschickt persönliche Einladungslinks. Antworten, Essenswünsche und Allergien landen automatisch hier.' },
+  { module: 'gaeste', target: 'bp-add-guest', action: { area: 'guests' },
+    title: 'Legt euren ersten Gast an',
+    body: 'Klickt auf „Gast hinzufügen", tragt einen Namen ein und speichert. Sobald euer erster Gast steht, geht es automatisch weiter.' },
 
   // ── Sitzplan ───────────────────────────────────────────────────────────────
   { module: 'sitzplan', target: 'bp-content',
@@ -56,9 +65,9 @@ export const SOLO_TOUR_STEPS: TourStep[] = [
   { module: 'ablaufplan', target: 'bp-content',
     title: 'Ablaufplan',
     body: 'Euer Tagesplan im Kalender-Stil — von der Trauung bis zur Party.' },
-  { module: 'ablaufplan',
-    title: 'Programmpunkte',
-    body: 'Zieht Einträge auf die Zeitachse, legt Uhrzeiten fest und plant bei Bedarf sogar mehrere Tage.' },
+  { module: 'ablaufplan', target: 'bp-add-entry', action: { area: 'timeline_entries' },
+    title: 'Legt euren ersten Programmpunkt an',
+    body: 'Klickt auf „Punkt hinzufügen" und tragt z. B. die Trauung mit Uhrzeit ein. Sobald euer erster Programmpunkt steht, geht es weiter.' },
 
   // ── Catering & Menü ────────────────────────────────────────────────────────
   { module: 'catering', target: 'bp-content',
@@ -92,11 +101,17 @@ export const SOLO_TOUR_STEPS: TourStep[] = [
   { module: 'budget', target: 'bp-content',
     title: 'Budget',
     body: 'Behaltet geplante und tatsächliche Kosten jederzeit im Blick.' },
+  { module: 'budget', target: 'bp-add-budget', action: { area: 'budget_items' },
+    title: 'Legt euren ersten Budget-Posten an',
+    body: 'Klickt auf „Position hinzufügen", z. B. „Location", und tragt den geplanten Betrag ein. Sobald euer erster Posten steht, geht es weiter.' },
 
   // ── Aufgaben ───────────────────────────────────────────────────────────────
   { module: 'aufgaben', target: 'bp-content',
     title: 'Aufgaben',
     body: 'Eure Checkliste nach Planungsphasen — so geht garantiert nichts unter.' },
+  { module: 'aufgaben', target: 'bp-add-task', action: { area: 'brautpaar_tasks' },
+    title: 'Hakt eure erste Aufgabe ab',
+    body: 'Klickt auf „Aufgabe hinzufügen" und tragt eine erste To-do ein, z. B. „Location buchen". Sobald die erste Aufgabe steht, geht es weiter.' },
 
   // ── Notizen ────────────────────────────────────────────────────────────────
   { module: 'notizen', target: 'bp-content',
