@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import dynamicImport from 'next/dynamic'
-import { Monitor, LayoutGrid, Armchair } from 'lucide-react'
+import { Monitor, LayoutGrid, Armchair, Plus, X, Search, UserPlus2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { RaumPoint, RaumElement, RaumTablePool, RaumTableType, PlacedTablePreview, ConceptPlacedTable } from '@/components/room/RaumKonfigurator'
 
@@ -32,79 +32,282 @@ function normalizePool(raw: unknown): RaumTablePool {
 
 // ── Mobile view interfaces ────────────────────────────────────────────────────
 
-interface SitzTable {
-  id: string
-  name: string
-  capacity: number
-}
-interface SitzAssignment {
+interface MTable { id: string; name: string; capacity: number }
+interface MAssignment {
   id: string
   table_id: string
   guest_id: string | null
   begleitperson_id: string | null
+  brautpaar_slot: 1 | 2 | null
+  seat_index: number | null
 }
-interface SitzGuest {
-  id: string
-  name: string
-  is_begleit?: boolean
-  guest_name?: string  // parent guest name, only for Begleitpersonen
+interface MGuest { id: string; name: string; status: string }
+interface MBegleit { id: string; name: string; guest_id: string; guest_name: string }
+interface MPerson { type: 'guest' | 'begleitperson' | 'brautpaar'; id: string; name: string; subtitle?: string }
+
+const STATUS_LABELS_MOBILE: Record<string, string> = {
+  zugesagt: 'Zugesagt', abgesagt: 'Abgesagt', eingeladen: 'Eingeladen',
+  angelegt: 'Angelegt', vielleicht: 'Vielleicht',
+}
+
+function splitCouple(coupleName: string): [string, string] {
+  const parts = (coupleName || '').split(/[&+,]/).map(s => s.trim()).filter(Boolean)
+  return [parts[0] ?? 'Partner 1', parts[1] ?? 'Partner 2']
 }
 
 // ── MobileSitzplanView ────────────────────────────────────────────────────────
+//
+// Auf dem Mobile ist der maßstabsgetreue Sitzplan-Editor (Anordnung, Raumplan,
+// Drag&Drop) nicht verfügbar — wohl aber das Befüllen der Tische mit Gästen.
+// Tische anlegen/positionieren bleibt dem Desktop vorbehalten.
 
-function MobileSitzplanView({ data }: { data: { tables: SitzTable[], assignments: SitzAssignment[], guests: SitzGuest[] } | null }) {
+function MobileSitzplanView({ eventId, coupleName }: { eventId: string; coupleName: string }) {
+  const supabase = createClient()
+  const [loading, setLoading]         = useState(true)
+  const [tables, setTables]           = useState<MTable[]>([])
+  const [assignments, setAssignments] = useState<MAssignment[]>([])
+  const [guests, setGuests]           = useState<MGuest[]>([])
+  const [begleit, setBegleit]         = useState<MBegleit[]>([])
+  const [pickerTableId, setPickerTableId] = useState<string | null>(null)
+  const [search, setSearch]           = useState('')
+  const [busy, setBusy]               = useState(false)
+
+  const [partner1, partner2] = splitCouple(coupleName)
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      setLoading(true)
+      const [{ data: t }, { data: a }, { data: g }, { data: b }] = await Promise.all([
+        supabase.from('seating_tables').select('id, name, capacity').eq('event_id', eventId).order('created_at'),
+        supabase.from('seating_assignments').select('id, table_id, guest_id, begleitperson_id, brautpaar_slot, seat_index').eq('event_id', eventId),
+        supabase.from('guests').select('id, name, status').eq('event_id', eventId).order('name'),
+        supabase.from('begleitpersonen').select('id, name, guest_id, guests!inner(name, event_id)').eq('guests.event_id', eventId).order('name'),
+      ])
+      if (!active) return
+      setTables((t ?? []) as MTable[])
+      setAssignments((a ?? []) as MAssignment[])
+      setGuests((g ?? []) as MGuest[])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setBegleit(((b ?? []) as any[]).map(x => ({
+        id: x.id, name: x.name ?? '–', guest_id: x.guest_id,
+        guest_name: Array.isArray(x.guests) ? (x.guests[0]?.name ?? '') : (x.guests?.name ?? ''),
+      })))
+      setLoading(false)
+    }
+    load()
+    return () => { active = false }
+  }, [eventId]) // eslint-disable-line
+
+  const assignedGuestIds   = new Set(assignments.map(a => a.guest_id).filter(Boolean) as string[])
+  const assignedBegleitIds = new Set(assignments.map(a => a.begleitperson_id).filter(Boolean) as string[])
+  const assignedBrautpaar  = new Set(assignments.map(a => a.brautpaar_slot).filter(Boolean) as number[])
+
+  const assignmentsForTable = (id: string) =>
+    assignments.filter(a => a.table_id === id).sort((x, y) => (x.seat_index ?? 0) - (y.seat_index ?? 0))
+
+  function personLabel(a: MAssignment): { name: string; sub?: string } {
+    if (a.guest_id) return { name: guests.find(g => g.id === a.guest_id)?.name ?? '–' }
+    if (a.begleitperson_id) {
+      const bp = begleit.find(x => x.id === a.begleitperson_id)
+      return { name: bp?.name ?? '–', sub: bp ? `Begl. ${bp.guest_name}` : undefined }
+    }
+    if (a.brautpaar_slot === 1) return { name: partner1, sub: 'Brautpaar' }
+    if (a.brautpaar_slot === 2) return { name: partner2, sub: 'Brautpaar' }
+    return { name: '–' }
+  }
+
+  const availablePersons: MPerson[] = [
+    ...(assignedBrautpaar.has(1) ? [] : [{ type: 'brautpaar' as const, id: 'bp1', name: partner1, subtitle: 'Brautpaar' }]),
+    ...(assignedBrautpaar.has(2) ? [] : [{ type: 'brautpaar' as const, id: 'bp2', name: partner2, subtitle: 'Brautpaar' }]),
+    ...guests.filter(g => !assignedGuestIds.has(g.id)).map(g => ({ type: 'guest' as const, id: g.id, name: g.name, subtitle: STATUS_LABELS_MOBILE[g.status] ?? g.status })),
+    ...begleit.filter(b => !assignedBegleitIds.has(b.id)).map(b => ({ type: 'begleitperson' as const, id: b.id, name: b.name, subtitle: `Begl. ${b.guest_name}` })),
+  ]
+  const filteredAvailable = availablePersons.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.subtitle ?? '').toLowerCase().includes(search.toLowerCase())
+  )
+
+  async function assignPerson(tableId: string, person: MPerson) {
+    setBusy(true)
+    const used = new Set(assignmentsForTable(tableId).map(a => a.seat_index).filter(i => i != null) as number[])
+    let seat = 0; while (used.has(seat)) seat++
+    const payload: Record<string, unknown> = { table_id: tableId, event_id: eventId, seat_index: seat }
+    if (person.type === 'guest') payload.guest_id = person.id
+    else if (person.type === 'begleitperson') payload.begleitperson_id = person.id
+    else if (person.id === 'bp1') payload.brautpaar_slot = 1
+    else payload.brautpaar_slot = 2
+    const { data, error } = await supabase
+      .from('seating_assignments')
+      .insert(payload)
+      .select('id, table_id, guest_id, begleitperson_id, brautpaar_slot, seat_index')
+      .single()
+    if (!error && data) setAssignments(prev => [...prev, data as MAssignment])
+    setBusy(false)
+  }
+
+  async function removeAssignment(id: string) {
+    setAssignments(prev => prev.filter(a => a.id !== id))
+    await supabase.from('seating_assignments').delete().eq('id', id)
+  }
+
+  const pickerTable = tables.find(t => t.id === pickerTableId) ?? null
+  const pickerCount = pickerTableId ? assignmentsForTable(pickerTableId).length : 0
+  const pickerFull  = pickerTable ? pickerCount >= pickerTable.capacity : false
+  const unassignedCount = availablePersons.length
+
   return (
     <div>
       <div style={{
         background: 'var(--bp-gold-pale)', border: '1px solid var(--bp-rule-gold)',
-        borderRadius: 'var(--bp-r-md)', padding: '0.875rem 1rem', marginBottom: '1.5rem',
+        borderRadius: 'var(--bp-r-md)', padding: '0.875rem 1rem', marginBottom: '1rem',
         display: 'flex', alignItems: 'flex-start', gap: '0.625rem',
       }}>
         <Monitor size={16} style={{ color: 'var(--bp-gold-deep)', flexShrink: 0, marginTop: 2 }} />
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--bp-gold-deep)', lineHeight: 1.5 }}>
-          Der interaktive Sitzplan ist nur auf größeren Bildschirmen verfügbar. Hier siehst du eine Übersicht der Tischbelegung.
+          Tische anlegen und anordnen geht nur am Desktop. Hier kannst du die vorhandenen Tische schon mit Gästen befüllen.
         </p>
       </div>
-      {!data ? (
+
+      {loading ? (
         <p className="bp-caption">Wird geladen…</p>
-      ) : data.tables.length === 0 ? (
+      ) : tables.length === 0 ? (
         <div className="bp-card" style={{ padding: '2rem', textAlign: 'center' }}>
-          <p className="bp-caption">Noch keine Tische angelegt.</p>
+          <Armchair size={28} style={{ color: 'var(--bp-ink-3)', marginBottom: 8 }} />
+          <p className="bp-caption" style={{ margin: 0 }}>Noch keine Tische angelegt. Lege die Tische am Desktop an — danach kannst du sie hier mit Gästen befüllen.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {data.tables.map(table => {
-            const assigned = data.assignments
-              .filter(a => a.table_id === table.id)
-              .map(a => {
-                if (a.guest_id) return data.guests.find(g => g.id === a.guest_id && !g.is_begleit)
-                if (a.begleitperson_id) return data.guests.find(g => g.id === a.begleitperson_id && g.is_begleit)
-                return undefined
-              })
-              .filter(Boolean) as SitzGuest[]
-            return (
-              <div key={table.id} className="bp-card" style={{ padding: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: assigned.length > 0 ? '0.75rem' : 0 }}>
-                  <span style={{ fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>{table.name}</span>
-                  <span className="bp-badge bp-badge-neutral">{assigned.length} / {table.capacity}</span>
-                </div>
-                {assigned.length === 0 ? (
-                  <p className="bp-caption" style={{ fontStyle: 'italic', margin: 0 }}>Noch keine Gäste zugewiesen</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    {assigned.map(g => (
-                      <div key={g.id} style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                        <span>{g.name}</span>
-                        {g.is_begleit && g.guest_name && (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>(Begl. {g.guest_name})</span>
-                        )}
-                      </div>
-                    ))}
+        <>
+          {unassignedCount > 0 && (
+            <p className="bp-caption" style={{ margin: '0 0 0.75rem' }}>
+              {unassignedCount} {unassignedCount === 1 ? 'Person hat' : 'Personen haben'} noch keinen Platz.
+            </p>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {tables.map(table => {
+              const tas = assignmentsForTable(table.id)
+              const full = tas.length >= table.capacity
+              return (
+                <div key={table.id} className="bp-card" style={{ padding: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>{table.name}</span>
+                    <span className={`bp-badge ${full ? 'bp-badge-gold' : 'bp-badge-neutral'}`}>{tas.length} / {table.capacity}</span>
                   </div>
-                )}
+
+                  {tas.length === 0 ? (
+                    <p className="bp-caption" style={{ fontStyle: 'italic', margin: '0 0 0.75rem' }}>Noch keine Gäste zugewiesen</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', marginBottom: '0.75rem' }}>
+                      {tas.map(a => {
+                        const { name, sub } = personLabel(a)
+                        return (
+                          <div key={a.id} style={{
+                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            background: 'var(--bp-bg)', border: '1px solid var(--bp-rule)',
+                            borderRadius: 'var(--bp-r-sm)', padding: '0.375rem 0.5rem 0.375rem 0.75rem',
+                          }}>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: '0.875rem', color: 'var(--bp-ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {name}
+                              {sub && <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)', marginLeft: '0.375rem' }}>{sub}</span>}
+                            </span>
+                            <button
+                              className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon"
+                              onClick={() => removeAssignment(a.id)}
+                              aria-label="Vom Tisch entfernen"
+                              title="Entfernen"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <button
+                    className="bp-btn bp-btn-secondary bp-btn-sm"
+                    onClick={() => { setSearch(''); setPickerTableId(table.id) }}
+                    disabled={full}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', width: '100%', justifyContent: 'center' }}
+                  >
+                    <Plus size={14} /> {full ? 'Tisch voll' : 'Gast hinzufügen'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Bottom-Sheet: Person zu Tisch zuweisen */}
+      {pickerTableId && pickerTable && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(44,40,37,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+          onClick={e => { if (e.target === e.currentTarget) setPickerTableId(null) }}
+        >
+          <div style={{
+            background: 'var(--bp-paper)', width: '100%', maxWidth: 560,
+            maxHeight: '82vh', display: 'flex', flexDirection: 'column',
+            borderTopLeftRadius: 'var(--bp-r-lg)', borderTopRightRadius: 'var(--bp-r-lg)',
+            boxShadow: 'var(--bp-shadow-elevated)',
+          }}>
+            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--bp-rule)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontWeight: 600, color: 'var(--bp-ink)', margin: 0, fontSize: '1rem' }}>{pickerTable.name}</p>
+                <p className="bp-caption" style={{ margin: '2px 0 0' }}>{pickerCount} / {pickerTable.capacity} belegt</p>
               </div>
-            )
-          })}
+              <button className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon" onClick={() => setPickerTableId(null)} aria-label="Schließen"><X size={18} /></button>
+            </div>
+
+            <div style={{ padding: '0.875rem 1.25rem 0.625rem' }}>
+              <div style={{ position: 'relative' }}>
+                <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--bp-ink-3)', pointerEvents: 'none' }} />
+                <input
+                  className="bp-input"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Person suchen…"
+                  autoFocus
+                  style={{ paddingLeft: '2rem' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 1.25rem 1.25rem' }}>
+              {pickerFull ? (
+                <p className="bp-caption" style={{ textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>
+                  Dieser Tisch ist voll. Entferne erst jemanden, um weitere Gäste zu setzen.
+                </p>
+              ) : filteredAvailable.length === 0 ? (
+                <p className="bp-caption" style={{ textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>
+                  {availablePersons.length === 0 ? 'Alle Personen sind bereits zugewiesen.' : 'Keine Person gefunden.'}
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                  {filteredAvailable.map(p => (
+                    <button
+                      key={`${p.type}-${p.id}`}
+                      onClick={() => assignPerson(pickerTableId, p)}
+                      disabled={busy}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.625rem', textAlign: 'left',
+                        background: 'var(--bp-bg)', border: '1px solid var(--bp-rule)',
+                        borderRadius: 'var(--bp-r-md)', padding: '0.625rem 0.875rem',
+                        cursor: 'pointer', fontFamily: 'inherit', width: '100%',
+                      }}
+                    >
+                      <UserPlus2 size={15} style={{ color: 'var(--bp-gold-deep)', flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 500, color: 'var(--bp-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                        {p.subtitle && <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>{p.subtitle}</span>}
+                      </span>
+                      <Plus size={15} style={{ color: 'var(--bp-ink-3)', flexShrink: 0 }} />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -125,7 +328,6 @@ export default function BrautpaarSitzplanPage() {
   const [tablePool, setTablePool]   = useState<RaumTablePool>(EMPTY_POOL)
 
   const [isMobile, setIsMobile]         = useState(false)
-  const [sitzplanData, setSitzplanData] = useState<{ tables: SitzTable[], assignments: SitzAssignment[], guests: SitzGuest[] } | null>(null)
 
   // Solo-Brautpaar: darf die Raumkonfiguration selbst bearbeiten
   // (RLS via Migration 0090: event_room_configs über is_event_member)
@@ -177,39 +379,12 @@ export default function BrautpaarSitzplanPage() {
         setIsSolo(memberRow?.role === 'brautpaar_solo')
         setSimpleMode(toggleRow?.enabled === true)
         if (tablesData) setPlacedTables(tablesData as PlacedTablePreview[])
-
-        // Mobile-only: load seating data
-        if (isMobile) {
-          const [{ data: tables }, { data: assignments }, { data: guests }] = await Promise.all([
-            supabase.from('seating_tables').select('id, name, capacity').eq('event_id', eventId).order('created_at'),
-            supabase.from('seating_assignments').select('id, table_id, guest_id, begleitperson_id').eq('event_id', eventId),
-            supabase.from('guests').select('id, name').eq('event_id', eventId),
-          ])
-          // Begleitpersonen die assigned sind
-          const begleitIds = (assignments ?? []).map(a => a.begleitperson_id).filter(Boolean) as string[]
-          let begleitpersonen: { id: string; name: string | null; guest_id: string }[] = []
-          if (begleitIds.length > 0) {
-            const { data: bData } = await supabase.from('begleitpersonen').select('id, name, guest_id').in('id', begleitIds)
-            begleitpersonen = bData ?? []
-          }
-          // Merge into SitzGuest[]
-          const allGuests: SitzGuest[] = [
-            ...(guests ?? []).map(g => ({ id: g.id, name: g.name })),
-            ...begleitpersonen.map(b => ({
-              id: b.id,
-              name: b.name ?? '–',
-              is_begleit: true,
-              guest_name: (guests ?? []).find(g => g.id === b.guest_id)?.name,
-            })),
-          ]
-          setSitzplanData({ tables: tables ?? [], assignments: assignments ?? [], guests: allGuests })
-        }
       } finally {
         setLoading(false)
       }
     }
     load()
-  }, [eventId, isMobile]) // eslint-disable-line
+  }, [eventId]) // eslint-disable-line
 
   const saveSimpleToggle = useCallback(async (enabled: boolean) => {
     setSimpleMode(enabled)
@@ -360,7 +535,7 @@ export default function BrautpaarSitzplanPage() {
         )}
       </div>
       {isMobile ? (
-        <MobileSitzplanView data={sitzplanData} />
+        <MobileSitzplanView eventId={eventId} coupleName={coupleName} />
       ) : isSolo && showConfigurator ? (
         <div className="bp-card" style={{ padding: '1.5rem' }}>
           <div style={{ marginBottom: 16 }}>
