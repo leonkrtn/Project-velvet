@@ -8,7 +8,7 @@ import { Heart } from 'lucide-react'
 import '@/app/brautpaar/brautpaar.css'
 import {
   DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, fontHrefFor, shade, textureStyle,
-  invitationAccent, invitationFont, type DisplaySettings,
+  invitationAccent, invitationFont, focusPosition, focusSize, type DisplaySettings,
 } from '@/lib/display-settings'
 
 // Öffentliche Sammel-Link-Seite: Gäste registrieren sich selbst mit ihrem
@@ -103,7 +103,7 @@ export default function OpenInvitePage() {
       ...themeVars,
       backgroundColor: display.bgColor,
       ...(motiveUrl
-        ? { backgroundImage: `linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.9)), url(${motiveUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' }
+        ? { backgroundImage: `linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.9)), url(${motiveUrl})`, backgroundSize: `cover, ${focusSize(display.invitation.motiveFocus)}`, backgroundPosition: `center, ${focusPosition(display.invitation.motiveFocus)}`, backgroundAttachment: 'fixed' }
         : tex.image !== 'none' ? { backgroundImage: tex.image, backgroundSize: tex.size, backgroundAttachment: 'fixed' } : {}),
     }}>
       {headingFontHref && <link rel="stylesheet" href={headingFontHref} />}

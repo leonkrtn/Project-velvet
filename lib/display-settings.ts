@@ -5,9 +5,20 @@ export interface InvitationSettings {
   greetingTitle: string         // '' = Standard (Paarname)
   greetingSubtitle: string      // '' = Standard
   motiveR2Key: string | null    // eigenes Einladungs-Motiv (R2 key); null = keins
+  motiveFocus: ImageFocus       // Bildausschnitt/Position des Motivs
   accent: string | null         // null = global erben
   headingFont: HeadingFontKey | null  // null = global erben
 }
+
+// Bildausschnitt: Fokuspunkt (0–100 %) + Zoom (1 = Vollbild, >1 herangezoomt).
+export interface ImageFocus {
+  x: number
+  y: number
+  zoom: number
+}
+
+export const DEFAULT_FOCUS: ImageFocus = { x: 50, y: 50, zoom: 1 }
+
 
 export interface DisplaySettings {
   accent: string            // HEX, z. B. '#B89968'
@@ -21,6 +32,9 @@ export interface DisplaySettings {
   bgGradient: boolean       // sanfter Farbverlauf-Hintergrund statt einfarbig
   bgPhotoR2Key: string | null  // eigenes Ganzseiten-Hintergrundfoto (R2 key); null = keins
   bgPhotoBlur: number       // 0–30 px Weichzeichnung des Hintergrundfotos
+  bgPhotoOverlay: number    // 0–90 % Tönung/Overlay über dem Hintergrundfoto (Lesbarkeit)
+  bgPhotoFocus: ImageFocus  // Bildausschnitt/Position des Hintergrundfotos
+  coverFocus: ImageFocus    // Bildausschnitt/Position des Titelbilds (Hero)
   cornerStyle: 'soft' | 'elegant'   // rund/verspielt ↔ kantig/elegant
   buttonStyle: 'pill' | 'square'
   cardStyle: 'border' | 'shadow' | 'flat'  // Karten-Stil
@@ -86,6 +100,9 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   bgGradient: false,
   bgPhotoR2Key: null,
   bgPhotoBlur: 6,
+  bgPhotoOverlay: 78,
+  bgPhotoFocus: { ...DEFAULT_FOCUS },
+  coverFocus: { ...DEFAULT_FOCUS },
   cornerStyle: 'soft',
   buttonStyle: 'pill',
   cardStyle: 'border',
@@ -96,7 +113,7 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   hiddenSections: [],
   texts: {},
   preset: null,
-  invitation: { greetingTitle: '', greetingSubtitle: '', motiveR2Key: null, accent: null, headingFont: null },
+  invitation: { greetingTitle: '', greetingSubtitle: '', motiveR2Key: null, motiveFocus: { ...DEFAULT_FOCUS }, accent: null, headingFont: null },
 }
 
 export const HEADING_FONTS: Record<HeadingFontKey, { label: string; family: string; href: string | null }> = {
@@ -169,6 +186,7 @@ export function normalizeSettings(raw: unknown): DisplaySettings {
   // nur helle Hintergrundfarben zulassen (nah an Weiß)
   const bgColor = (typeof s.bgColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(s.bgColor) && isLightColor(s.bgColor)) ? s.bgColor : DEFAULT_DISPLAY_SETTINGS.bgColor
   const bgPhotoBlur = typeof s.bgPhotoBlur === 'number' && isFinite(s.bgPhotoBlur) ? Math.max(0, Math.min(30, Math.round(s.bgPhotoBlur))) : DEFAULT_DISPLAY_SETTINGS.bgPhotoBlur
+  const bgPhotoOverlay = typeof s.bgPhotoOverlay === 'number' && isFinite(s.bgPhotoOverlay) ? Math.max(0, Math.min(90, Math.round(s.bgPhotoOverlay))) : DEFAULT_DISPLAY_SETTINGS.bgPhotoOverlay
   const cornerStyle = s.cornerStyle === 'elegant' ? 'elegant' : 'soft'
   const buttonStyle = s.buttonStyle === 'square' ? 'square' : 'pill'
   const cardStyle = (s.cardStyle === 'shadow' || s.cardStyle === 'flat') ? s.cardStyle : 'border'
@@ -191,6 +209,7 @@ export function normalizeSettings(raw: unknown): DisplaySettings {
     greetingTitle: typeof inv.greetingTitle === 'string' ? inv.greetingTitle.slice(0, 120) : '',
     greetingSubtitle: typeof inv.greetingSubtitle === 'string' ? inv.greetingSubtitle.slice(0, 240) : '',
     motiveR2Key: typeof inv.motiveR2Key === 'string' && inv.motiveR2Key ? inv.motiveR2Key : null,
+    motiveFocus: normalizeFocus(inv.motiveFocus),
     accent: invAccent,
     headingFont: invFont,
   }
@@ -207,6 +226,9 @@ export function normalizeSettings(raw: unknown): DisplaySettings {
     bgGradient: s.bgGradient === true,
     bgPhotoR2Key: typeof s.bgPhotoR2Key === 'string' && s.bgPhotoR2Key ? s.bgPhotoR2Key : null,
     bgPhotoBlur,
+    bgPhotoOverlay,
+    bgPhotoFocus: normalizeFocus(s.bgPhotoFocus),
+    coverFocus: normalizeFocus(s.coverFocus),
     cornerStyle,
     buttonStyle,
     cardStyle,
@@ -227,6 +249,38 @@ export function invitationAccent(s: DisplaySettings): string {
 }
 export function invitationFont(s: DisplaySettings): HeadingFontKey {
   return s.invitation.headingFont ?? s.headingFont
+}
+
+// ── Bildausschnitt-Hilfen ──────────────────────────────────────────────────────
+export function normalizeFocus(raw: unknown): ImageFocus {
+  const f = (raw && typeof raw === 'object') ? raw as Record<string, unknown> : {}
+  const num = (v: unknown, def: number, min: number, max: number) =>
+    typeof v === 'number' && isFinite(v) ? Math.max(min, Math.min(max, v)) : def
+  return {
+    x: num(f.x, 50, 0, 100),
+    y: num(f.y, 50, 0, 100),
+    zoom: num(f.zoom, 1, 1, 3),
+  }
+}
+
+// CSS background-position aus dem Fokuspunkt.
+export function focusPosition(f?: ImageFocus | null): string {
+  const x = f ? Math.max(0, Math.min(100, f.x)) : 50
+  const y = f ? Math.max(0, Math.min(100, f.y)) : 50
+  return `${x}% ${y}%`
+}
+
+// CSS background-size (Zoom) aus dem Fokuspunkt. Bei Zoom 1 → `cover`
+// (füllt die Fläche immer aus, kein Letterboxing); ab >1 wird hineingezoomt.
+export function focusSize(f?: ImageFocus | null): string {
+  const z = f ? Math.max(1, Math.min(3, f.zoom)) : 1
+  return z <= 1.001 ? 'cover' : `${Math.round(z * 100)}%`
+}
+
+// Prozent (0–100) → 2-stelliger Hex-Alpha (für Overlay-Farben wie `#RRGGBBaa`).
+export function alphaHex(pct: number): string {
+  const v = Math.max(0, Math.min(255, Math.round((Math.max(0, Math.min(100, pct)) / 100) * 255)))
+  return v.toString(16).padStart(2, '0')
 }
 
 // ── Farb-Hilfen ───────────────────────────────────────────────────────────────

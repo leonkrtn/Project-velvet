@@ -13,7 +13,7 @@ import { Button, MealPicker, AllergyPicker, Textarea, Toast, Card, SectionTitle,
 import {
   DEFAULT_DISPLAY_SETTINGS, HEADING_FONTS, BODY_FONTS, fontHrefFor, bodyFontHrefFor,
   shade, textureStyle, invitationFont, buildRsvpThemeCss,
-  rsvpText, type DisplaySettings,
+  rsvpText, focusPosition, focusSize, alphaHex, type DisplaySettings,
 } from '@/lib/display-settings'
 
 // Dezenter Ornament-Trenner (nur wenn Ornamente aktiv). Drei Punkte mit Linien.
@@ -576,13 +576,13 @@ export default function RSVPPage() {
       {bgPhotoUrl && (
         <div aria-hidden style={{
           position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-          backgroundImage: `url(${bgPhotoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center',
+          backgroundImage: `url(${bgPhotoUrl})`, backgroundSize: focusSize(display.bgPhotoFocus), backgroundPosition: focusPosition(display.bgPhotoFocus),
           filter: display.bgPhotoBlur > 0 ? `blur(${display.bgPhotoBlur}px)` : undefined,
           transform: display.bgPhotoBlur > 0 ? 'scale(1.06)' : undefined,
         }} />
       )}
       {bgPhotoUrl && (
-        <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: `${display.bgColor}c9` }} />
+        <div aria-hidden style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: `${display.bgColor}${alphaHex(display.bgPhotoOverlay)}` }} />
       )}
 
       <div style={{ position: 'relative', zIndex: 1 }}>
@@ -652,9 +652,9 @@ export default function RSVPPage() {
               display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
               minHeight: onImage ? 340 : 230, padding: '40px 22px 28px', textAlign: 'center',
               ...(onImage
-                ? { backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0.58) 100%), url(${coverUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                ? { backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0.58) 100%), url(${coverUrl})`, backgroundSize: `cover, ${focusSize(display.coverFocus)}`, backgroundPosition: `center, ${focusPosition(display.coverFocus)}` }
                 : motiveUrl
-                  ? { backgroundImage: `linear-gradient(to bottom, ${shade(display.bgColor, 0)}cc, ${display.bgColor}f2), url(${motiveUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  ? { backgroundImage: `linear-gradient(to bottom, ${shade(display.bgColor, 0)}cc, ${display.bgColor}f2), url(${motiveUrl})`, backgroundSize: `cover, ${focusSize(display.invitation.motiveFocus)}`, backgroundPosition: `center, ${focusPosition(display.invitation.motiveFocus)}` }
                   : { backgroundImage: `linear-gradient(160deg, var(--gold-pale), transparent 70%)` }),
             }}>
               <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.22em', color: onImage ? 'rgba(255,255,255,0.92)' : 'var(--gold)', marginBottom: 12 }}>
