@@ -1,73 +1,55 @@
 // „Angemeldet bleiben" — App-seitige Durchsetzung der Login-Persistenz.
 //
-// Hintergrund: @supabase/ssr schreibt Auth-Cookies fest mit 400 Tagen Laufzeit
-// (cookieOptions.maxAge wird im Browser ignoriert). Eine echte „nur diese
-// Sitzung" / „30 Tage"-Wahl muss daher hier durchgesetzt werden:
+// Hintergrund: @supabase/ssr schreibt das Auth-Cookie fest mit 400 Tagen
+// Laufzeit (der eigene cookieOptions.maxAge wird beim Schreiben überschrieben).
+// Eine echte „nur diese Sitzung" / „30 Tage"-Wahl muss daher von der App
+// durchgesetzt werden. Das geschieht jetzt über zwei eigene Cookies, die die
+// Middleware bei jedem Request server-seitig auswertet (siehe middleware.ts):
 //
-//  • Haken gesetzt  → 30 Tage absolute Gültigkeit (danach automatischer Logout).
-//  • Haken nicht gesetzt → nur aktuelle Browser-Sitzung (Logout nach Schließen
-//    des Browsers; erkannt über sessionStorage-Marker + Aktivitäts-Zeitstempel).
+//   • fv_pref  (persistent) — die getroffene Wahl:
+//        'r:<expiry-ms>'  → 30 Tage angemeldet bleiben (absolute Frist)
+//        's'              → nur die aktuelle Browser-Sitzung
+//   • fv_alive (Session-Cookie, ohne max-age) — Marker der laufenden
+//        Browser-Sitzung. Wird vom Browser beim Schließen automatisch gelöscht;
+//        sein Fehlen signalisiert der Middleware das Ende der Sitzung.
 //
-// Ist keine Präferenz gesetzt (Alt-Sessions, andere Login-Wege), bleibt das
-// bisherige Standardverhalten unverändert (kein erzwungener Logout).
-
-const REMEMBER = 'forevr_auth_remember'   // localStorage: '1' = 30 Tage, '0' = nur Sitzung
-const EXPIRY = 'forevr_auth_expiry'       // localStorage: ms-Zeitstempel (nur bei '1')
-const ACTIVE = 'forevr_auth_active'       // localStorage: letzter Aktivitäts-Zeitstempel
-const TAB = 'forevr_auth_tab'             // sessionStorage: Marker der laufenden Browser-Sitzung
+// Die Middleware ist die Quelle der Wahrheit: Sie loggt aus, wenn die 30-Tage-
+// Frist abgelaufen ist ('r') oder die Browser-Sitzung beendet wurde ('s').
+// Ohne fv_pref (Alt-Sessions, andere Login-Wege) bleibt das Standardverhalten
+// unverändert — es wird nichts erzwungen.
 
 export const REMEMBER_DAYS = 30
-const THIRTY_DAYS_MS = REMEMBER_DAYS * 24 * 60 * 60 * 1000
-// Toleranz, damit mehrere Tabs / kurze Reloads nicht als „Browser geschlossen" gelten.
-const CLOSED_GRACE_MS = 30 * 60 * 1000
 
-// Beim Login die gewählte Persistenz festhalten.
+const PREF = 'fv_pref'
+const ALIVE = 'fv_alive'
+const DAY_SECONDS = 24 * 60 * 60
+// Das Präferenz-Cookie überlebt die 30-Tage-Frist bewusst, damit die Middleware
+// den Ablauf noch erkennen und aktiv ausloggen kann (statt es einfach verfallen
+// zu lassen, während das 400-Tage-Supabase-Cookie weiterlebt).
+const PREF_MAX_AGE = 60 * DAY_SECONDS
+
+// Beim Login die gewählte Persistenz als Cookies festhalten.
 export function setLoginPersistence(remember: boolean) {
   try {
-    localStorage.setItem(REMEMBER, remember ? '1' : '0')
-    if (remember) localStorage.setItem(EXPIRY, String(Date.now() + THIRTY_DAYS_MS))
-    else localStorage.removeItem(EXPIRY)
-    sessionStorage.setItem(TAB, '1')
-    localStorage.setItem(ACTIVE, String(Date.now()))
-  } catch { /* Storage nicht verfügbar */ }
+    if (remember) {
+      const expiry = Date.now() + REMEMBER_DAYS * DAY_SECONDS * 1000
+      document.cookie = `${PREF}=r:${expiry}; path=/; max-age=${PREF_MAX_AGE}; samesite=lax`
+    } else {
+      document.cookie = `${PREF}=s; path=/; max-age=${PREF_MAX_AGE}; samesite=lax`
+    }
+    // Session-Marker ohne max-age → wird beim Schließen des Browsers gelöscht.
+    document.cookie = `${ALIVE}=1; path=/; samesite=lax`
+  } catch {
+    /* document/cookies nicht verfügbar */
+  }
 }
 
-// Aktivität markieren (hält die laufende Sitzung „lebendig").
-export function markActive() {
-  try {
-    sessionStorage.setItem(TAB, '1')
-    localStorage.setItem(ACTIVE, String(Date.now()))
-  } catch { /* ignore */ }
-}
-
+// Präferenz-Cookies entfernen (z. B. bei manuellem Logout).
 export function clearPersistence() {
   try {
-    localStorage.removeItem(REMEMBER)
-    localStorage.removeItem(EXPIRY)
-    localStorage.removeItem(ACTIVE)
-    sessionStorage.removeItem(TAB)
-  } catch { /* ignore */ }
-}
-
-// Prüft, ob die aktuelle Sitzung laut Präferenz beendet werden muss.
-// 'expired' = 30-Tage-Frist abgelaufen, 'closed' = Browser-Sitzung war beendet.
-export function sessionPolicyViolation(): 'expired' | 'closed' | null {
-  try {
-    const remember = localStorage.getItem(REMEMBER)
-    if (remember === null) return null            // keine Präferenz → Standardverhalten
-    if (remember === '1') {
-      const exp = Number(localStorage.getItem(EXPIRY) || '0')
-      return exp && Date.now() > exp ? 'expired' : null
-    }
-    // remember === '0' → nur aktuelle Browser-Sitzung
-    if (sessionStorage.getItem(TAB)) return null  // dieser Tab gehört zur Sitzung
-    const active = Number(localStorage.getItem(ACTIVE) || '0')
-    if (active && Date.now() - active < CLOSED_GRACE_MS) {
-      sessionStorage.setItem(TAB, '1')            // anderer Tab war eben aktiv → gleiche Sitzung
-      return null
-    }
-    return 'closed'
+    document.cookie = `${PREF}=; path=/; max-age=0`
+    document.cookie = `${ALIVE}=; path=/; max-age=0`
   } catch {
-    return null
+    /* ignore */
   }
 }
