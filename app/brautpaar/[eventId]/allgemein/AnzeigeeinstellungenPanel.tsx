@@ -217,6 +217,7 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
               <p className="bp-caption" style={{ margin: '2px 0 0' }}>Farben, Schriften und das Erscheinungsbild eurer Seiten.</p>
             </div>
           </div>
+          <SaveButton onClick={save} saving={saving} saved={saved} />
         </div>
         <div className="bp-card-body" style={{ padding: '1.5rem' }}>
           {/* Stilpaket */}
@@ -417,6 +418,7 @@ export default function AnzeigeeinstellungenPanel({ eventId }: { eventId: string
               <p className="bp-caption" style={{ margin: '2px 0 0' }}>Texte, Motiv und Formularoptionen der Antwortseite eurer Gäste.</p>
             </div>
           </div>
+          <SaveButton onClick={save} saving={saving} saved={saved} />
         </div>
         <div className="bp-card-body" style={{ padding: '1.5rem' }}>
           {/* Einladungs-Gestaltung */}
@@ -570,6 +572,16 @@ const twoCol: React.CSSProperties = {
   display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, alignItems: 'start',
 }
 const col: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 18 }
+
+function SaveButton({ onClick, saving, saved }: { onClick: () => void; saving: boolean; saved: boolean }) {
+  return (
+    <button type="button" className="bp-btn bp-btn-primary bp-btn-sm" onClick={onClick} disabled={saving}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+      {saving ? <Loader2 size={14} className="bp-spin" /> : saved ? <Check size={14} /> : null}
+      {saving ? 'Speichert…' : saved ? 'Gespeichert' : 'Übernehmen'}
+    </button>
+  )
+}
 
 function SubSection({ title, hint, children }: { title: React.ReactNode; hint?: string; children: React.ReactNode }) {
   return (
