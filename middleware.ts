@@ -71,6 +71,45 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Layer 2a: „Angemeldet bleiben" durchsetzen.
+  // fv_pref hält die beim Login getroffene Wahl, fv_alive ist ein Session-Cookie
+  // (vom Browser beim Schließen gelöscht). Siehe lib/auth-persistence.ts.
+  //  • 'r:<expiry>' → ausloggen, sobald die 30-Tage-Frist überschritten ist.
+  //  • 's'          → ausloggen, sobald die Browser-Sitzung beendet wurde
+  //                   (fv_alive fehlt).
+  //  • fehlt        → keine Erzwingung (Alt-Session / anderer Login-Weg).
+  const pref = request.cookies.get('fv_pref')?.value
+  const alive = request.cookies.get('fv_alive')?.value
+  let policyLogout = false
+  if (pref) {
+    if (pref.startsWith('r:')) {
+      const expiry = Number(pref.slice(2))
+      if (expiry && Date.now() > expiry) policyLogout = true
+    } else if (pref === 's' && !alive) {
+      policyLogout = true
+    }
+  }
+  if (policyLogout) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.search = ''
+    const res = NextResponse.redirect(url)
+    // Supabase-Auth-Cookies + eigene Marker entfernen → effektiver Logout.
+    for (const c of request.cookies.getAll()) {
+      if (c.name.startsWith('sb-')) res.cookies.set(c.name, '', { path: '/', maxAge: 0 })
+    }
+    res.cookies.set('fv_pref', '', { path: '/', maxAge: 0 })
+    res.cookies.set('fv_alive', '', { path: '/', maxAge: 0 })
+    return res
+  }
+  // Sitzung gültig: Marker auffrischen. fv_alive ohne max-age bleibt ein
+  // Session-Cookie; fv_pref wird server-seitig mit gleichem Wert neu gesetzt
+  // (frischt die Speicherdauer auf, u. a. gegen Safari/ITP-Cookie-Kappung).
+  if (pref) {
+    supabaseResponse.cookies.set('fv_alive', '1', { path: '/', sameSite: 'lax' })
+    supabaseResponse.cookies.set('fv_pref', pref, { path: '/', maxAge: 60 * 24 * 60 * 60, sameSite: 'lax' })
+  }
+
   // Layer 2b: /admin/* — only admins (profiles.is_admin)
   if (pathname.startsWith('/admin')) {
     const { data: profile } = await supabase
