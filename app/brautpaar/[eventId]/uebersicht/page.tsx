@@ -28,7 +28,7 @@ export default async function UebersichtPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [eventRes, guestsRes, begleitRes, budgetRes, tasksRes, seatingRes, songsRes] = await Promise.all([
+  const [eventRes, guestsRes, begleitRes, budgetRes, tasksRes, seatingRes, songsRes, timelineRes] = await Promise.all([
     supabase
       .from('events')
       .select('id, title, date, couple_name, venue, organizer_fee, organizer_fee_type, budget_total, cover_image_r2_key')
@@ -57,6 +57,10 @@ export default async function UebersichtPage({ params }: Props) {
       .eq('event_id', eventId),
     supabase
       .from('music_songs')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId),
+    supabase
+      .from('timeline_entries')
       .select('id', { count: 'exact', head: true })
       .eq('event_id', eventId),
   ])
@@ -137,6 +141,7 @@ export default async function UebersichtPage({ params }: Props) {
       nextTasks={nextTasks}
       seatedCount={seatingRes.count ?? 0}
       songCount={songsRes.count ?? 0}
+      timelineCount={timelineRes.count ?? 0}
     />
   )
 }

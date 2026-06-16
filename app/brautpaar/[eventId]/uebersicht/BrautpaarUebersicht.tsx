@@ -35,6 +35,7 @@ interface Props {
   nextTasks: NextTask[]
   seatedCount: number
   songCount: number
+  timelineCount: number
 }
 
 const SERIF = 'Cormorant Garamond, Georgia, serif'
@@ -123,7 +124,7 @@ function Hero({ eventId, coupleName, eventTitle, eventDate, venueName, daysLeft,
   const hasPhoto = !!coverImageUrl
 
   return (
-    <header className={`bp-mag-hero ${hasPhoto ? 'has-photo' : ''} bp-mb-8`}>
+    <header data-tour="ov-hero" className={`bp-mag-hero ${hasPhoto ? 'has-photo' : ''} bp-mb-8`}>
       {hasPhoto && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={coverImageUrl} alt="" className="bp-mag-hero-photo bp-kenburns" />
@@ -384,7 +385,7 @@ function RoterFaden({ eventId, steps }: { eventId: string; steps: SetupStep[] })
   const pct = Math.round(doneCount / total * 100)
 
   return (
-    <section className="bp-card bp-faden bp-reveal bp-mb-8" aria-label="Erste Schritte">
+    <section data-tour="ov-faden" className="bp-card bp-faden bp-reveal bp-mb-8" aria-label="Erste Schritte">
       <div className="bp-faden-head">
         <div>
           <p className="bp-faden-kicker">Erste Schritte</p>
@@ -442,7 +443,7 @@ export default function BrautpaarUebersicht({
   daysLeft, guestTotal, guestConfirmed, guestDeclined, guestPending,
   guestNotInvited, guestApprovalPending,
   budgetPlanned, budgetLimit, tasksDone, tasksTotal, nextTasks,
-  seatedCount, songCount,
+  seatedCount, songCount, timelineCount,
 }: Props) {
   const answered = guestTotal - guestPending
   const responseRate = guestTotal > 0 ? Math.round(answered / guestTotal * 100) : 0
@@ -477,6 +478,9 @@ export default function BrautpaarUebersicht({
     { key: 'einladen', label: 'Gäste einladen', href: 'gaeste', icon: <Send size={14} />,
       todo: 'Verschickt eure Einladungen und sammelt Zu- und Absagen.',
       cta: 'Zur Gästeliste', done: guestTotal > 0 && guestNotInvited === 0 },
+    { key: 'ablaufplan', label: 'Ablaufplan erstellen', href: 'ablaufplan', icon: <Calendar size={14} />,
+      todo: 'Plant den Tagesablauf im Kalender — von der Trauung bis zur Party.',
+      cta: 'Ablauf planen', done: timelineCount > 0 },
     { key: 'feiern', label: 'Sitzplan & Musik', href: 'sitzplan', icon: <Sparkles size={14} />,
       todo: 'Plant eure Tische und sammelt eure Lieblingslieder.',
       cta: 'Loslegen', done: seatedCount > 0 || songCount > 0 },
@@ -500,7 +504,7 @@ export default function BrautpaarUebersicht({
       <RoterFaden eventId={eventId} steps={setupSteps} />
 
       {/* Editorial-Zahlenleiste */}
-      <section className="bp-mag-stats bp-mb-8">
+      <section data-tour="ov-stats" className="bp-mag-stats bp-mb-8">
         <StatFigure
           href={`/brautpaar/${eventId}/gaeste`}
           countTo={guestTotal}
@@ -553,7 +557,7 @@ export default function BrautpaarUebersicht({
       </section>
 
       {/* Eure Planung — Galerie */}
-      <section>
+      <section data-tour="ov-modules">
         <div className="bp-mag-section-head bp-reveal">
           <span className="bp-mag-section-rule" />
           <h2 className="bp-mag-section-title" style={{ fontFamily: SERIF }}>Eure Planung</h2>
