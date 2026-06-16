@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ensureSoloEvent, isSoloSignup } from '@/lib/brautpaar-solo'
+import { setLoginPersistence, REMEMBER_DAYS } from '@/lib/auth-persistence'
 import '@/app/brautpaar/brautpaar.css'
 
 function LoginForm() {
@@ -18,6 +19,7 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -29,6 +31,8 @@ function LoginForm() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
+      // „Angemeldet bleiben"-Präferenz festhalten (30 Tage vs. nur diese Sitzung).
+      setLoginPersistence(rememberMe)
       const { data: { session } } = await supabase.auth.getSession()
       let isOrganizer = session?.user?.app_metadata?.is_approved_organizer === true
       if (!isOrganizer && session) {
@@ -150,6 +154,16 @@ function LoginForm() {
                 </a>
               </div>
             </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.875rem', color: 'var(--bp-ink-2)' }}>
+              <input
+                type="checkbox"
+                className="bp-checkbox"
+                checked={rememberMe}
+                onChange={e => setRememberMe(e.target.checked)}
+              />
+              {REMEMBER_DAYS} Tage angemeldet bleiben
+            </label>
 
             {error && <p className="bp-auth-error">{error}</p>}
 
