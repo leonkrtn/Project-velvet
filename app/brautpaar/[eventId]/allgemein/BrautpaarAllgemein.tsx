@@ -220,9 +220,13 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
       {isSolo && currentUserId && <SoloInviteSection eventId={eventId} currentUserId={currentUserId} />}
 
       {isSolo && (
-        <Section title="Anzeigeeinstellungen">
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h2 className="bp-section-title" style={{ margin: '0 0 0.25rem' }}>Anzeigeeinstellungen</h2>
+          <p className="bp-page-subtitle" style={{ marginBottom: '1rem' }}>
+            Gestaltung eurer öffentlichen Einladungs- und RSVP-Seite.
+          </p>
           <AnzeigeeinstellungenPanel eventId={eventId} />
-        </Section>
+        </div>
       )}
 
       {/* Auto-Save footer */}
