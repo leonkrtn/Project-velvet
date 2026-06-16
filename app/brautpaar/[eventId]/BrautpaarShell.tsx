@@ -7,9 +7,11 @@ import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Palette, Music, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
-  Briefcase, Heart, FileDown, CreditCard, Lock, Sparkles,
+  Briefcase, FileDown, CreditCard, Lock, Sparkles, HelpCircle,
 } from 'lucide-react'
+import ForevrHeart from '@/components/ForevrHeart'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
+import ProductTour, { TOUR_START_EVENT } from '@/components/tour/ProductTour'
 import { createClient } from '@/lib/supabase/client'
 import { BpToastProvider } from '@/components/ui/BpToast'
 
@@ -122,7 +124,7 @@ function WelcomeOverlay({ eventTitle, eventId, userId, onDone }: WelcomeOverlayP
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <Heart size={26} fill="var(--bp-gold)" color="var(--bp-gold)" />
+            <ForevrHeart size={28} color="var(--bp-gold)" />
           </span>
         </div>
         <h1 className="bp-h1" style={{ marginBottom: '0.5rem' }}>
@@ -215,6 +217,11 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
         : (bpToggles[`bp-${item.key}`] ?? true)
     ),
   })).filter(g => g.items.length > 0)
+
+  // Freigeschaltete Module für die Produkt-Tour (gesperrte/Pro-Bereiche werden
+  // dadurch automatisch übersprungen).
+  const tourAvailable: Record<string, boolean> = {}
+  for (const group of nav) for (const item of group.items) tourAvailable[item.key] = !item.disabled
 
   // Close mobile drawer on route change
   useEffect(() => { setMobileOpen(false) }, [pathname])
@@ -322,6 +329,15 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
       {/* Footer — tote Platzhalter-Links (Support/AGB/Datenschutz) entfernt,
           bis echte Zielseiten existieren */}
       <div className="bp-sidebar-footer">
+        {isSolo && (
+          <button
+            onClick={() => { setMobileOpen(false); window.dispatchEvent(new Event(TOUR_START_EVENT)) }}
+            className="bp-sidebar-footer-link"
+          >
+            <HelpCircle size={16} className="bp-nav-item-icon" />
+            <span>Tutorial starten</span>
+          </button>
+        )}
         <button
           onClick={async () => {
             const supabase = createClient()
@@ -438,16 +454,18 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
               </div>
             </main>
           ) : isFullBleed ? (
-            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <div data-tour="bp-content" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               {children}
             </div>
           ) : (
-            <main style={{ flex: 1 }}>
+            <main data-tour="bp-content" style={{ flex: 1 }}>
               {children}
             </main>
           )}
         </div>
       </div>
+
+      {isSolo && !welcomeVisible && <ProductTour eventId={eventId} available={tourAvailable} />}
     </BpToastProvider>
   )
 }
