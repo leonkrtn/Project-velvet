@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import TimeInput from '@/components/ui/TimeInput'
 import SoloInviteSection from './SoloInviteSection'
-import AnzeigeeinstellungenPanel from './AnzeigeeinstellungenPanel'
+import DisplaySettingsLauncher from '@/components/display-studio/DisplaySettingsLauncher'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 
@@ -221,11 +221,7 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
 
       {isSolo && (
         <div style={{ marginBottom: '1.5rem' }}>
-          <h2 className="bp-section-title" style={{ margin: '0 0 0.25rem' }}>Anzeigeeinstellungen</h2>
-          <p className="bp-page-subtitle" style={{ marginBottom: '1rem' }}>
-            Gestaltung eurer öffentlichen Einladungs- und RSVP-Seite.
-          </p>
-          <AnzeigeeinstellungenPanel eventId={eventId} />
+          <DisplaySettingsLauncher eventId={eventId} />
         </div>
       )}
 
