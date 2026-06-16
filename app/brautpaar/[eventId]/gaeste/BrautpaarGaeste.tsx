@@ -1038,7 +1038,7 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
           <div className="bp-grid-2" style={{ marginBottom: '0.75rem' }}>
             <div className="bp-field" style={{ marginBottom: 0 }}>
               <label className="bp-label-text">Name *</label>
-              <input className="bp-input" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Vorname Nachname" autoFocus onKeyDown={e => e.key === 'Enter' && addGuest()} />
+              <input data-tour="bp-guest-name" className="bp-input" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Vorname Nachname" autoFocus onKeyDown={e => e.key === 'Enter' && addGuest()} />
             </div>
             <div className="bp-field" style={{ marginBottom: 0 }}>
               <label className="bp-label-text">Seite</label>
@@ -1051,12 +1051,12 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
             </div>
             <div className="bp-field" style={{ marginBottom: 0 }}>
               <label className="bp-label-text">E-Mail</label>
-              <input className="bp-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@beispiel.de" />
+              <input data-tour="bp-guest-email" className="bp-input" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@beispiel.de" />
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
             <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={() => { setAdding(false); setNewName(''); setNewSide(''); setNewEmail('') }}>Abbrechen</button>
-            <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={addGuest} disabled={saving || !newName.trim()}>{saving ? '…' : 'Hinzufügen'}</button>
+            <button data-tour="bp-guest-submit" className="bp-btn bp-btn-primary bp-btn-sm" onClick={addGuest} disabled={saving || !newName.trim()}>{saving ? '…' : 'Hinzufügen'}</button>
           </div>
         </div>
       )}
@@ -2038,6 +2038,7 @@ export default function BrautpaarGaeste({ eventId, userId, initialGuests, initia
         {TABS.map((tab, idx) => (
           <button
             key={tab.key}
+            data-tour={`bp-gtab-${tab.key}`}
             className="bp-step-tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}

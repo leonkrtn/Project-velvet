@@ -220,7 +220,7 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
       {isSolo && currentUserId && <SoloInviteSection eventId={eventId} currentUserId={currentUserId} />}
 
       {isSolo && (
-        <div style={{ marginBottom: '1.5rem' }}>
+        <div data-tour="bp-display-settings" style={{ marginBottom: '1.5rem' }}>
           <DisplaySettingsLauncher eventId={eventId} />
         </div>
       )}

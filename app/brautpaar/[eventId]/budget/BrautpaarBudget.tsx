@@ -328,7 +328,7 @@ function AddItemForm({ eventId, onInsert, onReconcile, onRemove }: {
       <div className="bp-grid-2" style={{ marginBottom: '0.75rem' }}>
         <div className="bp-field">
           <label className="bp-label-text">Beschreibung *</label>
-          <input className="bp-input" value={description} onChange={e => setDescription(e.target.value)} placeholder="z.B. Catering" />
+          <input data-tour="bp-budget-desc" className="bp-input" value={description} onChange={e => setDescription(e.target.value)} placeholder="z.B. Catering" />
         </div>
         <div className="bp-field">
           <label className="bp-label-text">Kategorie</label>
@@ -339,12 +339,12 @@ function AddItemForm({ eventId, onInsert, onReconcile, onRemove }: {
         </div>
         <div className="bp-field">
           <label className="bp-label-text">Geplant (€) *</label>
-          <input className="bp-input" type="number" min="0" step="0.01" value={planned} onChange={e => setPlanned(e.target.value)} placeholder="0" />
+          <input data-tour="bp-budget-planned" className="bp-input" type="number" min="0" step="0.01" value={planned} onChange={e => setPlanned(e.target.value)} placeholder="0" />
         </div>
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
         <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={() => setOpen(false)}>Abbrechen</button>
-        <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={submit} disabled={saving || !description.trim() || !planned}>{saving ? '…' : 'Hinzufügen'}</button>
+        <button data-tour="bp-budget-submit" className="bp-btn bp-btn-primary bp-btn-sm" onClick={submit} disabled={saving || !description.trim() || !planned}>{saving ? '…' : 'Hinzufügen'}</button>
       </div>
     </div>
   )
@@ -395,6 +395,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
         {editingLimit ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <input
+              data-tour="bp-budget-max-input"
               type="number" min={0} autoFocus
               value={limitInput}
               onChange={e => setLimitInput(e.target.value)}
@@ -402,7 +403,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
               placeholder="Gesamtbudget (€)"
               style={{ height: 38, padding: '0 12px', border: '1px solid var(--bp-rule)', borderRadius: 8, fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none', width: 160 }}
             />
-            <button className="bp-btn bp-btn-primary" disabled={savingLimit} onClick={saveLimit} style={{ fontSize: '0.875rem' }}>
+            <button data-tour="bp-budget-max-save" className="bp-btn bp-btn-primary" disabled={savingLimit} onClick={saveLimit} style={{ fontSize: '0.875rem' }}>
               {savingLimit ? 'Speichert…' : 'Speichern'}
             </button>
             <button className="bp-btn bp-btn-secondary" onClick={() => setEditingLimit(false)} style={{ fontSize: '0.875rem' }}>
@@ -411,6 +412,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
           </div>
         ) : (
           <button
+            data-tour="bp-budget-max"
             onClick={() => { setLimitInput(String(limit || '')); setEditingLimit(true) }}
             className="bp-btn bp-btn-secondary bp-btn-mobile-full"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}

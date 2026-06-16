@@ -161,6 +161,7 @@ function PhaseSection({ phaseKey, label, tasks, onToggle, onDelete, onAdd, activ
             {adding ? (
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input
+                  data-tour="bp-task-title"
                   className="bp-input"
                   value={newTitle}
                   onChange={e => setNewTitle(e.target.value)}
@@ -169,7 +170,7 @@ function PhaseSection({ phaseKey, label, tasks, onToggle, onDelete, onAdd, activ
                   onKeyDown={e => { if (e.key === 'Enter') addTask(); if (e.key === 'Escape') setAdding(false) }}
                   style={{ flex: 1 }}
                 />
-                <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={addTask} disabled={!newTitle.trim()}>
+                <button data-tour="bp-task-submit" className="bp-btn bp-btn-primary bp-btn-sm" onClick={addTask} disabled={!newTitle.trim()}>
                   OK
                 </button>
                 <button
