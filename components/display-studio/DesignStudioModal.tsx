@@ -20,6 +20,7 @@ import {
 import { Help, Row, Stack, Toggle, Segment, Swatches, Slider, GroupTitle, Hr, chip, chipActive } from './ui'
 import ImagePositioner from './ImagePositioner'
 import DisplayPreview, { type PreviewImages } from './DisplayPreview'
+import AppMenuPreview from './AppMenuPreview'
 
 interface RsvpSettings {
   id?: string
@@ -37,20 +38,23 @@ type GroupKey = 'anzeige' | 'rsvp' | 'allgemein'
 
 // Strikte Trennung: „Anzeige" (Optik der Seite) vs. „RSVP" (Antwort-Formular).
 const GROUPS: { key: GroupKey; label: string }[] = [
-  { key: 'anzeige',   label: 'Anzeige' },
-  { key: 'rsvp',      label: 'RSVP' },
+  { key: 'anzeige',   label: 'Anzeige · Menü' },
+  { key: 'rsvp',      label: 'RSVP · Einladungsseite' },
   { key: 'allgemein', label: 'Allgemein' },
 ]
 
 const SECTIONS: { key: SectionKey; label: string; icon: LucideIcon; group: GroupKey; kw: string[] }[] = [
+  // Anzeige (Portal-Menü): theming des Brautpaar-Portals.
   { key: 'stilpakete', label: 'Stilpakete',           icon: Sparkles,      group: 'anzeige',   kw: ['preset', 'stil', 'vorlage', 'theme', 'look'] },
   { key: 'farben',     label: 'Farben',               icon: Palette,       group: 'anzeige',   kw: ['farbe', 'akzent', 'hintergrund', 'muster', 'verlauf', 'harmonie'] },
   { key: 'schrift',    label: 'Schrift',              icon: Type,          group: 'anzeige',   kw: ['schrift', 'font', 'überschrift', 'fließtext', 'größe', 'paarung'] },
-  { key: 'layout',     label: 'Layout & Form',        icon: LayoutGrid,    group: 'anzeige',   kw: ['layout', 'karte', 'ecken', 'button', 'dichte', 'abstand', 'ornament', 'countdown', 'monogramm'] },
-  { key: 'bilder',     label: 'Bilder',               icon: ImageIcon,     group: 'anzeige',   kw: ['bild', 'titelbild', 'hintergrundfoto', 'foto', 'cover', 'zuschnitt', 'overlay', 'tönung', 'weichzeichnen', 'blur'] },
-  { key: 'einladung',  label: 'Einladung',            icon: Mail,          group: 'anzeige',   kw: ['einladung', 'begrüßung', 'motiv'] },
+  // RSVP (Einladungs-/Antwortseite der Gäste).
+  { key: 'einladung',  label: 'Einladung',            icon: Mail,          group: 'rsvp',      kw: ['einladung', 'begrüßung', 'motiv'] },
+  { key: 'bilder',     label: 'Bilder',               icon: ImageIcon,     group: 'rsvp',      kw: ['bild', 'titelbild', 'hintergrundfoto', 'foto', 'cover', 'zuschnitt', 'overlay', 'tönung', 'weichzeichnen', 'blur'] },
+  { key: 'layout',     label: 'Layout & Form',        icon: LayoutGrid,    group: 'rsvp',      kw: ['layout', 'karte', 'ecken', 'button', 'dichte', 'abstand', 'ornament', 'countdown', 'monogramm'] },
   { key: 'rsvp',       label: 'RSVP-Formular',        icon: ClipboardList, group: 'rsvp',      kw: ['rsvp', 'antwort', 'frist', 'menü', 'begleit', 'kontakt', 'telefon', 'einladungstext'] },
   { key: 'abschnitte', label: 'Sichtbare Abschnitte', icon: Eye,           group: 'rsvp',      kw: ['abschnitt', 'sichtbar', 'ausblenden', 'dresscode', 'kinder', 'allergie', 'anreise', 'nachricht'] },
+  // Allgemein.
   { key: 'code',       label: 'Sichern & Code',       icon: Code,          group: 'allgemein', kw: ['code', 'export', 'import', 'sichern', 'zurücksetzen', 'reset', 'standard'] },
 ]
 
@@ -243,6 +247,11 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
 
   const fontHref = fontHrefFor(s.headingFont)
 
+  // Vorschau-Modus automatisch nach Bereich: RSVP-Bereiche → RSVP-Seite,
+  // sonst Portal-Menü („Anzeige").
+  const activeGroup = SECTIONS.find(sec => sec.key === active)?.group ?? 'anzeige'
+  const previewMode: 'rsvp' | 'anzeige' = activeGroup === 'rsvp' ? 'rsvp' : 'anzeige'
+
   const overlay = (
     <div role="dialog" aria-modal="true" aria-label="Anzeige & RSVP gestalten"
       style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(30,28,26,0.55)', backdropFilter: 'blur(2px)',
@@ -332,7 +341,7 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
           <aside style={{ width: 470, flexShrink: 0, borderLeft: '1px solid var(--bp-rule)', display: 'flex', flexDirection: 'column', background: 'var(--bp-ivory-2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--bp-rule)' }}>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--bp-ink-2)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Eye size={14} /> Live-Vorschau
+                <Eye size={14} /> Vorschau · {previewMode === 'rsvp' ? 'RSVP' : 'Menü'}
               </span>
               <div style={{ display: 'inline-flex', gap: 4 }}>
                 <button type="button" onClick={() => setDevice('desktop')} title="Desktop"
@@ -342,7 +351,9 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
               </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
-              {!loading && <DisplayPreview s={s} rsvp={rsvp} images={images} device={device} coupleName={event.coupleName || 'Anna & Max'} dateLabel={dateLabel} />}
+              {!loading && (previewMode === 'rsvp'
+                ? <DisplayPreview s={s} rsvp={rsvp} images={images} device={device} coupleName={event.coupleName || 'Anna & Max'} dateLabel={dateLabel} />
+                : <AppMenuPreview s={s} device={device} coupleName={event.coupleName || 'Anna & Max'} />)}
             </div>
           </aside>
         </div>
