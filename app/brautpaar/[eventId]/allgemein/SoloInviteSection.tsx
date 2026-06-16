@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Copy, Check, UserPlus, Briefcase, Trash2 } from 'lucide-react'
+import { Copy, Check, UserPlus, Briefcase, Trash2, Clock, ChevronDown } from 'lucide-react'
 
 interface Props {
   eventId: string
@@ -28,6 +28,13 @@ interface InviteState {
 
 const EMPTY: InviteState = { code: null, loading: false, error: null, copied: false }
 
+function initials(name: string | null, email: string | null): string {
+  const src = (name ?? email ?? '?').trim()
+  const parts = src.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return src.slice(0, 2).toUpperCase()
+}
+
 // Nur für brautpaar_solo sichtbar: Onboarding weiterer Personen.
 //   1. Partner / Partnerin als zweites brautpaar_solo (voller Zugriff)
 //   2. Veranstalter nachträglich "dazuschalten" — der Code ist nur von
@@ -45,6 +52,7 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
   const [membersLoaded, setMembersLoaded] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
+  const [orgHelpOpen, setOrgHelpOpen] = useState(false)
 
   const patch = useCallback((target: InviteTarget, p: Partial<InviteState>) =>
     setStates(prev => ({ ...prev, [target]: { ...prev[target], ...p } })), [])
@@ -111,74 +119,79 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
     }
   }
 
-  function ConnectedBadge({ name, email }: { name: string | null; email: string | null }) {
+  function PersonCard({
+    member, roleLabel, onRemove, removing,
+  }: {
+    member: Member
+    roleLabel: string
+    onRemove?: () => void
+    removing?: boolean
+  }) {
     return (
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-        padding: '10px 14px', borderRadius: 8,
-        background: 'var(--bp-ivory, #faf7f2)', border: '1px solid var(--bp-border, #e5ddd0)',
-      }}>
-        <Check size={15} style={{ color: 'var(--bp-gold, #b09a6d)', flexShrink: 0 }} />
-        <div style={{ minWidth: 0 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{name ?? email ?? 'Verbunden'}</p>
-          {name && email && <p style={{ fontSize: 12, margin: 0, opacity: 0.65 }}>{email}</p>}
+      <div className="bp-person">
+        <span className="bp-person-avatar">{initials(member.name, member.email)}</span>
+        <div className="bp-person-info">
+          <p className="bp-person-name">{member.name ?? member.email ?? 'Verbunden'}</p>
+          {member.name && member.email && <p className="bp-person-sub">{member.email}</p>}
         </div>
+        <span className="bp-chip bp-chip-gold"><Check size={11} /> {roleLabel}</span>
+        {onRemove && (
+          <button
+            type="button"
+            className="bp-btn bp-btn-icon bp-btn-sm bp-btn-ghost"
+            onClick={onRemove}
+            disabled={removing}
+            aria-label="Veranstalter entfernen"
+            title="Veranstalter entfernen"
+            style={{ color: 'var(--bp-red)' }}
+          >
+            <Trash2 size={15} />
+          </button>
+        )}
       </div>
     )
   }
 
   function InviteControls({ target, buttonLabel }: { target: InviteTarget; buttonLabel: string }) {
     const state = states[target]
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
     return (
       <>
         {state.code ? (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <code style={{
-              flex: '1 1 200px', padding: '10px 12px', fontSize: 13,
-              background: 'var(--bp-ivory, #faf7f2)', border: '1px solid var(--bp-border, #e5ddd0)',
-              borderRadius: 8, overflowWrap: 'anywhere',
-            }}>
-              {`${typeof window !== 'undefined' ? window.location.origin : ''}/join?code=${state.code}`}
-            </code>
-            <button
-              type="button"
-              className="bp-btn bp-btn-mobile-full"
-              onClick={() => copyLink(target)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              {state.copied ? <Check size={14} /> : <Copy size={14} />}
-              {state.copied ? 'Kopiert' : 'Link kopieren'}
-            </button>
-          </div>
+          <>
+            <span className="bp-chip bp-chip-pending" style={{ marginBottom: 8 }}>
+              <Clock size={11} /> Wartet auf Beitritt
+            </span>
+            <div className="bp-invite-actions">
+              <code className="bp-code-box">{`${origin}/join?code=${state.code}`}</code>
+              <button
+                type="button"
+                className="bp-btn bp-btn-secondary bp-btn-sm"
+                onClick={() => copyLink(target)}
+              >
+                {state.copied ? <Check size={14} /> : <Copy size={14} />}
+                {state.copied ? 'Kopiert' : 'Link kopieren'}
+              </button>
+            </div>
+            <p className="bp-invite-note">Der Link ist 7 Tage gültig und kann einmal eingelöst werden.</p>
+          </>
         ) : (
-          <div>
-            <button
-              type="button"
-              className="bp-btn bp-btn-primary bp-btn-mobile-full"
-              onClick={() => createCode(target)}
-              disabled={state.loading}
-            >
-              {state.loading ? 'Erstelle Code …' : buttonLabel}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="bp-btn bp-btn-primary bp-btn-sm"
+            onClick={() => createCode(target)}
+            disabled={state.loading}
+          >
+            {state.loading ? 'Erstelle Code …' : buttonLabel}
+          </button>
         )}
 
         {state.error && (
-          <p style={{ fontSize: 13, color: 'var(--bp-red, #a04040)', margin: 0 }}>
+          <p className="bp-invite-error">
             {state.error}
             {state.error.includes('Forevr Pro') && (
-              <>
-                {' '}
-                <a href={`/brautpaar/${eventId}/abo`} style={{ color: 'var(--bp-gold, #B8923A)', fontWeight: 600 }}>
-                  Zum Abo
-                </a>
-              </>
+              <> <a href={`/brautpaar/${eventId}/abo`}>Zum Abo</a></>
             )}
-          </p>
-        )}
-        {state.code && (
-          <p className="bp-body" style={{ fontSize: 12, margin: 0, opacity: 0.7 }}>
-            Der Link ist 7 Tage gültig und kann einmal eingelöst werden.
           </p>
         )}
       </>
@@ -190,69 +203,78 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
       <div className="bp-card-header">
         <h2 className="bp-section-title" style={{ margin: 0 }}>Personen einladen</h2>
       </div>
-      <div className="bp-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+      <div className="bp-card-body">
+        <div className="bp-invite-group">
 
-        {/* ── Partner / Partnerin ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <UserPlus size={16} />
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Partner / Partnerin einladen</span>
+          {/* ── Partner / Partnerin ── */}
+          <div className="bp-invite-block">
+            <div className="bp-invite-head">
+              <span className="bp-invite-badge"><UserPlus size={18} /></span>
+              <div style={{ minWidth: 0 }}>
+                <p className="bp-invite-title">Partner / Partnerin einladen</p>
+                <p className="bp-invite-desc">
+                  {partner
+                    ? 'Bereits mit eurer Planung verbunden — mit vollem Zugriff.'
+                    : 'Lade die zweite Person eures Paares ein. Sie erhält denselben vollen Zugriff auf eure Hochzeitsplanung.'}
+                </p>
+              </div>
+            </div>
+            {partner
+              ? <PersonCard member={partner} roleLabel="Partner" />
+              : membersLoaded && <InviteControls target="brautpaar_solo" buttonLabel="Partner-Code erstellen" />}
           </div>
-          {partner ? (
-            <>
-              <p className="bp-body" style={{ fontSize: 13, margin: 0 }}>
-                Euer Partner / eure Partnerin ist bereits mit der Planung verbunden.
-              </p>
-              <ConnectedBadge name={partner.name} email={partner.email} />
-            </>
-          ) : (
-            <>
-              <p className="bp-body" style={{ fontSize: 13, margin: 0 }}>
-                Lade die zweite Person eures Paares ein — sie erhält denselben vollen Zugriff auf eure Hochzeitsplanung.
-              </p>
-              {membersLoaded && <InviteControls target="brautpaar_solo" buttonLabel="Partner-Code erstellen" />}
-            </>
-          )}
-        </div>
 
-        {/* ── Veranstalter dazuschalten ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Briefcase size={16} />
-            <span style={{ fontWeight: 600, fontSize: 14 }}>Veranstalter hinzufügen</span>
-          </div>
-          {organizer ? (
-            <>
-              <p className="bp-body" style={{ fontSize: 13, margin: 0 }}>
-                Ein Veranstalter betreut euer Event und sieht es in seinem Veranstalter-Portal.
-              </p>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 200px' }}>
-                  <ConnectedBadge name={organizer.name} email={organizer.email} />
-                </div>
+          {/* ── Veranstalter dazuschalten ── */}
+          <div className="bp-invite-block">
+            <div className="bp-invite-head">
+              <span className="bp-invite-badge"><Briefcase size={18} /></span>
+              <div style={{ minWidth: 0 }}>
+                <p className="bp-invite-title">Veranstalter hinzufügen</p>
+                <p className="bp-invite-desc">
+                  {organizer
+                    ? 'Ein Veranstalter betreut euer Event und sieht es in seinem Veranstalter-Portal.'
+                    : 'Optional: Holt euch professionelle Unterstützung dazu.'}
+                </p>
+              </div>
+            </div>
+
+            {organizer ? (
+              <>
+                <PersonCard
+                  member={organizer}
+                  roleLabel="Veranstalter"
+                  onRemove={() => removeOrganizer(organizer.id)}
+                  removing={removingId === organizer.id}
+                />
+                {removeError && <p className="bp-invite-error">{removeError}</p>}
+              </>
+            ) : (
+              <>
+                {membersLoaded && <InviteControls target="veranstalter" buttonLabel="Veranstalter-Code erstellen" />}
                 <button
                   type="button"
-                  className="bp-btn bp-btn-mobile-full"
-                  onClick={() => removeOrganizer(organizer.id)}
-                  disabled={removingId === organizer.id}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--bp-red, #a04040)' }}
+                  className="bp-btn bp-btn-ghost bp-btn-sm"
+                  onClick={() => setOrgHelpOpen(o => !o)}
+                  style={{ marginTop: 10, paddingLeft: 0, paddingRight: 8 }}
                 >
-                  <Trash2 size={14} />
-                  {removingId === organizer.id ? 'Entferne …' : 'Entfernen'}
+                  <ChevronDown
+                    size={14}
+                    style={{ transform: orgHelpOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+                  />
+                  Wie funktioniert das?
                 </button>
-              </div>
-              {removeError && (
-                <p style={{ fontSize: 13, color: 'var(--bp-red, #a04040)', margin: 0 }}>{removeError}</p>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="bp-body" style={{ fontSize: 13, margin: 0 }}>
-                Falls ihr euch später professionelle Unterstützung holt: Mit diesem Code kann ein registrierter und freigeschalteter Veranstalter eurem Event beitreten und die Planung in seinem Veranstalter-Portal übernehmen. Hat euer Veranstalter noch kein Forevr-Konto, muss er sich zuerst registrieren und freischalten lassen.
-              </p>
-              {membersLoaded && <InviteControls target="veranstalter" buttonLabel="Veranstalter-Code erstellen" />}
-            </>
-          )}
+                {orgHelpOpen && (
+                  <p className="bp-invite-desc" style={{ marginTop: 8 }}>
+                    Mit diesem Code kann ein registrierter und freigeschalteter Veranstalter eurem Event beitreten
+                    und die Planung in seinem Veranstalter-Portal übernehmen. Hat euer Veranstalter noch kein
+                    Forevr-Konto, muss er sich zuerst registrieren und freischalten lassen. Ihr könnt ihn jederzeit
+                    wieder entfernen.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
         </div>
       </div>
     </div>
