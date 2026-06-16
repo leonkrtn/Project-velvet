@@ -613,6 +613,38 @@ function PaneBilder({ s, setS, images, busy, pickCover, removeCover, pickBg, rem
   )
 }
 
+// Isolierte Farben nur für die Einladungs-/RSVP-Seite (unabhängig vom Menü).
+function InvitationColors({ s, setInv }: { s: DisplaySettings; setInv: (p: Partial<DisplaySettings['invitation']>, k?: string) => void }) {
+  const inv = s.invitation
+  const ownColors = inv.accent !== null || inv.accent2 !== null || inv.bgColor !== null || inv.accentGradient !== null
+  const toggle = (on: boolean) => on
+    ? setInv({ accent: s.accent, accent2: s.accent2, bgColor: s.bgColor, accentGradient: s.accentGradient })
+    : setInv({ accent: null, accent2: null, bgColor: null, accentGradient: null })
+  return (
+    <Stack label="Eigene Farben für die Einladungsseite" help="Gibt der Einladungs-/RSVP-Seite eigene Farben – unabhängig von den Menü-Farben unter Anzeige. Aus = die Seite erbt die Menü-Farben.">
+      <Row label="Eigene Farben verwenden">
+        <Toggle checked={ownColors} onChange={toggle} />
+      </Row>
+      {ownColors && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 14 }}>
+          <Stack label="Akzentfarbe">
+            <Swatches value={inv.accent ?? s.accent} presets={ACCENT_PRESETS} onChange={v => setInv({ accent: v }, 'invAccent')} />
+          </Stack>
+          <Stack label="Zweite Akzentfarbe (Badges, Links)">
+            <Swatches value={inv.accent2 ?? effectiveAccent2(s)} presets={ACCENT_PRESETS} onChange={v => setInv({ accent2: v }, 'invAccent2')} />
+          </Stack>
+          <Stack label="Hintergrundfarbe">
+            <Swatches value={inv.bgColor ?? s.bgColor} presets={BG_COLOR_PRESETS} allowCustom={false} onChange={v => setInv({ bgColor: v }, 'invBg')} />
+          </Stack>
+          <Row label="Akzent als Farbverlauf">
+            <Toggle checked={inv.accentGradient ?? s.accentGradient} onChange={v => setInv({ accentGradient: v })} />
+          </Row>
+        </div>
+      )}
+    </Stack>
+  )
+}
+
 function PaneEinladung({ s, setInv, images, busy, pickMotive, removeMotive }: {
   s: DisplaySettings; setInv: (p: Partial<DisplaySettings['invitation']>, k?: string) => void; images: PreviewImages
   busy: { motive?: boolean }; pickMotive: (f: File) => void; removeMotive: () => void
@@ -634,14 +666,7 @@ function PaneEinladung({ s, setInv, images, busy, pickMotive, removeMotive }: {
           onPick={pickMotive} onRemove={removeMotive} busy={busy.motive} aspect={3 / 4} uploadLabel="Motiv hochladen" />
       </Stack>
       <Hr />
-      <Stack label="Akzentfarbe der Einladung" help="Überschreibt die globale Akzentfarbe nur für die Einladungsseite. Aus = wie global.">
-        <Row label="Eigene Akzentfarbe verwenden">
-          <Toggle checked={s.invitation.accent !== null} onChange={v => setInv({ accent: v ? s.accent : null })} />
-        </Row>
-        {s.invitation.accent !== null && (
-          <div style={{ marginTop: 10 }}><Swatches value={s.invitation.accent} presets={ACCENT_PRESETS} onChange={v => setInv({ accent: v }, 'invAccent')} /></div>
-        )}
-      </Stack>
+      <InvitationColors s={s} setInv={setInv} />
       <Hr />
       <Stack label="Überschriften-Schrift der Einladung" help="Eigene Schrift nur für die Einladungsseite. Wie global übernimmt die allgemeine Wahl.">
         <select className="bp-input" value={s.invitation.headingFont ?? ''} onChange={e => setInv({ headingFont: (e.target.value || null) as HeadingFontKey | null })}>

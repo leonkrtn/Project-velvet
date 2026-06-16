@@ -4,7 +4,8 @@ import React from 'react'
 import { CheckCircle, XCircle, Clock, Phone, CalendarClock } from 'lucide-react'
 import {
   HEADING_FONTS, RSVP_TEXT_DEFAULTS, fontHrefFor, bodyFontHrefFor,
-  buildRsvpThemeCss, invitationFont, alphaHex, focusPosition, focusSize,
+  buildRsvpThemeCss, invitationFont, invitationBgColor, invitationGradient,
+  alphaHex, focusPosition, focusSize,
   type DisplaySettings,
 } from '@/lib/display-settings'
 import { DeviceFrame, screenHeightFor } from './DeviceMock'
@@ -41,6 +42,8 @@ export default function DisplayPreview({
   const headingHref = fontHrefFor(effFont)
   const bodyHref = bodyFontHrefFor(s.bodyFont)
   const themeCss = buildRsvpThemeCss(s)
+  const bg = invitationBgColor(s)
+  const grad = invitationGradient(s)
   const intro = (rsvp.invitation_text?.trim() || 'Liebe/r {{Name}}, wir freuen uns sehr, mit dir zu feiern.')
     .replace(/\{\{\s*Name\s*\}\}/g, 'Anna')
 
@@ -52,7 +55,7 @@ export default function DisplayPreview({
   const screenHeight = screenHeightFor(device)
 
   const screen = (
-      <div className="rsvp-root" style={{ position: 'relative', height: screenHeight, overflowY: 'auto', background: s.bgColor }}>
+      <div className="rsvp-root" style={{ position: 'relative', height: screenHeight, overflowY: 'auto', background: bg }}>
         <style>{themeCss}</style>
         {headingHref && <link rel="stylesheet" href={headingHref} />}
         {bodyHref && <link rel="stylesheet" href={bodyHref} />}
@@ -67,7 +70,7 @@ export default function DisplayPreview({
               filter: s.bgPhotoBlur ? `blur(${s.bgPhotoBlur}px)` : undefined,
               transform: s.bgPhotoBlur ? 'scale(1.06)' : undefined,
             }} />
-            <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', background: `${s.bgColor}${alphaHex(s.bgPhotoOverlay)}` }} />
+            <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none', background: `${bg}${alphaHex(s.bgPhotoOverlay)}` }} />
           </>
         )}
 
@@ -80,7 +83,7 @@ export default function DisplayPreview({
             backgroundImage: heroImg
               ? (heroIsCover
                   ? `linear-gradient(to bottom, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0) 34%, rgba(0,0,0,0.58) 100%), url(${heroImg})`
-                  : `linear-gradient(${s.bgColor}cc, ${s.bgColor}f2), url(${heroImg})`)
+                  : `linear-gradient(${bg}cc, ${bg}f2), url(${heroImg})`)
               : 'linear-gradient(160deg, var(--gold-pale), transparent 72%)',
             backgroundSize: heroImg ? `cover, ${focusSize(heroFocus)}` : undefined,
             backgroundPosition: heroImg ? `center, ${focusPosition(heroFocus)}` : undefined,
@@ -159,7 +162,7 @@ export default function DisplayPreview({
             <button type="button" disabled style={{
               marginTop: 4, padding: '13px', borderRadius: 'var(--ui-btn-radius, 999px)', border: 'none', cursor: 'default',
               color: '#fff', fontWeight: 700, fontSize: 14, fontFamily: 'inherit',
-              background: s.accentGradient ? 'linear-gradient(135deg, var(--gold), var(--gold-deep))' : 'var(--gold)',
+              background: grad ? 'linear-gradient(135deg, var(--gold), var(--gold-deep))' : 'var(--gold)',
             }}>
               Jetzt antworten
             </button>

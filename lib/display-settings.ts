@@ -6,7 +6,10 @@ export interface InvitationSettings {
   greetingSubtitle: string      // '' = Standard
   motiveR2Key: string | null    // eigenes Einladungs-Motiv (R2 key); null = keins
   motiveFocus: ImageFocus       // Bildausschnitt/Position des Motivs
-  accent: string | null         // null = global erben
+  accent: string | null         // null = global erben — isolierte RSVP-Akzentfarbe
+  accent2: string | null        // null = global erben — isolierte zweite Farbe
+  bgColor: string | null        // null = global erben — isolierte Hintergrundfarbe
+  accentGradient: boolean | null// null = global erben — Akzent als Verlauf
   headingFont: HeadingFontKey | null  // null = global erben
 }
 
@@ -113,7 +116,7 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
   hiddenSections: [],
   texts: {},
   preset: null,
-  invitation: { greetingTitle: '', greetingSubtitle: '', motiveR2Key: null, motiveFocus: { ...DEFAULT_FOCUS }, accent: null, headingFont: null },
+  invitation: { greetingTitle: '', greetingSubtitle: '', motiveR2Key: null, motiveFocus: { ...DEFAULT_FOCUS }, accent: null, accent2: null, bgColor: null, accentGradient: null, headingFont: null },
 }
 
 export const HEADING_FONTS: Record<HeadingFontKey, { label: string; family: string; href: string | null }> = {
@@ -204,6 +207,9 @@ export function normalizeSettings(raw: unknown): DisplaySettings {
 
   const inv = (s.invitation && typeof s.invitation === 'object') ? s.invitation as Record<string, unknown> : {}
   const invAccent = typeof inv.accent === 'string' && /^#[0-9a-fA-F]{6}$/.test(inv.accent) ? inv.accent : null
+  const invAccent2 = typeof inv.accent2 === 'string' && /^#[0-9a-fA-F]{6}$/.test(inv.accent2) ? inv.accent2 : null
+  const invBg = typeof inv.bgColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(inv.bgColor) && isLightColor(inv.bgColor) ? inv.bgColor : null
+  const invGradient = typeof inv.accentGradient === 'boolean' ? inv.accentGradient : null
   const invFont = (typeof inv.headingFont === 'string' && inv.headingFont in HEADING_FONTS) ? inv.headingFont as HeadingFontKey : null
   const invitation: InvitationSettings = {
     greetingTitle: typeof inv.greetingTitle === 'string' ? inv.greetingTitle.slice(0, 120) : '',
@@ -211,6 +217,9 @@ export function normalizeSettings(raw: unknown): DisplaySettings {
     motiveR2Key: typeof inv.motiveR2Key === 'string' && inv.motiveR2Key ? inv.motiveR2Key : null,
     motiveFocus: normalizeFocus(inv.motiveFocus),
     accent: invAccent,
+    accent2: invAccent2,
+    bgColor: invBg,
+    accentGradient: invGradient,
     headingFont: invFont,
   }
 
@@ -249,6 +258,15 @@ export function invitationAccent(s: DisplaySettings): string {
 }
 export function invitationFont(s: DisplaySettings): HeadingFontKey {
   return s.invitation.headingFont ?? s.headingFont
+}
+export function invitationBgColor(s: DisplaySettings): string {
+  return s.invitation.bgColor ?? s.bgColor
+}
+export function invitationGradient(s: DisplaySettings): boolean {
+  return s.invitation.accentGradient ?? s.accentGradient
+}
+export function invitationAccent2(s: DisplaySettings): string {
+  return s.invitation.accent2 ?? s.accent2 ?? shade(invitationAccent(s), -0.3)
 }
 
 // ── Bildausschnitt-Hilfen ──────────────────────────────────────────────────────
@@ -351,7 +369,8 @@ const DENSITY_GAP = { kompakt: '10px', standard: '14px', luftig: '20px' } as con
 export function buildRsvpThemeCss(input: DisplaySettings): string {
   const s = normalizeSettings(input)
   const accent = invitationAccent(s)
-  const acc2 = effectiveAccent2(s)
+  const acc2 = invitationAccent2(s)
+  const bg = invitationBgColor(s)
   const deep = shade(accent, -0.18)
   const pale = shade(accent, 0.82)
   const corner = CORNER_MAP[s.cornerStyle]
@@ -363,12 +382,12 @@ export function buildRsvpThemeCss(input: DisplaySettings): string {
   // Karten-Stil → Flächen-, Rahmen- und Schatten-Tokens.
   let surface = '#FFFFFF', border = 'rgba(0,0,0,0.08)', shadow = 'none'
   if (s.cardStyle === 'shadow') { border = 'rgba(0,0,0,0.04)'; shadow = '0 6px 22px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04)' }
-  else if (s.cardStyle === 'flat') { surface = shade(s.bgColor, -0.035); border = 'transparent' }
+  else if (s.cardStyle === 'flat') { surface = shade(bg, -0.035); border = 'transparent' }
 
   return `.rsvp-root{`
     + `--gold:${accent};--gold-deep:${deep};--gold-pale:${pale};--accent:${accent};--accent2:${acc2};`
-    + `--bg:${s.bgColor};--surface:${surface};--surface2:${shade(s.bgColor, -0.03)};`
-    + `--border:${border};--border2:${shade(border === 'transparent' ? s.bgColor : '#000000', 0.86)};`
+    + `--bg:${bg};--surface:${surface};--surface2:${shade(bg, -0.03)};`
+    + `--border:${border};--border2:${shade(border === 'transparent' ? bg : '#000000', 0.86)};`
     + `--ui-card-shadow:${shadow};--ui-card-pad:${pad};--ui-btn-radius:${btnRadius};--rsvp-gap:${gap};`
     + `--r-sm:${corner.sm};--r-md:${corner.md};--r-lg:${corner.lg};`
     + `font-family:${bodyFamily};`
