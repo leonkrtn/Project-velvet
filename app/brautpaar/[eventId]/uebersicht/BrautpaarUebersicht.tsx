@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   Users, LayoutGrid, Calendar, UtensilsCrossed, Palette, Music,
-  ArrowRight, Check, Send, UserPlus, CalendarHeart,
+  ArrowRight, Check, Send, UserPlus, CalendarHeart, Wallet, Sparkles,
 } from 'lucide-react'
 
 interface NextTask {
@@ -347,6 +347,94 @@ function GuestStatusCard({ eventId, guestTotal, guestConfirmed, guestDeclined, g
   )
 }
 
+// ── Roter Faden: geführter Einstieg ───────────────────────────────────────────
+
+interface SetupStep {
+  key: string
+  label: string
+  todo: string
+  cta: string
+  href: string
+  icon: React.ReactNode
+  done: boolean
+}
+
+// Geführter Start-Faden. Der "erledigt"-Status jedes Schritts wird aus echten
+// Daten abgeleitet (nicht aus einem separaten Flag), damit der Fortschritt nie
+// vom tatsächlichen Stand abweicht. Blendet sich aus, sobald alles erledigt ist
+// oder das Paar ihn manuell ausblendet (reine UI-Präferenz, pro Gerät).
+function RoterFaden({ eventId, steps }: { eventId: string; steps: SetupStep[] }) {
+  const [hidden, setHidden] = useState(false)
+  useEffect(() => {
+    try { setHidden(localStorage.getItem(`forevr_setup_hidden_${eventId}`) === '1') } catch {}
+  }, [eventId])
+
+  const doneCount = steps.filter(s => s.done).length
+  const total = steps.length
+  const allDone = doneCount === total
+  const activeKey = steps.find(s => !s.done)?.key ?? null
+
+  if (hidden || allDone) return null
+
+  function dismiss() {
+    try { localStorage.setItem(`forevr_setup_hidden_${eventId}`, '1') } catch {}
+    setHidden(true)
+  }
+
+  const pct = Math.round(doneCount / total * 100)
+
+  return (
+    <section className="bp-card bp-faden bp-reveal bp-mb-8" aria-label="Erste Schritte">
+      <div className="bp-faden-head">
+        <div>
+          <p className="bp-faden-kicker">Erste Schritte</p>
+          <h2 className="bp-faden-title" style={{ fontFamily: SERIF }}>Euer roter Faden</h2>
+        </div>
+        <div className="bp-faden-progress"><span className="bp-num">{doneCount}</span> / {total}</div>
+      </div>
+
+      <div className="bp-faden-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+        <div style={{ width: `${pct}%` }} />
+      </div>
+
+      <ol className="bp-faden-steps">
+        {steps.map((step, i) => {
+          const isActive = step.key === activeKey
+          const stepHref = `/brautpaar/${eventId}/${step.href}`
+          const cls = `bp-faden-step${step.done ? ' is-done' : ''}${isActive ? ' is-active' : ''}`
+          return (
+            <li key={step.key} className={cls}>
+              <span className="bp-faden-num" aria-hidden>
+                {step.done ? <Check size={15} strokeWidth={2.5} /> : i + 1}
+              </span>
+              {isActive ? (
+                <div className="bp-faden-body">
+                  <span className="bp-faden-label">{step.label}</span>
+                  <span className="bp-faden-todo">{step.todo}</span>
+                  <Link href={stepHref} className="bp-btn bp-btn-primary bp-btn-sm bp-faden-cta">
+                    {step.icon} {step.cta}
+                  </Link>
+                </div>
+              ) : (
+                <Link href={stepHref} className="bp-faden-row">
+                  <span className="bp-faden-label">{step.label}</span>
+                  {step.done
+                    ? <span className="bp-faden-status">Erledigt</span>
+                    : <ArrowRight size={14} className="bp-faden-arrow" />}
+                </Link>
+              )}
+            </li>
+          )
+        })}
+      </ol>
+
+      <button type="button" onClick={dismiss} className="bp-faden-dismiss">
+        Einrichtung ausblenden
+      </button>
+    </section>
+  )
+}
+
 // ── Hauptkomponente ───────────────────────────────────────────────────────────
 
 export default function BrautpaarUebersicht({
@@ -374,6 +462,26 @@ export default function BrautpaarUebersicht({
     { key: 'dekoration', label: 'Dekoration', icon: <Palette size={18} />, detail: 'Moodboards und Deko-Planung' },
   ]
 
+  // Geführter Start-Faden — Reihenfolge = was was freischaltet. Jeder
+  // "done"-Status leitet sich aus bereits geladenen Werten ab.
+  const setupSteps: SetupStep[] = [
+    { key: 'datum', label: 'Datum & Location', href: 'allgemein', icon: <CalendarHeart size={14} />,
+      todo: 'Legt euren großen Tag und den Ort fest — das treibt Countdown und Planung.',
+      cta: 'Datum festlegen', done: !!eventDate },
+    { key: 'budget', label: 'Budget-Rahmen', href: 'budget', icon: <Wallet size={14} />,
+      todo: 'Steckt euren finanziellen Rahmen ab, bevor ihr ins Detail geht.',
+      cta: 'Budget festlegen', done: budgetLimit > 0 },
+    { key: 'gaeste', label: 'Gästeliste starten', href: 'gaeste', icon: <UserPlus size={14} />,
+      todo: 'Tragt eure ersten Gäste ein — die Basis für Sitzplan und Einladungen.',
+      cta: 'Gäste anlegen', done: guestTotal > 0 },
+    { key: 'einladen', label: 'Gäste einladen', href: 'gaeste', icon: <Send size={14} />,
+      todo: 'Verschickt eure Einladungen und sammelt Zu- und Absagen.',
+      cta: 'Zur Gästeliste', done: guestTotal > 0 && guestNotInvited === 0 },
+    { key: 'feiern', label: 'Sitzplan & Musik', href: 'sitzplan', icon: <Sparkles size={14} />,
+      todo: 'Plant eure Tische und sammelt eure Lieblingslieder.',
+      cta: 'Loslegen', done: seatedCount > 0 || songCount > 0 },
+  ]
+
   const rootRef = useReveal<HTMLDivElement>()
 
   return (
@@ -388,6 +496,8 @@ export default function BrautpaarUebersicht({
         coverImageUrl={coverImageUrl}
         monogram={monogram}
       />
+
+      <RoterFaden eventId={eventId} steps={setupSteps} />
 
       {/* Editorial-Zahlenleiste */}
       <section className="bp-mag-stats bp-mb-8">
