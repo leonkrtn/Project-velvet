@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forevr — Solo-Brautpaar Redesign (Vorschau)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bp-ivory:#F8F8F6; --bp-ivory-2:#F0F0EE; --bp-paper:#FFFFFF;
+  --bp-gold:#B89968; --bp-gold-deep:#9C7F4F; --bp-gold-pale:#F5F0E8; --bp-gold-mist:#EDE8DC;
+  --bp-ink:#2C2825; --bp-ink-2:#5C534A; --bp-ink-3:#8C8076;
+  --bp-rule:#E8E8E6; --bp-rule-gold:#D4BC9A;
+  --bp-red:#B91C1C; --bp-green:#15803D;
+  --bp-shadow-card:0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04);
+  --bp-r-xs:4px; --bp-r-sm:8px; --bp-r-md:12px; --bp-r-lg:16px; --bp-r-pill:999px;
+  --bp-transition:200ms cubic-bezier(.4,0,.2,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bp-ivory);font-family:'DM Sans',system-ui,sans-serif;color:var(--bp-ink)}
+.bp-section-title{font-family:'DM Sans',system-ui,sans-serif;font-size:1rem;font-weight:600;color:var(--bp-ink);margin:0 0 1rem}
+.bp-page-header{margin-bottom:2rem}
+.bp-page-title{font-family:'DM Sans',system-ui,sans-serif;font-size:1.5rem;font-weight:700;color:var(--bp-ink);margin:0 0 .25rem;letter-spacing:-.02em}
+.bp-page-subtitle{font-family:'DM Sans',system-ui,sans-serif;font-size:.9375rem;color:var(--bp-ink-3);margin:0}
+.bp-card{background:var(--bp-paper);border:1px solid var(--bp-rule);border-radius:var(--bp-r-md);box-shadow:var(--bp-shadow-card)}
+.bp-card-body{padding:1.25rem}
+.bp-card-header{padding:1rem 1.25rem;border-bottom:1px solid var(--bp-rule);display:flex;align-items:center;justify-content:space-between}
+.bp-btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;height:40px;padding:0 1.25rem;border-radius:var(--bp-r-sm);font-family:inherit;font-size:.9375rem;font-weight:500;line-height:1;cursor:pointer;border:none;white-space:nowrap;text-decoration:none;transition:background var(--bp-transition),color var(--bp-transition)}
+.bp-btn-primary{background:#fff;color:var(--bp-gold-deep);border:1px solid var(--bp-rule-gold)}
+.bp-btn-primary:hover{background:var(--bp-gold-pale);border-color:var(--bp-gold)}
+.bp-btn-secondary{background:var(--bp-paper);color:var(--bp-ink);border:1px solid var(--bp-rule)}
+.bp-btn-secondary:hover{background:var(--bp-ivory-2)}
+.bp-btn-ghost{background:transparent;color:var(--bp-ink-2)}
+.bp-btn-ghost:hover{background:var(--bp-ivory-2);color:var(--bp-ink)}
+.bp-btn-sm{height:32px;padding:0 .875rem;font-size:.875rem}
+.bp-btn-icon{padding:0;width:40px;flex-shrink:0}
+.bp-btn-icon.bp-btn-sm{width:32px}
+.bp-skeleton{background:linear-gradient(90deg,var(--bp-ivory-2) 25%,var(--bp-rule) 50%,var(--bp-ivory-2) 75%);background-size:200% 100%;animation:bp-shimmer 1.4s ease infinite;border-radius:var(--bp-r-sm)}
+@keyframes bp-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.bp-empty{text-align:center;padding:3rem 2rem}
+.bp-empty-icon{width:48px;height:48px;margin:0 auto 1rem;color:var(--bp-ink-3);opacity:.5}
+.bp-empty-title{font-size:1rem;font-weight:600;color:var(--bp-ink);margin:0 0 .5rem}
+.bp-empty-body{font-size:.9375rem;color:var(--bp-ink-3);margin:0 0 1.5rem}
+/* Invite / Person cards */
+.bp-invite-group{display:flex;flex-direction:column;gap:1rem}
+.bp-invite-block{background:var(--bp-ivory);border:1px solid var(--bp-rule);border-radius:var(--bp-r-md);padding:1.125rem 1.25rem}
+.bp-invite-head{display:flex;align-items:flex-start;gap:.75rem;margin-bottom:1rem}
+.bp-invite-badge{width:38px;height:38px;border-radius:var(--bp-r-sm);display:grid;place-items:center;background:var(--bp-gold-pale);color:var(--bp-gold-deep);border:1px solid var(--bp-rule-gold);flex-shrink:0}
+.bp-invite-title{font-size:.9375rem;font-weight:600;color:var(--bp-ink);margin:0;line-height:1.3}
+.bp-invite-desc{font-size:.8125rem;color:var(--bp-ink-3);line-height:1.55;margin:.25rem 0 0}
+.bp-invite-actions{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.bp-code-box{flex:1 1 220px;min-width:0;padding:.5rem .75rem;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:.8125rem;color:var(--bp-ink-2);background:var(--bp-paper);border:1px solid var(--bp-rule);border-radius:var(--bp-r-sm);overflow-wrap:anywhere}
+.bp-invite-note{font-size:.75rem;color:var(--bp-ink-3);margin:.625rem 0 0}
+.bp-invite-error{font-size:.8125rem;color:var(--bp-red);margin:.625rem 0 0}
+.bp-person{display:flex;align-items:center;gap:.75rem;padding:.75rem .875rem;background:var(--bp-paper);border:1px solid var(--bp-rule);border-left:3px solid var(--bp-gold);border-radius:var(--bp-r-sm)}
+.bp-person-avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--bp-gold-pale);color:var(--bp-gold-deep);font-weight:600;font-size:.8125rem;flex-shrink:0}
+.bp-person-info{min-width:0;flex:1}
+.bp-person-name{font-size:.875rem;font-weight:600;color:var(--bp-ink);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bp-person-sub{font-size:.75rem;color:var(--bp-ink-3);margin:.0625rem 0 0}
+.bp-chip{display:inline-flex;align-items:center;gap:.25rem;height:22px;padding:0 .5rem;border-radius:var(--bp-r-pill);font-size:.6875rem;font-weight:600;letter-spacing:.02em;flex-shrink:0}
+.bp-chip-gold{background:var(--bp-gold-pale);color:var(--bp-gold-deep)}
+.bp-chip-pending{background:var(--bp-gold-mist);color:var(--bp-gold-deep)}
+.bp-photo-skeleton-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.75rem}
+.bp-photo-skeleton-grid>div{aspect-ratio:1/1;border-radius:var(--bp-r-md)}
+/* Preview chrome */
+.wrap{max-width:1080px;margin:0 auto;padding:32px 20px 64px}
+.lead{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:600;letter-spacing:.04em;margin:0 0 4px}
+.lead-sub{color:var(--bp-ink-3);font-size:.9rem;margin:0 0 28px}
+.screens{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:24px;align-items:start}
+.screen{background:var(--bp-ivory);border:1px solid var(--bp-rule);border-radius:var(--bp-r-lg);overflow:hidden}
+.screen-bar{display:flex;align-items:center;gap:7px;padding:10px 14px;background:#fff;border-bottom:1px solid var(--bp-rule)}
+.dot{width:10px;height:10px;border-radius:50%}
+.screen-label{margin-left:8px;font-size:.78rem;font-weight:600;color:var(--bp-ink-3);letter-spacing:.04em}
+.screen-body{padding:22px}
+.sec-row{borderTop:1px solid var(--bp-rule)}
+.bp-musec{border-radius:10px;border:1px solid #ede5dc;overflow:hidden;background:#fff}
+.bp-musec-head{display:flex;align-items:center;gap:7px;padding:11px 16px 10px}
+.bp-musec-label{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.bp-musec-hint{padding:13px 16px;font-size:12.5px;color:var(--bp-ink-3);line-height:1.5}
+.song{display:flex;align-items:center;gap:10px;padding:10px 16px}
+.song-add{display:flex;align-items:center;gap:6px;padding:9px 14px;background:rgba(250,248,245,.5)}
+.song-add input{flex:1;padding:6px 9px;border:1px solid transparent;border-radius:5px;font-size:13px;font-family:inherit;background:transparent;outline:none}
+svg.ic{width:1em;height:1em;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;display:block}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+<defs>
+<symbol id="i-userplus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></symbol>
+<symbol id="i-briefcase" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
+<symbol id="i-imageoff" viewBox="0 0 24 24"><line x1="2" x2="22" y1="2" y2="22"/><path d="M10.41 10.41a2 2 0 1 1-2.83-2.83"/><line x1="13.5" x2="6" y1="13.5" y2="21"/><line x1="18" x2="21" y1="12" y2="15"/><path d="M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.05-.22 1.41-.59"/><path d="M21 15V5a2 2 0 0 0-2-2H9"/></symbol>
+<symbol id="i-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+<symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M21 15V6"/><path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/><path d="M12 12H3"/><path d="M16 6H3"/><path d="M12 18H3"/></symbol>
+<symbol id="i-music" viewBox="0 0 24 24"><circle cx="8" cy="18" r="4"/><path d="M12 18V2l7 4"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+</defs>
+</svg>
+
+<div class="wrap">
+  <p class="lead">FOREVR — Solo-Brautpaar Redesign</p>
+  <p class="lead-sub">Vorschau der überarbeiteten Oberflächen · 1 Einladung · 2 Medien &amp; Musik</p>
+
+  <div class="screens">
+
+    <!-- ════ 1 · SoloInviteSection ════ -->
+    <div class="screen" style="grid-column:1/-1">
+      <div class="screen-bar"><span class="dot" style="background:#FF5F57"></span><span class="dot" style="background:#FEBC2E"></span><span class="dot" style="background:#28C840"></span><span class="screen-label">1 · ALLGEMEIN → PERSONEN EINLADEN</span></div>
+      <div class="screen-body">
+        <div style="max-width:560px">
+          <div class="bp-card" style="overflow:hidden">
+            <div class="bp-card-header"><h2 class="bp-section-title" style="margin:0">Personen einladen</h2></div>
+            <div class="bp-card-body">
+              <div class="bp-invite-group">
+
+                <!-- Partner: verbunden -->
+                <div class="bp-invite-block">
+                  <div class="bp-invite-head">
+                    <span class="bp-invite-badge"><svg class="ic" style="font-size:18px"><use href="#i-userplus"/></svg></span>
+                    <div style="min-width:0">
+                      <p class="bp-invite-title">Partner / Partnerin einladen</p>
+                      <p class="bp-invite-desc">Bereits mit eurer Planung verbunden — mit vollem Zugriff.</p>
+                    </div>
+                  </div>
+                  <div class="bp-person">
+                    <span class="bp-person-avatar">JM</span>
+                    <div class="bp-person-info">
+                      <p class="bp-person-name">Julia Maier</p>
+                      <p class="bp-person-sub">julia.maier@example.com</p>
+                    </div>
+                    <span class="bp-chip bp-chip-gold"><svg class="ic" style="font-size:11px"><use href="#i-check"/></svg> Partner</span>
+                  </div>
+                </div>
+
+                <!-- Veranstalter: Pending-Zustand -->
+                <div class="bp-invite-block">
+                  <div class="bp-invite-head">
+                    <span class="bp-invite-badge"><svg class="ic" style="font-size:18px"><use href="#i-briefcase"/></svg></span>
+                    <div style="min-width:0">
+                      <p class="bp-invite-title">Veranstalter hinzufügen</p>
+                      <p class="bp-invite-desc">Optional: Holt euch professionelle Unterstützung dazu.</p>
+                    </div>
+                  </div>
+                  <span class="bp-chip bp-chip-pending" style="margin-bottom:8px"><svg class="ic" style="font-size:11px"><use href="#i-clock"/></svg> Wartet auf Beitritt</span>
+                  <div class="bp-invite-actions">
+                    <code class="bp-code-box">https://forevr.app/join?code=K7P-2QXM</code>
+                    <button class="bp-btn bp-btn-secondary bp-btn-sm"><svg class="ic" style="font-size:14px"><use href="#i-copy"/></svg> Link kopieren</button>
+                  </div>
+                  <p class="bp-invite-note">Der Link ist 7 Tage gültig und kann einmal eingelöst werden.</p>
+                  <button class="bp-btn bp-btn-ghost bp-btn-sm" style="margin-top:10px;padding-left:0;padding-right:8px">
+                    <svg class="ic" style="font-size:14px"><use href="#i-chevron"/></svg> Wie funktioniert das?
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ 2 · Medien ════ -->
+    <div class="screen">
+      <div class="screen-bar"><span class="dot" style="background:#FF5F57"></span><span class="dot" style="background:#FEBC2E"></span><span class="dot" style="background:#28C840"></span><span class="screen-label">2 · MEDIEN — LADEZUSTAND</span></div>
+      <div class="screen-body">
+        <div class="bp-page-header">
+          <h1 class="bp-page-title">Fotos</h1>
+          <p class="bp-page-subtitle">Sammelt die schönsten Momente eures Tages an einem Ort.</p>
+        </div>
+        <div class="bp-photo-skeleton-grid">
+          <div class="bp-skeleton"></div><div class="bp-skeleton"></div><div class="bp-skeleton"></div><div class="bp-skeleton"></div>
+          <div class="bp-skeleton"></div><div class="bp-skeleton"></div><div class="bp-skeleton"></div><div class="bp-skeleton"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div class="screen-bar"><span class="dot" style="background:#FF5F57"></span><span class="dot" style="background:#FEBC2E"></span><span class="dot" style="background:#28C840"></span><span class="screen-label">2 · MEDIEN — LEERZUSTAND</span></div>
+      <div class="screen-body">
+        <div class="bp-page-header">
+          <h1 class="bp-page-title">Fotos</h1>
+          <p class="bp-page-subtitle">Sammelt die schönsten Momente eures Tages an einem Ort.</p>
+        </div>
+        <div class="bp-card">
+          <div class="bp-empty">
+            <svg class="bp-empty-icon"><use href="#i-imageoff"/></svg>
+            <p class="bp-empty-title">Fotogalerie nicht aktiviert</p>
+            <p class="bp-empty-body">Sobald die Gäste-Fotogalerie für euer Event freigeschaltet ist, erscheinen hier die Bilder eurer Gäste.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ 2 · Musik ════ -->
+    <div class="screen" style="grid-column:1/-1">
+      <div class="screen-bar"><span class="dot" style="background:#FF5F57"></span><span class="dot" style="background:#FEBC2E"></span><span class="dot" style="background:#28C840"></span><span class="screen-label">2 · MUSIK</span></div>
+      <div class="screen-body">
+        <div style="max-width:620px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:2rem">
+            <div class="bp-page-header" style="margin-bottom:0">
+              <h1 class="bp-page-title">Musik</h1>
+              <p class="bp-page-subtitle">Wünsche, No-Gos und eure Playlisten für den großen Tag.</p>
+            </div>
+            <button class="bp-btn bp-btn-secondary bp-btn-sm" style="flex-shrink:0">
+              <svg class="ic" style="font-size:14px"><use href="#i-bulb"/></svg> Vorschläge
+              <span class="bp-chip bp-chip-gold" style="height:18px;padding:0 6px">3</span>
+            </button>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <!-- Wünsche (befüllt) -->
+            <div class="bp-musec">
+              <div class="bp-musec-head" style="border-bottom:1px solid rgba(196,113,122,.12)">
+                <span style="color:#C4717A;display:flex"><svg class="ic" style="font-size:12px"><use href="#i-heart"/></svg></span>
+                <span class="bp-musec-label" style="color:#C4717A">Wünsche</span>
+                <span style="margin-left:auto;font-size:11px;font-weight:500;color:#C4717A;opacity:.55">2</span>
+              </div>
+              <div class="song" style="border-bottom:1px solid rgba(196,113,122,.12)"><div style="flex:1"><span style="font-size:13.5px;font-weight:500">Perfect</span><span style="font-size:12px;color:var(--bp-ink-3);margin-left:7px">— Ed Sheeran</span></div></div>
+              <div class="song"><div style="flex:1"><span style="font-size:13.5px;font-weight:500">At Last</span><span style="font-size:12px;color:var(--bp-ink-3);margin-left:7px">— Etta James</span></div></div>
+              <div class="song-add" style="border-top:1px solid rgba(196,113,122,.12)">
+                <input placeholder="Titel hinzufügen…" disabled><input placeholder="Interpret (optional)" disabled style="flex:.6">
+                <span style="width:30px;height:28px;border:1px solid var(--bp-rule);border-radius:5px;display:grid;place-items:center;color:var(--bp-ink-3)"><svg class="ic" style="font-size:13px"><use href="#i-plus"/></svg></span>
+              </div>
+            </div>
+
+            <!-- No-Gos (leer mit Hinweis) -->
+            <div class="bp-musec">
+              <div class="bp-musec-head">
+                <span style="color:#e05252;display:flex"><svg class="ic" style="font-size:12px"><use href="#i-ban"/></svg></span>
+                <span class="bp-musec-label" style="color:#e05252">No-Gos</span>
+                <span style="margin-left:auto;font-size:11px;font-weight:500;color:#e05252;opacity:.55">0</span>
+              </div>
+              <div class="bp-musec-hint">Lieder, die auf keinen Fall gespielt werden dürfen.</div>
+              <div class="song-add">
+                <input placeholder="Titel hinzufügen…" disabled><input placeholder="Interpret (optional)" disabled style="flex:.6">
+                <span style="width:30px;height:28px;border:1px solid var(--bp-rule);border-radius:5px;display:grid;place-items:center;color:var(--bp-ink-3)"><svg class="ic" style="font-size:13px"><use href="#i-plus"/></svg></span>
+              </div>
+            </div>
+
+            <!-- Playlisten (leer) -->
+            <div class="bp-musec">
+              <div class="bp-musec-head">
+                <span style="color:var(--bp-gold);display:flex"><svg class="ic" style="font-size:12px"><use href="#i-music"/></svg></span>
+                <span class="bp-musec-label" style="color:var(--bp-gold)">Playlisten</span>
+                <span style="margin-left:auto;font-size:11px;font-weight:500;color:var(--bp-gold);opacity:.55">0</span>
+              </div>
+              <div style="background:rgba(250,248,245,.5)">
+                <button class="bp-btn bp-btn-ghost bp-btn-sm" style="width:100%;justify-content:flex-start;color:var(--bp-ink-3)"><svg class="ic" style="font-size:13px"><use href="#i-plus"/></svg> Playlist hinzufügen</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

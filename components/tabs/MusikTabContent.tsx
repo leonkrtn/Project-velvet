@@ -426,10 +426,10 @@ function AddSongForm({ eventId, onInsertPlaceholder, onReconcile, onRollback }: 
 
 // ── Brautpaar Section ─────────────────────────────────────────────────────────
 
-const BP_SECTION_CFG: Record<string, { icon: React.ReactNode; label: string; accentColor: string; dividerColor: string }> = {
-  wish:     { icon: <Heart size={12} />,     label: 'Wünsche',  accentColor: '#C4717A', dividerColor: 'rgba(196,113,122,0.12)' },
-  no_go:    { icon: <Ban size={12} />,       label: 'No-Gos',   accentColor: '#e05252', dividerColor: 'rgba(224,82,82,0.12)'   },
-  playlist: { icon: <ListMusic size={12} />, label: 'Playlist', accentColor: 'var(--bp-gold, #B89968)', dividerColor: 'rgba(184,148,62,0.15)' },
+const BP_SECTION_CFG: Record<string, { icon: React.ReactNode; label: string; accentColor: string; dividerColor: string; hint: string }> = {
+  wish:     { icon: <Heart size={12} />,     label: 'Wünsche',  accentColor: '#C4717A', dividerColor: 'rgba(196,113,122,0.12)', hint: 'Lieder, die auf jeden Fall laufen sollen.' },
+  no_go:    { icon: <Ban size={12} />,       label: 'No-Gos',   accentColor: '#e05252', dividerColor: 'rgba(224,82,82,0.12)',   hint: 'Lieder, die auf keinen Fall gespielt werden dürfen.' },
+  playlist: { icon: <ListMusic size={12} />, label: 'Playlist', accentColor: 'var(--bp-gold, #B89968)', dividerColor: 'rgba(184,148,62,0.15)', hint: 'Eure Lieblingslieder für die Feier.' },
 }
 
 function BrautpaarSongSection({
@@ -505,8 +505,8 @@ function BrautpaarSongSection({
 
       {/* Songs */}
       {songs.length === 0 && (
-        <div style={{ padding: '13px 16px', fontSize: 12.5, color: 'var(--bp-ink, #3a3028)', opacity: 0.35, fontStyle: 'italic' }}>
-          Noch keine Einträge
+        <div style={{ padding: '13px 16px', fontSize: 12.5, color: 'var(--bp-ink-3, #8C8076)', lineHeight: 1.5 }}>
+          {cfg.hint}
         </div>
       )}
       {songs.map((song, i) => (
@@ -993,6 +993,7 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
   const [showVorschlaege, setShowVorschlaege] = useState(false)
   const [vorschlaege, setVorschlaege] = useState<MusicSuggestion[]>([])
   const [vorschlaegeLoading, setVorschlaegeLoading] = useState(false)
+  const [vorschlaegeCount, setVorschlaegeCount] = useState(0)
 
   useEffect(() => {
     const supabase = createClient()
@@ -1000,9 +1001,11 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
       Promise.all([
         supabase.from('music_songs').select('*').eq('event_id', eventId).order('sort_order'),
         supabase.from('musik_playlisten').select('*').eq('event_id', eventId).order('sort_order'),
-      ]).then(([{ data: s }, { data: p }]) => {
+        supabase.from('rsvp_music_suggestions').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
+      ]).then(([{ data: s }, { data: p }, { count }]) => {
         setSongs(s ?? [])
         setPlaylists(p ?? [])
+        setVorschlaegeCount(count ?? 0)
         setLoading(false)
       })
     } else {
@@ -1045,6 +1048,7 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
       .eq('event_id', eventId)
       .order('created_at')
     setVorschlaege(data ?? [])
+    setVorschlaegeCount((data ?? []).length)
     setVorschlaegeLoading(false)
   }
 
@@ -1067,13 +1071,17 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
       await supabase.from('rsvp_music_suggestions').delete().eq('id', sug.id)
       if (data) setSongs(prev => [...prev, data as Song])
       setVorschlaege(prev => prev.filter(v => v.id !== sug.id))
+      setVorschlaegeCount(c => Math.max(0, c - 1))
     }
   }
 
   async function rejectVorschlag(id: string) {
     const supabase = createClient()
     const { error } = await supabase.from('rsvp_music_suggestions').delete().eq('id', id)
-    if (!error) setVorschlaege(prev => prev.filter(v => v.id !== id))
+    if (!error) {
+      setVorschlaege(prev => prev.filter(v => v.id !== id))
+      setVorschlaegeCount(c => Math.max(0, c - 1))
+    }
   }
 
   const visibleSongs = songs
@@ -1095,17 +1103,28 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
   if (mode === 'brautpaar') {
     return (
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px' }}>Musik</h1>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: '2rem' }}>
+          <div className="bp-page-header" style={{ marginBottom: 0 }}>
+            <h1 className="bp-page-title">Musik</h1>
+            <p className="bp-page-subtitle">Wünsche, No-Gos und eure Playlisten für den großen Tag.</p>
+          </div>
           <button
             onClick={openVorschlaege}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', background: 'none', border: '1px solid var(--bp-rule, #e6ddd4)', borderRadius: 'var(--bp-r-sm, 6px)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--bp-ink-2, #6b5e54)' }}
+            className="bp-btn bp-btn-secondary bp-btn-sm"
+            style={{ flexShrink: 0 }}
           >
             <Lightbulb size={14} /> Vorschläge
+            {vorschlaegeCount > 0 && (
+              <span className="bp-chip bp-chip-gold" style={{ height: 18, padding: '0 6px' }}>{vorschlaegeCount}</span>
+            )}
           </button>
         </div>
         {loading ? (
-          <div style={{ color: 'var(--bp-ink, #3a3028)', opacity: 0.5, fontSize: 14 }}>Wird geladen…</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }} aria-hidden>
+            <div className="bp-skeleton" style={{ height: 132, borderRadius: 10 }} />
+            <div className="bp-skeleton" style={{ height: 132, borderRadius: 10 }} />
+            <div className="bp-skeleton" style={{ height: 96, borderRadius: 10 }} />
+          </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <BrautpaarMusikView eventId={eventId} songs={songs} setSongs={setSongs} />
