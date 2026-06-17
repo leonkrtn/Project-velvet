@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react'
 import { SOLO_TOUR_STEPS, type TourStep } from '@/lib/tour/solo-tour-steps'
@@ -44,6 +44,10 @@ export default function ProductTour({ eventId, available }: Props) {
   const [rect, setRect] = useState<DOMRect | null>(null)
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
   const [actionState, setActionState] = useState<ActionState>('none')
+  // Tatsächlich gerenderte Kartenhöhe (statt fester Schätzung) — damit die
+  // Karte nie unten aus dem Bild ragt und abgeschnitten wird.
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [measuredH, setMeasuredH] = useState(0)
 
   const step: TourStep | null = active ? steps[index] ?? null : null
   // Primitive Ableitungen für stabile Effekt-Abhängigkeiten (das step-Objekt
@@ -231,6 +235,20 @@ export default function ProductTour({ eventId, available }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [active, finish, steps.length])
 
+  // Echte Kartenhöhe vor dem Paint messen (inkl. späterer Inhalts-/Resize-
+  // Änderungen via ResizeObserver), damit die Positionierung mit der
+  // tatsächlichen Höhe rechnen kann.
+  useLayoutEffect(() => {
+    if (!active) return
+    const el = cardRef.current
+    if (!el) return
+    const measure = () => setMeasuredH(el.offsetHeight)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [active, index])
+
   if (!mounted || !active || !step) return null
 
   const isLast = index === steps.length - 1
@@ -240,27 +258,31 @@ export default function ProductTour({ eventId, available }: Props) {
 
   const { w: vw, h: vh } = viewport
 
-  // Karten-Position berechnen.
+  // Karten-Position berechnen. Höhe: gemessen (sobald verfügbar), sonst Schätzung.
   const CARD_EST_H = interactiveStep ? 240 : 200
+  const cardH = measuredH || CARD_EST_H
   let cardTop: number, cardLeft: number
   if (interactiveStep) {
     // Interaktive Schritte: Karte unten zentriert — stört das echte Formular nicht.
     cardLeft = Math.max(12, (vw - CARD_W) / 2)
-    cardTop = Math.max(12, vh - CARD_EST_H - 24)
+    cardTop = vh - cardH - 24
   } else if (rect) {
     cardLeft = Math.min(Math.max(12, rect.left), vw - CARD_W - 12)
-    if (rect.bottom + CARD_EST_H + 16 < vh) {
+    if (rect.bottom + cardH + 16 < vh) {
       cardTop = rect.bottom + 14
-    } else if (rect.top - CARD_EST_H - 16 > 0) {
-      cardTop = rect.top - CARD_EST_H - 14
+    } else if (rect.top - cardH - 16 > 0) {
+      cardTop = rect.top - cardH - 14
     } else {
-      cardTop = Math.max(12, (vh - CARD_EST_H) / 2)
+      cardTop = (vh - cardH) / 2
       cardLeft = (vw - CARD_W) / 2
     }
   } else {
-    cardTop = (vh - CARD_EST_H) / 2
+    cardTop = (vh - cardH) / 2
     cardLeft = (vw - CARD_W) / 2
   }
+  // Immer vollständig im sichtbaren Bereich halten: Ober- und Unterkante mit
+  // 12px Rand begrenzen, damit die Karte nie oben oder unten abgeschnitten wird.
+  cardTop = Math.max(12, Math.min(cardTop, vh - cardH - 12))
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 4000, pointerEvents: 'none' }} aria-live="polite" role="dialog" aria-label="Produkt-Tour">
@@ -303,12 +325,17 @@ export default function ProductTour({ eventId, available }: Props) {
 
       {/* Erklär-/Anlege-Karte */}
       <div
+        ref={cardRef}
         style={{
           position: 'fixed',
           top: cardTop,
           left: cardLeft,
           width: CARD_W,
           maxWidth: 'calc(100vw - 24px)',
+          // Sicherheitsnetz für sehr kleine Displays: nie höher als der
+          // sichtbare Bereich; überzähliger Inhalt scrollt innerhalb der Karte.
+          maxHeight: 'calc(100dvh - 24px)',
+          overflowY: 'auto',
           background: 'var(--bp-paper, #fff)',
           borderRadius: 16,
           boxShadow: '0 18px 50px rgba(31,26,22,0.28)',
