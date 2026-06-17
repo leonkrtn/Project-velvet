@@ -241,7 +241,9 @@
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--bp-gold-deep);
+  /* Schwarz/Ink statt Gold: Menütext bleibt unabhängig von der gewählten
+     Akzentfarbe lesbar und wird nicht eingefärbt. */
+  color: var(--bp-ink);
   white-space: nowrap;
   overflow: hidden;
   flex: 1;
@@ -301,7 +303,8 @@
   padding: 0 1rem;
   height: 40px;
   border-radius: 0;
-  color: var(--bp-gold);
+  /* Schwarz/Ink statt Gold: Menütext wird nicht von der Akzentfarbe eingefärbt. */
+  color: var(--bp-ink);
   text-decoration: none;
   cursor: pointer;
   border: none;
@@ -318,14 +321,15 @@
 
 .bp-nav-item:hover {
   background: var(--bp-ivory-2);
-  color: var(--bp-gold-deep);
+  color: var(--bp-ink);
 }
 
 .bp-nav-item[aria-current="page"],
 .bp-nav-item.active {
   background: var(--bp-sidebar-active-bg);
-  color: var(--bp-gold-deep);
+  color: var(--bp-ink);
   font-weight: 600;
+  /* Aktiver Eintrag behält die Akzentfarbe nur als dezenten linken Rand. */
   border-left-color: var(--bp-gold);
 }
 
@@ -428,7 +432,8 @@
   box-sizing: border-box;
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.75rem;
-  color: var(--bp-gold);
+  /* Schwarz/Ink statt Gold: unabhängig von der Akzentfarbe. */
+  color: var(--bp-ink);
   text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
@@ -438,7 +443,7 @@
 .bp-sidebar-footer-link svg { flex-shrink: 0; }
 
 .bp-sidebar-footer-link:hover {
-  color: var(--bp-gold-deep);
+  color: var(--bp-ink);
   background: var(--bp-ivory-2);
 }
 
