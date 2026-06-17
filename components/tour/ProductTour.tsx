@@ -42,6 +42,9 @@ export default function ProductTour({ eventId, available }: Props) {
   const [active, setActive] = useState(false)
   const [index, setIndex] = useState(0)
   const [rect, setRect] = useState<DOMRect | null>(null)
+  // True, sobald die endgültige Karten-/Spotlight-Position für den aktuellen
+  // Schritt feststeht. Erst dann wird die Karte gerendert + eingeblendet.
+  const [positioned, setPositioned] = useState(false)
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
   const [actionState, setActionState] = useState<ActionState>('none')
   // Tatsächlich gerenderte Kartenhöhe (statt fester Schätzung) — damit die
@@ -107,6 +110,15 @@ export default function ProductTour({ eventId, available }: Props) {
     return () => window.clearTimeout(t)
   }, [doneKey, start, steps.length])
 
+  // Bei jedem Schrittwechsel die Position zurücksetzen, BEVOR der Browser zeichnet
+  // (useLayoutEffect) — so wird die Karte nie kurz an der alten/zentrierten Stelle
+  // gezeigt. Sie bleibt verborgen, bis `positioned` für den neuen Schritt feststeht.
+  useLayoutEffect(() => {
+    if (!active) return
+    setPositioned(false)
+    setRect(null)
+  }, [active, index])
+
   // Bei Schrittwechsel: ggf. zur Zielroute navigieren und das Element suchen.
   useEffect(() => {
     if (!active || !stepModule) return
@@ -118,27 +130,32 @@ export default function ProductTour({ eventId, available }: Props) {
 
     if (!onRoute()) router.push(targetRoute)
     setRect(null)
+    // Interaktive Schritte sitzen unten zentriert und brauchen die Zielposition
+    // nicht — sofort einblenden, damit die Anleitung sichtbar bleibt.
+    if (interactiveStep) setPositioned(true)
 
     let tries = 0
     const tick = () => {
       if (cancelled) return
       if (onRoute()) {
-        if (!stepTarget) { setRect(null); return }     // zentrierte Karte
+        if (!stepTarget) { setRect(null); setPositioned(true); return }   // zentrierte Karte
         const el = document.querySelector<HTMLElement>(`[data-tour="${stepTarget}"]`)
         if (el) {
           el.scrollIntoView({ block: 'center', behavior: 'smooth' })
           window.setTimeout(() => {
-            if (!cancelled) setRect(el.getBoundingClientRect())
+            // rect + positioned gemeinsam setzen → die Karte erscheint direkt an der
+            // Zielposition (kein Aufploppen in der Mitte und Nachspringen).
+            if (!cancelled) { setRect(el.getBoundingClientRect()); setPositioned(true) }
           }, 280)
           return
         }
       }
       if (tries++ < MAX_TRIES) window.setTimeout(tick, POLL_MS)
-      else setRect(null)                               // Fallback: zentrierte Karte
+      else { setRect(null); setPositioned(true) }       // Fallback: zentrierte Karte
     }
     const id = window.setTimeout(tick, POLL_MS)
     return () => { cancelled = true; window.clearTimeout(id) }
-  }, [active, index, stepModule, stepTarget, eventId, router])
+  }, [active, index, stepModule, stepTarget, interactiveStep, eventId, router])
 
   // Begleitetes Anlegen: Baseline ermitteln und auf den ersten Eintrag warten.
   useEffect(() => {
@@ -247,7 +264,7 @@ export default function ProductTour({ eventId, available }: Props) {
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [active, index])
+  }, [active, index, positioned])
 
   if (!mounted || !active || !step) return null
 
@@ -286,6 +303,7 @@ export default function ProductTour({ eventId, available }: Props) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 4000, pointerEvents: 'none' }} aria-live="polite" role="dialog" aria-label="Produkt-Tour">
+      <style>{`@keyframes fvTourIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes fvTourFadeIn{from{opacity:0}to{opacity:1}}`}</style>
       {/* Hintergrund.
           • Anlege-Schritt: transparent + klick-durchlässig, damit das Paar das
             echte Formular bedienen kann.
@@ -304,8 +322,10 @@ export default function ProductTour({ eventId, available }: Props) {
       {/* Spotlight */}
       {rect && (
         <div
+          key={index}
           style={{
             position: 'fixed',
+            animation: 'fvTourFadeIn 0.2s ease both',
             top: rect.top - PAD,
             left: rect.left - PAD,
             width: rect.width + PAD * 2,
@@ -323,11 +343,15 @@ export default function ProductTour({ eventId, available }: Props) {
         />
       )}
 
-      {/* Erklär-/Anlege-Karte */}
+      {/* Erklär-/Anlege-Karte — erst rendern, wenn die Zielposition feststeht, und
+          dann sanft an Ort und Stelle einblenden (kein „Sprung aus der Mitte"). */}
+      {positioned && (
       <div
         ref={cardRef}
+        key={index}
         style={{
           position: 'fixed',
+          animation: 'fvTourIn 0.28s ease both',
           top: cardTop,
           left: cardLeft,
           width: CARD_W,
@@ -440,6 +464,7 @@ export default function ProductTour({ eventId, available }: Props) {
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }
