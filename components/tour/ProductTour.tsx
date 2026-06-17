@@ -52,6 +52,12 @@ export default function ProductTour({ eventId, available }: Props) {
   const stepTarget = step?.target
   const stepArea = step?.action?.area
   const isAction = !!stepArea
+  const stepAppear = step?.advanceOnAppear
+  const stepDisappear = step?.advanceOnDisappear
+  // „Interaktiv": Seite bleibt bedienbar (Feld-Begleitung / Anlegen).
+  const interactiveStep = isAction || step?.interactive === true || !!stepAppear || !!stepDisappear
+  // „Selbst weiterschaltend": Fortschritt hängt an echter Aktion → kein Weiter-Button.
+  const selfDrives = isAction || !!stepAppear || !!stepDisappear
 
   useEffect(() => {
     setMounted(true)
@@ -171,6 +177,30 @@ export default function ProductTour({ eventId, available }: Props) {
     return () => window.clearTimeout(t)
   }, [actionState, advance])
 
+  // DOM-basiertes Auto-Weiter: erkennt, wenn ein Menü/Feld auf- bzw. zugeht.
+  //  • advanceOnAppear   → weiter, sobald das Element erscheint (Formular geöffnet).
+  //  • advanceOnDisappear → weiter, sobald es wieder verschwindet (gespeichert).
+  useEffect(() => {
+    if (!active || (!stepAppear && !stepDisappear)) return
+    let cancelled = false
+    let timer: number | undefined
+    let seenPresent = false
+    const poll = () => {
+      if (cancelled) return
+      if (stepAppear && document.querySelector(`[data-tour="${stepAppear}"]`)) {
+        advance(); return
+      }
+      if (stepDisappear) {
+        const el = document.querySelector(`[data-tour="${stepDisappear}"]`)
+        if (el) seenPresent = true
+        else if (seenPresent) { advance(); return }
+      }
+      timer = window.setTimeout(poll, POLL_MS)
+    }
+    timer = window.setTimeout(poll, POLL_MS)
+    return () => { cancelled = true; if (timer) window.clearTimeout(timer) }
+  }, [active, index, stepAppear, stepDisappear, advance])
+
   // Spotlight bei Scroll/Resize nachführen.
   useEffect(() => {
     if (!active) return
@@ -211,10 +241,10 @@ export default function ProductTour({ eventId, available }: Props) {
   const { w: vw, h: vh } = viewport
 
   // Karten-Position berechnen.
-  const CARD_EST_H = isAction ? 240 : 200
+  const CARD_EST_H = interactiveStep ? 240 : 200
   let cardTop: number, cardLeft: number
-  if (isAction) {
-    // Anlege-Schritte: Karte unten zentriert — stört das echte Formular nicht.
+  if (interactiveStep) {
+    // Interaktive Schritte: Karte unten zentriert — stört das echte Formular nicht.
     cardLeft = Math.max(12, (vw - CARD_W) / 2)
     cardTop = Math.max(12, vh - CARD_EST_H - 24)
   } else if (rect) {
@@ -238,7 +268,7 @@ export default function ProductTour({ eventId, available }: Props) {
           • Anlege-Schritt: transparent + klick-durchlässig, damit das Paar das
             echte Formular bedienen kann.
           • Erklär-Schritt: abdunkeln und Klicks abfangen. */}
-      {!isAction && (
+      {!interactiveStep && (
         <div
           onClick={e => e.stopPropagation()}
           style={{
@@ -259,8 +289,8 @@ export default function ProductTour({ eventId, available }: Props) {
             width: rect.width + PAD * 2,
             height: rect.height + PAD * 2,
             borderRadius: 14,
-            // Erklär-Schritt dunkelt rundherum ab; Anlege-Schritt nur Ring + Glow.
-            boxShadow: isAction
+            // Erklär-Schritt dunkelt rundherum ab; interaktiver Schritt nur Ring + Glow.
+            boxShadow: interactiveStep
               ? '0 0 0 4px rgba(156,127,79,0.28)'
               : '0 0 0 9999px rgba(31,26,22,0.55)',
             outline: '2px solid var(--bp-gold, #9C7F4F)',
@@ -347,10 +377,10 @@ export default function ProductTour({ eventId, available }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <button
             type="button"
-            onClick={isAction ? advance : finish}
+            onClick={selfDrives ? advance : finish}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-3, #9b9085)', fontFamily: 'inherit', padding: '6px 2px' }}
           >
-            {isAction ? 'Überspringen' : 'Tour beenden'}
+            {selfDrives ? 'Überspringen' : 'Tour beenden'}
           </button>
           <div style={{ display: 'flex', gap: 8 }}>
             {index > 0 && (
@@ -362,20 +392,24 @@ export default function ProductTour({ eventId, available }: Props) {
                 <ChevronLeft size={15} /> Zurück
               </button>
             )}
-            <button
-              type="button"
-              onClick={next}
-              disabled={isAction && !actionSatisfied}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 999, border: 'none',
-                background: isAction && !actionSatisfied ? 'var(--bp-line, #e7e0d6)' : 'var(--bp-gold, #9C7F4F)',
-                color: isAction && !actionSatisfied ? 'var(--bp-ink-3, #9b9085)' : '#fff',
-                cursor: isAction && !actionSatisfied ? 'default' : 'pointer',
-                fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit',
-              }}
-            >
-              {isLast ? (<><Check size={15} /> Fertig</>) : (<>Weiter <ChevronRight size={15} /></>)}
-            </button>
+            {/* „Weiter" entfällt bei rein DOM-getriebenen Schritten (advanceOnAppear/
+                Disappear) — dort treibt die echte Aktion den Fortschritt. */}
+            {(!selfDrives || isAction) && (
+              <button
+                type="button"
+                onClick={next}
+                disabled={isAction && !actionSatisfied}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 999, border: 'none',
+                  background: isAction && !actionSatisfied ? 'var(--bp-line, #e7e0d6)' : 'var(--bp-gold, #9C7F4F)',
+                  color: isAction && !actionSatisfied ? 'var(--bp-ink-3, #9b9085)' : '#fff',
+                  cursor: isAction && !actionSatisfied ? 'default' : 'pointer',
+                  fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit',
+                }}
+              >
+                {isLast ? (<><Check size={15} /> Fertig</>) : (<>Weiter <ChevronRight size={15} /></>)}
+              </button>
+            )}
           </div>
         </div>
       </div>
