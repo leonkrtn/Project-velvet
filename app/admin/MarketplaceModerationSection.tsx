@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useCallback, useEffect, useState } from 'react'
-import { Check, X, ShieldCheck, ShieldOff, Ban, RotateCcw, Loader2 } from 'lucide-react'
+import { Check, X, ShieldCheck, ShieldOff, Ban, RotateCcw, Loader2, Eye } from 'lucide-react'
 import { categoryLabel, moderationLabel, type ModerationStatus } from '@/lib/marketplace/types'
+import MarketplaceReviewLightbox from './MarketplaceReviewLightbox'
 
 interface Vendor {
   id: string; name: string; company_name: string | null; category: string
@@ -23,6 +24,7 @@ export default function MarketplaceModerationSection({ card, cardHeader }: { car
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
+  const [reviewing, setReviewing] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -85,6 +87,9 @@ export default function MarketplaceModerationSection({ card, cardHeader }: { car
                     )}
 
                     <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                      <button style={{ ...btn, borderColor: '#1D4ED8', color: '#1D4ED8', fontWeight: 700 }} onClick={() => setReviewing(v.id)}>
+                        <Eye size={13} /> Prüfen (Vorschau)
+                      </button>
                       <button style={btnGreen} disabled={!!busy} onClick={() => moderate(v.id, 'approve')}>
                         {busy === v.id + 'approve' ? <Loader2 size={13} className="bp-spin" /> : <Check size={13} />} {pc ? 'Änderungen übernehmen' : 'Freigeben'}
                       </button>
@@ -125,6 +130,14 @@ export default function MarketplaceModerationSection({ card, cardHeader }: { car
           </>
         )}
       </div>
+
+      {reviewing && (
+        <MarketplaceReviewLightbox
+          vendorId={reviewing}
+          onClose={() => setReviewing(null)}
+          onModerated={load}
+        />
+      )}
     </div>
   )
 }

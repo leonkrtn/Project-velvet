@@ -23,12 +23,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (action === 'approve') {
     const patch: Record<string, unknown> = { moderation_status: 'approved', rejected_reason: null }
-    // Gestaffelte Änderungen an einem freigegebenen Profil übernehmen.
     if (pending) {
+      // Gestaffelte Änderungen an einem freigegebenen Profil übernehmen —
+      // Online-Status bleibt unverändert.
       for (const key of SENSITIVE_FIELDS) {
         if (key in pending) patch[key] = pending[key]
       }
       patch.pending_changes = null
+    } else {
+      // Erst-/Neufreigabe → sofort im Marktplatz sichtbar.
+      patch.published = true
     }
     const { error } = await admin.from('dienstleister_profiles').update(patch).eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

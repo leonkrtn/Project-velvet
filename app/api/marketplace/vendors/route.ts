@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
   let query = admin
     .from('dienstleister_profiles')
-    .select('id, name, company_name, category, city, price_range, description, logo_r2_key, verified, tier')
+    .select('id, company_name, category, city, price_range, description, logo_r2_key, verified, tier')
     .eq('is_marketplace', true)
     .eq('published', true)
     .eq('moderation_status', 'approved')
@@ -53,9 +53,9 @@ export async function GET(req: NextRequest) {
   const q = sp.get('q')
   if (category) query = query.eq('category', category)
   if (city) query = query.ilike('city', `%${city}%`)
-  if (q) query = query.or(`name.ilike.%${q}%,company_name.ilike.%${q}%,description.ilike.%${q}%`)
+  if (q) query = query.or(`company_name.ilike.%${q}%,description.ilike.%${q}%`)
 
-  const { data, error } = await query.order('name')
+  const { data, error } = await query.order('company_name', { nullsFirst: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   // Erstes Galerie-Foto je Vendor als Cover ermitteln (für bildgeführte Karten)
@@ -79,7 +79,6 @@ export async function GET(req: NextRequest) {
     const coverUrl = coverKey ? await requestDownloadUrl(coverKey).catch(() => null) : null
     return {
       id: v.id,
-      name: v.name,
       company_name: v.company_name,
       category: v.category,
       city: v.city,

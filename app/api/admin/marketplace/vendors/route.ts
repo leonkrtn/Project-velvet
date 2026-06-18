@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
       price_range: (body.priceRange as string)?.trim() || null,
       is_marketplace: true,
       published: Boolean(body.published),
+      moderation_status: 'approved',
     })
     .select('id')
     .single()
