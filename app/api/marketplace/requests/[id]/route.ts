@@ -135,9 +135,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .single()
     if (conv) {
       conversationId = conv.id
-      const participants = [{ conversation_id: conv.id, user_id: user.id }]
-      if (otherUser && otherUser !== user.id) participants.push({ conversation_id: conv.id, user_id: otherUser })
-      await admin.from('conversation_participants').insert(participants)
+      // Add the vendor + the requester + ALL couple/organizer members so the
+      // whole couple side sees the vendor chat (not just the requester).
+      const { data: coupleMembers } = await admin
+        .from('event_members')
+        .select('user_id')
+        .eq('event_id', request.event_id)
+        .in('role', ['veranstalter', 'brautpaar', 'brautpaar_solo'])
+      const ids = new Set<string>([user.id])
+      if (otherUser) ids.add(otherUser)
+      for (const m of (coupleMembers ?? [])) if (m.user_id) ids.add(m.user_id as string)
+      await admin.from('conversation_participants').upsert(
+        Array.from(ids).map(uid => ({ conversation_id: conv.id, user_id: uid })),
+        { onConflict: 'conversation_id,user_id' },
+      )
       // Erste Nachricht mit dem Anfragetext
       if (request.message) {
         await admin.from('messages').insert({

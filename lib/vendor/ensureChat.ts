@@ -52,3 +52,40 @@ export async function ensureVendorConversation(
   )
   return conv.id
 }
+
+// Makes sure every vendor conversation of an event is visible to the whole
+// couple/organizer side: adds all couple/organizer members as participants to
+// any non-archived conversation that has a dienstleister participant.
+// Idempotent — only inserts missing rows. Called lazily on chat/overview load.
+export async function backfillVendorChatParticipants(
+  admin: SupabaseClient,
+  eventId: string,
+): Promise<void> {
+  const { data: members } = await admin
+    .from('event_members')
+    .select('user_id, role')
+    .eq('event_id', eventId)
+  const coupleIds = (members ?? []).filter(m => COUPLE_ROLES.includes(m.role as string)).map(m => m.user_id)
+  const vendorIds = new Set((members ?? []).filter(m => m.role === 'dienstleister').map(m => m.user_id))
+  if (coupleIds.length === 0 || vendorIds.size === 0) return
+
+  const { data: convs } = await admin
+    .from('conversations')
+    .select('id, is_staff_chat, conversation_participants(user_id)')
+    .eq('event_id', eventId)
+    .eq('is_archived', false)
+
+  const toInsert: { conversation_id: string; user_id: string }[] = []
+  for (const c of (convs ?? []) as any[]) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (c.is_staff_chat) continue
+    const partIds: string[] = (c.conversation_participants ?? []).map((p: { user_id: string }) => p.user_id)
+    const hasVendor = partIds.some(id => vendorIds.has(id))
+    if (!hasVendor) continue
+    for (const cid of coupleIds) {
+      if (!partIds.includes(cid)) toInsert.push({ conversation_id: c.id, user_id: cid })
+    }
+  }
+  if (toInsert.length) {
+    await admin.from('conversation_participants').upsert(toInsert, { onConflict: 'conversation_id,user_id' })
+  }
+}

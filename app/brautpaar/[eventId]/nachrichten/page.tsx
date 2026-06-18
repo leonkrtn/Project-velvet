@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSubscriptionState } from '@/lib/subscription'
+import { backfillVendorChatParticipants } from '@/lib/vendor/ensureChat'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Sparkles } from 'lucide-react'
@@ -8,15 +9,21 @@ import ChatsClient from '@/app/veranstalter/[eventId]/chats/ChatsClient'
 
 interface Props {
   params: Promise<{ eventId: string }>
+  searchParams: Promise<{ c?: string }>
 }
 
-export default async function NachrichtenPage({ params }: Props) {
+export default async function NachrichtenPage({ params, searchParams }: Props) {
   const { eventId } = await params
+  const { c: initialConversationId } = await searchParams
   const supabase = await createClient()
   const admin = createAdminClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  // Vendor-Chats für die ganze Brautpaar-/Veranstalter-Seite sichtbar machen
+  // (Bestandsdaten lazy nachbessern), bevor die Konversationen geladen werden.
+  await backfillVendorChatParticipants(admin, eventId)
 
   // Chat ist ein Forevr-Pro-Feature: Solo-Paare ohne Pro haben keinen Zugriff
   // (Eintrag ist auch aus dem Menü entfernt) → zur Abo-Seite leiten.
@@ -107,6 +114,7 @@ export default async function NachrichtenPage({ params }: Props) {
           currentUserId={user.id}
           initialConversations={conversations}
           members={membersRaw}
+          initialConversationId={initialConversationId}
         />
       </div>
     </div>
