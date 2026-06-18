@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
     .eq('id', dienstleisterId)
     .eq('is_marketplace', true)
     .eq('published', true)
+    .eq('moderation_status', 'approved')
     .maybeSingle()
   if (!vendor) return NextResponse.json({ error: 'Dienstleister nicht verfügbar' }, { status: 404 })
 

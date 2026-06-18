@@ -288,6 +288,10 @@ function SignupForm() {
               <a href="/signup/brautpaar" className="bp-auth-link">Als Brautpaar starten</a>
             </p>
             <p>
+              Dienstleister?{' '}
+              <a href="/signup/dienstleister" className="bp-auth-link">Im Marktplatz listen</a>
+            </p>
+            <p>
               Bereits registriert?{' '}
               <a href="/login" className="bp-auth-link">Anmelden</a>
             </p>
