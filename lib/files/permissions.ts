@@ -44,6 +44,9 @@ export async function canReadFiles(
   if (!role) return false
   if (role === 'veranstalter' || role === 'brautpaar' || role === 'brautpaar_solo') return true
   if (role === 'dienstleister') {
+    // Chat attachments are accessible to every conversation member of the event;
+    // they are no longer gated by the legacy per-tab permission system.
+    if (module === 'chats') return true
     const access = await getDlAccess(supabase, userId, eventId, module)
     return access === 'read' || access === 'write'
   }
@@ -62,6 +65,8 @@ export async function canUploadFiles(
   if (role === 'veranstalter' || role === 'brautpaar' || role === 'brautpaar_solo') return true
   // Dienstleister: write permission on the target module required
   if (role === 'dienstleister') {
+    // Chat attachments: any vendor in the event may send files in their conversations.
+    if (module === 'chats') return true
     const access = await getDlAccess(supabase, userId, eventId, module)
     return access === 'write'
   }

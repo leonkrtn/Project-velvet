@@ -10,9 +10,11 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })
 
     const body = await req.json()
-    const { eventId, category } = body as {
+    const { eventId, category, requestedService, requestMessage } = body as {
       eventId:  string
       category: string
+      requestedService?: string
+      requestMessage?: string
     }
 
     if (!eventId || !category) {
@@ -46,7 +48,11 @@ export async function POST(req: NextRequest) {
         event_id:   eventId,
         role:       'dienstleister',
         created_by: user.id,
-        metadata:   { category },
+        metadata:   {
+          category,
+          requested_service: requestedService ?? category,
+          request_message:   requestMessage ?? null,
+        },
       })
       .select('code')
       .single()

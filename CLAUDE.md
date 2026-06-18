@@ -104,21 +104,29 @@
   notizen/                → Notizen (auto-save notes, text/checklist, categories)
   musik/                  → Musik (incl. playlist embeds)
 ⛔ /trauzeuge/            → Role exists in DB but no frontend portal implemented
-/vendor/dashboard/[eventId]/ → Vendor portal (tab-gated by permissions)
-  uebersicht/              → Overview: event details, contacts, permission-gated module shortcuts
-  catering/                → Catering (if permitted)
-  chats/                   → Chats (if permitted)
-  ablaufplan/              → Timeline (if permitted)
-  gaesteliste/             → Guest list (if permitted)
-  musik/                   → Music (if permitted)
-  patisserie/              → Patisserie (if permitted)
-  dekoration/              → Decor (if permitted)
-  medien/                  → Media (if permitted)
-  sitzplan/                → Seating plan read-only (if permitted)
-  files/                   → Files tab
-  tabs/                    → Tab component directory (CateringTab, SeatingTab, etc.) — not a route
-  ⛔ allgemein/            → REMOVED — vendors have no access; DB CHECK constraint blocks assignment
+/vendor/dashboard/[eventId]/ → Vendor portal — REDESIGNED (migration 0105): communication-first, only 2 nav items
+  kommunikation/           → Chat (text + file attachments via R2) + "Geteilte Daten"-Box (data shares) + "Dateien"-Box (chat files)
+  informationen/           → Standard event info (name, date, venue, guest count, couple/organizer contacts incl. phone)
+                             + interne Notizen (privat pro Dienstleister-Firma, dienstleister_notes)
+  ⛔ uebersicht, catering, chats, ablaufplan, gaesteliste, musik, dekoration, medien, sitzplan, files, tabs/
+                            → REMOVED. Module data is no longer browsed via tabs; the couple/organizer shares it
+                              into the chat as a snapshot or live box (see "Vendor Data Sharing" below).
 ```
+
+### Vendor Data Sharing (migration 0105) — replaces tab-gated vendor access
+- Couple/Veranstalter share a module's data into a conversation via the chat composer ("Daten teilen"):
+  **snapshot** (frozen `snapshot` JSONB) or **live** (rebuilt on each read). Each share posts a `data_share`
+  message and a row in `dienstleister_data_shares` (keyed by `conversation_id`; RLS = conversation participants read,
+  couple/organizer write). They can later **freeze** or **revoke** a share.
+- Snapshots are built server-side by `lib/vendor/snapshot.ts` (`buildModuleSnapshot`, admin client, all 9 modules),
+  rendered by `components/vendor/ShareBox.tsx`. APIs: `POST/GET /api/vendor/shares`, `GET/PATCH /api/vendor/shares/[shareId]`.
+- Chat files: existing R2 pipeline with `file_metadata.module='chats'` (now accessible to any event member, see
+  `lib/files/permissions.ts`). File messages carry `metadata.file_id`; the "Dateien"-Box lists them per conversation.
+- `messages.message_type` ('text'|'file'|'data_share') + `messages.metadata` JSONB added in 0105.
+- The legacy `dienstleister_permissions` tab system is **no longer used for the vendor dashboard** (kept in DB; the
+  Berechtigungen editor UI is dead for the new flow).
+- Invitations are enriched (event key-data + couple contact). `get_invitation_preview(code)` (SECURITY DEFINER,
+  anon-callable) powers the `/vendor/join` preview; couple **phone** is withheld until the vendor accepts.
 
 ---
 
