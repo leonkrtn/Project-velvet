@@ -47,6 +47,7 @@ export default function VendorListingClient() {
   const [faqs, setFaqs] = useState<Faq[]>([])
   const [availability, setAvailability] = useState<Avail[]>([])
   const [saving, setSaving] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
   // Formularfelder
@@ -57,13 +58,23 @@ export default function VendorListingClient() {
   })
   const [social, setSocial] = useState<Record<string, string>>({})
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  // initial=true zeigt den Vollbild-Spinner (nur beim allerersten Laden). Alle
+  // späteren Aktualisierungen laufen still, damit die Seite nicht neu aufbaut
+  // und der Scroll nicht nach oben springt.
+  const load = useCallback(async (initial = false) => {
+    if (initial) setLoading(true)
     const res = await fetch('/api/vendor/marketplace/profile')
-    if (!res.ok) { setLoading(false); return }
+    if (!res.ok) { if (initial) setLoading(false); return }
     const d = await res.json()
     const v: Vendor = d.vendor
-    setVendor(v); setLogoUrl(d.logoUrl); setPhotos(d.photos ?? [])
+    setVendor(v); setLogoUrl(d.logoUrl)
+    // Galerie nur ersetzen, wenn sich die Foto-Menge wirklich geändert hat —
+    // sonst würden frisch signierte URLs die <img> unnötig neu laden (Flackern).
+    const incoming: Photo[] = d.photos ?? []
+    setPhotos(prev => {
+      const sameSet = prev.length === incoming.length && prev.every((p, i) => p.id === incoming[i].id)
+      return sameSet ? prev : incoming
+    })
     setPackages(d.packages ?? []); setFaqs(d.faqs ?? []); setAvailability(d.availability ?? [])
     // Bei freigegebenem Profil ggf. gestaffelte (in Prüfung befindliche) Werte anzeigen.
     const pc = (v.pending_changes ?? {}) as Record<string, unknown>
@@ -87,7 +98,7 @@ export default function VendorListingClient() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(true) }, [load])
 
   const flash = (kind: 'ok' | 'err', text: string) => { setMsg({ kind, text }); setTimeout(() => setMsg(null), 4000) }
 
@@ -109,14 +120,14 @@ export default function VendorListingClient() {
     setSaving(false)
     if (!res.ok) { flash('err', d.error ?? 'Speichern fehlgeschlagen'); return }
     flash('ok', d.hasPendingChanges ? 'Gespeichert — sensible Änderungen gehen in die Prüfung.' : 'Gespeichert.')
-    load()
+    load(false)
   }
 
   async function submitForReview() {
     const res = await fetch('/api/vendor/marketplace/profile/submit', { method: 'POST' })
     const d = await res.json()
     if (!res.ok) { flash('err', d.error ?? 'Fehler'); return }
-    flash('ok', 'Zur Prüfung eingereicht.'); load()
+    flash('ok', 'Zur Prüfung eingereicht.'); load(false)
   }
 
   async function togglePublish() {
@@ -127,7 +138,7 @@ export default function VendorListingClient() {
     })
     const d = await res.json()
     if (!res.ok) { flash('err', d.error ?? 'Fehler'); return }
-    flash('ok', d.published ? 'Listing ist online.' : 'Listing ist offline.'); load()
+    flash('ok', d.published ? 'Listing ist online.' : 'Listing ist offline.'); load(false)
   }
 
   // ── Uploads ────────────────────────────────────────────────────────────────
@@ -154,18 +165,20 @@ export default function VendorListingClient() {
     })
     const d = await res.json()
     flash('ok', d.hasPendingChanges ? 'Logo hochgeladen — geht in die Prüfung.' : 'Logo aktualisiert.')
-    load()
+    load(false)
   }
 
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []); if (!files.length) return
+    setUploadingPhoto(true)
     for (const file of files) {
       const key = await uploadImage(file, 'photo'); if (!key) continue
       await fetch('/api/vendor/marketplace/photos', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ r2_key: key }),
       })
     }
-    flash('ok', 'Fotos hinzugefügt.'); load()
+    setUploadingPhoto(false)
+    flash('ok', 'Fotos hinzugefügt.'); load(false)
   }
 
   async function deletePhoto(id: string) {
@@ -187,7 +200,9 @@ export default function VendorListingClient() {
     const res = await fetch('/api/vendor/marketplace/packages', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Neues Paket' }),
     })
-    if (res.ok) load()
+    const d = await res.json().catch(() => ({}))
+    if (!res.ok) { flash('err', d.error ?? 'Fehler'); return }
+    setPackages(x => [...x, { id: d.id, title: 'Neues Paket', description: '', price_from: null, price_unit: 'ab', sort_order: x.length }])
   }
   async function savePackage(p: Pkg) {
     await fetch(`/api/vendor/marketplace/packages/${p.id}`, {
@@ -206,7 +221,9 @@ export default function VendorListingClient() {
     const res = await fetch('/api/vendor/marketplace/faqs', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: 'Neue Frage' }),
     })
-    if (res.ok) load()
+    const d = await res.json().catch(() => ({}))
+    if (!res.ok) { flash('err', d.error ?? 'Fehler'); return }
+    setFaqs(x => [...x, { id: d.id, question: 'Neue Frage', answer: '', sort_order: x.length }])
   }
   async function saveFaq(q: Faq) {
     await fetch(`/api/vendor/marketplace/faqs/${q.id}`, {
@@ -223,10 +240,15 @@ export default function VendorListingClient() {
   const [newDay, setNewDay] = useState('')
   async function addDay() {
     if (!newDay) return
-    await fetch('/api/vendor/marketplace/availability', {
+    if (availability.some(d => d.day === newDay)) { setNewDay(''); return }
+    const res = await fetch('/api/vendor/marketplace/availability', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ day: newDay }),
     })
-    setNewDay(''); load()
+    const d = await res.json().catch(() => ({}))
+    if (!res.ok) { flash('err', d.error ?? 'Fehler'); return }
+    const row = d.day ?? { id: newDay, day: newDay, status: 'blocked' }
+    setAvailability(a => [...a, row].sort((x, y) => x.day.localeCompare(y.day)))
+    setNewDay('')
   }
   async function delDay(day: string) {
     await fetch(`/api/vendor/marketplace/availability?day=${day}`, { method: 'DELETE' })
@@ -361,8 +383,8 @@ export default function VendorListingClient() {
                   </div>
                 ))}
                 {photos.length < 15 && (
-                  <button onClick={() => photoInput.current?.click()} style={{ width: 96, height: 72, borderRadius: 8, border: `1px dashed ${C.border}`, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dim }}>
-                    <Plus size={20} />
+                  <button onClick={() => photoInput.current?.click()} disabled={uploadingPhoto} style={{ width: 96, height: 72, borderRadius: 8, border: `1px dashed ${C.border}`, background: '#fff', cursor: uploadingPhoto ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dim }}>
+                    {uploadingPhoto ? <Loader2 size={18} className="bp-spin" /> : <Plus size={20} />}
                   </button>
                 )}
               </div>
