@@ -8,7 +8,6 @@ import CategoryIcon from '@/components/marketplace/CategoryIcon'
 
 interface VendorCard {
   id: string
-  name: string
   company_name: string | null
   category: string
   city: string | null
@@ -63,7 +62,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   const sorted = [...vendors].sort((a, b) => {
     if (sort === 'city') return (a.city ?? '').localeCompare(b.city ?? '', 'de')
     if (sort === 'price') return (PRICE_ORDER[a.price_range ?? ''] ?? 9) - (PRICE_ORDER[b.price_range ?? ''] ?? 9)
-    return (a.company_name || a.name).localeCompare(b.company_name || b.name, 'de')
+    return (a.company_name || '').localeCompare(b.company_name || '', 'de')
   })
 
   return (
@@ -163,7 +162,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
                     <CategoryIcon category={v.category} size={13} /> {categoryLabel(v.category)}
                   </div>
                   <h3 className="bp-font-heading" style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, color: 'var(--bp-ink)', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {v.company_name || v.name}
+                    {v.company_name || 'Anbieter'}
                     {v.verified && <BadgeCheck size={16} style={{ color: '#15803D', flexShrink: 0 }} aria-label="Verifiziert" />}
                   </h3>
                   {/* Sterne-Platzhalter */}

@@ -7,7 +7,7 @@ import { categoryLabel, PRICE_UNITS, SOCIAL_PLATFORMS } from '@/lib/marketplace/
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 
 interface Vendor {
-  id: string; name: string; company_name: string | null; category: string
+  id: string; company_name: string | null; category: string
   email: string | null; phone: string | null; website: string | null; description: string | null
   street: string | null; zip: string | null; city: string | null; price_range: string | null
   verified: boolean; social_links: Record<string, string>; service_cities: string[]; service_radius_km: number | null
@@ -116,7 +116,7 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
               <CategoryIcon category={vendor.category} size={14} /> {categoryLabel(vendor.category)}
             </div>
             <h1 className="bp-font-heading" style={{ fontSize: '2.1rem', fontWeight: 600, margin: '6px 0 8px', color: 'var(--bp-ink)', lineHeight: 1.15, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              {vendor.company_name || vendor.name}
+              {vendor.company_name || 'Anbieter'}
               {vendor.verified && (
                 <span title="Von Forevr verifiziert" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '3px 9px', borderRadius: 999 }}>
                   <BadgeCheck size={15} /> Verifiziert

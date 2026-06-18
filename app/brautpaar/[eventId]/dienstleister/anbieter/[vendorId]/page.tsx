@@ -19,7 +19,7 @@ export default async function AnbieterDetailPage({ params }: { params: Promise<{
   const admin = createAdminClient()
   const { data: v } = await admin
     .from('dienstleister_profiles')
-    .select('id, name, company_name, category, email, phone, website, description, street, zip, city, price_range, logo_r2_key, verified, social_links, service_cities, service_radius_km')
+    .select('id, company_name, category, email, phone, website, description, street, zip, city, price_range, logo_r2_key, verified, social_links, service_cities, service_radius_km')
     .eq('id', vendorId).eq('is_marketplace', true).eq('published', true).eq('moderation_status', 'approved').maybeSingle()
   if (!v) redirect(`/brautpaar/${eventId}/dienstleister`)
 
@@ -51,7 +51,7 @@ export default async function AnbieterDetailPage({ params }: { params: Promise<{
     <AnbieterDetailClient
       eventId={eventId}
       vendor={{
-        id: v.id, name: v.name, company_name: v.company_name, category: v.category,
+        id: v.id, company_name: v.company_name, category: v.category,
         email: v.email, phone: v.phone, website: v.website, description: v.description,
         street: v.street, zip: v.zip, city: v.city, price_range: v.price_range,
         verified: !!v.verified,

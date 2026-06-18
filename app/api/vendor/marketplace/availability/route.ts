@@ -25,11 +25,13 @@ export async function POST(req: NextRequest) {
   }
   const status = body.status === 'booked' ? 'booked' : 'blocked'
 
-  const { error } = await admin
+  const { data, error } = await admin
     .from('marketplace_availability')
     .upsert({ dienstleister_id: vendorId, day, status }, { onConflict: 'dienstleister_id,day' })
+    .select('id, day, status')
+    .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, day: data })
 }
 
 // DELETE — Tag wieder freigeben. Query: ?day=YYYY-MM-DD
