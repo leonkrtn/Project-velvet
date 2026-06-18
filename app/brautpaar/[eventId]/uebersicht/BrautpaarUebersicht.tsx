@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   Users, LayoutGrid, Calendar, UtensilsCrossed, Palette, Music,
-  ArrowRight, Check, Send, UserPlus, CalendarHeart, Wallet, Sparkles,
+  ArrowRight, Check, Send, UserPlus, CalendarHeart, Wallet, MapPin,
 } from 'lucide-react'
 
 interface NextTask {
@@ -30,12 +30,14 @@ interface Props {
   guestApprovalPending: number
   budgetPlanned: number
   budgetLimit: number
+  budgetItemCount: number
   tasksDone: number
   tasksTotal: number
   nextTasks: NextTask[]
   seatedCount: number
   songCount: number
   timelineCount: number
+  cateringConfigured: boolean
 }
 
 const SERIF = 'Cormorant Garamond, Georgia, serif'
@@ -442,8 +444,8 @@ export default function BrautpaarUebersicht({
   eventId, coverImageUrl, monogram = '', eventTitle, eventDate, coupleName, venueName,
   daysLeft, guestTotal, guestConfirmed, guestDeclined, guestPending,
   guestNotInvited, guestApprovalPending,
-  budgetPlanned, budgetLimit, tasksDone, tasksTotal, nextTasks,
-  seatedCount, songCount, timelineCount,
+  budgetPlanned, budgetLimit, budgetItemCount, tasksDone, tasksTotal, nextTasks,
+  seatedCount, songCount, timelineCount, cateringConfigured,
 }: Props) {
   const answered = guestTotal - guestPending
   const responseRate = guestTotal > 0 ? Math.round(answered / guestTotal * 100) : 0
@@ -463,13 +465,17 @@ export default function BrautpaarUebersicht({
     { key: 'dekoration', label: 'Dekoration', icon: <Palette size={18} />, detail: 'Moodboards und Deko-Planung' },
   ]
 
-  // Geführter Start-Faden — Reihenfolge = was was freischaltet. Jeder
-  // "done"-Status leitet sich aus bereits geladenen Werten ab.
+  // Geführter Start-Faden — Reihenfolge folgt der sinnvollen Planungslogik.
+  // Jeder "done"-Status leitet sich aus echten Daten ab, sodass ein Schritt nur
+  // dann als erledigt gilt, wenn er tatsächlich abgeschlossen ist.
   const setupSteps: SetupStep[] = [
-    { key: 'datum', label: 'Datum & Location', href: 'allgemein', icon: <CalendarHeart size={14} />,
-      todo: 'Legt euren großen Tag und den Ort fest — das treibt Countdown und Planung.',
+    { key: 'datum', label: 'Hochzeitsdatum festlegen', href: 'allgemein', icon: <CalendarHeart size={14} />,
+      todo: 'Legt euren großen Tag fest — das treibt Countdown und Planung.',
       cta: 'Datum festlegen', done: !!eventDate },
-    { key: 'budget', label: 'Budget-Rahmen', href: 'budget', icon: <Wallet size={14} />,
+    { key: 'location', label: 'Location festlegen', href: 'allgemein', icon: <MapPin size={14} />,
+      todo: 'Tragt den Veranstaltungsort ein, damit alles seinen festen Platz bekommt.',
+      cta: 'Location eintragen', done: !!venueName.trim() },
+    { key: 'budget', label: 'Budget-Rahmen festlegen', href: 'budget', icon: <Wallet size={14} />,
       todo: 'Steckt euren finanziellen Rahmen ab, bevor ihr ins Detail geht.',
       cta: 'Budget festlegen', done: budgetLimit > 0 },
     { key: 'gaeste', label: 'Gästeliste starten', href: 'gaeste', icon: <UserPlus size={14} />,
@@ -478,12 +484,18 @@ export default function BrautpaarUebersicht({
     { key: 'einladen', label: 'Gäste einladen', href: 'gaeste', icon: <Send size={14} />,
       todo: 'Verschickt eure Einladungen und sammelt Zu- und Absagen.',
       cta: 'Zur Gästeliste', done: guestTotal > 0 && guestNotInvited === 0 },
+    { key: 'budgetposten', label: 'Budget-Posten anlegen', href: 'budget', icon: <Wallet size={14} />,
+      todo: 'Verteilt euer Budget auf konkrete Kostenpunkte wie Location, Catering oder Deko.',
+      cta: 'Posten anlegen', done: budgetItemCount > 0 },
     { key: 'ablaufplan', label: 'Ablaufplan erstellen', href: 'ablaufplan', icon: <Calendar size={14} />,
       todo: 'Plant den Tagesablauf im Kalender — von der Trauung bis zur Party.',
       cta: 'Ablauf planen', done: timelineCount > 0 },
-    { key: 'feiern', label: 'Sitzplan & Musik', href: 'sitzplan', icon: <Sparkles size={14} />,
-      todo: 'Plant eure Tische und sammelt eure Lieblingslieder.',
-      cta: 'Loslegen', done: seatedCount > 0 || songCount > 0 },
+    { key: 'catering', label: 'Catering & Menü', href: 'catering', icon: <UtensilsCrossed size={14} />,
+      todo: 'Legt Menüart, Service und die Essenswünsche eurer Gäste fest.',
+      cta: 'Catering planen', done: cateringConfigured },
+    { key: 'sitzplan', label: 'Sitzplan gestalten', href: 'sitzplan', icon: <LayoutGrid size={14} />,
+      todo: 'Plant eure Tische und platziert die Gäste per Drag-and-drop.',
+      cta: 'Sitzplan öffnen', done: seatedCount > 0 },
   ]
 
   const rootRef = useReveal<HTMLDivElement>()
