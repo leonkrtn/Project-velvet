@@ -141,7 +141,7 @@ export default function VendorAnfragenClient() {
         ) : visible.length === 0 ? (
           <EmptyState title="Nichts hier" text={`Keine Anfragen im Bereich „${tabs.find(t => t.key === filter)?.label}".`} />
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {visible.map(r => <RequestTile key={r.id} r={r} onOpen={() => setSelectedId(r.id)} />)}
           </div>
         )}
@@ -161,34 +161,39 @@ function RequestTile({ r, onOpen }: { r: Req; onOpen: () => void }) {
   const loc = locationOf(r.events)
   return (
     <button onClick={onOpen} style={{
-      textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer',
+      textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', width: '100%',
       background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md, 14px)',
-      padding: 16, display: 'flex', flexDirection: 'column', gap: 10, transition: 'box-shadow .15s, border-color .15s',
+      padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 16,
+      transition: 'box-shadow .15s, border-color .15s',
     }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm, 0 4px 16px rgba(0,0,0,0.06))'; e.currentTarget.style.borderColor = 'var(--gold)' }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-          <Heart size={14} style={{ color: 'var(--gold)', flexShrink: 0 }} />
-          <span style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titleOf(r)}</span>
+      {/* Avatar */}
+      <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(184,153,104,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Heart size={18} style={{ color: 'var(--gold)' }} />
+      </div>
+
+      {/* Main */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{titleOf(r)}</span>
+          <span style={{ fontSize: 10.5, fontWeight: 700, padding: '4px 9px', borderRadius: 100, background: m.bg, color: m.fg, flexShrink: 0, whiteSpace: 'nowrap' }}>{m.label}</span>
         </div>
-        <span style={{ fontSize: 10.5, fontWeight: 700, padding: '4px 9px', borderRadius: 100, background: m.bg, color: m.fg, flexShrink: 0, whiteSpace: 'nowrap' }}>{m.label}</span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 6 }}>
+          {r.events?.date && <TileLine icon={<Calendar size={13} />} text={new Date(r.events.date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })} />}
+          {loc && <TileLine icon={<MapPin size={13} />} text={loc} />}
+          {r.guest_count && r.guest_count.confirmed > 0 && <TileLine icon={<Users size={13} />} text={`${r.guest_count.confirmed} Gäste`} />}
+          {r.budget != null && <TileLine icon={<Euro size={13} />} text={`${r.budget.toLocaleString('de-DE')} €`} />}
+          <TileLine icon={<Heart size={13} />} text={`von ${r.requester?.name ?? 'Brautpaar'}`} />
+        </div>
+        {r.message && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.message}</p>}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        {r.events?.date && <TileLine icon={<Calendar size={13} />} text={new Date(r.events.date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })} />}
-        {loc && <TileLine icon={<MapPin size={13} />} text={loc} />}
-        {r.guest_count && r.guest_count.confirmed > 0 && <TileLine icon={<Users size={13} />} text={`${r.guest_count.confirmed} Gäste`} />}
-        {r.budget != null && <TileLine icon={<Euro size={13} />} text={`${r.budget.toLocaleString('de-DE')} € Budget`} />}
-      </div>
-
-      {r.message && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.message}</p>}
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 4 }}>
-        <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>von {r.requester?.name ?? 'Brautpaar'}</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: 'var(--gold)' }}>Details <ArrowRight size={13} /></span>
-      </div>
+      {/* Action */}
+      <span className="anf-details" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: 'var(--gold)', flexShrink: 0 }}>
+        Details <ArrowRight size={15} />
+      </span>
     </button>
   )
 }
