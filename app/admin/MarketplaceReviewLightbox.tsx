@@ -23,12 +23,11 @@ const CHECKLIST = [
   'Keine unzulässigen Inhalte / Kontaktdaten im Text',
 ]
 
-export default function MarketplaceReviewLightbox({ vendorId, onClose, onModerated }: {
-  vendorId: string; onClose: () => void; onModerated: () => void
+export default function MarketplaceReviewLightbox({ vendorId, onClose, onModerate }: {
+  vendorId: string; onClose: () => void; onModerate: (action: string, reason?: string) => void
 }) {
   const [data, setData] = useState<PreviewData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
   const [checked, setChecked] = useState<Set<number>>(new Set())
 
   useEffect(() => {
@@ -47,13 +46,10 @@ export default function MarketplaceReviewLightbox({ vendorId, onClose, onModerat
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  async function moderate(action: string, reason?: string) {
-    setBusy(true)
-    await fetch(`/api/admin/marketplace/vendors/${vendorId}/moderate`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, reason }),
-    })
-    setBusy(false)
-    onModerated(); onClose()
+  // Positive UX: Aktion sofort an den Eltern delegieren (optimistisch) und
+  // Lightbox direkt schließen — kein Warten auf den Request.
+  function moderate(action: string, reason?: string) {
+    onModerate(action, reason); onClose()
   }
 
   const isChange = data?.meta.has_pending
@@ -114,10 +110,10 @@ export default function MarketplaceReviewLightbox({ vendorId, onClose, onModerat
               <div style={{ fontSize: 11.5, color: allChecked ? '#15803D' : '#9AA0A8', marginBottom: 2 }}>
                 {checked.size}/{CHECKLIST.length} geprüft
               </div>
-              <button disabled={busy} onClick={() => moderate('approve')} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 14px', borderRadius: 8, border: 'none', background: '#15803D', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                {busy ? <Loader2 size={15} className="bp-spin" /> : <Check size={15} />} {isChange ? 'Änderungen übernehmen' : 'Freigeben & live'}
+              <button onClick={() => moderate('approve')} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 14px', borderRadius: 8, border: 'none', background: '#15803D', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <Check size={15} /> {isChange ? 'Änderungen übernehmen' : 'Freigeben & live'}
               </button>
-              <button disabled={busy} onClick={() => {
+              <button onClick={() => {
                 const reason = isChange ? undefined : (prompt('Ablehnungsgrund (für den Anbieter sichtbar):') ?? '')
                 if (!isChange && reason === '') return
                 moderate('reject', reason)

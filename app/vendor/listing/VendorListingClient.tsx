@@ -46,7 +46,6 @@ export default function VendorListingClient() {
   const [packages, setPackages] = useState<Pkg[]>([])
   const [faqs, setFaqs] = useState<Faq[]>([])
   const [availability, setAvailability] = useState<Avail[]>([])
-  const [saving, setSaving] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
@@ -102,8 +101,9 @@ export default function VendorListingClient() {
 
   const flash = (kind: 'ok' | 'err', text: string) => { setMsg({ kind, text }); setTimeout(() => setMsg(null), 4000) }
 
-  async function saveProfile() {
-    setSaving(true)
+  // Positive UX: sofort bestätigen, im Hintergrund speichern, danach still
+  // synchronisieren (für den „in Prüfung"-Hinweis bei sensiblen Feldern).
+  function saveProfile() {
     const payload = {
       name: f.name, company_name: f.company_name, category: f.category,
       street: f.street, zip: f.zip, city: f.city,
@@ -113,32 +113,34 @@ export default function VendorListingClient() {
       service_radius_km: f.service_radius_km,
       social_links: social,
     }
-    const res = await fetch('/api/vendor/marketplace/profile', {
+    flash('ok', 'Gespeichert.')
+    fetch('/api/vendor/marketplace/profile', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-    })
-    const d = await res.json()
-    setSaving(false)
-    if (!res.ok) { flash('err', d.error ?? 'Speichern fehlgeschlagen'); return }
-    flash('ok', d.hasPendingChanges ? 'Gespeichert — sensible Änderungen gehen in die Prüfung.' : 'Gespeichert.')
-    load(false)
+    }).then(async res => {
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) flash('err', d.error ?? 'Speichern fehlgeschlagen')
+      else if (d.hasPendingChanges) flash('ok', 'Gespeichert — sensible Änderungen gehen in die Prüfung.')
+      load(false)
+    }).catch(() => load(false))
   }
 
-  async function submitForReview() {
-    const res = await fetch('/api/vendor/marketplace/profile/submit', { method: 'POST' })
-    const d = await res.json()
-    if (!res.ok) { flash('err', d.error ?? 'Fehler'); return }
-    flash('ok', 'Zur Prüfung eingereicht.'); load(false)
+  // Positive UX: Status sofort umstellen, Anfrage im Hintergrund; bei Fehler resync.
+  function submitForReview() {
+    setVendor(v => v ? { ...v, moderation_status: 'pending', rejected_reason: null } : v)
+    flash('ok', 'Zur Prüfung eingereicht.')
+    fetch('/api/vendor/marketplace/profile/submit', { method: 'POST' }).then(async res => {
+      if (!res.ok) { const d = await res.json().catch(() => ({})); flash('err', d.error ?? 'Fehler'); load(false) }
+    }).catch(() => load(false))
   }
 
-  async function togglePublish() {
+  function togglePublish() {
     if (!vendor) return
-    const res = await fetch('/api/vendor/marketplace/profile/publish', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ published: !vendor.published }),
-    })
-    const d = await res.json()
-    if (!res.ok) { flash('err', d.error ?? 'Fehler'); return }
-    flash('ok', d.published ? 'Listing ist online.' : 'Listing ist offline.'); load(false)
+    const next = !vendor.published
+    setVendor(v => v ? { ...v, published: next } : v)
+    flash('ok', next ? 'Listing ist online.' : 'Listing ist offline.')
+    fetch('/api/vendor/marketplace/profile/publish', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ published: next }),
+    }).then(res => { if (!res.ok) load(false) }).catch(() => load(false))
   }
 
   // ── Uploads ────────────────────────────────────────────────────────────────
@@ -204,12 +206,12 @@ export default function VendorListingClient() {
     if (!res.ok) { flash('err', d.error ?? 'Fehler'); return }
     setPackages(x => [...x, { id: d.id, title: 'Neues Paket', description: '', price_from: null, price_unit: 'ab', sort_order: x.length }])
   }
-  async function savePackage(p: Pkg) {
-    await fetch(`/api/vendor/marketplace/packages/${p.id}`, {
+  function savePackage(p: Pkg) {
+    flash('ok', 'Paket gespeichert.')
+    fetch(`/api/vendor/marketplace/packages/${p.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: p.title, description: p.description, price_from: p.price_from, price_unit: p.price_unit }),
-    })
-    flash('ok', 'Paket gespeichert.')
+    }).then(res => { if (!res.ok) flash('err', 'Konnte nicht speichern') })
   }
   async function delPackage(id: string) {
     await fetch(`/api/vendor/marketplace/packages/${id}`, { method: 'DELETE' })
@@ -225,11 +227,11 @@ export default function VendorListingClient() {
     if (!res.ok) { flash('err', d.error ?? 'Fehler'); return }
     setFaqs(x => [...x, { id: d.id, question: 'Neue Frage', answer: '', sort_order: x.length }])
   }
-  async function saveFaq(q: Faq) {
-    await fetch(`/api/vendor/marketplace/faqs/${q.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q.question, answer: q.answer }),
-    })
+  function saveFaq(q: Faq) {
     flash('ok', 'FAQ gespeichert.')
+    fetch(`/api/vendor/marketplace/faqs/${q.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q.question, answer: q.answer }),
+    }).then(res => { if (!res.ok) flash('err', 'Konnte nicht speichern') })
   }
   async function delFaq(id: string) {
     await fetch(`/api/vendor/marketplace/faqs/${id}`, { method: 'DELETE' })
@@ -293,8 +295,8 @@ export default function VendorListingClient() {
         {/* Aktionen */}
         <div style={card}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button onClick={saveProfile} disabled={saving} style={btnGold}>
-              {saving ? <Loader2 size={15} className="bp-spin" /> : <Save size={15} />} Speichern
+            <button onClick={saveProfile} style={btnGold}>
+              <Save size={15} /> Speichern
             </button>
             {showRequirements && (
               <button onClick={submitForReview} disabled={!allRequirementsMet} style={{ ...btnGhost, opacity: allRequirementsMet ? 1 : 0.5, cursor: allRequirementsMet ? 'pointer' : 'not-allowed' }} title={allRequirementsMet ? '' : 'Bitte zuerst alle Pflichtangaben ausfüllen'}>
