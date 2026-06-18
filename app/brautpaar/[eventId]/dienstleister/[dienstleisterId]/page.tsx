@@ -1,17 +1,17 @@
 export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { ensureVendorConversation } from '@/lib/vendor/ensureChat'
 import { redirect } from 'next/navigation'
-import BerechtigungenDLClient from '@/app/veranstalter/[eventId]/berechtigungen/[dienstleisterId]/BerechtigungenClient'
-import type { DienstleisterPermRow } from '@/app/veranstalter/[eventId]/berechtigungen/[dienstleisterId]/page'
+import BerechtigungenDLClient, { type ShareRow } from '@/app/veranstalter/[eventId]/berechtigungen/[dienstleisterId]/BerechtigungenClient'
 
 interface Props {
   params: Promise<{ eventId: string; dienstleisterId: string }>
 }
 
-// Berechtigungs-Editor für Solo-Brautpaare — gleicher Editor wie im
-// Veranstalter-Portal (schreibt dienstleister_permissions; RLS via
-// Migration 0090 über is_event_member, matcht brautpaar_solo).
+// Datenfreigabe-Übersicht für Solo-Brautpaare — gleiche Komponente wie im
+// Veranstalter-Portal (steuert dienstleister_data_shares; RLS via is_event_member).
 export default async function SoloDienstleisterBerechtigungenPage({ params }: Props) {
   const { eventId, dienstleisterId } = await params
   const supabase = await createClient()
@@ -45,11 +45,19 @@ export default async function SoloDienstleisterBerechtigungenPage({ params }: Pr
 
   if (!dlMember || dlMember.role !== 'dienstleister') redirect(`/brautpaar/${eventId}/dienstleister`)
 
-  const { data: perms } = await supabase
-    .from('dienstleister_permissions')
-    .select('id, tab_key, item_id, access')
-    .eq('event_id', eventId)
-    .eq('dienstleister_user_id', dienstleisterId)
+  const admin = createAdminClient()
+  const conversationId = await ensureVendorConversation(admin, eventId, dienstleisterId)
+
+  let shares: ShareRow[] = []
+  if (conversationId) {
+    const { data } = await admin
+      .from('dienstleister_data_shares')
+      .select('id, module, mode, status, created_at')
+      .eq('conversation_id', conversationId)
+      .neq('status', 'revoked')
+      .order('created_at', { ascending: false })
+    shares = (data ?? []) as ShareRow[]
+  }
 
   return (
     <div className="bp-page">
@@ -58,7 +66,8 @@ export default async function SoloDienstleisterBerechtigungenPage({ params }: Pr
         dienstleisterId={dienstleisterId}
         dienstleisterName={dlProfile.name ?? 'Dienstleister'}
         dienstleisterEmail={dlProfile.email ?? ''}
-        initialPerms={(perms ?? []) as DienstleisterPermRow[]}
+        conversationId={conversationId}
+        initialShares={shares}
         backHref={`/brautpaar/${eventId}/dienstleister`}
         backLabel="Zurück zu Dienstleister"
       />
