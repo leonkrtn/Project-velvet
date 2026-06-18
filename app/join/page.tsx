@@ -23,7 +23,7 @@ const ROLE_LABELS: Record<string, string> = {
 function portalForRole(role: string, eventId: string): string {
   switch (role) {
     case 'veranstalter':   return `/veranstalter/${eventId}/allgemein`
-    case 'dienstleister':  return `/vendor/dashboard/${eventId}/uebersicht`
+    case 'dienstleister':  return `/vendor/dashboard/${eventId}/kommunikation`
     default:               return `/brautpaar/${eventId}/uebersicht`
   }
 }

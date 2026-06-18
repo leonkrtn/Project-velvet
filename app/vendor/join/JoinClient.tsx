@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CalendarDays, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
-import { MODULE_MAP } from '@/lib/vendor-modules'
+import { CalendarDays, CheckCircle2, AlertCircle, Loader2, MapPin, Users, Briefcase, Mail } from 'lucide-react'
 
 interface EventPreview {
   event_id:    string
@@ -14,6 +13,21 @@ interface EventPreview {
   expires_at:  string
 }
 
+interface InviteDetails {
+  event_type?: string | null
+  venue?: string | null
+  venue_address?: string | null
+  couple_name?: string | null
+  guest_count?: number | null
+  requested_service?: string | null
+  request_message?: string | null
+  couple_contacts?: { name: string | null; email: string | null }[]
+}
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  hochzeit: 'Hochzeit', firmenevent: 'Firmenevent', intern: 'Interne Veranstaltung',
+}
+
 interface Props {
   initialCode: string
 }
@@ -22,6 +36,7 @@ export default function JoinClient({ initialCode }: Props) {
   const router = useRouter()
   const [code, setCode]           = useState(initialCode)
   const [preview, setPreview]     = useState<EventPreview | null>(null)
+  const [details, setDetails]     = useState<InviteDetails | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [joining, setJoining]     = useState(false)
   const [error, setError]         = useState<string | null>(null)
@@ -52,6 +67,10 @@ export default function JoinClient({ initialCode }: Props) {
       return
     }
     setPreview(data as EventPreview)
+
+    // Detaillierte Anfrage-Vorschau (Event-Eckdaten + Brautpaar-Kontakt)
+    const { data: det } = await supabase.rpc('get_invitation_preview', { p_code: lookupCode })
+    if (det && det.valid !== false) setDetails(det as InviteDetails)
   }
 
   async function handleJoin() {
@@ -72,11 +91,6 @@ export default function JoinClient({ initialCode }: Props) {
     setSuccess(true)
     setTimeout(() => router.push(`/vendor/dashboard/${preview.event_id}`), 1800)
   }
-
-  const moduleLabels = preview?.permissions
-    .map(p => MODULE_MAP[p]?.label)
-    .filter(Boolean)
-    .join(', ')
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
@@ -151,15 +165,60 @@ export default function JoinClient({ initialCode }: Props) {
                     </div>
                   </div>
 
-                  {moduleLabels && (
-                    <div style={{ background: '#F5F5F7', borderRadius: 'var(--radius-sm)', padding: '12px 14px' }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 4 }}>Zugriff auf</p>
-                      <p style={{ fontSize: 13, lineHeight: 1.6 }}>{moduleLabels}</p>
+                  {details && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {details.requested_service && (
+                        <div style={{ background: '#F5F5F7', borderRadius: 'var(--radius-sm)', padding: '12px 14px' }}>
+                          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 4 }}>Angefragte Leistung</p>
+                          <p style={{ fontSize: 13.5, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Briefcase size={13} style={{ color: 'var(--text-secondary)' }} />{details.requested_service}
+                          </p>
+                        </div>
+                      )}
+
+                      <div style={{ background: '#F5F5F7', borderRadius: 'var(--radius-sm)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 0 }}>Eckdaten</p>
+                        {details.event_type && (
+                          <DetailLine icon={<Briefcase size={13} />} text={EVENT_TYPE_LABELS[details.event_type] ?? details.event_type} />
+                        )}
+                        {details.venue && (
+                          <DetailLine icon={<MapPin size={13} />} text={`${details.venue}${details.venue_address ? ' · ' + details.venue_address : ''}`} />
+                        )}
+                        {(details.guest_count ?? 0) > 0 && (
+                          <DetailLine icon={<Users size={13} />} text={`ca. ${details.guest_count} Gäste`} />
+                        )}
+                      </div>
+
+                      {details.couple_contacts && details.couple_contacts.length > 0 && (
+                        <div style={{ background: '#F5F5F7', borderRadius: 'var(--radius-sm)', padding: '12px 14px' }}>
+                          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 6 }}>Brautpaar</p>
+                          {details.couple_contacts.map((c, i) => (
+                            <div key={i} style={{ marginBottom: i < details.couple_contacts!.length - 1 ? 6 : 0 }}>
+                              <p style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name ?? '—'}</p>
+                              {c.email && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                                  <Mail size={12} />{c.email}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 8, fontStyle: 'italic' }}>
+                            Telefonnummer wird nach Annahme der Anfrage sichtbar.
+                          </p>
+                        </div>
+                      )}
+
+                      {details.request_message && (
+                        <div style={{ background: '#F5F5F7', borderRadius: 'var(--radius-sm)', padding: '12px 14px' }}>
+                          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', marginBottom: 4 }}>Nachricht</p>
+                          <p style={{ fontSize: 13.5, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{details.request_message}</p>
+                        </div>
+                      )}
                     </div>
                   )}
 
                   <button
-                    onClick={() => { setPreview(null); setError(null) }}
+                    onClick={() => { setPreview(null); setDetails(null); setError(null) }}
                     style={{ background: 'none', border: 'none', fontSize: 13, color: 'var(--text-tertiary)', cursor: 'pointer', marginTop: 8, padding: '2px 0', textDecoration: 'underline' }}
                   >
                     Anderen Code eingeben
@@ -190,6 +249,15 @@ export default function JoinClient({ initialCode }: Props) {
         </div>
       </div>
       <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
+    </div>
+  )
+}
+
+function DetailLine({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: 'var(--text-secondary)' }}>
+      <span style={{ color: 'var(--text-tertiary)', flexShrink: 0, display: 'flex' }}>{icon}</span>
+      <span>{text}</span>
     </div>
   )
 }

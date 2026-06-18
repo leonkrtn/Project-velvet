@@ -23,33 +23,19 @@ export default async function VendorDashboardLayout({ children, params }: Props)
 
   if (!member || member.role !== 'dienstleister') redirect('/vendor/join')
 
-  const [eventRes, permsRes] = await Promise.all([
-    supabase
-      .from('events')
-      .select('title, date')
-      .eq('id', eventId)
-      .single(),
-    supabase
-      .from('dienstleister_permissions')
-      .select('tab_key, access')
-      .eq('event_id', eventId)
-      .eq('dienstleister_user_id', user.id)
-      .is('item_id', null),
-  ])
+  const { data: event } = await supabase
+    .from('events')
+    .select('title, date')
+    .eq('id', eventId)
+    .single()
 
-  if (!eventRes.data) redirect('/vendor/dashboard')
-
-  const tabPerms: Record<string, 'none' | 'read' | 'write'> = {}
-  for (const row of permsRes.data ?? []) {
-    tabPerms[row.tab_key] = row.access as 'none' | 'read' | 'write'
-  }
+  if (!event) redirect('/vendor/dashboard')
 
   return (
     <VendorSidebarLayout
       eventId={eventId}
-      eventTitle={eventRes.data.title}
-      eventDate={eventRes.data.date ?? null}
-      initialTabPerms={tabPerms}
+      eventTitle={event.title}
+      eventDate={event.date ?? null}
     >
       {children}
     </VendorSidebarLayout>

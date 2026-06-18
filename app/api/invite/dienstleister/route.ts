@@ -25,6 +25,8 @@ export async function POST(request: Request) {
     email,
     scopes = [],
     dienstleisterProfileId,
+    requestedService,
+    requestMessage,
   } = body as {
     eventId: string
     name: string
@@ -32,6 +34,8 @@ export async function POST(request: Request) {
     email?: string
     scopes?: string[]
     dienstleisterProfileId?: string
+    requestedService?: string
+    requestMessage?: string
   }
 
   if (!eventId || !name || !category) {
@@ -93,7 +97,12 @@ export async function POST(request: Request) {
     code,
     role: 'dienstleister',
     expires_at: expiresAt,
-    metadata: { event_dienstleister_id: edId },
+    metadata: {
+      event_dienstleister_id: edId,
+      category,
+      requested_service: requestedService ?? category,
+      request_message:    requestMessage ?? null,
+    },
     created_by: user.id,
   }).select('code').single()
 

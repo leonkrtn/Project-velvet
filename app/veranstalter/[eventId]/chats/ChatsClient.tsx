@@ -4,7 +4,11 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Send, Plus, X, Trash2, MessageSquare, Archive, ArchiveRestore,
   ChevronDown, ChevronRight, Search, Users, User, ArrowLeft,
+  Paperclip, Database, FileText, Download, Loader2, Snowflake, Radio,
 } from 'lucide-react'
+import { useFileUpload } from '@/hooks/useFileUpload'
+import ShareBox from '@/components/vendor/ShareBox'
+import { SHARE_MODULES, SHARE_MODULE_LABELS, type ModuleSnapshot, type ShareModule, type ShareMode } from '@/lib/vendor/shares'
 
 type UnreadMap = Record<string, number>
 
@@ -29,6 +33,8 @@ interface Message {
   sender_id: string | null
   content: string
   created_at: string
+  message_type?: 'text' | 'file' | 'data_share'
+  metadata?: Record<string, unknown>
   sender?: { name: string } | null
 }
 
@@ -105,6 +111,86 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const activeConvIdRef = useRef<string | null>(null)
   const supabase = useMemo(() => createClient(), [])
+
+  // ── Data sharing + file attachments ────────────────────────────────────────
+  const fileUpload = useFileUpload()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [shareModule, setShareModule] = useState<ShareModule | null>(null)
+  const [sharing, setSharing] = useState(false)
+  const [openShare, setOpenShare] = useState<{ shareId: string; label: string; snapshot: ModuleSnapshot | null; status: string; loading: boolean } | null>(null)
+
+  const activeConvHasVendor = useMemo(() => {
+    if (!activeConv) return false
+    return activeConv.conversation_participants.some(p => {
+      const role = members.find(m => m.user_id === p.user_id)?.role
+      return role === 'dienstleister'
+    })
+  }, [activeConv, members])
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (e.target) e.target.value = ''
+    if (!file || !activeConv) return
+    const uploaded = await fileUpload.upload(file, eventId, 'chats', 'chat')
+    if (!uploaded) return
+    const { data: inserted } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: activeConv.id, sender_id: currentUserId, event_id: eventId,
+        content: file.name, message_type: 'file',
+        metadata: { file_id: uploaded.fileId, name: file.name, mime: file.type, size: file.size },
+      })
+      .select('id, conversation_id, sender_id, content, created_at, message_type, metadata')
+      .single()
+    if (inserted) {
+      setMessages(prev => prev.some(m => m.id === inserted.id) ? prev : [...prev, { ...inserted, sender: null }])
+      setLastMessages(prev => ({ ...prev, [activeConv.id]: { content: file.name, createdAt: inserted.created_at } }))
+    }
+    await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', activeConv.id)
+  }
+
+  async function shareData(mode: ShareMode) {
+    if (!activeConv || !shareModule || sharing) return
+    setSharing(true)
+    const res = await fetch('/api/vendor/shares', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId: activeConv.id, module: shareModule, mode }),
+    })
+    setSharing(false)
+    if (res.ok) {
+      setShowShareModal(false)
+      setShareModule(null)
+      loadMessages(activeConv.id)
+    }
+  }
+
+  async function downloadFile(fileId: string) {
+    const res = await fetch(`/api/files/${fileId}/download-url`)
+    if (!res.ok) return
+    const { downloadUrl } = await res.json()
+    window.open(downloadUrl, '_blank')
+  }
+
+  async function viewShare(shareId: string, label: string) {
+    setOpenShare({ shareId, label, snapshot: null, status: 'active', loading: true })
+    const res = await fetch(`/api/vendor/shares/${shareId}`)
+    if (!res.ok) { setOpenShare({ shareId, label, snapshot: null, status: 'revoked', loading: false }); return }
+    const { share } = await res.json()
+    setOpenShare({ shareId, label, snapshot: share.snapshot ?? null, status: share.status, loading: false })
+  }
+
+  async function updateShare(action: 'freeze' | 'revoke') {
+    if (!openShare) return
+    const res = await fetch(`/api/vendor/shares/${openShare.shareId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action }),
+    })
+    if (res.ok) {
+      if (action === 'revoke') setOpenShare(null)
+      else setOpenShare(prev => prev ? { ...prev, status: 'frozen' } : prev)
+    }
+  }
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 768)
@@ -253,11 +339,16 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const loadMessages = useCallback(async (convId: string) => {
     const { data } = await supabase
       .from('messages')
-      .select('id, conversation_id, sender_id, content, created_at, sender:profiles!sender_id(name)')
+      .select('id, conversation_id, sender_id, content, created_at, message_type, metadata, sender:profiles!sender_id(name)')
       .eq('conversation_id', convId)
       .order('created_at', { ascending: true })
       .limit(100)
-    setMessages(data?.map(m => ({ ...m, sender: Array.isArray(m.sender) ? (m.sender[0] ?? null) : m.sender })) ?? [])
+    setMessages(data?.map(m => ({
+      ...m,
+      message_type: (m.message_type ?? 'text') as Message['message_type'],
+      metadata: (m.metadata ?? {}) as Record<string, unknown>,
+      sender: Array.isArray(m.sender) ? (m.sender[0] ?? null) : m.sender,
+    })) ?? [])
   }, [supabase])
 
   useEffect(() => {
@@ -279,8 +370,8 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
         table: 'messages',
         filter: `conversation_id=eq.${activeConv.id}`,
       }, (payload) => {
-        const p = payload.new as { id: string; conversation_id: string; sender_id: string | null; content: string; read_at: string | null; created_at: string }
-        setMessages(prev => prev.some(m => m.id === p.id) ? prev : [...prev, { ...p, sender: null }])
+        const p = payload.new as { id: string; conversation_id: string; sender_id: string | null; content: string; created_at: string; message_type?: Message['message_type']; metadata?: Record<string, unknown> }
+        setMessages(prev => prev.some(m => m.id === p.id) ? prev : [...prev, { ...p, message_type: p.message_type ?? 'text', metadata: p.metadata ?? {}, sender: null }])
         setLastMessages(prev => ({ ...prev, [p.conversation_id]: { content: p.content, createdAt: p.created_at } }))
         if (p.sender_id !== currentUserId) {
           supabase.from('conversation_read_state').upsert({
@@ -582,6 +673,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
+      <style>{`.chat-spin { animation: chatspin 1s linear infinite; } @keyframes chatspin { to { transform: rotate(360deg); } }`}</style>
 
       {/* ── Left panel ── */}
       <div style={{
@@ -817,15 +909,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
                         {!isMe && senderName && convIsGroup(activeConv) && (
                           <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 3, marginLeft: 4 }}>{senderName}</div>
                         )}
-                        <div style={{
-                          padding: '9px 13px',
-                          borderRadius: isMe ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-                          background: isMe ? 'var(--accent)' : '#E5E5EA',
-                          color: isMe ? '#fff' : 'var(--text-primary)',
-                          fontSize: 14, lineHeight: 1.5,
-                        }}>
-                          {msg.content}
-                        </div>
+                        <ChatBubble msg={msg} isMe={isMe} onDownload={downloadFile} onViewShare={viewShare} />
                         <div style={{
                           fontSize: 10, color: 'var(--text-tertiary)', marginTop: 3,
                           textAlign: isMe ? 'right' : 'left',
@@ -900,13 +984,32 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
             {/* Message input */}
             <div style={{
               padding: isMobile ? '10px 12px calc(10px + env(safe-area-inset-bottom))' : '12px 20px',
-              borderTop: '1px solid var(--border)', display: 'flex', gap: 10, background: 'var(--surface)', flexShrink: 0,
+              borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', background: 'var(--surface)', flexShrink: 0,
             }}>
+              <input ref={fileInputRef} type="file" onChange={handleFileSelect} style={{ display: 'none' }} />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={fileUpload.uploading}
+                aria-label="Datei anhängen"
+                style={{ width: 38, height: 38, borderRadius: '50%', background: '#F0F0F2', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#636366', flexShrink: 0 }}
+              >
+                {fileUpload.uploading ? <Loader2 size={16} className="chat-spin" /> : <Paperclip size={16} />}
+              </button>
+              {activeConvHasVendor && (
+                <button
+                  onClick={() => { setShareModule(null); setShowShareModal(true) }}
+                  aria-label="Daten teilen"
+                  title="Daten teilen"
+                  style={{ width: 38, height: 38, borderRadius: '50%', background: '#F0F0F2', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#636366', flexShrink: 0 }}
+                >
+                  <Database size={16} />
+                </button>
+              )}
               <input
                 value={newMsg}
                 onChange={e => setNewMsg(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                placeholder="Nachricht schreiben…"
+                placeholder={fileUpload.uploading ? 'Datei wird hochgeladen…' : 'Nachricht schreiben…'}
                 style={{ flex: 1, minWidth: 0, padding: '10px 16px', border: 'none', borderRadius: 22, fontSize: isMobile ? 16 : 14, outline: 'none', fontFamily: 'inherit', background: '#F0F0F2' }}
               />
               <button
@@ -1111,6 +1214,81 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
         </div>
       )}
 
+      {/* ── Share data modal ── */}
+      {showShareModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setShowShareModal(false)}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', width: 460, maxWidth: '100%', boxShadow: 'var(--shadow-md)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
+              <Database size={18} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, flex: 1 }}>Daten teilen</h3>
+              <button onClick={() => setShowShareModal(false)} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}><X size={18} /></button>
+            </div>
+            <div style={{ padding: 20 }}>
+              <p style={{ fontSize: 12.5, color: 'var(--text-tertiary)', margin: '0 0 12px' }}>
+                Wähle einen Bereich, den der Dienstleister sehen soll. Als <b>Auszug</b> wird der aktuelle Stand eingefroren; <b>Live</b> aktualisiert sich automatisch.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
+                {SHARE_MODULES.map(m => (
+                  <button key={m.key} onClick={() => setShareModule(m.key)} style={{
+                    padding: '10px 12px', borderRadius: 10, textAlign: 'left', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
+                    border: `1.5px solid ${shareModule === m.key ? 'var(--accent)' : 'var(--border)'}`,
+                    background: shareModule === m.key ? 'var(--accent)' : 'var(--surface)',
+                    color: shareModule === m.key ? '#fff' : 'var(--text-primary)',
+                  }}>{m.label}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => shareData('snapshot')} disabled={!shareModule || sharing} style={{
+                  flex: 1, padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)',
+                  cursor: shareModule && !sharing ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+                  color: shareModule ? 'var(--text-primary)' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                }}>
+                  <Snowflake size={15} /> Als Auszug
+                </button>
+                <button onClick={() => shareData('live')} disabled={!shareModule || sharing} style={{
+                  flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: shareModule ? 'var(--accent)' : '#C7C7CC',
+                  cursor: shareModule && !sharing ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+                  color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                }}>
+                  {sharing ? <Loader2 size={15} className="chat-spin" /> : <Radio size={15} />} Live teilen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Share viewer modal ── */}
+      {openShare && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 320, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setOpenShare(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 16, width: 640, maxWidth: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-md)' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Database size={17} style={{ color: 'var(--accent)' }} />
+              <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0, flex: 1 }}>{openShare.label}{openShare.status === 'frozen' ? ' · eingefroren' : ''}</h3>
+              <button onClick={() => setOpenShare(null)} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}><X size={18} /></button>
+            </div>
+            <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
+              {openShare.loading
+                ? <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: 30 }}><Loader2 size={22} className="chat-spin" /></div>
+                : openShare.snapshot ? <ShareBox snapshot={openShare.snapshot} />
+                : <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Diese Freigabe ist nicht mehr verfügbar.</p>}
+            </div>
+            {!openShare.loading && openShare.status !== 'revoked' && (
+              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                {openShare.status === 'active' && (
+                  <button onClick={() => updateShare('freeze')} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Snowflake size={14} /> Einfrieren
+                  </button>
+                )}
+                <button onClick={() => updateShare('revoke')} style={{ padding: '8px 14px', borderRadius: 8, border: 'none', background: '#FF3B30', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
+                  Nicht mehr teilen
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Delete Confirm ── */}
       {deleteConfirm && (
         <div
@@ -1149,6 +1327,60 @@ function ActionBtn({ icon, title, onClick, hoverColor = 'var(--text)' }: {
     >
       {icon}
     </button>
+  )
+}
+
+function ChatBubble({ msg, isMe, onDownload, onViewShare }: {
+  msg: Message
+  isMe: boolean
+  onDownload: (fileId: string) => void
+  onViewShare: (shareId: string, label: string) => void
+}) {
+  const base: React.CSSProperties = {
+    padding: '9px 13px',
+    borderRadius: isMe ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
+    fontSize: 14, lineHeight: 1.5,
+  }
+  const meta = msg.metadata ?? {}
+
+  if (msg.message_type === 'file') {
+    const fileId = meta.file_id as string
+    return (
+      <button onClick={() => fileId && onDownload(fileId)} style={{
+        ...base, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', maxWidth: 280,
+        background: isMe ? 'var(--accent)' : '#E5E5EA', color: isMe ? '#fff' : 'var(--text-primary)',
+        border: 'none', fontFamily: 'inherit', textAlign: 'left',
+      }}>
+        <FileText size={18} style={{ flexShrink: 0 }} />
+        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{(meta.name as string) ?? msg.content}</span>
+        <Download size={15} style={{ flexShrink: 0, opacity: 0.85 }} />
+      </button>
+    )
+  }
+
+  if (msg.message_type === 'data_share') {
+    const shareId = meta.share_id as string
+    const mod = meta.module as ShareModule
+    const mode = meta.mode as string
+    return (
+      <button onClick={() => shareId && onViewShare(shareId, SHARE_MODULE_LABELS[mod] ?? 'Daten')} style={{
+        ...base, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', maxWidth: 300,
+        background: 'var(--surface)', border: '1px solid var(--accent)', color: 'var(--text-primary)',
+        fontFamily: 'inherit', textAlign: 'left',
+      }}>
+        <Database size={18} style={{ flexShrink: 0, color: 'var(--accent)' }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 600 }}>{SHARE_MODULE_LABELS[mod] ?? 'Daten'}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{mode === 'live' ? 'Live geteilt · tippen' : 'Auszug · tippen'}</div>
+        </div>
+      </button>
+    )
+  }
+
+  return (
+    <div style={{ ...base, background: isMe ? 'var(--accent)' : '#E5E5EA', color: isMe ? '#fff' : 'var(--text-primary)' }}>
+      {msg.content}
+    </div>
   )
 }
 

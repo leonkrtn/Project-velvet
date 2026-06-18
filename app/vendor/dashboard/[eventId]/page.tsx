@@ -6,5 +6,5 @@ interface Props {
 
 export default async function VendorDashboardPage({ params }: Props) {
   const { eventId } = await params
-  redirect(`/vendor/dashboard/${eventId}/uebersicht`)
+  redirect(`/vendor/dashboard/${eventId}/kommunikation`)
 }
