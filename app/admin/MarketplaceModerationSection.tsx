@@ -23,7 +23,6 @@ const FIELD_LABEL: Record<string, string> = {
 export default function MarketplaceModerationSection({ card, cardHeader }: { card: React.CSSProperties; cardHeader: React.CSSProperties }) {
   const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState<string | null>(null)
   const [reviewing, setReviewing] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -35,13 +34,29 @@ export default function MarketplaceModerationSection({ card, cardHeader }: { car
   }, [])
   useEffect(() => { load() }, [load])
 
-  async function moderate(id: string, action: string, reason?: string) {
-    setBusy(id + action)
-    await fetch(`/api/admin/marketplace/vendors/${id}/moderate`, {
+  // Positive UX: Klick wirkt sofort. Wir aktualisieren den Zustand optimistisch
+  // und feuern die Anfrage im Hintergrund — nur bei einem Fehler wird neu geladen.
+  function applyOptimistic(id: string, action: string) {
+    setVendors(vs => vs.map(v => {
+      if (v.id !== id) return v
+      const hasPending = !!v.pending_changes && Object.keys(v.pending_changes).length > 0
+      switch (action) {
+        case 'approve': return hasPending ? { ...v, pending_changes: null } : { ...v, moderation_status: 'approved', published: true, rejected_reason: null }
+        case 'reject': return hasPending ? { ...v, pending_changes: null } : { ...v, moderation_status: 'rejected' }
+        case 'verify': return { ...v, verified: true }
+        case 'unverify': return { ...v, verified: false }
+        case 'suspend': return { ...v, moderation_status: 'suspended' }
+        case 'unsuspend': return { ...v, moderation_status: 'approved' }
+        default: return v
+      }
+    }))
+  }
+
+  function moderate(id: string, action: string, reason?: string) {
+    applyOptimistic(id, action)
+    fetch(`/api/admin/marketplace/vendors/${id}/moderate`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, reason }),
-    })
-    setBusy(null)
-    load()
+    }).then(res => { if (!res.ok) load() }).catch(() => load())
   }
 
   const queue = vendors.filter(v => v.moderation_status === 'pending' || (v.pending_changes && Object.keys(v.pending_changes).length > 0))
@@ -90,10 +105,10 @@ export default function MarketplaceModerationSection({ card, cardHeader }: { car
                       <button style={{ ...btn, borderColor: '#1D4ED8', color: '#1D4ED8', fontWeight: 700 }} onClick={() => setReviewing(v.id)}>
                         <Eye size={13} /> Prüfen (Vorschau)
                       </button>
-                      <button style={btnGreen} disabled={!!busy} onClick={() => moderate(v.id, 'approve')}>
-                        {busy === v.id + 'approve' ? <Loader2 size={13} className="bp-spin" /> : <Check size={13} />} {pc ? 'Änderungen übernehmen' : 'Freigeben'}
+                      <button style={btnGreen} onClick={() => moderate(v.id, 'approve')}>
+                        <Check size={13} /> {pc ? 'Änderungen übernehmen' : 'Freigeben'}
                       </button>
-                      <button style={btnRed} disabled={!!busy} onClick={() => {
+                      <button style={btnRed} onClick={() => {
                         const reason = pc ? undefined : (prompt('Ablehnungsgrund (für den Anbieter sichtbar):') ?? '')
                         if (!pc && reason === '') return
                         moderate(v.id, 'reject', reason)
@@ -118,11 +133,11 @@ export default function MarketplaceModerationSection({ card, cardHeader }: { car
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {v.verified
-                      ? <button style={btn} disabled={!!busy} onClick={() => moderate(v.id, 'unverify')}><ShieldOff size={13} /> Verifizierung entziehen</button>
-                      : <button style={btn} disabled={!!busy} onClick={() => moderate(v.id, 'verify')}><ShieldCheck size={13} /> Verifizieren</button>}
+                      ? <button style={btn} onClick={() => moderate(v.id, 'unverify')}><ShieldOff size={13} /> Verifizierung entziehen</button>
+                      : <button style={btn} onClick={() => moderate(v.id, 'verify')}><ShieldCheck size={13} /> Verifizieren</button>}
                     {v.moderation_status === 'suspended'
-                      ? <button style={btn} disabled={!!busy} onClick={() => moderate(v.id, 'unsuspend')}><RotateCcw size={13} /> Entsperren</button>
-                      : v.moderation_status === 'approved' && <button style={btnRed} disabled={!!busy} onClick={() => moderate(v.id, 'suspend')}><Ban size={13} /> Sperren</button>}
+                      ? <button style={btn} onClick={() => moderate(v.id, 'unsuspend')}><RotateCcw size={13} /> Entsperren</button>
+                      : v.moderation_status === 'approved' && <button style={btnRed} onClick={() => moderate(v.id, 'suspend')}><Ban size={13} /> Sperren</button>}
                   </div>
                 </div>
               ))}
@@ -135,7 +150,7 @@ export default function MarketplaceModerationSection({ card, cardHeader }: { car
         <MarketplaceReviewLightbox
           vendorId={reviewing}
           onClose={() => setReviewing(null)}
-          onModerated={load}
+          onModerate={(action, reason) => moderate(reviewing, action, reason)}
         />
       )}
     </div>
