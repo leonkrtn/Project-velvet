@@ -3,21 +3,25 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSubscriptionState } from '@/lib/subscription'
+import { ensureVendorConversation, backfillVendorChatParticipants } from '@/lib/vendor/ensureChat'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Briefcase, SlidersHorizontal, Sparkles } from 'lucide-react'
 import VendorInviteSection from './VendorInviteSection'
 import DienstleisterTabs from './DienstleisterTabs'
 import MarktplatzClient from './entdecken/MarktplatzClient'
+import AktiveDienstleisterClient, { type ActiveVendor } from './AktiveDienstleisterClient'
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 interface Props {
   params: Promise<{ eventId: string }>
 }
 
 // Dienstleister-Bereich für ALLE Brautpaare:
-//  - "Entdecken" (Marktplatz) ist für jedes Brautpaar verfügbar (ohne Pro).
-//  - "Meine Dienstleister" (Einladen + Rechte) nur für Solo-Brautpaare — bei
-//    Brautpaaren mit Veranstalter übernimmt das der Veranstalter im eigenen Portal.
+//  - "Entdecken" (Marktplatz) — jedes Brautpaar.
+//  - "Aktive Dienstleister" — aktuelle Zusammenarbeit + Chat, jedes Brautpaar.
+//  - "Meine Dienstleister" (Einladen + Datenfreigaben) nur für Solo-Brautpaare.
 export default async function BrautpaarDienstleisterPage({ params }: Props) {
   const { eventId } = await params
   const supabase = await createClient()
@@ -46,28 +50,61 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
 
   const discover = <MarktplatzClient eventId={eventId} />
 
-  // Brautpaar MIT Veranstalter: nur Marktplatz.
+  // ── Aktive Dienstleister (für alle Brautpaare) ──────────────────────────────
+  const admin = createAdminClient()
+  // Bestehende Vendor-Chats für die ganze Brautpaar-/Veranstalter-Seite sichtbar machen.
+  await backfillVendorChatParticipants(admin, eventId)
+
+  const { data: dlMembers } = await admin
+    .from('event_members')
+    .select('user_id, profiles!user_id(id, name, email, phone)')
+    .eq('event_id', eventId)
+    .eq('role', 'dienstleister')
+
+  const dlUserIds = (dlMembers ?? []).map((m: any) => m.user_id)
+  const firmByUser: Record<string, any> = {}
+  if (dlUserIds.length) {
+    const { data: uds } = await admin
+      .from('user_dienstleister')
+      .select('user_id, dienstleister_profiles ( company_name, category, website, description )')
+      .in('user_id', dlUserIds)
+    for (const ud of (uds ?? []) as any[]) {
+      const dp = Array.isArray(ud.dienstleister_profiles) ? ud.dienstleister_profiles[0] : ud.dienstleister_profiles
+      if (dp && !firmByUser[ud.user_id]) firmByUser[ud.user_id] = dp
+    }
+  }
+
+  const activeVendors: ActiveVendor[] = []
+  for (const m of (dlMembers ?? []) as any[]) {
+    const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
+    const dp = firmByUser[m.user_id]
+    const conversationId = await ensureVendorConversation(admin, eventId, m.user_id)
+    activeVendors.push({
+      userId: m.user_id,
+      conversationId,
+      name: profile?.name ?? null,
+      company: dp?.company_name ?? null,
+      category: dp?.category ?? null,
+      email: profile?.email ?? null,
+      phone: profile?.phone ?? null,
+      website: dp?.website ?? null,
+      description: dp?.description ?? null,
+    })
+  }
+  const active = <AktiveDienstleisterClient eventId={eventId} currentUserId={user.id} vendors={activeVendors} />
+
+  // Brautpaar MIT Veranstalter: Entdecken + Aktive Dienstleister + Meine Anfragen.
   if (!isSolo) {
     return (
       <div className="bp-page">
         {header}
-        <DienstleisterTabs eventId={eventId} isSolo={false} discover={discover} />
+        <DienstleisterTabs eventId={eventId} isSolo={false} discover={discover} active={active} />
       </div>
     )
   }
 
   // ── Solo: Verwaltungs-Tab vorbereiten ───────────────────────────────────────
-  const admin = createAdminClient()
-  const { data: vendors } = await admin
-    .from('event_members')
-    .select('id, user_id, profiles!user_id(id, name, email)')
-    .eq('event_id', eventId)
-    .eq('role', 'dienstleister')
-
-  const rows = (vendors ?? []).map(v => {
-    const profile = Array.isArray(v.profiles) ? (v.profiles[0] ?? null) : v.profiles
-    return { id: v.id, userId: v.user_id, name: profile?.name ?? null, email: profile?.email ?? null }
-  })
+  const rows = activeVendors.map(v => ({ id: v.userId, userId: v.userId, name: v.name, email: v.email }))
 
   // Dienstleister-Verwaltung ist ein Pro-Feature (Marktplatz bleibt frei).
   const subscription = await getSubscriptionState(eventId)
@@ -114,7 +151,7 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
             ))}
           </div>
           <p className="bp-caption" style={{ marginTop: '0.6rem', lineHeight: 1.5 }}>
-            Eure verbundenen Dienstleister behalten ihren Zugriff. Berechtigungen ändern und
+            Eure verbundenen Dienstleister behalten ihren Zugriff. Datenfreigaben ändern und
             neue Dienstleister einladen ist Teil von Forevr Pro.
           </p>
         </div>
@@ -129,7 +166,7 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
           <p style={{ fontWeight: 600, fontSize: 15, margin: '0 0 6px' }}>Noch keine Dienstleister verbunden</p>
           <p className="bp-caption" style={{ margin: 0 }}>
             Sobald ein eingeladener Dienstleister sich registriert hat, erscheint er hier —
-            dann könnt ihr seine Zugriffsrechte festlegen.
+            dann könnt ihr seine Datenfreigaben festlegen.
           </p>
         </div>
       ) : (
@@ -147,7 +184,7 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
               >
                 <SlidersHorizontal size={14} />
-                Berechtigungen
+                Datenfreigaben
               </Link>
             </div>
           ))}
@@ -159,7 +196,7 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
   return (
     <div className="bp-page">
       {header}
-      <DienstleisterTabs eventId={eventId} isSolo discover={discover} manage={manage} />
+      <DienstleisterTabs eventId={eventId} isSolo discover={discover} active={active} manage={manage} />
     </div>
   )
 }

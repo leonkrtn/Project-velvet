@@ -1,34 +1,37 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Store, SlidersHorizontal, Inbox } from 'lucide-react'
+import { Store, SlidersHorizontal, Inbox, Handshake } from 'lucide-react'
 import MeineAnfragen from './MeineAnfragen'
 
-type Tab = 'discover' | 'requests' | 'manage'
+type Tab = 'discover' | 'active' | 'requests' | 'manage'
 
 // Tab-Umschalter im Dienstleister-Bereich:
-//   "Entdecken"        = Marktplatz (alle Brautpaare)
-//   "Meine Anfragen"   = gestellte Anfragen + Zurückziehen/Beenden (alle Brautpaare)
-//   "Meine Dienstleister" = eigene Vendors + Rechte (nur Solo-Brautpaare)
+//   "Entdecken"           = Marktplatz (alle Brautpaare)
+//   "Aktive Dienstleister"= aktuelle Zusammenarbeit + Chat (alle Brautpaare)
+//   "Meine Anfragen"      = gestellte Anfragen + Zurückziehen/Beenden (alle Brautpaare)
+//   "Meine Dienstleister" = eigene Vendors + Datenfreigaben (nur Solo-Brautpaare)
 export default function DienstleisterTabs({
   eventId,
   isSolo,
   discover,
+  active,
   manage,
 }: {
   eventId: string
   isSolo: boolean
   discover: React.ReactNode
+  active?: React.ReactNode
   manage?: React.ReactNode
 }) {
   const [tab, setTab] = useState<Tab>('discover')
 
-  const tabBtn = (active: boolean): React.CSSProperties => ({
+  const tabBtn = (on: boolean): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '8px 16px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit',
     fontSize: 13.5, fontWeight: 600, border: '1px solid var(--bp-border, #e5e0d8)',
-    background: active ? 'var(--bp-ink, #2b2b2b)' : '#fff',
-    color: active ? '#fff' : 'var(--bp-ink-2, #555)', whiteSpace: 'nowrap',
+    background: on ? 'var(--bp-ink, #2b2b2b)' : '#fff',
+    color: on ? '#fff' : 'var(--bp-ink-2, #555)', whiteSpace: 'nowrap',
   })
 
   return (
@@ -36,6 +39,9 @@ export default function DienstleisterTabs({
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap', alignItems: 'center' }}>
         <button style={tabBtn(tab === 'discover')} onClick={() => setTab('discover')}>
           <Store size={15} /> Entdecken
+        </button>
+        <button style={tabBtn(tab === 'active')} onClick={() => setTab('active')}>
+          <Handshake size={15} /> Aktive Dienstleister
         </button>
         {isSolo && (
           <button style={tabBtn(tab === 'manage')} onClick={() => setTab('manage')}>
@@ -48,6 +54,7 @@ export default function DienstleisterTabs({
         </button>
       </div>
       <div style={{ display: tab === 'discover' ? 'block' : 'none' }}>{discover}</div>
+      <div style={{ display: tab === 'active' ? 'block' : 'none' }}>{active}</div>
       <div style={{ display: tab === 'requests' ? 'block' : 'none' }}>
         {tab === 'requests' && <MeineAnfragen eventId={eventId} />}
       </div>

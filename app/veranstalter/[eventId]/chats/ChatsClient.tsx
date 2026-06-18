@@ -57,6 +57,8 @@ interface Props {
   currentUserId: string
   initialConversations: Conversation[]
   members: Member[]
+  /** Preselect + (on mobile) open this conversation directly — used for deep links. */
+  initialConversationId?: string
 }
 
 function initials(name: string) {
@@ -75,9 +77,11 @@ function truncate(text: string, len = 42) {
   return text.length > len ? text.slice(0, len) + '…' : text
 }
 
-export default function ChatsClient({ eventId, currentUserId, initialConversations, members }: Props) {
+export default function ChatsClient({ eventId, currentUserId, initialConversations, members, initialConversationId }: Props) {
   const [conversations, setConversations] = useState(initialConversations)
-  const [activeConv, setActiveConv] = useState<Conversation | null>(initialConversations[0] ?? null)
+  const [activeConv, setActiveConv] = useState<Conversation | null>(
+    (initialConversationId && initialConversations.find(c => c.id === initialConversationId)) || initialConversations[0] || null
+  )
   const [messages, setMessages] = useState<Message[]>([])
   const [newMsg, setNewMsg] = useState('')
   const [sending, setSending] = useState(false)
@@ -105,7 +109,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
   const [showArchived, setShowArchived] = useState(false)
   const [archivedLoaded, setArchivedLoaded] = useState(false)
   const [loadingArchived, setLoadingArchived] = useState(false)
-  const [mobileShowChat, setMobileShowChat] = useState(false)
+  const [mobileShowChat, setMobileShowChat] = useState(!!initialConversationId)
   const [isMobile, setIsMobile] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
