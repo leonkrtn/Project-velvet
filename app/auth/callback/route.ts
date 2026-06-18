@@ -73,5 +73,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/vendor/dashboard`)
   }
 
+  // Marketplace vendor (signed up via /signup/dienstleister, not yet added to any event)
+  if (user.user_metadata?.signup_role === 'dienstleister') {
+    return NextResponse.redirect(`${origin}/vendor/listing`)
+  }
+
   return NextResponse.redirect(`${origin}/signup`)
 }
