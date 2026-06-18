@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Palette, Music, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
-  Briefcase, FileDown, CreditCard, Lock, Sparkles, HelpCircle,
+  Briefcase, FileDown, CreditCard, Lock, Sparkles, HelpCircle, Globe,
 } from 'lucide-react'
 import ForevrHeart from '@/components/ForevrHeart'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
@@ -61,6 +61,7 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
         b('budget', 'Budget', <Wallet size={16} />),
         b('aufgaben', 'Aufgaben', <CheckSquare size={16} />),
         b('notizen', 'Notizen', <NotebookPen size={16} />),
+        b('website', 'Hochzeitswebsite', <Globe size={16} />),
         // Dienstleister-Bereich für ALLE Brautpaare: enthält den Marktplatz
         // ("Entdecken") und – für Solo-Paare – die Verwaltung der Zugriffsrechte.
         b('dienstleister', 'Dienstleister', <Briefcase size={16} />),
@@ -212,7 +213,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   const nav = fullNav.map(group => ({
     ...group,
     items: group.items.filter(item =>
-      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'pdf-export' || item.key === 'abo'
+      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'pdf-export' || item.key === 'abo' || item.key === 'website'
         ? true
         : (bpToggles[`bp-${item.key}`] ?? true)
     ),
@@ -255,8 +256,9 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
 
   const isDeko = pathname === `/brautpaar/${eventId}/dekoration` || pathname.startsWith(`/brautpaar/${eventId}/dekoration/`)
   const isChat = pathname === `/brautpaar/${eventId}/nachrichten` || pathname.startsWith(`/brautpaar/${eventId}/nachrichten/`)
+  const isWebsite = pathname === `/brautpaar/${eventId}/website` || pathname.startsWith(`/brautpaar/${eventId}/website/`)
   // Vollflächige Ansichten füllen exakt die verbleibende Höhe (kein Seiten-Scroll)
-  const isFullBleed = isDeko || isChat
+  const isFullBleed = isDeko || isChat || isWebsite
   // Paywall: Trial/Abo abgelaufen → nur die Abo-Seite bleibt erreichbar
   const isAboPage = pathname === `/brautpaar/${eventId}/abo` || pathname.startsWith(`/brautpaar/${eventId}/abo/`)
   const isExpired = subscription?.status === 'expired' && !isAboPage

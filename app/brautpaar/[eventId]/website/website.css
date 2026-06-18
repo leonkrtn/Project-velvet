@@ -1,0 +1,89 @@
+/* app/brautpaar/[eventId]/website/website.css — Editor der Hochzeitswebsite */
+
+.we-wrap { display: flex; height: 100%; min-height: 0; background: var(--bp-ivory, #faf8f4); }
+
+/* Linke Spalte: Formular */
+.we-form { width: 460px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid var(--bp-line, #e8e2d8); background: #fff; }
+.we-form-inner { padding: 1.25rem 1.25rem 4rem; }
+
+/* Rechte Spalte: Vorschau */
+.we-preview { flex: 1; min-width: 0; display: flex; flex-direction: column; background: #efeae2; }
+.we-preview-bar { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1rem; border-bottom: 1px solid var(--bp-line, #e8e2d8); background: #fff; flex-wrap: wrap; }
+.we-preview-frame { flex: 1; display: flex; align-items: flex-start; justify-content: center; overflow: auto; padding: 1.25rem; }
+.we-iframe-shell { background: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.12); border-radius: 8px; overflow: hidden; transition: width .25s ease; height: 100%; }
+.we-iframe-shell.desktop { width: 100%; max-width: 1100px; }
+.we-iframe-shell.mobile { width: 390px; }
+.we-iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+/* Tabs */
+.we-tabs { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.25rem; position: sticky; top: 0; background: #fff; padding-top: 0.5rem; z-index: 2; }
+.we-tab { padding: 0.45rem 0.8rem; border: 1px solid var(--bp-line, #e8e2d8); background: #fff; border-radius: 999px; font-size: 0.8rem; cursor: pointer; color: var(--bp-ink-2, #6b6258); }
+.we-tab.active { background: var(--bp-gold, #b9975b); border-color: var(--bp-gold, #b9975b); color: #fff; }
+
+.we-section-title { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; margin: 0 0 0.25rem; color: var(--bp-ink, #2c2622); }
+.we-section-sub { font-size: 0.82rem; color: var(--bp-ink-3, #8a8178); margin: 0 0 1.25rem; }
+
+.we-field { margin-bottom: 1.1rem; }
+.we-flabel { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--bp-ink-3, #8a8178); margin-bottom: 0.35rem; }
+.we-count { font-variant-numeric: tabular-nums; }
+.we-count.over { color: #c0392b; }
+.we-input, .we-textarea, .we-select {
+  width: 100%; padding: 0.6rem 0.7rem; border: 1px solid var(--bp-line, #e8e2d8); border-radius: 8px;
+  font-family: inherit; font-size: 0.92rem; color: var(--bp-ink, #2c2622); background: #fff;
+}
+.we-input:focus, .we-textarea:focus, .we-select:focus { outline: 2px solid var(--bp-gold, #b9975b); outline-offset: 0; border-color: transparent; }
+.we-textarea { resize: vertical; min-height: 80px; }
+.we-readonly { background: #f5f2ec; color: var(--bp-ink-3, #8a8178); }
+.we-hint { font-size: 0.72rem; color: var(--bp-ink-3, #8a8178); margin-top: 0.3rem; }
+.we-error { color: #c0392b; font-size: 0.78rem; margin-top: 0.3rem; }
+.we-ok { color: #2e7d52; font-size: 0.78rem; margin-top: 0.3rem; }
+
+/* Template-Auswahl */
+.we-templates { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.we-tpl { border: 2px solid var(--bp-line, #e8e2d8); border-radius: 10px; overflow: hidden; cursor: pointer; background: #fff; text-align: left; padding: 0; }
+.we-tpl.selected { border-color: var(--bp-gold, #b9975b); }
+.we-tpl-swatch { height: 56px; display: flex; }
+.we-tpl-swatch span { flex: 1; }
+.we-tpl-body { padding: 0.6rem 0.7rem; }
+.we-tpl-name { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; color: var(--bp-ink, #2c2622); }
+.we-tpl-tag { font-size: 0.72rem; color: var(--bp-ink-3, #8a8178); }
+
+/* Bild-Feld */
+.we-image { border: 1px dashed var(--bp-line, #cfc7ba); border-radius: 10px; padding: 0.75rem; }
+.we-image-preview { position: relative; width: 100%; height: 150px; border-radius: 8px; overflow: hidden; background: #f0ece4; cursor: crosshair; }
+.we-image-preview img { width: 100%; height: 100%; object-fit: cover; }
+.we-image-focus { position: absolute; width: 18px; height: 18px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px rgba(0,0,0,.35); transform: translate(-50%, -50%); pointer-events: none; }
+.we-image-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+
+/* Station / Listenelemente */
+.we-item { border: 1px solid var(--bp-line, #e8e2d8); border-radius: 10px; padding: 0.85rem; margin-bottom: 0.85rem; background: #fff; }
+.we-item-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem; }
+.we-item-head .we-item-no { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--bp-gold, #b9975b); }
+.we-item-tools { margin-left: auto; display: flex; gap: 0.25rem; }
+.we-icon-btn { border: 1px solid var(--bp-line, #e8e2d8); background: #fff; border-radius: 6px; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: var(--bp-ink-2, #6b6258); }
+.we-icon-btn:disabled { opacity: .4; cursor: not-allowed; }
+.we-icon-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3rem; }
+.we-icon-opt { border: 1px solid var(--bp-line, #e8e2d8); border-radius: 6px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--bp-ink-2, #6b6258); background: #fff; }
+.we-icon-opt.selected { background: var(--bp-gold, #b9975b); color: #fff; border-color: var(--bp-gold, #b9975b); }
+
+.we-btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 0.9rem; border-radius: 8px; border: 1px solid var(--bp-line, #e8e2d8); background: #fff; color: var(--bp-ink, #2c2622); font-size: 0.85rem; cursor: pointer; font-family: inherit; }
+.we-btn:hover { border-color: var(--bp-gold, #b9975b); }
+.we-btn-primary { background: var(--bp-gold, #b9975b); border-color: var(--bp-gold, #b9975b); color: #fff; }
+.we-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.we-btn-block { width: 100%; justify-content: center; }
+
+.we-savebar { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--bp-ink-3, #8a8178); }
+.we-dot { width: 8px; height: 8px; border-radius: 50%; }
+.we-spin { animation: we-spin .9s linear infinite; }
+@keyframes we-spin { to { transform: rotate(360deg); } }
+
+.we-publish-card { border: 1px solid var(--bp-line, #e8e2d8); border-radius: 10px; padding: 1rem; background: #fbf9f5; }
+.we-url { font-family: monospace; font-size: 0.82rem; word-break: break-all; color: var(--bp-gold-deep, #9c7f4f); }
+.we-switch { display: flex; align-items: center; gap: 0.6rem; }
+
+/* Mobile: Vorschau unter das Formular */
+@media (max-width: 980px) {
+  .we-wrap { flex-direction: column; height: auto; }
+  .we-form { width: 100%; border-right: none; border-bottom: 1px solid var(--bp-line, #e8e2d8); }
+  .we-preview { min-height: 70vh; }
+}

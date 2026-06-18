@@ -9,6 +9,7 @@ export type FileModule =
   | 'gaesteliste'
   | 'chats'
   | 'allgemein'
+  | 'wedding'
 
 export type FileStatus = 'pending' | 'active' | 'deleted'
 
@@ -51,6 +52,7 @@ export const MODULE_LABELS: Record<FileModule, string> = {
   gaesteliste: 'Gästeliste',
   chats:       'Chats',
   allgemein:   'Allgemein',
+  wedding:     'Hochzeitswebsite',
 }
 
 export const ALL_MODULES: FileModule[] = [
