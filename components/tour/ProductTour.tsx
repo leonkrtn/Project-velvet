@@ -130,32 +130,14 @@ export default function ProductTour({ eventId, available }: Props) {
       window.location.pathname.startsWith(`${targetRoute}/`)
 
     if (!onRoute()) router.push(targetRoute)
-    setRect(null)
     // Interaktive Schritte sitzen unten zentriert und brauchen die Zielposition
     // nicht — sofort einblenden, damit die Anleitung sichtbar bleibt.
     if (interactiveStep) setPositioned(true)
 
-    // Zielposition erst übernehmen, wenn sie sich nicht mehr bewegt. Das wartet
-    // sowohl das (auch langsame) Smooth-Scrolling als auch Einblende-Animationen
-    // der Seite ab — sonst läge das Spotlight neben dem Element (Boxen „passen
-    // nicht"). Stabil = zwei aufeinanderfolgende Messungen < 1px Abweichung.
-    const stabilize = (el: HTMLElement) => {
-      let last: DOMRect | null = null
-      let stable = 0
-      let n = 0
-      const poll = () => {
-        if (cancelled) return
-        const r = el.getBoundingClientRect()
-        if (last && Math.abs(r.top - last.top) < 1 && Math.abs(r.height - last.height) < 1) stable++
-        else stable = 0
-        last = r
-        // Spätestens nach ~2 s committen (Fallback für endloses Smooth-Scroll).
-        if (stable >= 2 || n++ > 40) { setRect(r); setPositioned(true); return }
-        timers.push(window.setTimeout(poll, 50))
-      }
-      timers.push(window.setTimeout(poll, 60))
-    }
-
+    // Auf Route + Zielelement warten, dann einmal in den Blick scrollen und die
+    // Karte einblenden. Die exakte Rahmen-Position pflegt anschließend die
+    // Live-Verfolgung (rAF-Loop unten) — sie gleicht Scroll, Font-/Bild-Laden
+    // und Layout-Verschiebungen Frame für Frame aus.
     let tries = 0
     const tick = () => {
       if (cancelled) return
@@ -164,7 +146,8 @@ export default function ProductTour({ eventId, available }: Props) {
         const el = document.querySelector<HTMLElement>(`[data-tour="${stepTarget}"]`)
         if (el) {
           el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-          stabilize(el)
+          setRect(el.getBoundingClientRect())
+          setPositioned(true)
           return
         }
       }
@@ -256,23 +239,39 @@ export default function ProductTour({ eventId, available }: Props) {
     return () => { style.remove() }
   }, [active])
 
-  // Spotlight bei Scroll/Resize nachführen.
+  // Viewport-Maße aktuell halten (für die Karten-Positionierung).
   useEffect(() => {
     if (!active) return
-    const update = () => {
-      setViewport({ w: window.innerWidth, h: window.innerHeight })
-      if (stepTarget) {
-        const el = document.querySelector<HTMLElement>(`[data-tour="${stepTarget}"]`)
-        if (el) setRect(el.getBoundingClientRect())
+    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight })
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [active])
+
+  // Live-Verfolgung: Solange ein Schritt ein Zielelement hat, wird der Rahmen in
+  // JEDEM Frame an die aktuelle Box des Elements angelegt. Das ist der Kern der
+  // Lösung — statt die Position einmal zu „erraten" (und bei Scroll, Smooth-Scroll,
+  // Font-/Bild-Laden oder Einblende-Animationen danebenzuliegen), umrandet der
+  // Rahmen immer exakt die Sektion, wie sie gerade dasteht. Sobald sich nichts
+  // mehr bewegt, hört das erneute Rendern von selbst auf (Identitäts-Check).
+  useEffect(() => {
+    if (!active || !stepTarget) return
+    let raf = 0
+    let cancelled = false
+    const same = (a: DOMRect, b: DOMRect) =>
+      Math.abs(a.top - b.top) < 0.5 && Math.abs(a.left - b.left) < 0.5 &&
+      Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5
+    const loop = () => {
+      if (cancelled) return
+      const el = document.querySelector<HTMLElement>(`[data-tour="${stepTarget}"]`)
+      if (el) {
+        const r = el.getBoundingClientRect()
+        setRect(prev => (prev && same(prev, r) ? prev : r))
       }
+      raf = window.requestAnimationFrame(loop)
     }
-    window.addEventListener('resize', update)
-    window.addEventListener('scroll', update, true)
-    return () => {
-      window.removeEventListener('resize', update)
-      window.removeEventListener('scroll', update, true)
-    }
-  }, [active, stepTarget])
+    raf = window.requestAnimationFrame(loop)
+    return () => { cancelled = true; window.cancelAnimationFrame(raf) }
+  }, [active, stepTarget, index])
 
   // Tastatursteuerung.
   useEffect(() => {
@@ -371,7 +370,8 @@ export default function ProductTour({ eventId, available }: Props) {
               : '0 0 0 9999px rgba(31,26,22,0.55)',
             outline: '2px solid var(--bp-gold, #9C7F4F)',
             outlineOffset: 2,
-            transition: 'all 0.25s ease',
+            // Keine Positions-Transition: der Rahmen wird per rAF Frame für Frame
+            // an die Box gelegt und bleibt so „angeklebt" (kein Nachziehen).
             pointerEvents: 'none',
           }}
         />
