@@ -123,6 +123,7 @@ export default function ProductTour({ eventId, available }: Props) {
   useEffect(() => {
     if (!active || !stepModule) return
     let cancelled = false
+    const timers: number[] = []
     const targetRoute = `/brautpaar/${eventId}/${stepModule}`
     const onRoute = () =>
       window.location.pathname === targetRoute ||
@@ -134,6 +135,27 @@ export default function ProductTour({ eventId, available }: Props) {
     // nicht — sofort einblenden, damit die Anleitung sichtbar bleibt.
     if (interactiveStep) setPositioned(true)
 
+    // Zielposition erst übernehmen, wenn sie sich nicht mehr bewegt. Das wartet
+    // sowohl das (auch langsame) Smooth-Scrolling als auch Einblende-Animationen
+    // der Seite ab — sonst läge das Spotlight neben dem Element (Boxen „passen
+    // nicht"). Stabil = zwei aufeinanderfolgende Messungen < 1px Abweichung.
+    const stabilize = (el: HTMLElement) => {
+      let last: DOMRect | null = null
+      let stable = 0
+      let n = 0
+      const poll = () => {
+        if (cancelled) return
+        const r = el.getBoundingClientRect()
+        if (last && Math.abs(r.top - last.top) < 1 && Math.abs(r.height - last.height) < 1) stable++
+        else stable = 0
+        last = r
+        // Spätestens nach ~2 s committen (Fallback für endloses Smooth-Scroll).
+        if (stable >= 2 || n++ > 40) { setRect(r); setPositioned(true); return }
+        timers.push(window.setTimeout(poll, 50))
+      }
+      timers.push(window.setTimeout(poll, 60))
+    }
+
     let tries = 0
     const tick = () => {
       if (cancelled) return
@@ -142,19 +164,15 @@ export default function ProductTour({ eventId, available }: Props) {
         const el = document.querySelector<HTMLElement>(`[data-tour="${stepTarget}"]`)
         if (el) {
           el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-          window.setTimeout(() => {
-            // rect + positioned gemeinsam setzen → die Karte erscheint direkt an der
-            // Zielposition (kein Aufploppen in der Mitte und Nachspringen).
-            if (!cancelled) { setRect(el.getBoundingClientRect()); setPositioned(true) }
-          }, 280)
+          stabilize(el)
           return
         }
       }
-      if (tries++ < MAX_TRIES) window.setTimeout(tick, POLL_MS)
+      if (tries++ < MAX_TRIES) timers.push(window.setTimeout(tick, POLL_MS))
       else { setRect(null); setPositioned(true) }       // Fallback: zentrierte Karte
     }
-    const id = window.setTimeout(tick, POLL_MS)
-    return () => { cancelled = true; window.clearTimeout(id) }
+    timers.push(window.setTimeout(tick, POLL_MS))
+    return () => { cancelled = true; timers.forEach(t => window.clearTimeout(t)) }
   }, [active, index, stepModule, stepTarget, interactiveStep, eventId, router])
 
   // Begleitetes Anlegen: Baseline ermitteln und auf den ersten Eintrag warten.
@@ -221,6 +239,22 @@ export default function ProductTour({ eventId, available }: Props) {
     timer = window.setTimeout(poll, POLL_MS)
     return () => { cancelled = true; if (timer) window.clearTimeout(timer) }
   }, [active, index, stepAppear, stepDisappear, advance])
+
+  // Während der Tour die Einblende-Animationen der Übersicht (.bp-reveal sowie
+  // die Hero-„rise") sofort auf den Endzustand setzen. CSS-`transform` verschiebt
+  // nur die sichtbare Darstellung, nicht die Layout-Box — sonst würde das anhand
+  // der Layout-Box gezeichnete Spotlight neben dem noch animierten Inhalt liegen
+  // („Boxen passen nicht"). Spiegelt die prefers-reduced-motion-Regeln.
+  useEffect(() => {
+    if (!active) return
+    const style = document.createElement('style')
+    style.setAttribute('data-fv-tour', 'reveal-settle')
+    style.textContent =
+      '.bp-mag .bp-reveal{opacity:1!important;transform:none!important;transition:none!important;}' +
+      '.bp-mag-hero-inner>*{animation:none!important;opacity:1!important;transform:none!important;}'
+    document.head.appendChild(style)
+    return () => { style.remove() }
+  }, [active])
 
   // Spotlight bei Scroll/Resize nachführen.
   useEffect(() => {
