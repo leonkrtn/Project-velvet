@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
       .eq('id', id)
       .eq('is_marketplace', true)
       .eq('published', true)
+      .eq('moderation_status', 'approved')
       .maybeSingle()
     if (!v) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
 
@@ -42,9 +43,10 @@ export async function GET(req: NextRequest) {
 
   let query = admin
     .from('dienstleister_profiles')
-    .select('id, name, company_name, category, city, price_range, description, logo_r2_key')
+    .select('id, name, company_name, category, city, price_range, description, logo_r2_key, verified, tier')
     .eq('is_marketplace', true)
     .eq('published', true)
+    .eq('moderation_status', 'approved')
 
   const category = sp.get('category')
   const city = sp.get('city')
@@ -85,7 +87,14 @@ export async function GET(req: NextRequest) {
       description: v.description,
       logo_url: logoUrl,
       cover_url: coverUrl ?? logoUrl,
+      verified: !!v.verified,
+      tier: v.tier ?? 'free',
     }
   }))
+
+  // Featured/Premium-Anbieter zuerst (Architektur für spätere Monetarisierung).
+  const rank: Record<string, number> = { premium: 0, featured: 1, free: 2 }
+  vendors.sort((a, b) => (rank[a.tier] ?? 2) - (rank[b.tier] ?? 2))
+
   return NextResponse.json({ vendors, count: vendors.length })
 }

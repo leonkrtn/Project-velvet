@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import SubscriptionsSection from './SubscriptionsSection'
 import PromoCodesSection from './PromoCodesSection'
 import MarketplaceVendorsSection from './MarketplaceVendorsSection'
+import MarketplaceModerationSection from './MarketplaceModerationSection'
 
 // ── Typen ─────────────────────────────────────────────────────────────────────
 
@@ -469,6 +470,9 @@ export default function AdminClient({ adminName }: { adminName: string }) {
               inputStyle={inputStyle}
               labelStyle={labelStyle}
             />
+
+            {/* ── Marktplatz-Moderation (Freigabe, Verifizierung, Sperren) ── */}
+            <MarketplaceModerationSection card={card} cardHeader={cardHeader} />
 
             {/* ── Marktplatz-Dienstleister ── */}
             <MarketplaceVendorsSection />

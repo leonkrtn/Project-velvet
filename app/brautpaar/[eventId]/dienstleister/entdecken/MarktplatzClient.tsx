@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Search, MapPin, Check, Star, ArrowUpDown } from 'lucide-react'
+import { Search, MapPin, Check, Star, ArrowUpDown, BadgeCheck } from 'lucide-react'
 import { MARKETPLACE_CATEGORIES, categoryLabel } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 
@@ -16,6 +16,8 @@ interface VendorCard {
   description: string | null
   logo_url: string | null
   cover_url: string | null
+  verified?: boolean
+  tier?: string
 }
 interface Req { id: string; dienstleister_id: string; status: string }
 
@@ -160,8 +162,9 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600, color: 'var(--bp-gold-deep,#8a6f3f)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     <CategoryIcon category={v.category} size={13} /> {categoryLabel(v.category)}
                   </div>
-                  <h3 className="bp-font-heading" style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, color: 'var(--bp-ink)', lineHeight: 1.2 }}>
+                  <h3 className="bp-font-heading" style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, color: 'var(--bp-ink)', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {v.company_name || v.name}
+                    {v.verified && <BadgeCheck size={16} style={{ color: '#15803D', flexShrink: 0 }} aria-label="Verifiziert" />}
                   </h3>
                   {/* Sterne-Platzhalter */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--bp-gold,#b89968)' }}>

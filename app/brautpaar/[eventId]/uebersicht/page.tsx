@@ -28,7 +28,7 @@ export default async function UebersichtPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [eventRes, guestsRes, begleitRes, budgetRes, tasksRes, seatingRes, songsRes, timelineRes] = await Promise.all([
+  const [eventRes, guestsRes, begleitRes, budgetRes, tasksRes, seatingRes, songsRes, timelineRes, cateringRes] = await Promise.all([
     supabase
       .from('events')
       .select('id, title, date, couple_name, venue, organizer_fee, organizer_fee_type, budget_total, cover_image_r2_key')
@@ -63,6 +63,10 @@ export default async function UebersichtPage({ params }: Props) {
       .from('timeline_entries')
       .select('id', { count: 'exact', head: true })
       .eq('event_id', eventId),
+    supabase
+      .from('catering_plans')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', eventId),
   ])
 
   const event = eventRes.data
@@ -85,6 +89,10 @@ export default async function UebersichtPage({ params }: Props) {
   // Karte zeigt: verplante Summe der Budgetpunkte vs. Gesamtbudget des Events
   const budgetPlanned = budgetItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)
   const budgetLimit   = Number(event.budget_total) || 0
+  const budgetItemCount = budgetItems.length
+  // Catering gilt als „eingerichtet", sobald das Paar einen Plan gespeichert hat
+  // (catering_plans wird nur bei aktiver Eingabe angelegt, nicht beim bloßen Öffnen).
+  const cateringConfigured = (cateringRes.count ?? 0) > 0
 
   const tasks = tasksRes.data ?? []
   const tasksDone  = tasks.filter(t => t.done).length
@@ -136,12 +144,14 @@ export default async function UebersichtPage({ params }: Props) {
       guestApprovalPending={guestApprovalPending}
       budgetPlanned={budgetPlanned}
       budgetLimit={budgetLimit}
+      budgetItemCount={budgetItemCount}
       tasksDone={tasksDone}
       tasksTotal={tasksTotal}
       nextTasks={nextTasks}
       seatedCount={seatingRes.count ?? 0}
       songCount={songsRes.count ?? 0}
       timelineCount={timelineRes.count ?? 0}
+      cateringConfigured={cateringConfigured}
     />
   )
 }
