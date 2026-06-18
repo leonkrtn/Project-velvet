@@ -94,6 +94,8 @@ function LoginForm() {
               .limit(1)
             if (vsc && vsc.length > 0) {
               router.push('/vendor/dashboard')
+            } else if (session?.user?.user_metadata?.signup_role === 'dienstleister') {
+              router.push('/vendor/listing')
             } else {
               router.push('/signup')
             }
