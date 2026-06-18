@@ -119,7 +119,7 @@ a, button { transition: opacity 0.15s ease, background 0.15s ease, border-color 
 
 a:hover { opacity: 0.8; }
 
-button:hover:not(:disabled):not([data-sel]) { opacity: 0.85; }
+button:hover:not(:disabled):not([data-sel]) { opacity: 1; }
 
 /* Feature grid links */
 .feature-grid a:hover {
@@ -127,27 +127,31 @@ button:hover:not(:disabled):not([data-sel]) { opacity: 0.85; }
   opacity: 1;
 }
 
+/* Hover for inline-styled buttons:
+   only a little darker, never force a text colour. Using filter: brightness()
+   keeps every text/icon colour intact (black stays black, white stays white),
+   which avoids the old "dark background + unreadable black text" bug that the
+   previous `background:#333 !important; color:#fff !important` rules caused —
+   especially for buttons whose label sits in a child <span> with its own colour. */
+
 /* Ghost / border buttons */
 button[style*="border"]:hover:not(:disabled):not([data-sel]) {
+  filter: brightness(0.96);
   border-color: var(--accent) !important;
-  color: var(--accent) !important;
   opacity: 1;
 }
 
-/* Accent primary buttons */
+/* Accent / primary buttons */
 button[style*="var(--gold)"]:hover:not(:disabled):not(.tab-btn):not([data-sel]),
 button[style*="var(--accent)"]:hover:not(:disabled):not(.tab-btn):not([data-sel]) {
-  background: #333 !important;
-  color: #ffffff !important;
+  filter: brightness(0.93);
   opacity: 1;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(29,29,31,0.25);
 }
 
 /* Icon-only buttons */
 button[style*="background:none"]:hover:not([data-sel]),
 button[style*="background: none"]:hover:not([data-sel]) {
-  color: var(--accent) !important;
+  filter: brightness(0.85);
   opacity: 1;
 }
 
