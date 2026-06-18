@@ -72,6 +72,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .delete()
         .eq('event_id', request.event_id)
         .in('dienstleister_user_id', vendorUserIds)
+      await admin.from('event_members')
+        .delete()
+        .eq('event_id', request.event_id)
+        .eq('role', 'dienstleister')
+        .in('user_id', vendorUserIds)
     }
     return NextResponse.json({ success: true })
   }
@@ -92,6 +97,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       .select('category, name, company_name')
       .eq('id', request.dienstleister_id)
       .maybeSingle()
+
+    // 0. Vendor als Event-Mitglied eintragen — sonst greift der Dashboard-Guard
+    //    (layout.tsx verlangt event_members.role='dienstleister') und leitet auf /vendor/join.
+    await admin.from('event_members').upsert({
+      event_id: request.event_id,
+      user_id: user.id,
+      role: 'dienstleister',
+      invited_by: request.requested_by,
+    }, { onConflict: 'event_id,user_id' })
 
     // 1. event_dienstleister verknüpfen (idempotent über UNIQUE(event_id, dienstleister_id))
     await admin.from('event_dienstleister').upsert({
