@@ -4,9 +4,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   Check, X, MessageSquare, MapPin, Calendar, Euro, Inbox,
-  ChevronLeft, Heart, Loader2,
+  ChevronLeft, Heart, Loader2, Users, Mail, Phone, Tag, ArrowRight,
 } from 'lucide-react'
 
+interface Contact { name: string | null; email: string | null; phone: string | null }
 interface Req {
   id: string
   event_id: string
@@ -15,8 +16,14 @@ interface Req {
   status: 'pending' | 'accepted' | 'declined' | 'cancelled'
   conversation_id: string | null
   created_at: string
-  events: { title: string; couple_name: string | null; date: string | null; location_name: string | null; location_city: string | null } | null
-  requester: { name: string | null } | null
+  events: {
+    title: string; couple_name: string | null; date: string | null
+    location_name: string | null; location_city: string | null
+    venue: string | null; venue_address: string | null; event_type: string | null
+  } | null
+  requester: Contact | null
+  guest_count: { confirmed: number; pending: number } | null
+  couple_contacts: Contact[]
 }
 
 const statusMeta: Record<Req['status'], { label: string; bg: string; fg: string }> = {
@@ -25,8 +32,16 @@ const statusMeta: Record<Req['status'], { label: string; bg: string; fg: string 
   declined:  { label: 'Abgelehnt',     bg: 'rgba(197,34,31,0.10)',   fg: '#C5221F' },
   cancelled: { label: 'Zurückgezogen', bg: 'var(--bg)',              fg: 'var(--text-dim)' },
 }
+const EVENT_TYPE_LABELS: Record<string, string> = { hochzeit: 'Hochzeit', firmenevent: 'Firmenevent', intern: 'Interne Veranstaltung' }
 
 type Filter = 'offen' | 'angenommen' | 'erledigt'
+
+function locationOf(e: Req['events']): string {
+  if (!e) return ''
+  if (e.venue) return [e.venue, e.venue_address].filter(Boolean).join(', ')
+  return [e.location_name, e.location_city].filter(Boolean).join(', ')
+}
+function titleOf(r: Req): string { return r.events?.couple_name || r.events?.title || 'Hochzeit' }
 
 export default function VendorAnfragenClient() {
   const [requests, setRequests] = useState<Req[]>([])
@@ -34,6 +49,7 @@ export default function VendorAnfragenClient() {
   const [isVendor, setIsVendor] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('offen')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const res = await fetch('/api/marketplace/vendor-requests')
@@ -50,7 +66,6 @@ export default function VendorAnfragenClient() {
     erledigt:   requests.filter(r => r.status === 'declined' || r.status === 'cancelled').length,
   }), [requests])
 
-  // Default to the tab that actually has content.
   useEffect(() => {
     if (loading) return
     if (counts.offen === 0 && counts.angenommen > 0) setFilter('angenommen')
@@ -62,6 +77,8 @@ export default function VendorAnfragenClient() {
     if (filter === 'angenommen') return r.status === 'accepted'
     return r.status === 'declined' || r.status === 'cancelled'
   }), [requests, filter])
+
+  const selected = useMemo(() => requests.find(r => r.id === selectedId) ?? null, [requests, selectedId])
 
   async function act(id: string, action: 'accept' | 'decline') {
     setBusyId(id)
@@ -80,17 +97,12 @@ export default function VendorAnfragenClient() {
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '28px 20px 64px' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div style={{ maxWidth: 920, margin: '0 auto' }}>
 
-        {/* Back */}
-        <Link href="/vendor/dashboard" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13,
-          color: 'var(--text-dim)', textDecoration: 'none', marginBottom: 18,
-        }}>
+        <Link href="/vendor/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-dim)', textDecoration: 'none', marginBottom: 18 }}>
           <ChevronLeft size={15} /> Zurück zu meinen Events
         </Link>
 
-        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
           <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Inbox size={20} style={{ color: 'var(--gold)' }} />
@@ -101,32 +113,23 @@ export default function VendorAnfragenClient() {
           </div>
         </div>
 
-        {/* Tabs */}
         {isVendor && !loading && requests.length > 0 && (
           <div style={{ display: 'flex', gap: 8, margin: '22px 0 18px', flexWrap: 'wrap' }}>
             {tabs.map(t => {
               const active = filter === t.key
               return (
                 <button key={t.key} onClick={() => setFilter(t.key)} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 14px',
-                  borderRadius: 100, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
-                  border: `1px solid ${active ? 'var(--gold)' : 'var(--border)'}`,
-                  background: active ? 'var(--gold)' : 'var(--surface)',
-                  color: active ? '#fff' : 'var(--text)',
+                  display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 100, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+                  border: `1px solid ${active ? 'var(--gold)' : 'var(--border)'}`, background: active ? 'var(--gold)' : 'var(--surface)', color: active ? '#fff' : 'var(--text)',
                 }}>
                   {t.label}
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, borderRadius: 100, minWidth: 18, textAlign: 'center', padding: '0 5px',
-                    background: active ? 'rgba(255,255,255,0.25)' : 'var(--bg)',
-                    color: active ? '#fff' : 'var(--text-dim)',
-                  }}>{t.count}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 100, minWidth: 18, textAlign: 'center', padding: '0 5px', background: active ? 'rgba(255,255,255,0.25)' : 'var(--bg)', color: active ? '#fff' : 'var(--text-dim)' }}>{t.count}</span>
                 </button>
               )
             })}
           </div>
         )}
 
-        {/* Content */}
         {loading ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-dim)', fontSize: 14, padding: '30px 0' }}>
             <Loader2 size={16} className="anf-spin" /> Lädt…
@@ -138,91 +141,177 @@ export default function VendorAnfragenClient() {
         ) : visible.length === 0 ? (
           <EmptyState title="Nichts hier" text={`Keine Anfragen im Bereich „${tabs.find(t => t.key === filter)?.label}".`} />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {visible.map(r => (
-              <RequestCard key={r.id} r={r} busy={busyId === r.id} onAct={act} />
-            ))}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
+            {visible.map(r => <RequestTile key={r.id} r={r} onOpen={() => setSelectedId(r.id)} />)}
           </div>
         )}
       </div>
+
+      {selected && (
+        <RequestLightbox r={selected} busy={busyId === selected.id} onClose={() => setSelectedId(null)} onAct={act} />
+      )}
 
       <style>{`.anf-spin { animation: anfspin 1s linear infinite; } @keyframes anfspin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
 
-function RequestCard({ r, busy, onAct }: { r: Req; busy: boolean; onAct: (id: string, a: 'accept' | 'decline') => void }) {
+function RequestTile({ r, onOpen }: { r: Req; onOpen: () => void }) {
   const m = statusMeta[r.status]
-  const title = r.events?.couple_name || r.events?.title || 'Hochzeit'
-  const location = [r.events?.location_name, r.events?.location_city].filter(Boolean).join(', ')
-
+  const loc = locationOf(r.events)
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md, 14px)', padding: 18 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 7 }}>
-            <Heart size={14} style={{ color: 'var(--gold)', flexShrink: 0 }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
-          </div>
-          <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 3 }}>
-            von {r.requester?.name ?? 'Brautpaar'} · {new Date(r.created_at).toLocaleDateString('de-DE')}
-          </div>
+    <button onClick={onOpen} style={{
+      textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer',
+      background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md, 14px)',
+      padding: 16, display: 'flex', flexDirection: 'column', gap: 10, transition: 'box-shadow .15s, border-color .15s',
+    }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm, 0 4px 16px rgba(0,0,0,0.06))'; e.currentTarget.style.borderColor = 'var(--gold)' }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+          <Heart size={14} style={{ color: 'var(--gold)', flexShrink: 0 }} />
+          <span style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titleOf(r)}</span>
         </div>
-        <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '5px 11px', borderRadius: 100, background: m.bg, color: m.fg, flexShrink: 0, whiteSpace: 'nowrap' }}>{m.label}</span>
+        <span style={{ fontSize: 10.5, fontWeight: 700, padding: '4px 9px', borderRadius: 100, background: m.bg, color: m.fg, flexShrink: 0, whiteSpace: 'nowrap' }}>{m.label}</span>
       </div>
 
-      {(r.events?.date || location || r.budget != null) && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '14px 0' }}>
-          {r.events?.date && <MetaChip icon={<Calendar size={13} />} text={new Date(r.events.date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })} />}
-          {location && <MetaChip icon={<MapPin size={13} />} text={location} />}
-          {r.budget != null && <MetaChip icon={<Euro size={13} />} text={`${r.budget.toLocaleString('de-DE')} €`} />}
-        </div>
-      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {r.events?.date && <TileLine icon={<Calendar size={13} />} text={new Date(r.events.date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })} />}
+        {loc && <TileLine icon={<MapPin size={13} />} text={loc} />}
+        {r.guest_count && r.guest_count.confirmed > 0 && <TileLine icon={<Users size={13} />} text={`${r.guest_count.confirmed} Gäste`} />}
+        {r.budget != null && <TileLine icon={<Euro size={13} />} text={`${r.budget.toLocaleString('de-DE')} € Budget`} />}
+      </div>
 
-      {r.message && (
-        <p style={{ fontSize: 13.5, color: 'var(--text)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '11px 13px', margin: '0 0 14px', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{r.message}</p>
-      )}
+      {r.message && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.message}</p>}
 
-      {r.status === 'pending' ? (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => onAct(r.id, 'accept')} disabled={busy} style={{
-            padding: '10px 18px', borderRadius: 10, border: 'none', background: '#1E7E34', color: '#fff',
-            fontSize: 13.5, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
-            display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit',
-          }}>
-            {busy ? <Loader2 size={15} className="anf-spin" /> : <Check size={15} />} Annehmen
-          </button>
-          <button onClick={() => onAct(r.id, 'decline')} disabled={busy} style={{
-            padding: '10px 18px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
-            fontSize: 13.5, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1,
-            display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit',
-          }}>
-            <X size={15} /> Ablehnen
-          </button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: 4 }}>
+        <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>von {r.requester?.name ?? 'Brautpaar'}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: 'var(--gold)' }}>Details <ArrowRight size={13} /></span>
+      </div>
+    </button>
+  )
+}
+
+function RequestLightbox({ r, busy, onClose, onAct }: { r: Req; busy: boolean; onClose: () => void; onAct: (id: string, a: 'accept' | 'decline') => void }) {
+  const m = statusMeta[r.status]
+  const loc = locationOf(r.events)
+  const contacts = r.couple_contacts.length ? r.couple_contacts : (r.requester ? [r.requester] : [])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 18, width: 560, maxWidth: '100%', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-md, 0 12px 48px rgba(0,0,0,0.2))' }}>
+        {/* Header */}
+        <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Heart size={16} style={{ color: 'var(--gold)', flexShrink: 0 }} />
+              <h2 style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>{titleOf(r)}</h2>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, background: m.bg, color: m.fg }}>{m.label}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Angefragt am {new Date(r.created_at).toLocaleDateString('de-DE')}</span>
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', flexShrink: 0, padding: 2 }}><X size={20} /></button>
         </div>
-      ) : r.status === 'accepted' ? (
-        <Link href={`/vendor/dashboard/${r.event_id}/kommunikation`} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10,
-          background: 'var(--gold)', color: '#fff', fontSize: 13.5, fontWeight: 600, textDecoration: 'none',
-        }}>
-          <MessageSquare size={15} /> Zur Kommunikation
-        </Link>
-      ) : null}
+
+        {/* Body */}
+        <div style={{ padding: 22, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <Section title="Veranstaltung">
+            {r.events?.event_type && <DetailRow icon={<Tag size={15} />} label="Art">{EVENT_TYPE_LABELS[r.events.event_type] ?? r.events.event_type}</DetailRow>}
+            <DetailRow icon={<Calendar size={15} />} label="Datum">{r.events?.date ? new Date(r.events.date).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : '—'}</DetailRow>
+            <DetailRow icon={<MapPin size={15} />} label="Location">{loc || '—'}</DetailRow>
+            <DetailRow icon={<Users size={15} />} label="Gäste">
+              {r.guest_count && r.guest_count.confirmed > 0
+                ? <>{r.guest_count.confirmed} bestätigt{r.guest_count.pending > 0 ? <span style={{ color: 'var(--text-dim)' }}> · {r.guest_count.pending} ausstehend</span> : null}</>
+                : '—'}
+            </DetailRow>
+            {r.budget != null && <DetailRow icon={<Euro size={15} />} label="Budget">{r.budget.toLocaleString('de-DE')} €</DetailRow>}
+          </Section>
+
+          {contacts.length > 0 && (
+            <Section title="Kontakt zum Brautpaar">
+              {contacts.map((c, i) => (
+                <div key={i} style={{ padding: '4px 0', borderTop: i > 0 ? '1px solid var(--border)' : 'none', marginTop: i > 0 ? 6 : 0, paddingTop: i > 0 ? 10 : 4 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '0 0 6px' }}>{c.name ?? 'Brautpaar'}</p>
+                  {c.email && <ContactLink icon={<Mail size={13} />} href={`mailto:${c.email}`} text={c.email} />}
+                  {c.phone && <ContactLink icon={<Phone size={13} />} href={`tel:${c.phone}`} text={c.phone} />}
+                  {!c.email && !c.phone && <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>Keine Kontaktdaten hinterlegt.</span>}
+                </div>
+              ))}
+            </Section>
+          )}
+
+          {r.message && (
+            <Section title="Nachricht">
+              <p style={{ fontSize: 14, color: 'var(--text)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{r.message}</p>
+            </Section>
+          )}
+        </div>
+
+        {/* Footer actions */}
+        {(r.status === 'pending' || r.status === 'accepted') && (
+          <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            {r.status === 'pending' ? (
+              <>
+                <button onClick={() => onAct(r.id, 'decline')} disabled={busy} style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+                  <X size={15} /> Ablehnen
+                </button>
+                <button onClick={() => onAct(r.id, 'accept')} disabled={busy} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: '#1E7E34', color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+                  {busy ? <Loader2 size={15} className="anf-spin" /> : <Check size={15} />} Annehmen
+                </button>
+              </>
+            ) : (
+              <Link href={`/vendor/dashboard/${r.event_id}/kommunikation`} style={{ padding: '10px 20px', borderRadius: 10, background: 'var(--gold)', color: '#fff', fontSize: 13.5, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                <MessageSquare size={15} /> Zur Kommunikation
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-function MetaChip({ icon, text }: { icon: React.ReactNode; text: string }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: 'var(--text-dim)',
-      background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 10px',
-    }}>
-      <span style={{ display: 'flex', flexShrink: 0 }}>{icon}</span>{text}
+    <div>
+      <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', margin: '0 0 10px' }}>{title}</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>{children}</div>
+    </div>
+  )
+}
+function DetailRow({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, fontSize: 14 }}>
+      <span style={{ color: 'var(--text-dim)', marginTop: 1, flexShrink: 0 }}>{icon}</span>
+      <span style={{ fontWeight: 500, color: 'var(--text-dim)', width: 76, flexShrink: 0 }}>{label}</span>
+      <span style={{ color: 'var(--text)', flex: 1 }}>{children}</span>
+    </div>
+  )
+}
+function ContactLink({ icon, href, text }: { icon: React.ReactNode; href: string; text: string }) {
+  return (
+    <a href={href} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5, color: 'var(--text-secondary, #555)', textDecoration: 'none', marginBottom: 4 }}>
+      <span style={{ color: 'var(--text-dim)', flexShrink: 0, display: 'flex' }}>{icon}</span>{text}
+    </a>
+  )
+}
+function TileLine({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: 'var(--text-dim)' }}>
+      <span style={{ flexShrink: 0, display: 'flex' }}>{icon}</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{text}</span>
     </span>
   )
 }
-
 function EmptyState({ title, text }: { title: string; text: string }) {
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md, 14px)', padding: '40px 24px', textAlign: 'center' }}>
