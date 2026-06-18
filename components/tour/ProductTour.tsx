@@ -15,7 +15,6 @@ interface Props {
 // Event-Name zum manuellen (Neu-)Start über die Hilfe-Schaltfläche.
 export const TOUR_START_EVENT = 'fv-solo-tour-start'
 
-const PAD = 8           // Spotlight-Innenabstand um das Zielelement
 const CARD_W = 340
 const POLL_MS = 120
 const MAX_TRIES = 45    // ~5,4 s warten, bis ein Zielelement erscheint
@@ -119,7 +118,9 @@ export default function ProductTour({ eventId, available }: Props) {
     setRect(null)
   }, [active, index])
 
-  // Bei Schrittwechsel: ggf. zur Zielroute navigieren und das Element suchen.
+  // Bei Schrittwechsel ggf. zur Zielroute navigieren. Das eigentliche Hervorheben
+  // (Ring direkt am Zielelement) übernimmt der Loop weiter unten — hier nur Routing
+  // sowie das Einblenden der Karte für interaktive bzw. zentrierte (zielfreie) Schritte.
   useEffect(() => {
     if (!active || !stepModule) return
     let cancelled = false
@@ -130,31 +131,19 @@ export default function ProductTour({ eventId, available }: Props) {
       window.location.pathname.startsWith(`${targetRoute}/`)
 
     if (!onRoute()) router.push(targetRoute)
-    // Interaktive Schritte sitzen unten zentriert und brauchen die Zielposition
-    // nicht — sofort einblenden, damit die Anleitung sichtbar bleibt.
     if (interactiveStep) setPositioned(true)
 
-    // Auf Route + Zielelement warten, dann einmal in den Blick scrollen und die
-    // Karte einblenden. Die exakte Rahmen-Position pflegt anschließend die
-    // Live-Verfolgung (rAF-Loop unten) — sie gleicht Scroll, Font-/Bild-Laden
-    // und Layout-Verschiebungen Frame für Frame aus.
-    let tries = 0
-    const tick = () => {
-      if (cancelled) return
-      if (onRoute()) {
-        if (!stepTarget) { setRect(null); setPositioned(true); return }   // zentrierte Karte
-        const el = document.querySelector<HTMLElement>(`[data-tour="${stepTarget}"]`)
-        if (el) {
-          el.scrollIntoView({ block: 'center', behavior: 'smooth' })
-          setRect(el.getBoundingClientRect())
-          setPositioned(true)
-          return
-        }
+    // Zielfreie Schritte: zentrierte Karte, sobald die Route steht.
+    if (!stepTarget) {
+      let tries = 0
+      const wait = () => {
+        if (cancelled) return
+        if (onRoute()) { setRect(null); setPositioned(true); return }
+        if (tries++ < MAX_TRIES) timers.push(window.setTimeout(wait, POLL_MS))
+        else setPositioned(true)
       }
-      if (tries++ < MAX_TRIES) timers.push(window.setTimeout(tick, POLL_MS))
-      else { setRect(null); setPositioned(true) }       // Fallback: zentrierte Karte
+      timers.push(window.setTimeout(wait, POLL_MS))
     }
-    timers.push(window.setTimeout(tick, POLL_MS))
     return () => { cancelled = true; timers.forEach(t => window.clearTimeout(t)) }
   }, [active, index, stepModule, stepTarget, interactiveStep, eventId, router])
 
@@ -247,31 +236,77 @@ export default function ProductTour({ eventId, available }: Props) {
     return () => window.removeEventListener('resize', onResize)
   }, [active])
 
-  // Live-Verfolgung: Solange ein Schritt ein Zielelement hat, wird der Rahmen in
-  // JEDEM Frame an die aktuelle Box des Elements angelegt. Das ist der Kern der
-  // Lösung — statt die Position einmal zu „erraten" (und bei Scroll, Smooth-Scroll,
-  // Font-/Bild-Laden oder Einblende-Animationen danebenzuliegen), umrandet der
-  // Rahmen immer exakt die Sektion, wie sie gerade dasteht. Sobald sich nichts
-  // mehr bewegt, hört das erneute Rendern von selbst auf (Identitäts-Check).
+  // KERN DER LÖSUNG — „nur eine Box": Statt einen separaten Rahmen an den
+  // gemessenen Koordinaten zu zeichnen (zweite Box, die danebenliegen kann),
+  // wird der Ring (und die Abdunklung) DIREKT auf das Zielelement gelegt. Der
+  // Rahmen IST damit das Element selbst und kann prinzipiell nie verrutschen.
+  // Ein Loop sorgt dafür, dass das Highlight stets am aktuellen Element hängt
+  // (auch nach Re-Mounts) und pflegt nebenbei `rect` für die Karten-Position.
   useEffect(() => {
     if (!active || !stepTarget) return
     let raf = 0
     let cancelled = false
+    let node: HTMLElement | null = null
+    let saved: { position: string; zIndex: string; borderRadius: string; boxShadow: string; transition: string } | null = null
+
+    // Interaktiver Schritt: nur Ring (Seite bleibt sicht- und bedienbar).
+    // Erklär-Schritt: Ring + Abdunklung der Umgebung (riesiger box-shadow).
+    const ring = interactiveStep
+      ? '0 0 0 3px rgba(156,127,79,0.95), 0 0 0 6px rgba(156,127,79,0.22)'
+      : '0 0 0 3px #9C7F4F, 0 0 0 9999px rgba(31,26,22,0.55)'
+
     const same = (a: DOMRect, b: DOMRect) =>
       Math.abs(a.top - b.top) < 0.5 && Math.abs(a.left - b.left) < 0.5 &&
       Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5
+
+    // Sichtbare Hervorhebung setzen (idempotent) — wird bei Bedarf jeden Frame
+    // erneut gesetzt, falls ein React-Re-Render das inline-style zurücksetzt.
+    const paint = (el: HTMLElement) => {
+      const cs = getComputedStyle(el)
+      if (cs.position === 'static') el.style.position = 'relative'
+      el.style.zIndex = '3500'           // über Inhalt/Sidebar, unter der Tour-Karte (4000)
+      if (cs.borderRadius === '0px') el.style.borderRadius = '12px'
+      el.style.boxShadow = ring
+      el.style.transition = 'box-shadow 0.2s ease'
+    }
+    const restore = () => {
+      if (node && saved) {
+        node.style.position = saved.position
+        node.style.zIndex = saved.zIndex
+        node.style.borderRadius = saved.borderRadius
+        node.style.boxShadow = saved.boxShadow
+        node.style.transition = saved.transition
+      }
+      node = null; saved = null
+    }
+
     const loop = () => {
       if (cancelled) return
       const el = document.querySelector<HTMLElement>(`[data-tour="${stepTarget}"]`)
       if (el) {
+        if (el !== node) {
+          restore()
+          // Originalwerte EINMAL sichern (vor dem Übermalen).
+          saved = {
+            position: el.style.position, zIndex: el.style.zIndex,
+            borderRadius: el.style.borderRadius, boxShadow: el.style.boxShadow,
+            transition: el.style.transition,
+          }
+          node = el
+          paint(el)
+          el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+          setPositioned(true)
+        } else if (el.style.boxShadow !== ring) {
+          paint(el)   // React hat das inline-style überschrieben → neu setzen
+        }
         const r = el.getBoundingClientRect()
         setRect(prev => (prev && same(prev, r) ? prev : r))
       }
       raf = window.requestAnimationFrame(loop)
     }
     raf = window.requestAnimationFrame(loop)
-    return () => { cancelled = true; window.cancelAnimationFrame(raf) }
-  }, [active, stepTarget, index])
+    return () => { cancelled = true; window.cancelAnimationFrame(raf); restore() }
+  }, [active, stepTarget, index, interactiveStep])
 
   // Tastatursteuerung.
   useEffect(() => {
@@ -337,10 +372,13 @@ export default function ProductTour({ eventId, available }: Props) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 4000, pointerEvents: 'none' }} aria-live="polite" role="dialog" aria-label="Produkt-Tour">
       <style>{`@keyframes fvTourIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes fvTourFadeIn{from{opacity:0}to{opacity:1}}`}</style>
-      {/* Hintergrund.
-          • Anlege-Schritt: transparent + klick-durchlässig, damit das Paar das
-            echte Formular bedienen kann.
-          • Erklär-Schritt: abdunkeln und Klicks abfangen. */}
+      {/* Hintergrund / Klick-Schutz.
+          • Anlege-/Feld-Schritt (interactiveStep): KEIN Overlay — die Seite bleibt
+            voll bedienbar; das Element trägt nur einen Ring.
+          • Erklär-Schritt: transparenter, ganzflächiger Klick-Fänger. Die sichtbare
+            Abdunklung erzeugt der riesige box-shadow direkt am Zielelement, sodass
+            es genau EINE hervorgehobene Box gibt — das Element selbst.
+          • Solange noch kein Ziel hervorgehoben ist (rect null): echtes Abdunkeln. */}
       {!interactiveStep && (
         <div
           onClick={e => e.stopPropagation()}
@@ -348,31 +386,6 @@ export default function ProductTour({ eventId, available }: Props) {
             position: 'fixed', inset: 0,
             background: rect ? 'transparent' : 'rgba(31,26,22,0.55)',
             pointerEvents: 'auto',
-          }}
-        />
-      )}
-
-      {/* Spotlight */}
-      {rect && (
-        <div
-          key={index}
-          style={{
-            position: 'fixed',
-            animation: 'fvTourFadeIn 0.2s ease both',
-            top: rect.top - PAD,
-            left: rect.left - PAD,
-            width: rect.width + PAD * 2,
-            height: rect.height + PAD * 2,
-            borderRadius: 14,
-            // Erklär-Schritt dunkelt rundherum ab; interaktiver Schritt nur Ring + Glow.
-            boxShadow: interactiveStep
-              ? '0 0 0 4px rgba(156,127,79,0.28)'
-              : '0 0 0 9999px rgba(31,26,22,0.55)',
-            outline: '2px solid var(--bp-gold, #9C7F4F)',
-            outlineOffset: 2,
-            // Keine Positions-Transition: der Rahmen wird per rAF Frame für Frame
-            // an die Box gelegt und bleibt so „angeklebt" (kein Nachziehen).
-            pointerEvents: 'none',
           }}
         />
       )}
