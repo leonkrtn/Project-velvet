@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Music, Camera, Wallet, CheckSquare, Settings,
-  MessageSquare, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
+  MessageSquare, ChevronRight, X, Menu, LogOut, GlassWater,
   Briefcase, FileDown, CreditCard, Lock, Sparkles, HelpCircle, Globe,
 } from 'lucide-react'
 import ForevrHeart from '@/components/ForevrHeart'
@@ -58,8 +58,7 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
       label: 'VERWALTUNG',
       items: [
         b('budget', 'Budget', <Wallet size={16} />),
-        b('aufgaben', 'Aufgaben', <CheckSquare size={16} />),
-        b('notizen', 'Notizen', <NotebookPen size={16} />),
+        b('aufgaben-notizen', 'Aufgaben & Notizen', <CheckSquare size={16} />),
         b('website', 'Hochzeitswebsite', <Globe size={16} />),
         // Dienstleister-Bereich für ALLE Brautpaare: enthält den Marktplatz
         // ("Entdecken") und – für Solo-Paare – die Verwaltung der Zugriffsrechte.
@@ -210,11 +209,12 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   const fullNav = buildNav(eventId, isSolo, chatEnabled)
   const nav = fullNav.map(group => ({
     ...group,
-    items: group.items.filter(item =>
-      item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'pdf-export' || item.key === 'abo' || item.key === 'website'
-        ? true
-        : (bpToggles[`bp-${item.key}`] ?? true)
-    ),
+    items: group.items.filter(item => {
+      if (item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'pdf-export' || item.key === 'abo' || item.key === 'website') return true
+      // Kombinierter Eintrag: sichtbar, solange Aufgaben ODER Notizen freigeschaltet sind
+      if (item.key === 'aufgaben-notizen') return (bpToggles['bp-aufgaben'] ?? true) || (bpToggles['bp-notizen'] ?? true)
+      return bpToggles[`bp-${item.key}`] ?? true
+    }),
   })).filter(g => g.items.length > 0)
 
   // Freigeschaltete Module für die Produkt-Tour (gesperrte/Pro-Bereiche werden

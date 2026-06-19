@@ -144,20 +144,20 @@ export const SOLO_TOUR_STEPS: TourStep[] = [
     body: 'Haltet gewünschte Aufnahmen fest und sammelt nach der Feier die Fotos eurer Gäste.' },
 
   // ── Aufgaben: erste Aufgabe begleitet anlegen ───────────────────────────────
-  { module: 'aufgaben', target: 'bp-add-task', interactive: true, advanceOnAppear: 'bp-task-title',
+  { module: 'aufgaben-notizen', target: 'bp-add-task', interactive: true, advanceOnAppear: 'bp-task-title',
     title: 'Erste Aufgabe anlegen',
     body: 'Eure Checkliste nach Planungsphasen. Tippt auf „Aufgabe hinzufügen".' },
-  { module: 'aufgaben', target: 'bp-task-title', interactive: true,
+  { module: 'aufgaben-notizen', target: 'bp-task-title', interactive: true,
     title: 'Aufgabe beschreiben',
     body: 'Was ist zu tun? Zum Beispiel „Location besichtigen". Dann auf „Weiter".' },
-  { module: 'aufgaben', target: 'bp-task-submit', interactive: true, action: { area: 'brautpaar_tasks' },
+  { module: 'aufgaben-notizen', target: 'bp-task-submit', interactive: true, action: { area: 'brautpaar_tasks' },
     title: 'Speichern',
     body: 'Mit „OK" landet die Aufgabe in eurer Checkliste.' },
 
   // ── Notizen ────────────────────────────────────────────────────────────────
-  { module: 'notizen', target: 'bp-content',
+  { module: 'aufgaben-notizen', target: 'bp-content',
     title: 'Notizen',
-    body: 'Schnelle Notizen und Checklisten, die automatisch gespeichert werden.' },
+    body: 'Im Reiter „Notizen" haltet ihr schnelle Notizen und Checklisten fest — sie werden automatisch gespeichert.' },
 
   // ── Dienstleister ──────────────────────────────────────────────────────────
   { module: 'dienstleister', target: 'bp-content',
