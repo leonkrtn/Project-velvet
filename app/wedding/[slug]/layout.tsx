@@ -5,7 +5,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { loadWeddingSiteBySlug, resolveOgImageUrl } from '@/lib/wedding/server'
 import { templateCssVars, getTemplate } from '@/lib/wedding/templates'
-import { WeddingNav, WeddingFooter, type WeddingSection } from '@/components/wedding/WeddingRenderer'
+import { WeddingNav, WeddingFooter } from '@/components/wedding/WeddingRenderer'
 import '../wedding.css'
 
 export const dynamic = 'force-dynamic'
@@ -64,13 +64,11 @@ export default async function WeddingLayout({ children, params }: Props) {
   }
 
   const base = `/wedding/${slug}`
-  const hrefFor = (s: WeddingSection) =>
-    s === 'landing' ? base : `${base}/${s === 'story' ? 'geschichte' : 'rsvp'}`
 
   return (
     <div className="wd-root" data-template={dataTemplate} style={styleVars}>
       {fonts}
-      <WeddingNav coupleName={loaded.meta.event.coupleName} hrefFor={hrefFor} />
+      <WeddingNav coupleName={loaded.meta.event.coupleName} basePath={base} />
       {children}
       <WeddingFooter coupleName={loaded.meta.event.coupleName} date={loaded.meta.event.date} />
     </div>
