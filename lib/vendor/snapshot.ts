@@ -26,6 +26,19 @@ function minutesToTime(min: unknown): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
+// Legacy timeline_entries.time can hold a full ISO timestamp (e.g.
+// "2026-09-12T11:30:00+00:00") or already be an "HH:MM" string. Normalise to HH:MM.
+function clockFromTimeStr(v: unknown): string {
+  if (typeof v !== 'string' || !v) return ''
+  const hm = v.match(/(\d{1,2}):(\d{2})/)
+  if (hm) return `${hm[1].padStart(2, '0')}:${hm[2]}`
+  const d = new Date(v)
+  if (!Number.isNaN(d.getTime())) {
+    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+  }
+  return ''
+}
+
 // Build a keyvalue block from a row, only including fields that are present + non-null.
 function kvFromRow(row: Record<string, any>, fields: [string, string][]): SnapshotBlock | null {
   const items = fields
@@ -67,7 +80,7 @@ async function buildBlocks(admin: SupabaseClient, eventId: string, module: Share
           kind: 'timeline',
           heading: `${d.name ?? `Tag ${di + 1}`}${range}`,
           items: dayEntries.map((e: any) => ({
-            time: e.time ?? minutesToTime(e.start_minutes) ?? '—',
+            time: minutesToTime(e.start_minutes) || clockFromTimeStr(e.time) || '—',
             title: str(e.title),
             meta: e.location ? str(e.location) : undefined,
             category: e.category ? str(e.category) : undefined,
