@@ -2,6 +2,8 @@
 // Authentifizierte Live-Vorschau des ENTWURFS für den Editor (im iframe eingebettet).
 // Liegt bewusst außerhalb des Brautpaar-Layouts (keine Sidebar). Rendert exakt die
 // öffentliche Präsentationsschicht mit draft_content.
+// WICHTIG: Diese Seite darf NIE eine Server-Exception werfen (sie steckt im iframe).
+// Jede Datenquelle ist einzeln abgesichert; im Zweifel werden Defaults gerendert.
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getEventRole } from '@/lib/files/permissions'
@@ -29,32 +31,40 @@ export default async function WeddingPreviewPage({
 }) {
   const { eventId } = await params
   const { section: rawSection } = await searchParams
+  const section: WeddingSection =
+    rawSection === 'story' ? 'story' : rawSection === 'rsvp' ? 'rsvp' : 'landing'
 
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-  const role = await getEventRole(supabase, user.id, eventId)
+
+  // Auth (redirect() muss außerhalb von try/catch bleiben, damit es propagiert).
+  let userId: string | null = null
+  try { userId = (await supabase.auth.getUser()).data.user?.id ?? null } catch { userId = null }
+  if (!userId) redirect('/login')
+  let role: string | null = null
+  try { role = await getEventRole(supabase, userId, eventId) } catch { role = null }
   if (!role || !EDIT_ROLES.includes(role)) redirect('/login')
 
-  // Authentifizierter Client (RLS) — kein Service-Role-Key nötig: das Event-Mitglied
-  // darf wedding_sites + events ohnehin lesen.
-  const { data: site } = await supabase.from('wedding_sites').select('*').eq('event_id', eventId).maybeSingle()
-  const { data: ev } = await supabase
-    .from('events').select('id, title, couple_name, date, venue, venue_address').eq('id', eventId).maybeSingle()
+  // Daten laden — jede Quelle einzeln abgesichert, niemals werfen.
+  let site: any = null
+  let ev: any = null
+  try { site = (await supabase.from('wedding_sites').select('*').eq('event_id', eventId).maybeSingle()).data } catch { /* defaults */ }
+  try {
+    ev = (await supabase.from('events')
+      .select('id, title, couple_name, date, venue, venue_address').eq('id', eventId).maybeSingle()).data
+  } catch { /* defaults */ }
 
-  const coupleName = (ev?.couple_name?.trim()) || (ev?.title?.trim()) || ''
+  const coupleName = (ev?.couple_name?.trim?.()) || (ev?.title?.trim?.()) || ''
   const content = normalizeContent(site?.draft_content, coupleName)
   const template = getTemplate(site?.template_id)
-  const imageUrls = await resolveContentImageUrls(content)
   const styleVars = templateCssVars(site?.template_id) as React.CSSProperties
+
+  let imageUrls: Record<string, string> = {}
+  try { imageUrls = await resolveContentImageUrls(content) } catch { imageUrls = {} }
 
   const event = {
     id: ev?.id ?? eventId, coupleName,
     date: ev?.date ?? null, venue: ev?.venue ?? null, venueAddress: ev?.venue_address ?? null,
   }
-
-  const section: WeddingSection =
-    rawSection === 'story' ? 'story' : rawSection === 'rsvp' ? 'rsvp' : 'landing'
   const hrefFor = (s: WeddingSection) => `?section=${s}`
 
   return (
