@@ -301,11 +301,26 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2.5vh 2vw' }}
       onMouseDown={e => { if (e.target === e.currentTarget) requestClose() }}>
       {fontHref && <link rel="stylesheet" href={fontHref} />}
-      <div style={{ width: 'min(1280px, 100%)', height: '95vh', background: 'var(--bp-paper)', borderRadius: 16,
+      <style>{`
+        @media (max-width: 900px) {
+          .ds-dialog { height: 100dvh !important; width: 100% !important; border-radius: 0 !important; }
+          .ds-header { flex-wrap: wrap; }
+          .ds-main { flex-direction: column !important; overflow-y: auto; }
+          .ds-sidebar { width: 100% !important; flex-direction: row !important; overflow-x: auto; overflow-y: hidden;
+            border-right: none !important; border-bottom: 1px solid var(--bp-rule); padding: 8px !important; gap: 6px; }
+          .ds-sidebar > div { margin-bottom: 0 !important; display: flex; gap: 4px; flex-shrink: 0; }
+          .ds-grouplabel { display: none !important; }
+          .ds-sidebar button { white-space: nowrap; margin-bottom: 0 !important; }
+          .ds-content { padding: 16px !important; }
+          .ds-preview { width: 100% !important; border-left: none !important;
+            border-top: 1px solid var(--bp-rule); max-height: 65vh; }
+        }
+      `}</style>
+      <div className="ds-dialog" style={{ width: 'min(1280px, 100%)', height: '95vh', background: 'var(--bp-paper)', borderRadius: 16,
         boxShadow: '0 30px 80px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
         {/* ── Kopfleiste ── */}
-        <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--bp-rule)', flexShrink: 0 }}>
+        <header className="ds-header" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--bp-rule)', flexShrink: 0 }}>
           <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.4rem', fontWeight: 600, letterSpacing: '0.04em', margin: 0, color: 'var(--bp-ink)', whiteSpace: 'nowrap' }}>
             Anzeige &amp; RSVP gestalten
           </h2>
@@ -330,15 +345,15 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
         </header>
 
         {/* ── Hauptbereich: Sidebar | Inhalt | Vorschau ── */}
-        <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        <div className="ds-main" style={{ flex: 1, display: 'flex', minHeight: 0 }}>
           {/* Sidebar */}
-          <nav style={{ width: 224, flexShrink: 0, borderRight: '1px solid var(--bp-rule)', padding: 10, overflowY: 'auto', background: 'var(--bp-ivory-2)' }}>
+          <nav className="ds-sidebar" style={{ width: 224, flexShrink: 0, borderRight: '1px solid var(--bp-rule)', padding: 10, overflowY: 'auto', background: 'var(--bp-ivory-2)' }}>
             {GROUPS.map(group => {
               const items = visibleSections.filter(sec => sec.group === group.key)
               if (!items.length) return null
               return (
                 <div key={group.key} style={{ marginBottom: 12 }}>
-                  <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--bp-ink-3)', margin: '4px 11px 6px' }}>
+                  <p className="ds-grouplabel" style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', color: 'var(--bp-ink-3)', margin: '4px 11px 6px' }}>
                     {group.label}
                   </p>
                   {items.map(sec => {
@@ -361,7 +376,7 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
           </nav>
 
           {/* Inhalt */}
-          <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '24px 28px' }}>
+          <div className="ds-content" style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '24px 28px' }}>
             {loading
               ? <p style={{ color: 'var(--bp-ink-3)', fontSize: 14 }}>Lädt…</p>
               : (
@@ -388,7 +403,7 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
           </div>
 
           {/* Vorschau */}
-          <aside style={{ width: 470, flexShrink: 0, borderLeft: '1px solid var(--bp-rule)', display: 'flex', flexDirection: 'column', background: 'var(--bp-ivory-2)' }}>
+          <aside className="ds-preview" style={{ width: 470, flexShrink: 0, borderLeft: '1px solid var(--bp-rule)', display: 'flex', flexDirection: 'column', background: 'var(--bp-ivory-2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--bp-rule)' }}>
               <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--bp-ink-2)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <Eye size={14} /> Vorschau · {previewMode === 'rsvp' ? 'RSVP' : 'Menü'}

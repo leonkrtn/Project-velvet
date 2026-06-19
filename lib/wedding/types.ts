@@ -29,8 +29,9 @@ export interface WeddingStation {
 
 export interface WeddingScheduleItem {
   id: string
-  time: string   // "14:00"
-  label: string  // "Freie Trauung"
+  time: string         // "14:00"
+  label: string        // "Freie Trauung"
+  description?: string // optionaler Zusatztext / Ort
 }
 
 export interface WeddingContent {
@@ -75,6 +76,7 @@ export const WEDDING_LIMITS = {
   scheduleTitle: 40,
   scheduleItemTime: 12,
   scheduleItemLabel: 48,
+  scheduleItemDescription: 140,
   storyIntroTitle: 48,
   storyIntroText: 400,
   stationTitle: 40,
