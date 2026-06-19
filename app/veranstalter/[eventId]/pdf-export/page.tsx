@@ -57,10 +57,6 @@ export default async function PdfExportPage({ params }: Props) {
     budgetRes,
     songsRes,
     reqRes,
-    areasRes,
-    canvasesRes,
-    catalogRes,
-    flatRatesRes,
     patisserieRes,
     briefingRes,
     shotsRes,
@@ -132,20 +128,6 @@ export default async function PdfExportPage({ params }: Props) {
 
     supabase.from('music_requirements').select('*').eq('event_id', eventId).maybeSingle(),
 
-    supabase.from('deko_areas').select('id, name, color, sort_order').eq('event_id', eventId).order('sort_order'),
-
-    supabase.from('deko_canvases')
-      .select('id, area_id, name, canvas_type, is_frozen, sort_order')
-      .eq('event_id', eventId),
-
-    supabase.from('deko_catalog_items')
-      .select('id, item_type, name, price_per_unit, price_per_meter, is_free, notes')
-      .eq('event_id', eventId),
-
-    supabase.from('deko_flat_rates')
-      .select('id, name, description, amount')
-      .eq('event_id', eventId),
-
     supabase.from('patisserie_config').select('*').eq('event_id', eventId).maybeSingle(),
 
     supabase.from('media_briefing').select('*').eq('event_id', eventId).maybeSingle(),
@@ -200,21 +182,6 @@ export default async function PdfExportPage({ params }: Props) {
   const confirmedGuestCount = guests.filter((g: { status: string }) => g.status === 'zugesagt').length
     + begleit.filter((b: { guest_id: string }) => confirmedIds.has(b.guest_id)).length
 
-  // Deko items by canvas (second sequential query — needs canvas IDs from the parallel batch above)
-  const canvases   = canvasesRes.data ?? []
-  const canvasIds  = canvases.map((c: { id: string }) => c.id)
-  let dekoItemsByCanvas: Record<string, PdfEventData['dekoItemsByCanvas'][string]> = {}
-  if (canvasIds.length > 0) {
-    const { data: itemsRaw } = await supabase
-      .from('deko_items')
-      .select('id, canvas_id, type, data, x, y, width, height')
-      .in('canvas_id', canvasIds)
-    for (const item of itemsRaw ?? []) {
-      if (!dekoItemsByCanvas[item.canvas_id]) dekoItemsByCanvas[item.canvas_id] = []
-      dekoItemsByCanvas[item.canvas_id].push(item)
-    }
-  }
-
   // Room points
   const roomPoints = (roomConfigRes.data?.points ?? []) as Array<{ x: number; y: number }>
 
@@ -258,12 +225,6 @@ export default async function PdfExportPage({ params }: Props) {
 
     musicSongs:        (songsRes.data ?? []) as PdfEventData['musicSongs'],
     musicRequirements: reqRes.data ?? null,
-
-    dekoAreas:          (areasRes.data ?? []) as PdfEventData['dekoAreas'],
-    dekoCanvases:       canvases as PdfEventData['dekoCanvases'],
-    dekoItemsByCanvas,
-    dekoCatalogItems:   (catalogRes.data ?? []) as PdfEventData['dekoCatalogItems'],
-    dekoFlatRates:      (flatRatesRes.data ?? []) as PdfEventData['dekoFlatRates'],
 
     patisserieConfig: patisserieRes.data ?? null,
 

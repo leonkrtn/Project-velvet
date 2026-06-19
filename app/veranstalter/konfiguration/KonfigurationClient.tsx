@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronLeft, Plus, Trash2, Pencil, X, ChevronDown, ChevronRight, Edit2, ArrowLeft } from 'lucide-react'
 import type { RaumPoint, RaumElement, RaumTablePool, ConceptPlacedTable } from '@/components/room/RaumKonfigurator'
-import type { DekoOrganizerTemplate, DekoOrganizerFlatRate } from '@/lib/deko/types'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 
@@ -70,9 +69,9 @@ const EMPTY_SETTINGS: Settings = {
 const ALL_MEALS = ['fleisch','fisch','vegetarisch','vegan']
 const MEAL_LABELS: Record<string,string> = { fleisch:'Fleisch', fisch:'Fisch', vegetarisch:'Vegetarisch', vegan:'Vegan' }
 
-type Tab = 'raum' | 'mitarbeiter' | 'einstellungen' | 'dekoration' | 'sitzplan'
+type Tab = 'raum' | 'mitarbeiter' | 'einstellungen' | 'sitzplan'
 
-// ── Deko template card ────────────────────────────────────────────────────────
+// ── Shared compact styles (used by the Sitzplan concept editor) ───────────────
 
 const dekoInp: React.CSSProperties = {
   width: '100%', padding: '7px 10px', border: '1px solid var(--border)',
@@ -82,95 +81,6 @@ const dekoInp: React.CSSProperties = {
 const dekoIconBtn: React.CSSProperties = {
   width: 28, height: 28, border: '1px solid var(--border)', borderRadius: 6,
   background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-}
-const dekoLabel: React.CSSProperties = {
-  display: 'block', fontSize: 11, fontWeight: 700,
-  textTransform: 'uppercase', letterSpacing: '0.08em',
-  color: 'var(--text-tertiary)', marginBottom: 4,
-}
-
-function TemplateCard({
-  template, flatRates, onRename, onDelete, onAddFlatRate, onDeleteFlatRate,
-}: {
-  template: DekoOrganizerTemplate
-  flatRates: DekoOrganizerFlatRate[]
-  onRename: (name: string) => void
-  onDelete: () => void
-  onAddFlatRate: (fr: Omit<DekoOrganizerFlatRate, 'id' | 'organizer_id'>) => void
-  onDeleteFlatRate: (id: string) => void
-}) {
-  const [expanded, setExpanded] = useState(false)
-  const [editingName, setEditingName] = useState(false)
-  const [nameDraft, setNameDraft] = useState(template.name)
-  const [addingFr, setAddingFr] = useState(false)
-  const [frName, setFrName] = useState('')
-  const [frAmount, setFrAmount] = useState('')
-  const [frDesc, setFrDesc] = useState('')
-
-  const myFlatRates = flatRates.filter(f => f.template_id === template.id)
-
-  return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', background: 'var(--surface)', gap: 10 }}>
-        <button onClick={() => setExpanded(e => !e)} aria-expanded={expanded} aria-label={expanded ? 'Einklappen' : 'Aufklappen'} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'var(--text-tertiary)' }}>
-          {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        </button>
-        {editingName
-          ? <input autoFocus value={nameDraft} onChange={e => setNameDraft(e.target.value)}
-              onBlur={() => { setEditingName(false); onRename(nameDraft) }}
-              onKeyDown={e => { if (e.key === 'Enter') { setEditingName(false); onRename(nameDraft) } }}
-              style={{ ...dekoInp, flex: 1, height: 32 }} />
-          : <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{template.name}</span>
-        }
-        <button onClick={() => setEditingName(true)} aria-label="Vorlage umbenennen" className="mob-touch" style={dekoIconBtn}><Edit2 size={13} /></button>
-        <button onClick={onDelete} aria-label="Vorlage löschen" className="mob-touch" style={{ ...dekoIconBtn, color: '#E06C75' }}><Trash2 size={13} /></button>
-      </div>
-
-      {expanded && (
-        <div style={{ padding: '14px 16px', background: '#fdfcfa', borderTop: '1px solid var(--border)' }}>
-          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: 10 }}>Pauschalen</p>
-
-          {myFlatRates.map(fr => (
-            <div key={fr.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, marginBottom: 6 }}>
-              <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{fr.name}</p>
-                {fr.description && <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>{fr.description}</p>}
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
-                {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(fr.amount)}
-              </span>
-              <button onClick={() => onDeleteFlatRate(fr.id)} aria-label="Pauschale löschen" className="mob-touch" style={{ ...dekoIconBtn, color: '#E06C75' }}><Trash2 size={12} /></button>
-            </div>
-          ))}
-
-          {!addingFr
-            ? <button onClick={() => setAddingFr(true)} style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
-                + Pauschale hinzufügen
-              </button>
-            : <div style={{ padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                  <div><label style={dekoLabel}>Name *</label><input value={frName} onChange={e => setFrName(e.target.value)} style={dekoInp} placeholder="z.B. Blumenpauschale" /></div>
-                  <div><label style={dekoLabel}>Betrag (€) *</label><input type="number" value={frAmount} onChange={e => setFrAmount(e.target.value)} style={dekoInp} placeholder="0.00" /></div>
-                  <div style={{ gridColumn: '1 / -1' }}><label style={dekoLabel}>Beschreibung</label><input value={frDesc} onChange={e => setFrDesc(e.target.value)} style={dekoInp} placeholder="Optional…" /></div>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => {
-                    if (!frName.trim() || !frAmount) return
-                    onAddFlatRate({ template_id: template.id, name: frName.trim(), description: frDesc.trim() || null, amount: parseFloat(frAmount) })
-                    setFrName(''); setFrAmount(''); setFrDesc(''); setAddingFr(false)
-                  }} style={{ padding: '6px 12px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
-                    Hinzufügen
-                  </button>
-                  <button onClick={() => setAddingFr(false)} aria-label="Abbrechen" className="mob-touch" style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
-                    <X size={12} />
-                  </button>
-                </div>
-              </div>
-          }
-        </div>
-      )}
-    </div>
-  )
 }
 
 /* ── Shared styles ── */
@@ -218,12 +128,6 @@ export default function KonfigurationClient() {
   /* ── Settings ── */
   const [settings, setSettings] = useState<Settings>(EMPTY_SETTINGS)
 
-  /* ── Deko templates ── */
-  const [dekoTemplates, setDekoTemplates] = useState<DekoOrganizerTemplate[]>([])
-  const [dekoFlatRates, setDekoFlatRates] = useState<DekoOrganizerFlatRate[]>([])
-  const [addingTemplate, setAddingTemplate] = useState(false)
-  const [newTemplateName, setNewTemplateName] = useState('')
-
   /* ── Staff auth setup ── */
   const [setupAuthStaffId, setSetupAuthStaffId] = useState<string | null>(null)
   const [setupAuthPassword, setSetupAuthPassword] = useState('')
@@ -259,12 +163,10 @@ export default function KonfigurationClient() {
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
 
-      const [{ data: roomRow }, { data: staffRows }, { data: presetRow }, { data: tmplRows }, { data: frRows }, { data: conceptRows }, { data: orgSettings }] = await Promise.all([
+      const [{ data: roomRow }, { data: staffRows }, { data: presetRow }, { data: conceptRows }, { data: orgSettings }] = await Promise.all([
         supabase.from('organizer_room_configs').select('*').eq('user_id', user.id).single(),
         supabase.from('organizer_staff').select('id,organizer_id,name,email,phone,role_category,available_days,hourly_rate,notes,auth_user_id,must_change_password').eq('organizer_id', user.id).order('created_at', { ascending: true }),
         supabase.from('organizer_presets').select('*').eq('user_id', user.id).single(),
-        supabase.from('deko_organizer_templates').select('*').eq('organizer_id', user.id).order('sort_order'),
-        supabase.from('deko_organizer_flat_rates').select('*').eq('organizer_id', user.id),
         supabase.from('organizer_seating_concepts').select('*').eq('organizer_id', user.id).order('sort_order'),
         supabase.from('organizer_settings').select('staff_chat_enabled').eq('organizer_id', user.id).maybeSingle(),
       ])
@@ -275,8 +177,6 @@ export default function KonfigurationClient() {
         setRoomTablePool(roomRow.table_pool ?? { types: [] })
       }
       setStaff((staffRows ?? []) as StaffMember[])
-      setDekoTemplates((tmplRows ?? []) as DekoOrganizerTemplate[])
-      setDekoFlatRates((frRows ?? []) as DekoOrganizerFlatRate[])
       setConcepts((conceptRows ?? []) as SeatingConcept[])
       setStaffChatEnabled(orgSettings?.staff_chat_enabled ?? false)
       if (presetRow) {
@@ -405,32 +305,6 @@ export default function KonfigurationClient() {
     }))
   }
 
-  /* ── Deko template CRUD ── */
-  async function createTemplate() {
-    if (!newTemplateName.trim() || !userId) return
-    const { data } = await supabase.from('deko_organizer_templates').insert({
-      organizer_id: userId, name: newTemplateName.trim(), sort_order: dekoTemplates.length,
-    }).select().single()
-    if (data) { setDekoTemplates(prev => [...prev, data as DekoOrganizerTemplate]); setNewTemplateName(''); setAddingTemplate(false) }
-  }
-  async function renameTemplate(id: string, name: string) {
-    await supabase.from('deko_organizer_templates').update({ name }).eq('id', id)
-    setDekoTemplates(prev => prev.map(t => t.id === id ? { ...t, name } : t))
-  }
-  async function deleteTemplate(id: string) {
-    await supabase.from('deko_organizer_templates').delete().eq('id', id)
-    setDekoTemplates(prev => prev.filter(t => t.id !== id))
-  }
-  async function addFlatRate(fr: Omit<DekoOrganizerFlatRate, 'id' | 'organizer_id'>) {
-    if (!userId) return
-    const { data } = await supabase.from('deko_organizer_flat_rates').insert({ ...fr, organizer_id: userId }).select().single()
-    if (data) setDekoFlatRates(prev => [...prev, data as DekoOrganizerFlatRate])
-  }
-  async function deleteFlatRate(id: string) {
-    await supabase.from('deko_organizer_flat_rates').delete().eq('id', id)
-    setDekoFlatRates(prev => prev.filter(f => f.id !== id))
-  }
-
   /* ── Seating concept CRUD ── */
   async function createConcept() {
     if (!newConceptName.trim() || !userId) return
@@ -501,9 +375,9 @@ export default function KonfigurationClient() {
         <div className="skeleton" style={{ height: 28, width: 180, marginBottom: 8 }} />
         <div className="skeleton" style={{ height: 14, width: 280 }} />
       </div>
-      {/* Tab bar: 5 tabs */}
+      {/* Tab bar: 4 tabs */}
       <div style={{ display: 'inline-flex', background: '#EBEBEC', borderRadius: 10, padding: 3, marginBottom: 28, gap: 2 }}>
-        {[55, 70, 100, 110, 90].map((w, i) => (
+        {[55, 70, 100, 110].map((w, i) => (
           <div key={i} className="skeleton" style={{ height: 34, width: w, borderRadius: 8 }} />
         ))}
       </div>
@@ -517,7 +391,6 @@ export default function KonfigurationClient() {
     { key: 'sitzplan',      label: 'Sitzplan' },
     { key: 'mitarbeiter',   label: 'Mitarbeiter' },
     { key: 'einstellungen', label: 'Einstellungen' },
-    { key: 'dekoration',    label: 'Dekoration' },
   ]
 
   const editingConcept = concepts.find(c => c.id === editingConceptId) ?? null
@@ -914,54 +787,6 @@ export default function KonfigurationClient() {
 
           <div style={{ display:'flex', alignItems:'center', gap:12, minHeight:20, fontSize:13, color:'var(--text-tertiary)' }}>
             {settingsStatus === 'idle' ? 'Änderungen werden automatisch gespeichert.' : <SaveStatus status={settingsStatus} />}
-          </div>
-        </div>
-      )}
-
-      {/* ── Dekoration ── */}
-      {tab === 'dekoration' && (
-        <div>
-          <div style={card}>
-            <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px' }}>Vorlagen</p>
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '0 0 20px', lineHeight: 1.6 }}>
-              Globale Vorlagen mit Pauschalen, die beim Erstellen eines Events auf den Dekorationsbereich angewendet werden können.
-            </p>
-
-            {dekoTemplates.map(t => (
-              <TemplateCard
-                key={t.id}
-                template={t}
-                flatRates={dekoFlatRates}
-                onRename={name => renameTemplate(t.id, name)}
-                onDelete={() => deleteTemplate(t.id)}
-                onAddFlatRate={addFlatRate}
-                onDeleteFlatRate={deleteFlatRate}
-              />
-            ))}
-
-            {dekoTemplates.length === 0 && !addingTemplate && (
-              <div style={{ padding: '28px 20px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 10, color: 'var(--text-tertiary)', marginBottom: 16, fontSize: 13 }}>
-                Noch keine Vorlagen erstellt.
-              </div>
-            )}
-
-            {addingTemplate
-              ? <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <input autoFocus value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') createTemplate(); if (e.key === 'Escape') setAddingTemplate(false) }}
-                    placeholder="Vorlage benennen…" style={{ ...dekoInp, flex: 1 }} />
-                  <button onClick={createTemplate} style={{ padding: '8px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
-                    Erstellen
-                  </button>
-                  <button onClick={() => setAddingTemplate(false)} aria-label="Abbrechen" className="mob-touch" style={{ padding: '8px 10px', background: 'none', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
-                    <X size={14} />
-                  </button>
-                </div>
-              : <button onClick={() => setAddingTemplate(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 16px', border: '1px dashed var(--border)', borderRadius: 8, background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'inherit', marginTop: 4 }}>
-                  <Plus size={15} /> Neue Vorlage erstellen
-                </button>
-            }
           </div>
         </div>
       )}

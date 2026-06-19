@@ -253,42 +253,6 @@ async function buildBlocks(admin: SupabaseClient, eventId: string, module: Share
       }
       break
     }
-    case 'dekoration': {
-      const { data: areas } = await byEvent('deko_areas', 'sort_order')
-      if (areas?.length) {
-        blocks.push({ kind: 'tags', heading: 'Deko-Bereiche', items: areas.map((a: any) => str(a.name)) })
-      }
-      // Pull visual cues straight from the canvas items: color swatches/palettes (stable
-      // hex) and external image URLs. R2-keyed uploads are skipped — their presigned
-      // URLs would expire inside a frozen snapshot.
-      const { data: items } = await admin
-        .from('deko_items')
-        .select('type, data')
-        .eq('event_id', eventId)
-        .in('type', ['color_swatch', 'color_palette', 'image_url'])
-      const swatches: { hex: string; name?: string }[] = []
-      const images: { url: string; caption?: string }[] = []
-      for (const it of (items ?? []) as any[]) {
-        const d = it.data ?? {}
-        if (it.type === 'color_swatch' && d.hex) swatches.push({ hex: d.hex, name: d.name || undefined })
-        if (it.type === 'color_palette' && Array.isArray(d.colors)) {
-          for (const c of d.colors) if (c?.hex) swatches.push({ hex: c.hex, name: c.name || undefined })
-        }
-        if (it.type === 'image_url' && d.url) images.push({ url: d.url, caption: d.caption || undefined })
-      }
-      if (swatches.length) blocks.push({ kind: 'swatches', heading: 'Farbwelt', items: swatches.slice(0, 40) })
-      if (images.length) blocks.push({ kind: 'images', heading: 'Inspiration', items: images.slice(0, 24) })
-      const { data: catalog } = await byEvent('deko_catalog_items', 'created_at')
-      if (catalog?.length) {
-        blocks.push({
-          kind: 'table',
-          heading: 'Artikel-Katalog',
-          columns: ['Artikel', 'Typ'],
-          rows: catalog.slice(0, 200).map((c: any) => [str(c.name ?? c.title), str(c.type ?? c.kind)]),
-        })
-      }
-      break
-    }
     case 'medien': {
       const { data: briefing } = await admin.from('media_briefing').select('*').eq('event_id', eventId).maybeSingle()
       if (briefing) {
