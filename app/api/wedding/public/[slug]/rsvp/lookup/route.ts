@@ -1,5 +1,5 @@
 // app/api/wedding/public/[slug]/rsvp/lookup/route.ts
-// Öffentlich (token-/code-basiert): Gast über seinen 8-stelligen short_code dem Event
+// Öffentlich (token-/code-basiert): Gast über seinen 4-stelligen short_code dem Event
 // der Hochzeitswebsite zuordnen und den RSVP-Token zurückgeben.
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -13,8 +13,8 @@ export async function POST(
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Ungültiger Payload' }, { status: 400 }) }
 
   const code = (body.code ?? '').trim().toUpperCase()
-  if (!/^[A-Z0-9]{8}$/.test(code)) {
-    return NextResponse.json({ error: 'Bitte gib einen gültigen 8-stelligen Code ein.' }, { status: 400 })
+  if (!/^[A-Z0-9]{4}$/.test(code)) {
+    return NextResponse.json({ error: 'Bitte gib einen gültigen 4-stelligen Code ein.' }, { status: 400 })
   }
 
   const admin = createAdminClient()

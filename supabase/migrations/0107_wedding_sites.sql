@@ -1,7 +1,7 @@
 -- 0107_wedding_sites.sql
 -- Öffentliche Hochzeitswebsite pro Event ("/wedding/[slug]").
 --   • wedding_sites: 1 Zeile pro Event — Template, Slug, Status, Entwurf + veröffentlichter Inhalt (JSONB), SEO/OG.
---   • guests.short_code: 8-stelliger Gast-Code (Buchstaben/Ziffern) für offenes RSVP („schon angemeldet?" → Code).
+--   • guests.short_code: 4-stelliger Gast-Code (Buchstaben/Ziffern) für offenes RSVP („schon angemeldet?" → Code).
 --   • file_metadata.module: 'wedding' als erlaubtes Modul ergänzt (Bilder der Hochzeitswebsite über die R2-Pipeline).
 --
 -- Zugriff:
@@ -68,7 +68,7 @@ CREATE POLICY wedding_sites_update ON wedding_sites
   );
 
 -- ── guests.short_code ─────────────────────────────────────────────────────────
--- 8-stelliger, gut lesbarer Code (ohne mehrdeutige Zeichen) für das offene RSVP.
+-- 4-stelliger, gut lesbarer Code (ohne mehrdeutige Zeichen) für das offene RSVP.
 ALTER TABLE guests ADD COLUMN IF NOT EXISTS short_code TEXT;
 
 CREATE OR REPLACE FUNCTION gen_guest_short_code()
@@ -78,7 +78,7 @@ DECLARE
   result   TEXT := '';
   i        INT;
 BEGIN
-  FOR i IN 1..8 LOOP
+  FOR i IN 1..4 LOOP
     result := result || substr(alphabet, (floor(random() * length(alphabet)) + 1)::int, 1);
   END LOOP;
   RETURN result;

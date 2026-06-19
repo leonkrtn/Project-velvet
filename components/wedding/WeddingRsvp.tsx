@@ -171,14 +171,14 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
             <label className="wd-label">Dein persönlicher Code</label>
             <input
               className="wd-input" value={code}
-              onChange={e => setCode(e.target.value.toUpperCase().slice(0, 8))}
-              placeholder="z.B. K7M2QXAB" autoCapitalize="characters" autoComplete="off"
-              style={{ letterSpacing: '0.25em', textAlign: 'center', fontSize: '1.2rem' }}
+              onChange={e => setCode(e.target.value.toUpperCase().slice(0, 4))}
+              placeholder="z.B. K7MQ" autoCapitalize="characters" autoComplete="off"
+              style={{ letterSpacing: '0.3em', textAlign: 'center', fontSize: '1.4rem' }}
             />
-            <p className="wd-hint">8 Zeichen — du findest ihn in deiner Einladung oder Bestätigungs-E-Mail.</p>
+            <p className="wd-hint">4 Zeichen — du findest ihn in deiner Einladung oder Bestätigungs-E-Mail.</p>
           </div>
           {error && <p className="wd-error">{error}</p>}
-          <button className="wd-btn wd-btn-block wd-btn-lg" disabled={busy || code.length !== 8}>
+          <button className="wd-btn wd-btn-block wd-btn-lg" disabled={busy || code.length !== 4}>
             {busy ? <Loader size={16} className="wd-spin" /> : 'Weiter'}
           </button>
         </form>
