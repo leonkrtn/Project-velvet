@@ -81,6 +81,29 @@
 .we-url { font-family: monospace; font-size: 0.82rem; word-break: break-all; color: var(--bp-gold-deep, #9c7f4f); }
 .we-switch { display: flex; align-items: center; gap: 0.6rem; }
 
+/* Stil-Panel */
+.we-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.we-chip { padding: 0.42rem 0.75rem; border: 1px solid var(--bp-line, #e8e2d8); border-radius: 999px; background: #fff; font-size: 0.82rem; cursor: pointer; color: var(--bp-ink-2, #6b6258); font-family: inherit; }
+.we-chip:hover { border-color: var(--bp-gold, #b9975b); }
+.we-chip.selected { background: var(--bp-gold, #b9975b); border-color: var(--bp-gold, #b9975b); color: #fff; }
+.we-pal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.we-pal { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem; border: 2px solid var(--bp-line, #e8e2d8); border-radius: 10px; background: #fff; cursor: pointer; text-align: left; }
+.we-pal:hover { border-color: var(--bp-gold, #b9975b); }
+.we-pal.selected { border-color: var(--bp-gold, #b9975b); }
+.we-pal-sw { display: flex; width: 48px; height: 26px; border-radius: 5px; overflow: hidden; flex-shrink: 0; border: 1px solid rgba(0,0,0,.06); }
+.we-pal-sw span { flex: 1; }
+.we-pal-name { font-size: 0.82rem; color: var(--bp-ink, #2c2622); }
+.we-reset { border: none; background: none; color: var(--bp-ink-3, #8a8178); cursor: pointer; padding: 2px; display: inline-flex; }
+.we-reset:hover { color: var(--bp-gold, #b9975b); }
+
+/* Vollbild-Vorschau */
+.we-fs { position: fixed; inset: 0; z-index: 1000; background: #efeae2; display: flex; flex-direction: column; }
+.we-fs-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; background: #fff; border-bottom: 1px solid var(--bp-line, #e8e2d8); flex-wrap: wrap; }
+.we-fs-sections { display: flex; gap: 0.35rem; }
+.we-fs-stage { flex: 1; min-height: 0; display: flex; align-items: stretch; justify-content: center; padding: 1rem; overflow: auto; }
+.we-fs-stage .we-iframe-shell { height: 100%; }
+.we-fs-stage .we-iframe-shell.mobile { width: 390px; max-width: 100%; }
+
 /* Mobile: Vorschau unter das Formular; ganze Ansicht wird scrollbar.
    (Der Editor läuft als full-bleed Container mit fixer Höhe — daher muss
    .we-wrap selbst scrollen, sonst clippt der Eltern-Container den Inhalt.) */

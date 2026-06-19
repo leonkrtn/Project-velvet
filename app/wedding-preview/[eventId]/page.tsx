@@ -9,7 +9,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getEventRole } from '@/lib/files/permissions'
 import { resolveContentImageUrls } from '@/lib/wedding/server'
 import { normalizeContent } from '@/lib/wedding/content'
-import { templateCssVars, getTemplate } from '@/lib/wedding/templates'
+import { getTemplate } from '@/lib/wedding/templates'
+import { resolveStyle, ALL_FONTS_HREF } from '@/lib/wedding/style'
 import {
   WeddingNav, WeddingFooter, LandingView, StoryView, RsvpIntroView,
   type WeddingSection,
@@ -17,9 +18,6 @@ import {
 import '../../wedding/wedding.css'
 
 export const dynamic = 'force-dynamic'
-
-const FONTS_HREF =
-  'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@400;500;600&family=Montserrat:wght@400;500;600&family=Playfair+Display:wght@500;600&family=Italiana&display=swap'
 
 const EDIT_ROLES = ['veranstalter', 'brautpaar', 'brautpaar_solo']
 
@@ -56,7 +54,8 @@ export default async function WeddingPreviewPage({
   const coupleName = (ev?.couple_name?.trim?.()) || (ev?.title?.trim?.()) || ''
   const content = normalizeContent(site?.draft_content, coupleName)
   const template = getTemplate(site?.template_id)
-  const styleVars = templateCssVars(site?.template_id) as React.CSSProperties
+  const rs = resolveStyle(site?.template_id, content.style)
+  const styleVars = rs.vars as React.CSSProperties
 
   let imageUrls: Record<string, string> = {}
   try { imageUrls = await resolveContentImageUrls(content) } catch { imageUrls = {} }
@@ -67,14 +66,15 @@ export default async function WeddingPreviewPage({
   }
 
   return (
-    <div className="wd-root" data-template={template.id} style={styleVars}>
-      <link rel="stylesheet" href={FONTS_HREF} />
+    <div className="wd-root" data-template={rs.templateId} data-texture={rs.data.texture}
+      data-button={rs.data.button} data-ornament={rs.data.ornament} style={styleVars}>
+      <link rel="stylesheet" href={ALL_FONTS_HREF} />
       <WeddingNav coupleName={coupleName} basePath="" preview active={section} />
       {section === 'landing' && (
         <LandingView content={content} event={event} template={template} imageUrls={imageUrls} />
       )}
       {section === 'story' && (
-        <StoryView content={content} event={event} template={template} imageUrls={imageUrls} />
+        <StoryView content={content} imageUrls={imageUrls} story={rs.story} />
       )}
       {section === 'rsvp' && (
         <div className="wd-page">

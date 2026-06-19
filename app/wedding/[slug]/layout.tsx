@@ -4,16 +4,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { loadWeddingSiteBySlug, resolveOgImageUrl } from '@/lib/wedding/server'
-import { templateCssVars, getTemplate } from '@/lib/wedding/templates'
+import { resolveStyle, ALL_FONTS_HREF } from '@/lib/wedding/style'
 import { WeddingNav, WeddingFooter } from '@/components/wedding/WeddingRenderer'
 import '../wedding.css'
 
 export const dynamic = 'force-dynamic'
 
 interface Props { children: React.ReactNode; params: Promise<{ slug: string }> }
-
-const FONTS_HREF =
-  'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=DM+Sans:wght@400;500;600&family=Montserrat:wght@400;500;600&family=Playfair+Display:wght@500;600&family=Italiana&display=swap'
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
@@ -38,17 +35,17 @@ export default async function WeddingLayout({ children, params }: Props) {
   const { slug } = await params
   const loaded = await loadWeddingSiteBySlug(slug)
 
-  const styleVars = templateCssVars(loaded?.meta.templateId) as React.CSSProperties
-  const dataTemplate = getTemplate(loaded?.meta.templateId).id
+  const rs = resolveStyle(loaded?.meta.templateId, loaded?.publishedContent?.style)
+  const styleVars = rs.vars as React.CSSProperties
 
   // Fonts immer laden (auch auf Statusseiten).
-  const fonts = <link rel="stylesheet" href={FONTS_HREF} />
+  const fonts = <link rel="stylesheet" href={ALL_FONTS_HREF} />
 
   // Nicht gefunden / offline / unveröffentlicht → freundliche Statusseite.
   const isLive = loaded && loaded.meta.isOnline && loaded.meta.status === 'published' && loaded.publishedContent
   if (!isLive) {
     return (
-      <div className="wd-root" data-template={dataTemplate} style={styleVars}>
+      <div className="wd-root" data-template={rs.templateId} style={styleVars}>
         {fonts}
         <div className="wd-status">
           <h1 className="wd-h1">{!loaded ? 'Seite nicht gefunden' : 'Bald verfügbar'}</h1>
@@ -66,7 +63,8 @@ export default async function WeddingLayout({ children, params }: Props) {
   const base = `/wedding/${slug}`
 
   return (
-    <div className="wd-root" data-template={dataTemplate} style={styleVars}>
+    <div className="wd-root" data-template={rs.templateId} data-texture={rs.data.texture}
+      data-button={rs.data.button} data-ornament={rs.data.ornament} style={styleVars}>
       {fonts}
       <WeddingNav coupleName={loaded.meta.event.coupleName} basePath={base} />
       {children}
