@@ -46,6 +46,14 @@ export type SnapshotBlock =
   | { kind: 'list';     heading?: string; items: string[] }
   | { kind: 'table';    heading?: string; columns: string[]; rows: string[][] }
   | { kind: 'text';     heading?: string; text: string }
+  // ── Rich, type-specific blocks (rendered with bespoke layouts in ShareBox) ──
+  | { kind: 'stats';    heading?: string; items: { label: string; value: string; sub?: string }[] }
+  | { kind: 'timeline'; heading?: string; items: { time: string; title: string; meta?: string; category?: string }[] }
+  | { kind: 'tags';     heading?: string; items: string[] }
+  | { kind: 'swatches'; heading?: string; items: { hex: string; name?: string }[] }
+  | { kind: 'images';   heading?: string; items: { url: string; caption?: string }[] }
+  | { kind: 'menu';     heading?: string; items: { name: string; note?: string }[] }
+  | { kind: 'songs';    heading?: string; tone?: 'wish' | 'nogo'; items: { title: string; artist?: string }[] }
 
 export interface ModuleSnapshot {
   module: ShareModule

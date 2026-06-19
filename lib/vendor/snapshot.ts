@@ -42,28 +42,36 @@ async function buildBlocks(admin: SupabaseClient, eventId: string, module: Share
   switch (module) {
     case 'ablaufplan': {
       const { data: days } = await byEvent('ablaufplan_days', 'day_index')
-      if (days?.length) {
-        blocks.push({
-          kind: 'list',
-          heading: 'Tage',
-          items: days.map((d: any) =>
-            `${d.name ?? `Tag ${(d.day_index ?? 0) + 1}`} (${String(d.start_hour ?? '').padStart(2, '0')}:00–${String((d.end_hour ?? 0) % 24).padStart(2, '0')}:00)`),
-        })
-      }
       const { data: entries } = await byEvent('timeline_entries', 'day_index')
       const sorted = (entries ?? []).sort((a: any, b: any) =>
         (a.day_index ?? 0) - (b.day_index ?? 0) || (a.start_minutes ?? 0) - (b.start_minutes ?? 0))
-      if (sorted.length) {
+
+      blocks.push({
+        kind: 'stats',
+        items: [
+          { label: 'Tage', value: String((days?.length ?? 0) || 1) },
+          { label: 'Programmpunkte', value: String(sorted.length) },
+        ],
+      })
+
+      // One timeline block per day, so the vendor reads it like an agenda.
+      const dayList = (days?.length ? days : [{ day_index: 0, name: null }]) as any[]
+      for (const d of dayList) {
+        const di = d.day_index ?? 0
+        const dayEntries = sorted.filter((e: any) => (e.day_index ?? 0) === di)
+        if (!dayEntries.length) continue
+        const range = (d.start_hour != null && d.end_hour != null)
+          ? ` · ${String(d.start_hour).padStart(2, '0')}:00–${String((d.end_hour) % 24).padStart(2, '0')}:00`
+          : ''
         blocks.push({
-          kind: 'table',
-          heading: 'Programm',
-          columns: ['Zeit', 'Programmpunkt', 'Ort', 'Kategorie'],
-          rows: sorted.map((e: any) => [
-            e.time ?? minutesToTime(e.start_minutes) ?? '—',
-            str(e.title),
-            str(e.location),
-            str(e.category),
-          ]),
+          kind: 'timeline',
+          heading: `${d.name ?? `Tag ${di + 1}`}${range}`,
+          items: dayEntries.map((e: any) => ({
+            time: e.time ?? minutesToTime(e.start_minutes) ?? '—',
+            title: str(e.title),
+            meta: e.location ? str(e.location) : undefined,
+            category: e.category ? str(e.category) : undefined,
+          })),
         })
       }
       break
@@ -73,7 +81,7 @@ async function buildBlocks(admin: SupabaseClient, eventId: string, module: Share
       if (evTables && evTables.length) {
         const seats = evTables.reduce((sum: number, t: any) => sum + (t.capacity ?? 0), 0)
         blocks.push({
-          kind: 'keyvalue',
+          kind: 'stats',
           items: [
             { label: 'Tische', value: String(evTables.length) },
             { label: 'Plätze gesamt', value: String(seats) },
@@ -91,20 +99,28 @@ async function buildBlocks(admin: SupabaseClient, eventId: string, module: Share
     case 'gaesteliste': {
       const { data: counts } = await admin
         .from('v_event_guest_counts')
-        .select('confirmed_guests, pending_guests, confirmed_plus_ones')
+        .select('confirmed_guests, pending_guests, confirmed_plus_ones, declined_guests')
         .eq('event_id', eventId).maybeSingle()
-      if (counts) {
-        const confirmed = (counts.confirmed_guests ?? 0) + (counts.confirmed_plus_ones ?? 0)
-        blocks.push({
-          kind: 'keyvalue',
-          items: [
-            { label: 'Bestätigt (inkl. Begleitung)', value: String(confirmed) },
-            { label: 'Ausstehend', value: String(counts.pending_guests ?? 0) },
-          ],
-        })
-      }
       const { data: guests } = await byEvent('guests', 'name')
       const confirmedGuests = (guests ?? []).filter((g: any) => g.status === 'zugesagt')
+      if (counts) {
+        const confirmed = (counts.confirmed_guests ?? 0) + (counts.confirmed_plus_ones ?? 0)
+        const statItems = [
+          { label: 'Bestätigt', value: String(confirmed), sub: 'inkl. Begleitung' },
+          { label: 'Ausstehend', value: String(counts.pending_guests ?? 0) },
+        ]
+        if (counts.declined_guests != null) statItems.push({ label: 'Abgesagt', value: String(counts.declined_guests) })
+        blocks.push({ kind: 'stats', items: statItems })
+      }
+      // Aggregate allergies/diet across confirmed guests → quick chips for the caterer.
+      const allergySet = new Set<string>()
+      for (const g of confirmedGuests) {
+        if (Array.isArray(g.allergy_tags)) g.allergy_tags.forEach((t: string) => t && allergySet.add(t))
+        if (g.allergy_custom) allergySet.add(g.allergy_custom)
+      }
+      if (allergySet.size) {
+        blocks.push({ kind: 'tags', heading: 'Allergien & Diäten', items: Array.from(allergySet) })
+      }
       if (confirmedGuests.length) {
         blocks.push({
           kind: 'table',
@@ -138,9 +154,12 @@ async function buildBlocks(admin: SupabaseClient, eventId: string, module: Share
         const courses = (plan as any).menu_courses
         if (Array.isArray(courses) && courses.length) {
           blocks.push({
-            kind: 'list',
+            kind: 'menu',
             heading: 'Menügänge',
-            items: courses.map((c: any) => str(c?.name)),
+            items: courses.map((c: any) => ({
+              name: str(c?.name),
+              note: c?.description || c?.note || c?.details || undefined,
+            })),
           })
         }
       }
@@ -160,7 +179,18 @@ async function buildBlocks(admin: SupabaseClient, eventId: string, module: Share
       }
       const { data: cocktails } = await byEvent('getraenke_cocktails', 'name')
       if (cocktails?.length) {
-        blocks.push({ kind: 'list', heading: 'Cocktails', items: cocktails.map((c: any) => str(c.name)) })
+        blocks.push({
+          kind: 'menu',
+          heading: 'Cocktails',
+          items: cocktails.map((c: any) => {
+            const ings = Array.isArray(c.ingredients)
+              ? c.ingredients.map((i: any) => i?.name).filter(Boolean).join(', ')
+              : ''
+            const tone = c.is_alcoholic === false ? 'alkoholfrei' : ''
+            const note = [tone, ings].filter(Boolean).join(' · ')
+            return { name: str(c.name), note: note || undefined }
+          }),
+        })
       }
       break
     }
@@ -169,10 +199,10 @@ async function buildBlocks(admin: SupabaseClient, eventId: string, module: Share
       const wishes = (songs ?? []).filter((s: any) => s.type === 'wish')
       const noGos = (songs ?? []).filter((s: any) => s.type === 'no_go')
       if (wishes.length) {
-        blocks.push({ kind: 'list', heading: 'Musikwünsche', items: wishes.map((s: any) => `${str(s.title)}${s.artist ? ' – ' + s.artist : ''}`) })
+        blocks.push({ kind: 'songs', tone: 'wish', heading: 'Musikwünsche', items: wishes.map((s: any) => ({ title: str(s.title), artist: s.artist || undefined })) })
       }
       if (noGos.length) {
-        blocks.push({ kind: 'list', heading: 'No-Gos', items: noGos.map((s: any) => `${str(s.title)}${s.artist ? ' – ' + s.artist : ''}`) })
+        blocks.push({ kind: 'songs', tone: 'nogo', heading: 'No-Gos', items: noGos.map((s: any) => ({ title: str(s.title), artist: s.artist || undefined })) })
       }
       const { data: playlists } = await byEvent('musik_playlisten', 'sort_order')
       if (playlists?.length) {
@@ -213,8 +243,28 @@ async function buildBlocks(admin: SupabaseClient, eventId: string, module: Share
     case 'dekoration': {
       const { data: areas } = await byEvent('deko_areas', 'sort_order')
       if (areas?.length) {
-        blocks.push({ kind: 'list', heading: 'Deko-Bereiche', items: areas.map((a: any) => str(a.name)) })
+        blocks.push({ kind: 'tags', heading: 'Deko-Bereiche', items: areas.map((a: any) => str(a.name)) })
       }
+      // Pull visual cues straight from the canvas items: color swatches/palettes (stable
+      // hex) and external image URLs. R2-keyed uploads are skipped — their presigned
+      // URLs would expire inside a frozen snapshot.
+      const { data: items } = await admin
+        .from('deko_items')
+        .select('type, data')
+        .eq('event_id', eventId)
+        .in('type', ['color_swatch', 'color_palette', 'image_url'])
+      const swatches: { hex: string; name?: string }[] = []
+      const images: { url: string; caption?: string }[] = []
+      for (const it of (items ?? []) as any[]) {
+        const d = it.data ?? {}
+        if (it.type === 'color_swatch' && d.hex) swatches.push({ hex: d.hex, name: d.name || undefined })
+        if (it.type === 'color_palette' && Array.isArray(d.colors)) {
+          for (const c of d.colors) if (c?.hex) swatches.push({ hex: c.hex, name: c.name || undefined })
+        }
+        if (it.type === 'image_url' && d.url) images.push({ url: d.url, caption: d.caption || undefined })
+      }
+      if (swatches.length) blocks.push({ kind: 'swatches', heading: 'Farbwelt', items: swatches.slice(0, 40) })
+      if (images.length) blocks.push({ kind: 'images', heading: 'Inspiration', items: images.slice(0, 24) })
       const { data: catalog } = await byEvent('deko_catalog_items', 'created_at')
       if (catalog?.length) {
         blocks.push({
