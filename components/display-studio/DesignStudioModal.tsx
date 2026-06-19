@@ -57,9 +57,10 @@ type SectionKey =
 type GroupKey = 'anzeige' | 'rsvp' | 'allgemein'
 
 // Strikte Trennung: „Anzeige" (Optik der Seite) vs. „RSVP" (Antwort-Formular).
+// RSVP-/Einladungsseite wird jetzt vollständig über die Hochzeitswebsite
+// (/brautpaar/[eventId]/website) konfiguriert — daher hier nur noch App-Anzeige + Allgemein.
 const GROUPS: { key: GroupKey; label: string }[] = [
   { key: 'anzeige',   label: 'Anzeige · Menü' },
-  { key: 'rsvp',      label: 'RSVP · Einladungsseite' },
   { key: 'allgemein', label: 'Allgemein' },
 ]
 
@@ -245,26 +246,12 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
   async function save() {
     setSaving(true); setSaved(false)
     try {
-      const supabase = createClient()
-      const payload = {
-        event_id: eventId,
-        invitation_text: rsvp.invitation_text ?? '',
-        rsvp_deadline: rsvp.rsvp_deadline ?? null,
-        show_meal_choice: rsvp.show_meal_choice ?? true,
-        show_plus_one: rsvp.show_plus_one ?? true,
-        phone_contact: rsvp.phone_contact?.trim() || null,
-      }
-      const rsvpPromise = rsvp.id
-        ? supabase.from('rsvp_settings').update(payload).eq('id', rsvp.id)
-        : supabase.from('rsvp_settings').insert(payload).select().single()
-      const [dispRes, rsvpRes] = await Promise.all([
-        fetch(`/api/events/${eventId}/display-settings`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings: s }) }),
-        rsvpPromise,
-      ])
-      let savedRsvp = rsvp
-      if (!rsvp.id && (rsvpRes as { data?: RsvpSettings }).data) savedRsvp = (rsvpRes as { data: RsvpSettings }).data
+      // RSVP-Einstellungen werden im Hochzeitswebsite-Editor gespeichert; hier nur App-Anzeige.
+      const dispRes = await fetch(`/api/events/${eventId}/display-settings`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings: s }),
+      })
       if (dispRes.ok) {
-        const next: Doc = { s, rsvp: savedRsvp }
+        const next: Doc = { s, rsvp }
         baselineRef.current = JSON.stringify(next)
         setHist(h => ({ ...h, present: next }))
         setSaved(true)
@@ -287,8 +274,8 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
   })
 
   const q = query.trim().toLowerCase()
-  // RSVP-Design-Unterbereiche nur zeigen, wenn eigenes RSVP-Design aktiv ist.
-  const availableSections = SECTIONS.filter(sec => !sec.rsvpDesign || s.invitation.customDesign)
+  // RSVP-Bereiche sind in die Hochzeitswebsite umgezogen → hier ausblenden.
+  const availableSections = SECTIONS.filter(sec => sec.group !== 'rsvp')
   const visibleSections = q
     ? availableSections.filter(sec => sec.label.toLowerCase().includes(q) || sec.kw.some(k => k.includes(q)))
     : availableSections
