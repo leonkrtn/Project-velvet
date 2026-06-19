@@ -176,7 +176,17 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? []), request.url))
     }
     if (isVendorRoute && !roles.includes('dienstleister')) {
-      return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? []), request.url))
+      // Allow users with no event roles through to the vendor dashboard (new vendors with no events yet).
+      // Only redirect if the user clearly belongs to another portal.
+      const hasOtherPortalRole =
+        roles.includes('brautpaar') ||
+        roles.includes('brautpaar_solo') ||
+        roles.includes('veranstalter') ||
+        user.app_metadata?.role === 'mitarbeiter' ||
+        user.app_metadata?.is_approved_organizer === true
+      if (hasOtherPortalRole) {
+        return NextResponse.redirect(new URL(resolvePortal(user, memberships ?? []), request.url))
+      }
     }
   }
 

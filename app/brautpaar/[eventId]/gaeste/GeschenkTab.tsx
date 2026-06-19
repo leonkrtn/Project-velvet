@@ -377,29 +377,41 @@ function WishModal({ form, onChange, onSave, onClose, saving, isEdit }: {
 export default function GeschenkTab({ eventId }: { eventId: string }) {
   const [items, setItems] = useState<WishItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<WishFormData>(emptyForm())
   const [saving, setSaving] = useState(false)
 
   async function load() {
-    const supabase = createClient()
-    const [{ data: wishes }, { data: beitraege }] = await Promise.all([
-      supabase.from('geschenk_wuensche').select('*').eq('event_id', eventId).order('sort_order').order('created_at'),
-      supabase.from('geschenk_beitraege').select('wish_id, amount'),
-    ])
-    const totals: Record<string, { sum: number; count: number }> = {}
-    for (const b of beitraege ?? []) {
-      if (!totals[b.wish_id]) totals[b.wish_id] = { sum: 0, count: 0 }
-      totals[b.wish_id].sum += Number(b.amount)
-      totals[b.wish_id].count += 1
+    setLoadError(null)
+    try {
+      const supabase = createClient()
+      const [{ data: wishes, error: wErr }, { data: beitraege, error: bErr }] = await Promise.all([
+        supabase.from('geschenk_wuensche').select('*').eq('event_id', eventId).order('sort_order').order('created_at'),
+        supabase.from('geschenk_beitraege').select('wish_id, amount').in(
+          'wish_id',
+          // pre-filter to avoid loading unrelated contributions
+          (await supabase.from('geschenk_wuensche').select('id').eq('event_id', eventId)).data?.map((w: any) => w.id) ?? []
+        ),
+      ])
+      if (wErr) throw new Error(wErr.message)
+      const totals: Record<string, { sum: number; count: number }> = {}
+      for (const b of beitraege ?? []) {
+        if (!totals[b.wish_id]) totals[b.wish_id] = { sum: 0, count: 0 }
+        totals[b.wish_id].sum += Number(b.amount)
+        totals[b.wish_id].count += 1
+      }
+      setItems((wishes ?? []).map(w => ({
+        ...w,
+        total_contributed: totals[w.id]?.sum ?? 0,
+        contribution_count: totals[w.id]?.count ?? 0,
+      })))
+    } catch (e: any) {
+      setLoadError(e.message ?? 'Fehler beim Laden')
+    } finally {
+      setLoading(false)
     }
-    setItems((wishes ?? []).map(w => ({
-      ...w,
-      total_contributed: totals[w.id]?.sum ?? 0,
-      contribution_count: totals[w.id]?.count ?? 0,
-    })))
-    setLoading(false)
   }
 
   useEffect(() => { load() }, [eventId])
@@ -467,7 +479,6 @@ export default function GeschenkTab({ eventId }: { eventId: string }) {
   if (loading) {
     return (
       <div>
-        {/* Header: title + caption on left, button on right */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
             <div className="bp-skeleton" style={{ height: 18, width: 130, marginBottom: 8, borderRadius: 6 }} />
@@ -475,12 +486,20 @@ export default function GeschenkTab({ eventId }: { eventId: string }) {
           </div>
           <div className="bp-skeleton" style={{ height: 36, width: 150, borderRadius: 8, flexShrink: 0 }} />
         </div>
-        {/* Wish card rows */}
         <div style={{ display: 'flex', gap: '0.625rem', flexDirection: 'column' }}>
           {[1, 2, 3].map(i => (
             <div key={i} className="bp-skeleton" style={{ height: 72, borderRadius: 'var(--bp-r-md)' }} />
           ))}
         </div>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="bp-card" style={{ textAlign: 'center', padding: '2rem' }}>
+        <p style={{ color: '#B91C1C', marginBottom: '0.75rem', fontSize: '0.9375rem' }}>{loadError}</p>
+        <button className="bp-btn bp-btn-ghost bp-btn-sm" onClick={load}>Erneut versuchen</button>
       </div>
     )
   }
