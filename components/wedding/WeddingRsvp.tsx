@@ -513,18 +513,18 @@ function DoneView(p: {
         </div>
       )}
 
+      {p.showMusic && (
+        <>
+          <div className="wd-divider-soft" />
+          <MusicWish token={p.token} />
+        </>
+      )}
+
       {p.attending && (
         <>
           <div className="wd-divider-soft" />
           <h3 className="wd-extras-title">Fotos teilen</h3>
           <RsvpPhotos token={p.token} />
-        </>
-      )}
-
-      {p.showMusic && (
-        <>
-          <div className="wd-divider-soft" />
-          <MusicWish token={p.token} />
         </>
       )}
 
@@ -541,11 +541,14 @@ function DoneView(p: {
 function MusicWish({ token }: { token: string }) {
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
-  const [sent, setSent] = useState(false)
+  const [sent, setSent] = useState<{ title: string; artist: string }[]>([])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+
   async function submit(e: React.FormEvent) {
-    e.preventDefault(); setBusy(true); setErr(null)
+    e.preventDefault()
+    if (!title.trim() || !artist.trim()) return
+    setBusy(true); setErr(null)
     try {
       const res = await fetch(`/api/rsvp/${token}/musik`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -553,18 +556,75 @@ function MusicWish({ token }: { token: string }) {
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d.error ?? 'Fehler')
-      setSent(true); setTitle(''); setArtist('')
+      setSent(prev => [...prev, { title: title.trim(), artist: artist.trim() }])
+      setTitle(''); setArtist('')
     } catch (e: any) { setErr(e.message) } finally { setBusy(false) }
   }
+
   return (
-    <form onSubmit={submit}>
-      <h3 className="wd-extras-title"><Music size={18} style={{ verticalAlign: '-3px', marginRight: 6 }} />Musikwunsch</h3>
-      {sent && <p className="wd-body" style={{ color: 'var(--wd-accent)' }}>Danke, dein Wunsch ist notiert! Noch einen?</p>}
-      <div className="wd-field"><input className="wd-input" placeholder="Songtitel" value={title} onChange={e => setTitle(e.target.value)} /></div>
-      <div className="wd-field"><input className="wd-input" placeholder="Interpret" value={artist} onChange={e => setArtist(e.target.value)} /></div>
-      {err && <p className="wd-error">{err}</p>}
-      <button className="wd-btn" disabled={busy || !title.trim() || !artist.trim()}>{busy ? '…' : 'Wunsch senden'}</button>
-    </form>
+    <div>
+      <h3 className="wd-extras-title">
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Music size={20} />
+          Musikwunsch
+        </span>
+      </h3>
+      <p className="wd-body" style={{ marginBottom: '1.5rem', marginTop: '-0.25rem' }}>
+        Welche Songs dürfen auf keinen Fall fehlen? Gebt dem DJ eure Lieblingssongs mit.
+      </p>
+
+      {sent.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
+          {sent.map((s, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: '0.75rem',
+              padding: '0.65rem 0.875rem',
+              background: 'color-mix(in srgb, var(--wd-accent) 8%, var(--wd-bg))',
+              borderRadius: 'var(--wd-radius)',
+              border: '1px solid color-mix(in srgb, var(--wd-accent) 20%, transparent)',
+            }}>
+              <Check size={15} style={{ color: 'var(--wd-accent)', flexShrink: 0 }} />
+              <span style={{ fontSize: '0.9rem', color: 'var(--wd-ink)' }}>
+                <strong>{s.title}</strong>
+                <span style={{ color: 'var(--wd-ink-soft)', margin: '0 0.3rem' }}>–</span>
+                {s.artist}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div className="wd-field" style={{ margin: 0 }}>
+            <label className="wd-label">Songtitel</label>
+            <input
+              className="wd-input"
+              placeholder="z.B. Can't Help Falling in Love"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+            />
+          </div>
+          <div className="wd-field" style={{ margin: 0 }}>
+            <label className="wd-label">Interpret</label>
+            <input
+              className="wd-input"
+              placeholder="z.B. Elvis Presley"
+              value={artist}
+              onChange={e => setArtist(e.target.value)}
+            />
+          </div>
+        </div>
+        {err && <p className="wd-error">{err}</p>}
+        <button
+          className="wd-btn"
+          style={{ marginTop: 0, alignSelf: 'flex-start' }}
+          disabled={busy || !title.trim() || !artist.trim()}
+        >
+          {busy ? <Loader size={15} className="wd-spin" /> : <><Music size={15} /> Wunsch senden</>}
+        </button>
+      </form>
+    </div>
   )
 }
 
