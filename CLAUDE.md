@@ -55,7 +55,7 @@
 - **Portal:** solo couples use the regular Brautpaar portal (`/brautpaar/[eventId]/`); layout/middleware/pages accept role `brautpaar_solo`.
 - **Personen einladen (Allgemein → `SoloInviteSection`):** zeigt verbundene Personen (Partner, Veranstalter via `GET /api/members`) und generiert Codes via `POST /api/invite/create`. Partner-Invite (`targetRole:'brautpaar_solo'`) gibt vollen Admin-Zugriff. Veranstalter-Onboarding (`targetRole:'veranstalter'`): ein registrierter UND freigeschalteter Veranstalter löst den Code unter `/join` ein (`redeem_invite_code` verlangt `is_approved_organizer`, Migration 0089) und sieht das Event danach in seinem Dashboard. Das Solo-Paar kann den Veranstalter wieder entfernen (`DELETE /api/members/[memberId]` — der Letzter-Veranstalter-Schutz greift nicht, solange ein brautpaar_solo-Admin existiert).
 - **Invite-Matrix** in `/api/invite/create`: veranstalter→brautpaar, brautpaar_solo→veranstalter, brautpaar_solo→brautpaar_solo.
-- **Vendors & Deko:** brautpaar_solo darf Dienstleister einladen (`/api/invite/dienstleister`, `/api/vendor/invite`, `/api/vendor/signup-code`) und Deko freezen UND unfreezen (`/api/deko/freeze`). Deko-Freeze heißt bei Solo "Planung abschließen" (`DekoFreezeDialog isSolo` — einfacher Confirm statt ABSENDEN-Tippen).
+- **Vendors:** brautpaar_solo darf Dienstleister einladen (`/api/invite/dienstleister`, `/api/vendor/invite`, `/api/vendor/signup-code`).
 - **Dienstleister-Verwaltung (nur Solo):** `/brautpaar/[eventId]/dienstleister/` — Vendor-Liste + Einladung (`VendorInviteSection`) + Berechtigungs-Editor unter `[dienstleisterId]/` (re-used `BerechtigungenDLClient` mit `backHref`-Prop). Nav-Eintrag erscheint nur für brautpaar_solo (`BrautpaarShell isSolo`).
 - **Sitzplan (Solo):** Solo-Paare können die Raumkonfiguration selbst bearbeiten (`RaumKonfigurator` in `/brautpaar/[eventId]/sitzplan`, RLS via 0090); normales Brautpaar bleibt read-only.
 - **API-Parität:** brautpaar_solo ist zusätzlich erlaubt in: `PATCH /api/events/[eventId]`, `PATCH /api/files/[fileId]` (Sichtbarkeit), `/api/veranstalter/[eventId]/guests/{export,import,template}`.
@@ -84,7 +84,6 @@
     getraenke/             → Getränkeplanung (Mengenplanung, Budget, Cocktails)
     ablaufplan/            → Timeline
     musik/                 → Music (incl. playlist embeds: Spotify/YouTube/Apple Music)
-    dekoration/            → Decor
     patisserie/            → Patisserie / cake
     medien/                → Media / shots
     dateien/               → File management (R2-backed, all modules)
@@ -118,7 +117,7 @@
   **snapshot** (frozen `snapshot` JSONB) or **live** (rebuilt on each read). Each share posts a `data_share`
   message and a row in `dienstleister_data_shares` (keyed by `conversation_id`; RLS = conversation participants read,
   couple/organizer write). They can later **freeze** or **revoke** a share.
-- Snapshots are built server-side by `lib/vendor/snapshot.ts` (`buildModuleSnapshot`, admin client, all 9 modules),
+- Snapshots are built server-side by `lib/vendor/snapshot.ts` (`buildModuleSnapshot`, admin client, all 8 modules),
   rendered by `components/vendor/ShareBox.tsx`. APIs: `POST/GET /api/vendor/shares`, `GET/PATCH /api/vendor/shares/[shareId]`.
 - Chat files: existing R2 pipeline with `file_metadata.module='chats'` (now accessible to any event member, see
   `lib/files/permissions.ts`). File messages carry `metadata.file_id`; the "Dateien"-Box lists them per conversation.
@@ -204,16 +203,6 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 | `catering_plans` | Catering configuration |
 | `music_songs` / `music_requirements` | Music tab |
 | `musik_playlisten` | Playlist links with embedded player (platform: spotify/youtube/apple_music/other) |
-| `deko_areas` | Decor areas (per event, ordered) |
-| `deko_canvases` | Canvases per area (main + variants + standalone moodboards) |
-| `deko_items` | Free-canvas items (19 types, JSONB data, x/y/w/h) |
-| `deko_catalog_items` | Event-wide article/fabric catalog |
-| `deko_flat_rates` | Per-event flat-rate entries (linked to catalog) |
-| `deko_comments` / `deko_comment_replies` | 2-level comment system (item/canvas/area targets) |
-| `deko_votes` | Thumbs up/down on vote_card items |
-| `deko_budget_links` | Links deko_items → budget_items (created on freeze, removed on unfreeze) |
-| `deko_organizer_templates` | Global organizer templates (copy-on-apply) |
-| `deko_organizer_flat_rates` | Flat rates attached to organizer templates |
 | `media_shot_items` / `media_uploads` | Media tab |
 | `guest_photos` | Post-event guest photo gallery (R2-backed; `r2_key`, `guest_token`, `status`) |
 | `patisserie_config` | Cake/patisserie tab |
@@ -253,7 +242,8 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 - `timeline_entries.responsibilities TEXT` — redundant with `assigned_staff`/`assigned_vendors`/`assigned_members` JSONB columns (added in 0025).
 - `dienstleister_item_permissions` table — old granular system, not cleanly migrated out.
 - Proposals/Vorschläge system — fully removed (migration 0048 drops all tables + functions). No UI remains.
-- `decor_setup_items` / `deko_wishes` tables — **dropped in migration 0064**. Replaced by the new free-canvas deko system.
+- `decor_setup_items` / `deko_wishes` tables — **dropped in migration 0064**.
+- Dekorations-System (Free-Canvas, `deko_*` Tabellen aus 0064) — **vollständig entfernt in Migration 0108** (Reiter + Routen + Components + lib/deko + Vendor-Snapshot + PDF-Sektion + Budget-Freeze-Links + Organizer-Vorlagen + Feature-Toggles `deko`/`bp-dekoration`).
 
 ---
 
@@ -321,13 +311,6 @@ app/veranstalter/[eventId]/
                                 Accepts userName + userAvatarUrl props (passed from layout.tsx; shows initials avatar if no picture).
   berechtigungen/[dienstleisterId]/BerechtigungenClient.tsx
                                 Vendor permission editor — allgemein removed from tab list
-  dekoration/page.tsx           Deko page (server component) — loads areas/canvases/catalog/items → DekoPageClient
-
-app/brautpaar/[eventId]/
-  dekoration/page.tsx           Deko page for Brautpaar — same data loading, role="brautpaar"
-
-app/veranstalter/konfiguration/
-  dekoration/page.tsx           Organizer global deko templates (create/rename/delete templates + flat rates per template)
 
 components/ablaufplan/
   DayCalendar.tsx               Apple Calendar-style day view. HOUR_HEIGHT=80px/hr. Drag-to-create + drag-to-move.
@@ -336,27 +319,6 @@ components/ablaufplan/
   EventModal.tsx                Create/edit modal. Handles checklist (auto-save on toggle), assignments (auto-save).
                                 Edit-mode toggle shows X buttons for checklist delete (Veranstalter/Brautpaar only).
                                 Exports: TimelineEntry, AblaufplanDay, Member, StaffRow, VendorRow types.
-
-components/deko/
-  DekoPageClient.tsx            Orchestrator: areas, activeCanvas, pendingType, freeze state
-  DekoCanvas.tsx                Free canvas — pan/zoom (Ctrl+scroll), item drag, presence cursors, dot grid
-  DekoFloatingToolbar.tsx       Photoshop-style draggable toolbar, 19 item types in 6 groups
-  DekoNavigationBar.tsx         Left sidebar: areas → main canvas, variants, moodboards; inline create
-  DekoItemLightbox.tsx          Per-type modal editor; CatalogPicker for articles/fabrics; OG preview for links
-  DekoCommentOverlay.tsx        Hover badge → panel with 2-level comments (realtime)
-  DekoBudgetBar.tsx             Collapsible budget footer under canvas (line items + flat rates)
-  DekoFreezeDialog.tsx          Brautpaar submit: 2-step confirm, must type ABSENDEN
-  items/DekoItemRenderer.tsx    Switch on item.type → 19 self-contained renderers
-
-lib/deko/
-  types.ts                      All TS interfaces; DekoItemType (19); ITEM_DEFAULTS; calcItemPrice/calcCanvasBudget
-                                CANVAS_W=3200, CANVAS_H=2264, CANVAS_DEFAULT_ZOOM=0.45
-  hooks/useDekoCanvas.ts        Canvas state + mutations (addItem, drag, commit, delete, bringToFront)
-  hooks/useDekoRealtime.ts      Supabase channel: postgres_changes for deko_items + Presence (cursors, 20fps throttle)
-
-app/api/deko/
-  freeze/route.ts               POST {eventId, action}: freeze all main canvases + create budget_items; unfreeze = reverse
-  og-preview/route.ts           GET ?url= — server-side OG meta scraper (title/description/image/domain)
 
 supabase/migrations/
   setup.sql                     Base schema (all core tables)
@@ -371,8 +333,7 @@ supabase/migrations/
   0049_secure_adjust_hotel_booking.sql  REVOKE anon/public on adjust_hotel_booking + auth guard
   0050_room_config_rls_brautpaar.sql    Brautpaar + trauzeuge SELECT on event_room_configs + organizer_room_configs
   0063_file_metadata.sql               R2 file_metadata table + file_access_log + RLS (SELECT only, writes via service role)
-  0064_deko_system.sql                 Drops decor_setup_items + deko_wishes; creates full new deko system (13 tables,
-                                       RLS for all roles, Realtime enabled on deko_items/canvases/comments/votes)
+  0064_deko_system.sql                 (Historisch) Deko-System — vollständig wieder entfernt durch 0108.
   0065_conversation_read_state.sql     Read state for conversations
   0066_guest_photos_r2.sql             Extends guest_photos: adds r2_key, guest_token, status; refreshes RLS policies
   0067_feature_toggles_value.sql       Adds value TEXT column to feature_toggles (used for gaeste-fotos-unlock-at date)
@@ -405,6 +366,9 @@ supabase/migrations/
                                        profiles.is_approved_organizer (error NOT_APPROVED_ORGANIZER, code stays open);
                                        (2) existing admin members (veranstalter, brautpaar_solo) are never re-roled by
                                        redeeming a code — idempotent success with existing role, code stays open.
+  0108_remove_deko_system.sql          Removes the deko free-canvas system: drops all deko_* tables + trigger,
+                                       deletes 'deko'/'bp-dekoration' feature_toggles, redefines
+                                       create_event_as_brautpaar_solo() without those toggles.
 
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)
@@ -487,26 +451,6 @@ Env vars (Vercel):
 Worker secrets (wrangler secret put):
   INTERNAL_SECRET   R2_ACCOUNT_ID   R2_ACCESS_KEY_ID   R2_SECRET_ACCESS_KEY   R2_BUCKET_NAME
 ```
-
----
-
-## Deko System — Free Canvas Architecture
-
-Migration `0064_deko_system.sql` replaces the old `decor_setup_items`/`deko_wishes` tables with a full free-canvas decoration system.
-
-**Hierarchy:** Event → `deko_areas` (named sections) → `deko_canvases` (one `main` + N `variant` per area, plus standalone `moodboard` canvases) → `deko_items` (free-positioned on A3 canvas 3200×2264px)
-
-**19 item types:** `image_upload`, `image_url`, `color_palette`, `color_swatch`, `text_block`, `sticky_note`, `heading`, `article`, `flat_rate_article`, `fabric`, `frame`, `divider`, `area_label`, `vote_card`, `checklist`, `link_card`, `table_ref`, `room_info`, `guest_count`
-
-**Permission model (on canvas):**
-- `veranstalter`: full admin (create/edit/delete anything, unfreeze)
-- `brautpaar`: full write (create areas/canvases/items, edit/delete all), can submit freeze
-- `dienstleister` write: add items + edit/delete own items only, see all prices
-- `dienstleister` read / `trauzeuge`: read-only + comment
-
-**Freeze workflow:** Brautpaar submits → all `main` canvases set `is_frozen=true` → canvas becomes read-only for all roles → `budget_items` auto-created in category "Dekoration" with `deko_budget_links` → only Veranstalter can unfreeze (reverses budget items).
-
-**Organizer templates:** Global templates under `/veranstalter/konfiguration/dekoration`. Copy-on-apply (no live sync). Stored in `deko_organizer_templates` + `deko_organizer_flat_rates`.
 
 ---
 

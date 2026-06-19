@@ -133,11 +133,6 @@ export const SOLO_TOUR_STEPS: TourStep[] = [
     title: 'Catering & Menü',
     body: 'Hier haltet ihr Menügänge, Service und die Essenswünsche eurer Gäste fest.' },
 
-  // ── Dekoration ─────────────────────────────────────────────────────────────
-  { module: 'dekoration', target: 'bp-content',
-    title: 'Dekoration',
-    body: 'Euer freies Moodboard: Bilder, Farben, Stoffe und Artikel frei anordnen. Beim Abschließen wandern die Positionen automatisch ins Budget.' },
-
   // ── Musik ──────────────────────────────────────────────────────────────────
   { module: 'musik', target: 'bp-content',
     title: 'Musik',

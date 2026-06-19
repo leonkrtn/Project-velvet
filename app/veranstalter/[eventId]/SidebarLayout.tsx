@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Settings, Users, MessageSquare,
   Calendar, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
-  Music2, Flower2, Camera, FolderOpen, LogOut, UserCircle, SlidersHorizontal,
+  Music2, Camera, FolderOpen, LogOut, UserCircle, SlidersHorizontal,
   FileDown, GlassWater,
 } from 'lucide-react'
 
@@ -31,7 +31,6 @@ const NAV_ITEMS = [
   { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
   { key: 'gaesteliste',     label: 'Gästeliste',        icon: Users },
   { key: 'musik',           label: 'Musik',             icon: Music2 },
-  { key: 'dekoration',      label: 'Dekoration',        icon: Flower2 },
   { key: 'medien',          label: 'Foto & Videograf',  icon: Camera },
   { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
   { key: 'personalplanung', label: 'Personalplanung',   icon: UserCog },
@@ -61,9 +60,8 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
   }
 
   const isChats = pathname === `${base}/chats` || pathname.startsWith(`${base}/chats/`)
-  const isDeko = pathname === `${base}/dekoration` || pathname.startsWith(`${base}/dekoration/`)
   const isPdfExport = pathname === `${base}/pdf-export` || pathname.startsWith(`${base}/pdf-export/`)
-  const isFullscreen = isChats || isDeko || isPdfExport
+  const isFullscreen = isChats || isPdfExport
 
   const sidebar = (
     <nav style={{

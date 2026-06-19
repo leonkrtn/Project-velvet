@@ -92,50 +92,6 @@ export interface PdfMusicRequirements {
   notes: string
 }
 
-export interface PdfDekoArea {
-  id: string
-  name: string
-  color: string
-  sort_order: number
-}
-
-export interface PdfDekoCanvas {
-  id: string
-  area_id: string | null
-  name: string
-  canvas_type: 'main' | 'variant' | 'moodboard'
-  is_frozen: boolean
-  sort_order: number
-}
-
-export interface PdfDekoItem {
-  id: string
-  type: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: Record<string, any>
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
-export interface PdfDekoCatalogItem {
-  id: string
-  item_type: 'article' | 'fabric'
-  name: string
-  price_per_unit: number | null
-  price_per_meter: number | null
-  is_free: boolean
-  notes: string | null
-}
-
-export interface PdfDekoFlatRate {
-  id: string
-  name: string
-  description: string
-  amount: number
-}
-
 export interface PdfGetraenkeKategorie {
   id: string
   name: string
@@ -254,12 +210,6 @@ export interface PdfEventData {
   musicSongs: PdfMusicSong[]
   musicRequirements: PdfMusicRequirements | null
 
-  dekoAreas: PdfDekoArea[]
-  dekoCanvases: PdfDekoCanvas[]
-  dekoItemsByCanvas: Record<string, PdfDekoItem[]>
-  dekoCatalogItems: PdfDekoCatalogItem[]
-  dekoFlatRates: PdfDekoFlatRate[]
-
   patisserieConfig: {
     cake_description: string
     layers: number
@@ -304,6 +254,5 @@ export type PdfSection =
   | 'getraenke'
   | 'budget'
   | 'musik'
-  | 'dekoration'
   | 'medien'
   | 'dienstleister'

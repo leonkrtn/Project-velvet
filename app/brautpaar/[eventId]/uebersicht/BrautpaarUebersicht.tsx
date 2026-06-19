@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
-  Users, LayoutGrid, Calendar, UtensilsCrossed, Palette, Music,
+  Users, LayoutGrid, Calendar, UtensilsCrossed, Music,
   ArrowRight, Check, Send, UserPlus, CalendarHeart, Wallet, MapPin,
 } from 'lucide-react'
 
@@ -462,7 +462,6 @@ export default function BrautpaarUebersicht({
     { key: 'catering', label: 'Catering', icon: <UtensilsCrossed size={18} />, detail: 'Menü, Service und Essenswünsche' },
     { key: 'musik', label: 'Musik', icon: <Music size={18} />,
       detail: songCount > 0 ? `${songCount} ${songCount === 1 ? 'Song' : 'Songs'} gesammelt` : 'Wunschlieder und Playlists sammeln' },
-    { key: 'dekoration', label: 'Dekoration', icon: <Palette size={18} />, detail: 'Moodboards und Deko-Planung' },
   ]
 
   // Geführter Start-Faden — Reihenfolge folgt der sinnvollen Planungslogik.

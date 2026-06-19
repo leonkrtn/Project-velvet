@@ -69,7 +69,7 @@ export default async function AllgemeinPage({ params }: Props) {
     'gaeste-fotos': true,
     'messaging': false,
     'bp-gaeste': true, 'bp-sitzplan': true, 'bp-ablaufplan': true,
-    'bp-catering': true, 'bp-dekoration': true, 'bp-musik': true,
+    'bp-catering': true, 'bp-musik': true,
     'bp-medien': true, 'bp-budget': true,
     'bp-aufgaben': true, 'bp-nachrichten': true, 'bp-dateien': true,
     'rsvp-musikwunsch': true, 'rsvp-geschenke': true, 'rsvp-hotel': true,

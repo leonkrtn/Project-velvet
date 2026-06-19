@@ -2,7 +2,7 @@
 import React from 'react'
 import {
   CalendarClock, Armchair, Users, UtensilsCrossed, Wine, Music,
-  Cake, Flower2, Camera, Database, type LucideIcon,
+  Cake, Camera, Database, type LucideIcon,
 } from 'lucide-react'
 import type { ModuleSnapshot, ShareModule, SnapshotBlock } from '@/lib/vendor/shares'
 
@@ -20,7 +20,6 @@ const MODULE_THEME: Record<ShareModule, { icon: LucideIcon; caption: string }> =
   getraenke:   { icon: Wine,           caption: 'Getränke- & Cocktailplanung' },
   musik:       { icon: Music,          caption: 'Musikwünsche & Technik' },
   patisserie:  { icon: Cake,           caption: 'Torte & Patisserie' },
-  dekoration:  { icon: Flower2,        caption: 'Farbwelt, Inspiration & Artikel' },
   medien:      { icon: Camera,         caption: 'Foto-/Video-Briefing & Shotlist' },
 }
 

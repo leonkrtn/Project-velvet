@@ -31,7 +31,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/brautpaar/reminders':    'Erinnerungen',
   '/brautpaar/sub-events':   'Sub-Events',
   '/brautpaar/catering':     'Catering & Menü',
-  '/brautpaar/deko':         'Dekoration',
   '/brautpaar/gaeste-fotos': 'Gäste-Fotos',
   '/brautpaar/nachrichten':  'Nachrichten',
   '/brautpaar/protokoll':    'Protokoll',
@@ -53,12 +52,11 @@ const FEATURE_ROUTES: Record<FeatureKey, string> = {
   catering:        '/brautpaar/catering',
   'sub-events':    '/brautpaar/sub-events',
   invite:          '/invite',
-  deko:            '/brautpaar/deko',
   'gaeste-fotos':  '/brautpaar/gaeste-fotos',
   messaging:       '/brautpaar/nachrichten',
   // Brautpaar portal sidebar toggles — no dedicated route
   'bp-gaeste': '', 'bp-sitzplan': '', 'bp-ablaufplan': '', 'bp-catering': '',
-  'bp-dekoration': '', 'bp-musik': '', 'bp-medien': '',
+  'bp-musik': '', 'bp-medien': '',
   'bp-budget': '', 'bp-aufgaben': '', 'bp-nachrichten': '', 'bp-dateien': '',
   // RSVP step toggles — no dedicated route
   'rsvp-musikwunsch': '', 'rsvp-geschenke': '', 'rsvp-hotel': '',
@@ -97,7 +95,6 @@ const MENU_ITEMS = [
     { label: 'Hochzeit bearbeiten', href: '/brautpaar/einstellungen', icon: '✎' },
   ]},
   { section: 'Planung', items: [
-    { label: 'Dekoration',          href: '/brautpaar/deko',          icon: '❀', featureKey: 'deko' as FeatureKey },
     { label: 'Gäste-Fotos',         href: '/brautpaar/gaeste-fotos',  icon: '◻', featureKey: 'gaeste-fotos' as FeatureKey },
   ]},
   { section: 'Konto', items: [

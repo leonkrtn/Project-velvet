@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
-  Palette, Music, Camera, Wallet, CheckSquare, Settings,
+  Music, Camera, Wallet, CheckSquare, Settings,
   MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
   Briefcase, FileDown, CreditCard, Lock, Sparkles, HelpCircle, Globe,
 } from 'lucide-react'
@@ -50,7 +50,6 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
       items: [
         b('catering', 'Catering & Menü', <UtensilsCrossed size={16} />),
         b('getraenke', 'Getränke', <GlassWater size={16} />),
-        b('dekoration', 'Dekoration', <Palette size={16} />),
         b('musik', 'Musik', <Music size={16} />),
         b('medien', 'Foto & Videograf', <Camera size={16} />),
       ],
@@ -254,11 +253,10 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
     })
   }, [])
 
-  const isDeko = pathname === `/brautpaar/${eventId}/dekoration` || pathname.startsWith(`/brautpaar/${eventId}/dekoration/`)
   const isChat = pathname === `/brautpaar/${eventId}/nachrichten` || pathname.startsWith(`/brautpaar/${eventId}/nachrichten/`)
   const isWebsite = pathname === `/brautpaar/${eventId}/website` || pathname.startsWith(`/brautpaar/${eventId}/website/`)
   // Vollflächige Ansichten füllen exakt die verbleibende Höhe (kein Seiten-Scroll)
-  const isFullBleed = isDeko || isChat || isWebsite
+  const isFullBleed = isChat || isWebsite
   // Paywall: Trial/Abo abgelaufen → nur die Abo-Seite bleibt erreichbar
   const isAboPage = pathname === `/brautpaar/${eventId}/abo` || pathname.startsWith(`/brautpaar/${eventId}/abo/`)
   const isExpired = subscription?.status === 'expired' && !isAboPage

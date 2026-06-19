@@ -116,10 +116,10 @@ export interface CateringPlan {
 
 export type FeatureKey =
   | 'budget' | 'vendors' | 'tasks' | 'reminders'
-  | 'seating' | 'catering' | 'sub-events' | 'invite' | 'deko' | 'gaeste-fotos'
+  | 'seating' | 'catering' | 'sub-events' | 'invite' | 'gaeste-fotos'
   | 'messaging'
   // Brautpaar portal sidebar toggles (only affect bp portal, not vendors)
-  | 'bp-gaeste' | 'bp-sitzplan' | 'bp-ablaufplan' | 'bp-catering' | 'bp-dekoration'
+  | 'bp-gaeste' | 'bp-sitzplan' | 'bp-ablaufplan' | 'bp-catering'
   | 'bp-musik' | 'bp-medien' | 'bp-budget' | 'bp-aufgaben'
   | 'bp-nachrichten' | 'bp-dateien'
   // RSVP step toggles (hide/show individual steps for guests)
@@ -129,9 +129,9 @@ export type FeatureKey =
 export const DEFAULT_FEATURE_TOGGLES: Record<FeatureKey, boolean> = {
   budget: true, vendors: true, tasks: true, reminders: true,
   seating: true, catering: true, 'sub-events': true, invite: true,
-  deko: true, 'gaeste-fotos': true, messaging: false,
+  'gaeste-fotos': true, messaging: false,
   'bp-gaeste': true, 'bp-sitzplan': true, 'bp-ablaufplan': true,
-  'bp-catering': true, 'bp-dekoration': true, 'bp-musik': true,
+  'bp-catering': true, 'bp-musik': true,
   'bp-medien': true, 'bp-budget': true,
   'bp-aufgaben': true, 'bp-nachrichten': true, 'bp-dateien': true,
   'rsvp-musikwunsch': true, 'rsvp-geschenke': true, 'rsvp-hotel': true,
