@@ -37,6 +37,30 @@ interface RsvpData {
 
 const MEAL_LABEL: Record<string, string> = { fleisch: 'Fleisch', fisch: 'Fisch', vegetarisch: 'Vegetarisch', vegan: 'Vegan' }
 
+// Manche Gäste mussten bisher zweimal absenden: Der erste Request lief gelegentlich
+// in einen transienten Fehler (Cold-Start/Edge), der zweite Klick ging dann durch.
+// fetchWithRetry wiederholt einen fehlgeschlagenen Request einmal automatisch, sodass
+// ein einzelner Klick zuverlässig speichert.
+async function fetchWithRetry(input: string, init?: RequestInit, retries = 1): Promise<Response> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(input, init)
+      // Transiente Fehler (Server/Edge-Auth/Timeout) → kurz warten und erneut versuchen.
+      if ((res.status >= 500 || res.status === 401 || res.status === 408) && attempt < retries) {
+        await new Promise(r => setTimeout(r, 400 * (attempt + 1)))
+        continue
+      }
+      return res
+    } catch (e) {
+      lastErr = e
+      if (attempt < retries) { await new Promise(r => setTimeout(r, 400 * (attempt + 1))); continue }
+      throw e
+    }
+  }
+  throw lastErr
+}
+
 export default function WeddingRsvp({ slug }: { slug: string }) {
   const [step, setStep] = useState<Step>('choice')
   const [busy, setBusy] = useState(false)
@@ -87,8 +111,8 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
   async function loadForm(tk: string, presetCode?: string) {
     setStep('loading'); setError(null)
     try {
-      const res = await fetch(`/api/rsvp/${tk}`)
-      const d = await res.json()
+      const res = await fetchWithRetry(`/api/rsvp/${tk}`)
+      const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error ?? 'Konnte Anmeldung nicht laden')
       setToken(tk)
       setData(d)
@@ -167,11 +191,11 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
             }))
           : [],
       }
-      const res = await fetch(`/api/rsvp/${token}`, {
+      const res = await fetchWithRetry(`/api/rsvp/${token}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      const d = await res.json()
+      const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error ?? 'Speichern fehlgeschlagen')
       setData(prev => prev ? { ...prev, guest: { ...prev.guest, status: attending ? 'zugesagt' : 'abgesagt' } } : prev)
       setStep('done')
@@ -630,41 +654,119 @@ function MusicWish({ token }: { token: string }) {
 
 function Wishlist({ token, wishlist }: { token: string; wishlist: any[] }) {
   const [items, setItems] = useState(wishlist)
-  const [busyId, setBusyId] = useState<string | null>(null)
-  async function act(wish: any, action: 'claim' | 'unclaim') {
-    setBusyId(wish.id)
-    try {
-      const res = await fetch(`/api/rsvp/${token}/geschenk`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, wish_id: wish.id }),
-      })
-      if (res.ok) {
-        setItems(arr => arr.map(w => w.id === wish.id
-          ? { ...w, status: action === 'claim' ? 'vergeben' : 'verfuegbar', is_claimed_by_me: action === 'claim' }
-          : w))
-      }
-    } finally { setBusyId(null) }
-  }
   return (
     <div>
       <h3 className="wd-extras-title"><Gift size={18} style={{ verticalAlign: '-3px', marginRight: 6 }} />Wunschliste</h3>
-      {items.map(w => {
-        const taken = w.status === 'vergeben' && !w.is_claimed_by_me
-        return (
-          <div key={w.id} className="wd-companion" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-            <div>
-              <strong>{w.title}</strong>
-              {w.description && <div className="wd-hint">{w.description}</div>}
-              {w.price && <div className="wd-hint">{w.price} €</div>}
-            </div>
-            {!w.is_money_wish && (
-              w.is_claimed_by_me
-                ? <button className="wd-btn wd-btn-ghost" disabled={busyId === w.id} onClick={() => act(w, 'unclaim')} style={{ marginTop: 0 }}>Freigeben</button>
-                : <button className="wd-btn" disabled={taken || busyId === w.id} onClick={() => act(w, 'claim')} style={{ marginTop: 0 }}>{taken ? 'Vergeben' : 'Übernehmen'}</button>
-            )}
+      <p className="wd-body" style={{ marginTop: '-0.25rem', marginBottom: '1.25rem' }}>
+        Such dir aus, wie du dich beteiligen möchtest: einen Wunsch ganz übernehmen oder dich
+        mit einem Betrag deiner Wahl an einem Geldwunsch beteiligen.
+      </p>
+      {items.map(w => (
+        <WishlistItem
+          key={w.id} token={token} wish={w}
+          onChange={updated => setItems(arr => arr.map(x => x.id === updated.id ? updated : x))}
+        />
+      ))}
+    </div>
+  )
+}
+
+function WishlistItem({ token, wish, onChange }: { token: string; wish: any; onChange: (w: any) => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [amount, setAmount] = useState<string>(wish.my_contribution ? String(wish.my_contribution) : '')
+
+  async function post(body: Record<string, unknown>): Promise<boolean> {
+    setBusy(true); setError(null)
+    try {
+      const res = await fetchWithRetry(`/api/rsvp/${token}/geschenk`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body, wish_id: wish.id }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setError(d.error ?? 'Aktion fehlgeschlagen')
+        return false
+      }
+      return true
+    } catch {
+      setError('Netzwerkfehler — bitte erneut versuchen')
+      return false
+    } finally { setBusy(false) }
+  }
+
+  async function claim(action: 'claim' | 'unclaim') {
+    if (await post({ action })) {
+      onChange({ ...wish, status: action === 'claim' ? 'vergeben' : 'verfuegbar', is_claimed_by_me: action === 'claim' })
+    }
+  }
+
+  async function contribute() {
+    const value = Math.round(Number(amount.replace(',', '.')))
+    if (!Number.isFinite(value) || value <= 0) { setError('Bitte gib einen gültigen Betrag ein.'); return }
+    if (await post({ action: 'contribute', amount: value })) {
+      const prevMine = wish.my_contribution ?? 0
+      const nextTotal = (wish.total_contributed ?? 0) - prevMine + value
+      onChange({ ...wish, my_contribution: value, total_contributed: nextTotal })
+    }
+  }
+
+  const taken = wish.status === 'vergeben' && !wish.is_claimed_by_me
+  const target = Number(wish.money_target) || 0
+  const collected = Number(wish.total_contributed) || 0
+  const pct = target > 0 ? Math.min(100, Math.round((collected / target) * 100)) : 0
+
+  return (
+    <div className="wd-companion" style={{ display: 'block' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+        <div>
+          <strong>{wish.title}</strong>
+          {wish.description && <div className="wd-hint">{wish.description}</div>}
+          {!wish.is_money_wish && wish.price ? <div className="wd-hint">{wish.price} €</div> : null}
+          {wish.link && (
+            <a href={wish.link} target="_blank" rel="noopener noreferrer" className="wd-hint" style={{ color: 'var(--wd-accent)', textDecoration: 'underline' }}>
+              Ansehen
+            </a>
+          )}
+        </div>
+        {!wish.is_money_wish && (
+          wish.is_claimed_by_me
+            ? <button className="wd-btn wd-btn-ghost" disabled={busy} onClick={() => claim('unclaim')} style={{ marginTop: 0, flexShrink: 0 }}>Freigeben</button>
+            : <button className="wd-btn" disabled={taken || busy} onClick={() => claim('claim')} style={{ marginTop: 0, flexShrink: 0 }}>{taken ? 'Vergeben' : 'Übernehmen'}</button>
+        )}
+      </div>
+
+      {/* Geldwunsch: anteilig beitragen */}
+      {wish.is_money_wish && (
+        <div style={{ marginTop: '0.75rem' }}>
+          {target > 0 && (
+            <>
+              <div style={{ height: 8, borderRadius: 999, background: 'color-mix(in srgb, var(--wd-accent) 14%, transparent)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: 'var(--wd-accent)', transition: 'width 0.3s' }} />
+              </div>
+              <div className="wd-hint" style={{ marginTop: '0.4rem' }}>
+                {collected} € von {target} € gesammelt{pct >= 100 ? ' — Ziel erreicht!' : ''}
+              </div>
+            </>
+          )}
+          {wish.my_contribution > 0 && (
+            <div className="wd-hint" style={{ marginTop: '0.25rem' }}>Dein bisheriger Beitrag: <strong>{wish.my_contribution} €</strong></div>
+          )}
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem', alignItems: 'center' }}>
+            <input
+              className="wd-input" type="number" min={1} inputMode="numeric"
+              placeholder="Betrag in €" value={amount}
+              onChange={e => setAmount(e.target.value)}
+              style={{ maxWidth: 140 }}
+            />
+            <button className="wd-btn" disabled={busy} onClick={contribute} style={{ marginTop: 0, flexShrink: 0 }}>
+              {busy ? <Loader size={15} className="wd-spin" /> : (wish.my_contribution > 0 ? 'Beitrag ändern' : 'Beitragen')}
+            </button>
           </div>
-        )
-      })}
+        </div>
+      )}
+
+      {error && <p className="wd-error" style={{ marginBottom: 0 }}>{error}</p>}
     </div>
   )
 }
