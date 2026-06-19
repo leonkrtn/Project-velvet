@@ -3,8 +3,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import ShareBox from '@/components/vendor/ShareBox'
-import { Send, Paperclip, FileText, Download, Database, Loader2, X } from 'lucide-react'
-import { SHARE_MODULE_LABELS, type ModuleSnapshot, type ShareModule } from '@/lib/vendor/shares'
+import { Send, Paperclip, FileText, Download, Database, Loader2, X, Snowflake, Radio } from 'lucide-react'
+import { SHARE_MODULES, SHARE_MODULE_LABELS, type ModuleSnapshot, type ShareModule, type ShareMode } from '@/lib/vendor/shares'
 
 interface Message {
   id: string; conversation_id: string; sender_id: string | null
@@ -22,8 +22,9 @@ function fmtTime(ts: string) {
 }
 
 // Self-contained chat for a single conversation. Fills its parent (height: 100%).
-export default function ConversationChat({ eventId, conversationId, currentUserId }: {
-  eventId: string; conversationId: string; currentUserId: string
+// canShareData: couple/organizer may push a module data-package into the chat.
+export default function ConversationChat({ eventId, conversationId, currentUserId, canShareData = true }: {
+  eventId: string; conversationId: string; currentUserId: string; canShareData?: boolean
 }) {
   const supabase = useMemo(() => createClient(), [])
   const fileUpload = useFileUpload()
@@ -32,6 +33,9 @@ export default function ConversationChat({ eventId, conversationId, currentUserI
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [openShare, setOpenShare] = useState<{ label: string; snapshot: ModuleSnapshot | null; loading: boolean } | null>(null)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [pickModule, setPickModule] = useState<ShareModule | null>(null)
+  const [sharing, setSharing] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -96,6 +100,20 @@ export default function ConversationChat({ eventId, conversationId, currentUserI
     const res = await fetch(`/api/files/${fileId}/download-url`); if (!res.ok) return
     const { downloadUrl } = await res.json(); window.open(downloadUrl, '_blank')
   }
+  async function shareData(mode: ShareMode) {
+    if (!pickModule || sharing) return
+    setSharing(true)
+    const res = await fetch('/api/vendor/shares', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ conversationId, module: pickModule, mode }),
+    })
+    setSharing(false)
+    if (res.ok) {
+      setShareOpen(false); setPickModule(null)
+      load() // realtime usually delivers the data_share message; reload as a fallback
+    }
+  }
+
   async function viewShare(shareId: string, label: string) {
     setOpenShare({ label, snapshot: null, loading: true })
     const res = await fetch(`/api/vendor/shares/${shareId}`)
@@ -129,9 +147,57 @@ export default function ConversationChat({ eventId, conversationId, currentUserI
         <button onClick={() => fileRef.current?.click()} disabled={fileUpload.uploading} aria-label="Datei anhängen" style={{ width: 36, height: 36, borderRadius: '50%', background: '#F0F0F2', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#636366', flexShrink: 0 }}>
           {fileUpload.uploading ? <Loader2 size={15} className="cc-spin" /> : <Paperclip size={15} />}
         </button>
+        {canShareData && (
+          <button onClick={() => setShareOpen(true)} aria-label="Datenpaket teilen" title="Datenpaket teilen" style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bp-gold-pale, #F5F0E8)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bp-gold-deep, #9C7F4F)', flexShrink: 0 }}>
+            <Database size={15} />
+          </button>
+        )}
         <input value={newMsg} onChange={e => setNewMsg(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()} placeholder={fileUpload.uploading ? 'Datei wird hochgeladen…' : 'Nachricht schreiben…'} style={{ flex: 1, minWidth: 0, padding: '9px 14px', border: 'none', borderRadius: 20, fontSize: 14, outline: 'none', fontFamily: 'inherit', background: '#F0F0F2' }} />
         <button onClick={send} disabled={!newMsg.trim() || sending} aria-label="Senden" style={{ width: 38, height: 38, borderRadius: '50%', background: newMsg.trim() ? 'var(--bp-gold, #B89968)' : '#E5E5EA', border: 'none', cursor: newMsg.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', color: newMsg.trim() ? '#fff' : '#8E8E93', flexShrink: 0 }}><Send size={15} /></button>
       </div>
+
+      {shareOpen && (
+        <div onClick={() => { setShareOpen(false); setPickModule(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 600, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface, #fff)', borderRadius: '18px 18px 0 0', width: 520, maxWidth: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 -8px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border, #eee)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Database size={17} style={{ color: 'var(--bp-gold-deep, #9C7F4F)' }} />
+              <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, flex: 1 }}>Datenpaket teilen</h3>
+              <button onClick={() => { setShareOpen(false); setPickModule(null) }} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', display: 'flex' }}><X size={18} /></button>
+            </div>
+            <div style={{ padding: 18, overflowY: 'auto' }}>
+              <p style={{ fontSize: 12.5, color: 'var(--text-tertiary, #999)', margin: '0 0 14px', lineHeight: 1.5 }}>
+                Wähle einen Bereich. Als <b>Auszug</b> wird der aktuelle Stand eingefroren, als <b>Live</b> aktualisiert sich das Paket automatisch.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8, marginBottom: 18 }}>
+                {SHARE_MODULES.map(m => (
+                  <button key={m.key} onClick={() => setPickModule(m.key)} style={{
+                    padding: '10px 12px', borderRadius: 10, textAlign: 'left', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
+                    border: `1.5px solid ${pickModule === m.key ? 'var(--bp-gold, #B89968)' : 'var(--border, #e5e0d8)'}`,
+                    background: pickModule === m.key ? 'var(--bp-gold, #B89968)' : 'var(--surface, #fff)',
+                    color: pickModule === m.key ? '#fff' : 'var(--text-primary, #1d1d1f)',
+                  }}>{m.label}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => shareData('snapshot')} disabled={!pickModule || sharing} style={{
+                  flex: 1, padding: '12px', borderRadius: 10, border: '1px solid var(--border, #e5e0d8)', background: 'var(--surface, #fff)',
+                  cursor: pickModule && !sharing ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+                  color: pickModule ? 'var(--text-primary, #1d1d1f)' : 'var(--text-tertiary, #999)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                }}>
+                  <Snowflake size={15} /> Als Auszug
+                </button>
+                <button onClick={() => shareData('live')} disabled={!pickModule || sharing} style={{
+                  flex: 1, padding: '12px', borderRadius: 10, border: 'none', background: pickModule ? 'var(--bp-gold, #B89968)' : '#C7C7CC',
+                  cursor: pickModule && !sharing ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+                  color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                }}>
+                  {sharing ? <Loader2 size={15} className="cc-spin" /> : <Radio size={15} />} Live teilen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {openShare && (
         <div onClick={() => setOpenShare(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
