@@ -4,7 +4,6 @@
 // öffentliche Präsentationsschicht mit draft_content.
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getEventRole } from '@/lib/files/permissions'
 import { resolveContentImageUrls } from '@/lib/wedding/server'
 import { normalizeContent } from '@/lib/wedding/content'
@@ -37,9 +36,10 @@ export default async function WeddingPreviewPage({
   const role = await getEventRole(supabase, user.id, eventId)
   if (!role || !EDIT_ROLES.includes(role)) redirect('/login')
 
-  const admin = createAdminClient()
-  const { data: site } = await admin.from('wedding_sites').select('*').eq('event_id', eventId).maybeSingle()
-  const { data: ev } = await admin
+  // Authentifizierter Client (RLS) — kein Service-Role-Key nötig: das Event-Mitglied
+  // darf wedding_sites + events ohnehin lesen.
+  const { data: site } = await supabase.from('wedding_sites').select('*').eq('event_id', eventId).maybeSingle()
+  const { data: ev } = await supabase
     .from('events').select('id, title, couple_name, date, venue, venue_address').eq('id', eventId).maybeSingle()
 
   const coupleName = (ev?.couple_name?.trim()) || (ev?.title?.trim()) || ''

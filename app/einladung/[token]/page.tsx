@@ -9,15 +9,15 @@ export const dynamic = 'force-dynamic'
 
 export default async function OpenInviteRedirect({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
-  const admin = createAdminClient()
 
-  const { data: ev } = await admin
-    .from('events')
-    .select('id')
-    .eq('open_invite_token', token)
-    .maybeSingle()
+  let admin: ReturnType<typeof createAdminClient> | null = null
+  try { admin = createAdminClient() } catch { admin = null }
 
-  if (ev) {
+  const { data: ev } = admin
+    ? await admin.from('events').select('id').eq('open_invite_token', token).maybeSingle()
+    : { data: null }
+
+  if (admin && ev) {
     const { data: site } = await admin
       .from('wedding_sites')
       .select('slug')

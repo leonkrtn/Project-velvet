@@ -10,15 +10,15 @@ export const dynamic = 'force-dynamic'
 
 export default async function RsvpRedirect({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
-  const admin = createAdminClient()
 
-  const { data: guest } = await admin
-    .from('guests')
-    .select('event_id, short_code')
-    .eq('token', token)
-    .maybeSingle()
+  let admin: ReturnType<typeof createAdminClient> | null = null
+  try { admin = createAdminClient() } catch { admin = null }
 
-  if (guest) {
+  const { data: guest } = admin
+    ? await admin.from('guests').select('event_id, short_code').eq('token', token).maybeSingle()
+    : { data: null }
+
+  if (admin && guest) {
     const { data: site } = await admin
       .from('wedding_sites')
       .select('slug')

@@ -37,7 +37,15 @@ export const loadWeddingSiteBySlug = cache(async (slug: string): Promise<{
   meta: LoadedWeddingSite
   publishedContent: WeddingContent | null
 } | null> => {
-  const admin = createAdminClient()
+  let admin: ReturnType<typeof createAdminClient>
+  try {
+    admin = createAdminClient()
+  } catch (e) {
+    // Service-Role-Key fehlt (z.B. nicht in der Preview-Umgebung gesetzt) →
+    // keine harte Server-Exception, sondern "nicht verfügbar".
+    console.error('[wedding] admin client unavailable:', e)
+    return null
+  }
   const { data: site } = await admin
     .from('wedding_sites')
     .select('*')
