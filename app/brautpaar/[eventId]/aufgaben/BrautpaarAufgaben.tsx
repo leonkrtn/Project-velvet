@@ -203,9 +203,11 @@ interface Props {
   userId: string
   initialTasks: Task[]
   weddingDate: string | null
+  /** Eingebettet im kombinierten „Aufgaben & Notizen"-Tab: ohne eigenen Seiten-Header */
+  embedded?: boolean
 }
 
-export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddingDate }: Props) {
+export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddingDate, embedded = false }: Props) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const activePhase = getActivePhase(weddingDate)
   const supabase = createClient()
@@ -271,17 +273,8 @@ export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddi
 
   const totalDone = tasks.filter(t => t.done).length
 
-  return (
-    <div className="bp-page">
-      <div className="bp-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
-        <div>
-          <h1 className="bp-page-title">Aufgaben</h1>
-          <p className="bp-page-subtitle">
-            {totalDone} von {tasks.length} erledigt
-          </p>
-        </div>
-      </div>
-
+  const phases = (
+    <>
       {PHASES.map(phase => {
         const phaseTasks = tasks.filter(t => (t.phase ?? null) === phase.key)
         return (
@@ -298,6 +291,32 @@ export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddi
           />
         )
       })}
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <div>
+        <p className="bp-page-subtitle" style={{ marginBottom: '1.25rem' }}>
+          {totalDone} von {tasks.length} erledigt
+        </p>
+        {phases}
+      </div>
+    )
+  }
+
+  return (
+    <div className="bp-page">
+      <div className="bp-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
+        <div>
+          <h1 className="bp-page-title">Aufgaben</h1>
+          <p className="bp-page-subtitle">
+            {totalDone} von {tasks.length} erledigt
+          </p>
+        </div>
+      </div>
+
+      {phases}
     </div>
   )
 }
