@@ -278,7 +278,7 @@ function NextTasksCard({ eventId, initialTasks, tasksDone, tasksTotal }: {
           })
         )}
         <Link
-          href={`/brautpaar/${eventId}/aufgaben`}
+          href={`/brautpaar/${eventId}/aufgaben-notizen`}
           className="bp-auth-link"
           style={{ fontSize: '0.8125rem', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 'auto', paddingTop: '0.5rem' }}
         >
@@ -545,7 +545,7 @@ export default function BrautpaarUebersicht({
           delay={180}
         />
         <StatFigure
-          href={`/brautpaar/${eventId}/aufgaben`}
+          href={`/brautpaar/${eventId}/aufgaben-notizen`}
           value={<>{tasksDone}<span style={{ fontSize: '0.5em', color: 'var(--bp-ink-3)' }}>/{tasksTotal}</span></>}
           label="Aufgaben"
           sub={`${taskRate}% erledigt`}
