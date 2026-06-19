@@ -43,11 +43,12 @@
   display: inline-block;
   font-family: var(--wd-font-body);
   font-size: 0.72rem;
-  letter-spacing: 0.34em;
+  letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: var(--wd-accent);
+  /* dunklerer Akzent für besseren Kontrast bei kleinem Text */
+  color: color-mix(in srgb, var(--wd-accent) 72%, var(--wd-ink));
   margin-bottom: 1rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 .wd-ornament { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin: 1.25rem 0 0; }
 .wd-ornament-line { height: 1px; width: clamp(40px, 8vw, 72px); background: linear-gradient(90deg, transparent, var(--wd-accent)); }
@@ -83,17 +84,17 @@
 .wd-nav {
   position: sticky; top: 0; z-index: 50;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 1.05rem var(--wd-pad);
-  background: transparent;
+  padding: 0.85rem var(--wd-pad);
+  background: color-mix(in srgb, var(--wd-bg) 84%, transparent);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
   transition: background .3s, box-shadow .3s, padding .3s, border-color .3s;
   border-bottom: 1px solid transparent;
 }
 .wd-nav.scrolled {
-  background: color-mix(in srgb, var(--wd-bg) 90%, transparent);
-  backdrop-filter: blur(12px) saturate(1.1);
+  background: color-mix(in srgb, var(--wd-bg) 95%, transparent);
   border-bottom-color: var(--wd-line);
-  padding-top: 0.75rem; padding-bottom: 0.75rem;
-  box-shadow: 0 6px 24px rgba(0,0,0,.05);
+  box-shadow: 0 6px 24px rgba(0,0,0,.06);
 }
 .wd-nav-brand { display: flex; align-items: center; gap: 0.7rem; text-decoration: none; color: var(--wd-ink); min-width: 0; }
 .wd-nav-monogram {
@@ -115,11 +116,6 @@
   content: ''; position: absolute; left: 0; bottom: -3px; height: 1px; width: 0; background: var(--wd-accent); transition: width .3s;
 }
 .wd-nav-link.active::after, .wd-nav-link:hover::after { width: 100%; }
-/* Nav über dem Hero hell, solange nicht gescrollt */
-.wd-nav:not(.scrolled) .wd-nav-brand,
-.wd-nav:not(.scrolled) .wd-nav-link { color: #fff; }
-.wd-nav:not(.scrolled) .wd-nav-monogram { border-color: rgba(255,255,255,.7); color: #fff; }
-.wd-nav:not(.scrolled) .wd-nav-burger span { background: #fff; }
 
 .wd-nav-burger { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 6px; z-index: 2; }
 .wd-nav-burger span { width: 24px; height: 2px; background: var(--wd-ink); transition: .2s; }
@@ -138,7 +134,8 @@
 }
 
 /* ── Hero ─────────────────────────────────────────────────────────────────── */
-.wd-hero { position: relative; min-height: 100svh; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-top: -76px; }
+/* Hero füllt die Höhe abzüglich der (sticky) Navigationsleiste — kein fragiler Negativ-Offset. */
+.wd-hero { position: relative; min-height: clamp(540px, calc(100svh - 68px), 880px); display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .wd-hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform-origin: center; animation: wd-kenburns 24s ease-out forwards; }
 @keyframes wd-kenburns { from { transform: scale(1.04); } to { transform: scale(1.14); } }
 .wd-hero-scrim { position: absolute; inset: 0; background: var(--wd-hero-overlay); }
@@ -166,12 +163,17 @@
 }
 @keyframes wd-bounce { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 8px); } }
 
-/* Countdown */
-.wd-countdown { display: inline-flex; gap: clamp(0.5rem, 2.5vw, 1.5rem); align-items: stretch; margin-top: 2.5rem; padding: 1rem clamp(0.75rem, 3vw, 1.75rem); border: 1px solid rgba(255,255,255,.28); border-radius: var(--wd-radius); backdrop-filter: blur(3px); }
-.wd-cd-cell { display: flex; flex-direction: column; align-items: center; color: #fff; min-width: 44px; }
-.wd-cd-num { font-family: var(--wd-font-heading); font-size: clamp(1.7rem, 5vw, 2.8rem); line-height: 1; }
-.wd-cd-label { font-size: 0.58rem; letter-spacing: 0.22em; text-transform: uppercase; opacity: .82; margin-top: 0.5rem; }
-.wd-cd-sep { width: 1px; background: rgba(255,255,255,.25); align-self: stretch; }
+/* Countdown — bleibt immer einzeilig & ausgerichtet (auch auf kleinen Screens) */
+.wd-countdown {
+  display: inline-flex; flex-wrap: nowrap; gap: clamp(0.4rem, 2.2vw, 1.5rem);
+  align-items: center; justify-content: center; max-width: 100%;
+  margin-top: 2.5rem; padding: 0.9rem clamp(0.6rem, 3vw, 1.75rem);
+  border: 1px solid rgba(255,255,255,.3); border-radius: var(--wd-radius); backdrop-filter: blur(3px);
+}
+.wd-cd-cell { display: flex; flex-direction: column; align-items: center; color: #fff; min-width: clamp(38px, 13vw, 56px); }
+.wd-cd-num { font-family: var(--wd-font-heading); font-size: clamp(1.5rem, 6vw, 2.8rem); line-height: 1; font-variant-numeric: tabular-nums; }
+.wd-cd-label { font-size: clamp(0.5rem, 1.8vw, 0.6rem); letter-spacing: 0.16em; text-transform: uppercase; opacity: .85; margin-top: 0.5rem; white-space: nowrap; }
+.wd-cd-sep { align-self: stretch; width: 1px; background: rgba(255,255,255,.28); flex-shrink: 0; }
 
 /* ── Location ─────────────────────────────────────────────────────────────── */
 .wd-location-grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; }
