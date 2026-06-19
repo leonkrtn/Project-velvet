@@ -81,25 +81,35 @@ function SectionHead({ eyebrow, title, align = 'center' }: { eyebrow?: string; t
   )
 }
 
-// Scroll-Reveal (rein additiv; ohne JS bleibt alles sichtbar).
+// Scroll-Reveal (rein additiv & ausfallsicher: Inhalt bleibt NIE dauerhaft versteckt).
 function useReveal() {
   useEffect(() => {
     const root = document.querySelector('.wd-root') as HTMLElement | null
     if (!root) return
-    const els = Array.from(root.querySelectorAll('[data-reveal]'))
+    const els = Array.from(root.querySelectorAll<HTMLElement>('[data-reveal]'))
     if (!els.length) return
+    const reveal = (el: Element) => el.classList.add('is-visible')
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (reduce || !('IntersectionObserver' in window)) {
-      els.forEach(e => e.classList.add('is-visible')); return
-    }
+    if (reduce || !('IntersectionObserver' in window)) { els.forEach(reveal); return }
+
     root.classList.add('wd-anim')
     const io = new IntersectionObserver((entries) => {
-      entries.forEach(en => {
-        if (en.isIntersecting) { en.target.classList.add('is-visible'); io.unobserve(en.target) }
+      entries.forEach(en => { if (en.isIntersecting) { reveal(en.target); io.unobserve(en.target) } })
+    }, { threshold: 0, rootMargin: '0px 0px -8% 0px' })
+
+    // Beim Laden bereits sichtbare Elemente sofort einblenden, Rest beobachten.
+    requestAnimationFrame(() => {
+      const vh = window.innerHeight || 800
+      els.forEach(el => {
+        const top = el.getBoundingClientRect().top
+        if (top < vh * 0.92) reveal(el)
+        else io.observe(el)
       })
-    }, { threshold: 0.1, rootMargin: '0px 0px -6% 0px' })
-    els.forEach(e => io.observe(e))
-    return () => io.disconnect()
+    })
+
+    // Sicherheitsnetz: nach 1,8s garantiert alles zeigen (falls der Observer nicht feuert).
+    const safety = setTimeout(() => els.forEach(reveal), 1800)
+    return () => { io.disconnect(); clearTimeout(safety) }
   }, [])
 }
 
