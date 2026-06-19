@@ -25,9 +25,6 @@ export interface RenderProps {
   event: WeddingEventData
   template: WeddingTemplate
   imageUrls: Record<string, string>
-  /** Liefert das href für einen Menüpunkt (public: Pfad, Vorschau: ?section=). */
-  hrefFor: (s: WeddingSection) => string
-  active: WeddingSection
 }
 
 function imgUrl(urls: Record<string, string>, img: WeddingImage | null): string | null {
@@ -43,17 +40,23 @@ function StationIcon({ name, size = 18 }: { name: string; size?: number }) {
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
+// Nur serialisierbare Props (basePath/preview/active) — KEINE Funktionen, da diese
+// Komponente von Server-Komponenten gerendert wird (RSC erlaubt keine Funktions-Props).
 export function WeddingNav({
-  coupleName, hrefFor, active,
-}: { coupleName: string; hrefFor: (s: WeddingSection) => string; active?: WeddingSection }) {
+  coupleName, basePath, preview = false, active,
+}: { coupleName: string; basePath: string; preview?: boolean; active?: WeddingSection }) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname() ?? ''
-  // Aktiven Punkt aus dem Pfad ableiten, falls nicht explizit gesetzt (öffentliche Seiten).
   const derived: WeddingSection =
     pathname.endsWith('/geschichte') ? 'story'
       : pathname.endsWith('/rsvp') ? 'rsvp'
         : 'landing'
   const current = active ?? derived
+  const href = (key: WeddingSection): string => {
+    if (preview) return `?section=${key}`
+    if (key === 'landing') return basePath || '/'
+    return `${basePath}/${key === 'story' ? 'geschichte' : 'rsvp'}`
+  }
   const items: { key: WeddingSection; label: string }[] = [
     { key: 'landing', label: 'Start' },
     { key: 'story', label: 'Unsere Geschichte' },
@@ -61,7 +64,7 @@ export function WeddingNav({
   ]
   return (
     <header className="wd-nav">
-      <Link href={hrefFor('landing')} className="wd-nav-brand" onClick={() => setOpen(false)}>
+      <Link href={href('landing')} className="wd-nav-brand" onClick={() => setOpen(false)}>
         {coupleName || 'Unsere Hochzeit'}
       </Link>
       <button
@@ -76,7 +79,7 @@ export function WeddingNav({
         {items.map(it => (
           <Link
             key={it.key}
-            href={hrefFor(it.key)}
+            href={href(it.key)}
             className={`wd-nav-link${current === it.key ? ' active' : ''}`}
             onClick={() => setOpen(false)}
           >

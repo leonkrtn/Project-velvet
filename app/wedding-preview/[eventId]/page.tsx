@@ -65,17 +65,16 @@ export default async function WeddingPreviewPage({
     id: ev?.id ?? eventId, coupleName,
     date: ev?.date ?? null, venue: ev?.venue ?? null, venueAddress: ev?.venue_address ?? null,
   }
-  const hrefFor = (s: WeddingSection) => `?section=${s}`
 
   return (
     <div className="wd-root" data-template={template.id} style={styleVars}>
       <link rel="stylesheet" href={FONTS_HREF} />
-      <WeddingNav coupleName={coupleName} hrefFor={hrefFor} active={section} />
+      <WeddingNav coupleName={coupleName} basePath="" preview active={section} />
       {section === 'landing' && (
-        <LandingView content={content} event={event} template={template} imageUrls={imageUrls} hrefFor={hrefFor} active="landing" />
+        <LandingView content={content} event={event} template={template} imageUrls={imageUrls} />
       )}
       {section === 'story' && (
-        <StoryView content={content} event={event} template={template} imageUrls={imageUrls} hrefFor={hrefFor} active="story" />
+        <StoryView content={content} event={event} template={template} imageUrls={imageUrls} />
       )}
       {section === 'rsvp' && (
         <div className="wd-page">
