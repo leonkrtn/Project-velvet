@@ -26,10 +26,36 @@ async function authEditor(eventId: string) {
 async function loadEvent(admin: ReturnType<typeof createAdminClient>, eventId: string) {
   const { data: ev } = await admin
     .from('events')
-    .select('id, title, couple_name, date, venue, venue_address')
+    .select('id, title, couple_name, date, venue, venue_address, meal_options, max_begleitpersonen')
     .eq('id', eventId)
     .maybeSingle()
   return ev
+}
+
+const RSVP_TOGGLE_KEYS = ['rsvp-menu', 'rsvp-begleitpersonen', 'rsvp-musikwunsch', 'rsvp-geschenke', 'rsvp-hotel'] as const
+
+async function loadRsvpSettings(admin: ReturnType<typeof createAdminClient>, eventId: string, ev: any) {
+  const [{ data: rs }, { data: toggles }] = await Promise.all([
+    admin.from('rsvp_settings').select('*').eq('event_id', eventId).maybeSingle(),
+    admin.from('feature_toggles').select('key, enabled').eq('event_id', eventId).in('key', RSVP_TOGGLE_KEYS as unknown as string[]),
+  ])
+  const tmap = Object.fromEntries((toggles ?? []).map((t: any) => [t.key, t.enabled]))
+  return {
+    invitationText: rs?.invitation_text ?? '',
+    deadline: rs?.rsvp_deadline ?? null,
+    phoneContact: rs?.phone_contact ?? '',
+    showMealChoice: rs?.show_meal_choice ?? true,
+    showPlusOne: rs?.show_plus_one ?? true,
+    maxBegleitpersonen: ev?.max_begleitpersonen ?? 2,
+    mealOptions: ev?.meal_options ?? ['fleisch', 'fisch', 'vegetarisch', 'vegan'],
+    toggles: {
+      menu: tmap['rsvp-menu'] ?? true,
+      begleitpersonen: tmap['rsvp-begleitpersonen'] ?? true,
+      musikwunsch: tmap['rsvp-musikwunsch'] ?? true,
+      geschenke: tmap['rsvp-geschenke'] ?? true,
+      hotel: tmap['rsvp-hotel'] ?? true,
+    },
+  }
 }
 
 function coupleNameOf(ev: any): string {
@@ -64,6 +90,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ eve
     site = created
   }
 
+  const rsvpSettings = await loadRsvpSettings(admin, eventId, ev)
+
   return NextResponse.json({
     site: {
       slug: site.slug,
@@ -75,6 +103,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ eve
       publishedAt: site.published_at,
       og: { title: site.og_title ?? '', description: site.og_description ?? '', imageKey: site.og_image_r2_key ?? null },
     },
+    rsvpSettings,
     event: {
       id: ev.id, coupleName, date: ev.date ?? null,
       venue: ev.venue ?? null, venueAddress: ev.venue_address ?? null,

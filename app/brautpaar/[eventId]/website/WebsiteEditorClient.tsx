@@ -31,6 +31,18 @@ const TABS: { key: Tab; label: string }[] = [
 
 interface EventData { id: string; coupleName: string; date: string | null; venue: string | null; venueAddress: string | null }
 
+interface RsvpSettingsState {
+  invitationText: string; deadline: string | null; phoneContact: string
+  showMealChoice: boolean; showPlusOne: boolean; maxBegleitpersonen: number
+  mealOptions: string[]
+  toggles: { menu: boolean; begleitpersonen: boolean; musikwunsch: boolean; geschenke: boolean; hotel: boolean }
+}
+const DEFAULT_RSVP_SETTINGS: RsvpSettingsState = {
+  invitationText: '', deadline: null, phoneContact: '', showMealChoice: true, showPlusOne: true,
+  maxBegleitpersonen: 2, mealOptions: ['fleisch', 'fisch', 'vegetarisch', 'vegan'],
+  toggles: { menu: true, begleitpersonen: true, musikwunsch: true, geschenke: true, hotel: true },
+}
+
 // ── Bild-Upload via R2-Pipeline ───────────────────────────────────────────────
 async function uploadImage(file: File, eventId: string): Promise<{ fileId: string; r2Key: string } | null> {
   const reqRes = await fetch('/api/files/request-upload', {
@@ -73,6 +85,7 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
   const [isOnline, setIsOnline] = useState(true)
   const [status, setStatus] = useState<'draft' | 'published'>('draft')
   const [event, setEvent] = useState<EventData | null>(null)
+  const [rsvpCfg, setRsvpCfg] = useState<RsvpSettingsState>(DEFAULT_RSVP_SETTINGS)
 
   const [tab, setTab] = useState<Tab>('template')
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop')
@@ -83,6 +96,7 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
   const [iframeNonce, setIframeNonce] = useState(0)
 
   const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const rsvpTimer = useRef<ReturnType<typeof setTimeout>>()
   const initialized = useRef(false)
 
   // Vorschau-Sektion folgt dem aktiven Tab.
@@ -101,6 +115,7 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
         setIsOnline(d.site.isOnline)
         setStatus(d.site.status)
         setEvent(d.event)
+        if (d.rsvpSettings) setRsvpCfg({ ...DEFAULT_RSVP_SETTINGS, ...d.rsvpSettings, toggles: { ...DEFAULT_RSVP_SETTINGS.toggles, ...(d.rsvpSettings.toggles ?? {}) } })
         // Bestehende Bild-URLs auflösen
         const ids = Array.from(new Set(collectFileIds(d.site.content)))
         const pairs = await Promise.all(ids.map(async id => [id, await fetchImageUrl(id)] as const))
@@ -146,10 +161,27 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
   // Bei Inhalts-/OG-Änderung neu speichern
   useEffect(() => { scheduleSave() /* eslint-disable-next-line */ }, [content, og])
 
+  // RSVP-Einstellungen separat speichern (kein Einfluss auf die Inhalts-Vorschau).
+  useEffect(() => {
+    if (!initialized.current) return
+    setSaveState('saving')
+    if (rsvpTimer.current) clearTimeout(rsvpTimer.current)
+    rsvpTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/wedding/${eventId}/rsvp-settings`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rsvpCfg),
+        })
+        setSaveState(res.ok ? 'saved' : 'error')
+      } catch { setSaveState('error') }
+    }, 700)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rsvpCfg, eventId])
+
   // ── Helper ────────────────────────────────────────────────────────────────────
   function update(mut: (c: WeddingContent) => void) {
     setContent(prev => { const next = structuredClone(prev); mut(next); return next })
   }
+  function updateRsvp(patch: Partial<RsvpSettingsState>) { setRsvpCfg(prev => ({ ...prev, ...patch })) }
 
   async function pickImage(file: File, setImg: (c: WeddingContent, img: WeddingImage) => void) {
     const up = await uploadImage(file, eventId)
@@ -205,7 +237,7 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
           )}
 
           {tab === 'rsvp' && (
-            <RsvpPanel content={content} update={update} imgUrls={imgUrls} pickImage={pickImage} setImgUrls={setImgUrls} />
+            <RsvpPanel content={content} update={update} imgUrls={imgUrls} pickImage={pickImage} setImgUrls={setImgUrls} rsvpCfg={rsvpCfg} updateRsvp={updateRsvp} />
           )}
 
           {tab === 'share' && (
@@ -461,9 +493,26 @@ function StoryPanel({ content, update, imgUrls, pickImage }: {
   )
 }
 
-function RsvpPanel({ content, update, imgUrls, pickImage }: {
+function Toggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="we-field" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer' }}>
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ marginTop: 3 }} />
+      <span>
+        <span style={{ fontSize: '0.9rem', color: 'var(--bp-ink)' }}>{label}</span>
+        {hint && <span className="we-hint" style={{ display: 'block' }}>{hint}</span>}
+      </span>
+    </label>
+  )
+}
+
+function RsvpPanel({ content, update, imgUrls, pickImage, rsvpCfg, updateRsvp }: {
   content: WeddingContent; update: (m: (c: WeddingContent) => void) => void
+  rsvpCfg: RsvpSettingsState; updateRsvp: (p: Partial<RsvpSettingsState>) => void
 } & PanelImgProps) {
+  const t = rsvpCfg.toggles
+  const setT = (patch: Partial<RsvpSettingsState['toggles']>) => updateRsvp({ toggles: { ...rsvpCfg.toggles, ...patch } })
+  // Deadline als YYYY-MM-DD fürs date-Input
+  const deadlineDate = rsvpCfg.deadline ? rsvpCfg.deadline.slice(0, 10) : ''
   return (
     <>
       <h2 className="we-section-title">RSVP-Seite</h2>
@@ -476,6 +525,31 @@ function RsvpPanel({ content, update, imgUrls, pickImage }: {
         onRemove={() => update(c => { c.rsvp.image = null })}
         onFocus={(x, y) => update(c => { if (c.rsvp.image) { c.rsvp.image.focusX = x; c.rsvp.image.focusY = y } })}
       />
+
+      <hr style={{ border: 0, borderTop: '1px solid var(--bp-line)', margin: '1.5rem 0' }} />
+      <h2 className="we-section-title">Anmelde-Einstellungen</h2>
+      <p className="we-section-sub">Diese Einstellungen ersetzen die frühere RSVP-Konfiguration.</p>
+
+      <div className="we-field">
+        <div className="we-flabel"><span>Anmeldefrist (RSVP-Deadline)</span></div>
+        <input className="we-input" type="date" value={deadlineDate}
+          onChange={e => updateRsvp({ deadline: e.target.value || null })} />
+        <div className="we-hint">Nach diesem Datum sind keine Änderungen mehr möglich. Leer = keine Frist.</div>
+      </div>
+
+      <Toggle label="Menüwahl abfragen" hint="Gäste wählen ein Gericht aus den Menüoptionen." checked={t.menu} onChange={v => setT({ menu: v })} />
+
+      <Toggle label="Begleitpersonen erlauben" checked={t.begleitpersonen} onChange={v => setT({ begleitpersonen: v })} />
+      {t.begleitpersonen && (
+        <div className="we-field">
+          <div className="we-flabel"><span>Max. Begleitpersonen pro Gast</span></div>
+          <input className="we-input" type="number" min={0} max={20} value={rsvpCfg.maxBegleitpersonen}
+            onChange={e => updateRsvp({ maxBegleitpersonen: Math.max(0, Math.min(20, parseInt(e.target.value || '0', 10) || 0)) })} />
+        </div>
+      )}
+
+      <Toggle label="Musikwünsche sammeln" hint="Gäste können nach der Zusage Songs vorschlagen." checked={t.musikwunsch} onChange={v => setT({ musikwunsch: v })} />
+      <Toggle label="Wunschliste anzeigen" hint="Zeigt eure Geschenk-/Wunschliste auf der RSVP-Seite." checked={t.geschenke} onChange={v => setT({ geschenke: v })} />
     </>
   )
 }

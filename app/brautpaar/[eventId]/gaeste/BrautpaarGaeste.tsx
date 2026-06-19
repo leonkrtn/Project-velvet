@@ -1599,14 +1599,15 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
           <Settings size={16} />
         </span>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--bp-ink)', margin: 0 }}>Einladungstext & RSVP-Gestaltung</p>
+          <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--bp-ink)', margin: 0 }}>Einladung, RSVP & Design</p>
           <p className="bp-caption" style={{ margin: '2px 0 0' }}>
-            Einladungstext, Frist und das Aussehen der Antwortseite stellst du jetzt unter „Allgemein“ ein.
+            Frist, Menü-/Begleitungs-Optionen und das Aussehen der Antwortseite stellst du jetzt
+            in eurer Hochzeitswebsite ein. Die persönlichen Links unten führen die Gäste direkt dorthin.
           </p>
         </div>
-        <Link href={`/brautpaar/${eventId}/allgemein#einladung`} className="bp-btn bp-btn-primary"
+        <Link href={`/brautpaar/${eventId}/website`} className="bp-btn bp-btn-primary"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
-          <Settings size={14} /> Einladung & RSVP einstellen
+          <Settings size={14} /> Hochzeitswebsite öffnen
         </Link>
       </div>
 

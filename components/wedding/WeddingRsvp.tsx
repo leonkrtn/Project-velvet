@@ -4,7 +4,7 @@
 // Einstieg: "Schon angemeldet?" → Code eingeben ODER neu (Name + E-Mail).
 // Danach: themed RSVP-Formular (nutzt die bestehende /api/rsvp/[token]-API).
 // Nach dem Absenden: persönlicher Code/Link + Foto-Upload, Wunschliste, Musikwunsch.
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Check, Loader, ArrowLeft, Plus, X, Music, Gift } from 'lucide-react'
 import RsvpPhotos from '@/components/rsvp/RsvpPhotos'
 
@@ -54,6 +54,26 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
   const [allergies, setAllergies] = useState('')
   const [message, setMessage] = useState('')
   const [companions, setCompanions] = useState<Companion[]>([])
+
+  // Persönlicher Deep-Link aus der Gästeliste: /wedding/[slug]/rsvp?code=XXXX
+  // → Code vorbefüllen und direkt einlösen.
+  useEffect(() => {
+    const c = (new URLSearchParams(window.location.search).get('code') || '').toUpperCase().trim()
+    if (!/^[A-Z0-9]{4}$/.test(c)) return
+    setCode(c)
+    ;(async () => {
+      setBusy(true); setError(null)
+      try {
+        const res = await fetch(`/api/wedding/public/${slug}/rsvp/lookup`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: c }),
+        })
+        const d = await res.json()
+        if (res.ok) await loadForm(d.token, c)
+        else { setError(d.error ?? 'Code ungültig'); setStep('code') }
+      } catch { setStep('code') } finally { setBusy(false) }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function loadForm(tk: string, presetCode?: string) {
     setStep('loading'); setError(null)
@@ -330,7 +350,9 @@ function DoneView(p: {
   slug: string; token: string; personalCode: string | null; attending: boolean | null
   coupleName: string; showMusic: boolean; showWishlist: boolean; wishlist: any[]
 }) {
-  const link = typeof window !== 'undefined' ? `${window.location.origin}/wedding/${p.slug}/rsvp` : ''
+  const link = typeof window !== 'undefined'
+    ? `${window.location.origin}/wedding/${p.slug}/rsvp${p.personalCode ? `?code=${p.personalCode}` : ''}`
+    : ''
   return (
     <div className="wd-card">
       <div className="wd-center">

@@ -81,9 +81,13 @@
 .we-url { font-family: monospace; font-size: 0.82rem; word-break: break-all; color: var(--bp-gold-deep, #9c7f4f); }
 .we-switch { display: flex; align-items: center; gap: 0.6rem; }
 
-/* Mobile: Vorschau unter das Formular */
+/* Mobile: Vorschau unter das Formular; ganze Ansicht wird scrollbar.
+   (Der Editor läuft als full-bleed Container mit fixer Höhe — daher muss
+   .we-wrap selbst scrollen, sonst clippt der Eltern-Container den Inhalt.) */
 @media (max-width: 980px) {
-  .we-wrap { flex-direction: column; height: auto; }
-  .we-form { width: 100%; border-right: none; border-bottom: 1px solid var(--bp-line, #e8e2d8); }
-  .we-preview { min-height: 70vh; }
+  .we-wrap { flex-direction: column; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .we-form { width: 100%; flex: 0 0 auto; overflow: visible; border-right: none; border-bottom: 1px solid var(--bp-line, #e8e2d8); }
+  .we-form-inner { padding-bottom: 2rem; }
+  .we-tabs { position: static; } /* sticky innerhalb scrollendem Container vermeiden */
+  .we-preview { flex: 0 0 auto; min-height: 80vh; }
 }
