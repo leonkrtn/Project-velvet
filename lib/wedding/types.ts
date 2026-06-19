@@ -34,9 +34,24 @@ export interface WeddingScheduleItem {
   description?: string // optionaler Zusatztext / Ort
 }
 
+/** Individualisierung über dem Template (partiell; leer = Template-Standard). */
+export interface WeddingStyleOverrides {
+  fontHeading?: string
+  fontBody?: string
+  palette?: string
+  texture?: string
+  radius?: string
+  button?: string
+  ornament?: string
+  storyAlign?: string
+  storyLine?: string
+  storyMarker?: string
+}
+
 export interface WeddingContent {
   version: 1
   lang: WeddingLang
+  style: WeddingStyleOverrides
   landing: {
     hero: {
       image: WeddingImage | null

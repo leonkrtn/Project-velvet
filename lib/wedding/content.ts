@@ -5,7 +5,7 @@
 import {
   WEDDING_LIMITS, MIN_STATIONS, MAX_STATIONS, MAX_SCHEDULE_ITEMS,
   STATION_ICONS, type WeddingContent, type WeddingStation,
-  type WeddingImage, type WeddingScheduleItem,
+  type WeddingImage, type WeddingScheduleItem, type WeddingStyleOverrides,
 } from './types'
 
 function rid(): string {
@@ -22,6 +22,7 @@ export function defaultContent(coupleName = ''): WeddingContent {
   return {
     version: 1,
     lang: 'de',
+    style: {},
     landing: {
       hero: {
         image: null,
@@ -80,6 +81,21 @@ function sanitizeScheduleItems(v: unknown): WeddingScheduleItem[] {
   }).filter(i => i.time || i.label)
 }
 
+const STYLE_KEYS = [
+  'fontHeading', 'fontBody', 'palette', 'texture', 'radius', 'button',
+  'ornament', 'storyAlign', 'storyLine', 'storyMarker',
+] as const
+
+function sanitizeStyle(v: unknown): WeddingStyleOverrides {
+  const out: Record<string, string> = {}
+  if (!v || typeof v !== 'object') return out
+  const o = v as Record<string, unknown>
+  for (const k of STYLE_KEYS) {
+    if (typeof o[k] === 'string' && (o[k] as string).length <= 40) out[k] = o[k] as string
+  }
+  return out as WeddingStyleOverrides
+}
+
 function sanitizeStations(v: unknown): WeddingStation[] {
   const arr = Array.isArray(v) ? v : []
   const out = arr.slice(0, MAX_STATIONS).map(raw => {
@@ -109,6 +125,7 @@ export function normalizeContent(input: unknown, coupleName = ''): WeddingConten
   return {
     version: 1,
     lang: c.lang === 'en' ? 'en' : 'de',
+    style: sanitizeStyle(c.style),
     landing: {
       hero: {
         image: sanitizeImage(landing.hero?.image),

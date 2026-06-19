@@ -6,8 +6,13 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Heart, Sparkles, MapPin, Plane, Home, Gem, GlassWater, Music, Camera,
   Star, Sun, Coffee, Bike, Loader, Plus, Trash2, ArrowUp, ArrowDown,
-  ImagePlus, Monitor, Smartphone, Globe, ExternalLink, CalendarDays, type LucideIcon,
+  ImagePlus, Monitor, Smartphone, Globe, ExternalLink, CalendarDays,
+  RotateCcw, Maximize2, X, type LucideIcon,
 } from 'lucide-react'
+import {
+  HEADING_FONTS, BODY_FONTS, PALETTES, TEXTURES, RADII, BUTTON_STYLES, ORNAMENTS,
+  STORY_ALIGNS, STORY_LINES, STORY_MARKERS,
+} from '@/lib/wedding/style'
 import { TEMPLATES } from '@/lib/wedding/templates'
 import {
   WEDDING_LIMITS, MIN_STATIONS, MAX_STATIONS, MAX_SCHEDULE_ITEMS, STATION_ICONS,
@@ -19,9 +24,10 @@ const ICONS: Record<string, LucideIcon> = {
   Heart, Sparkles, MapPin, Plane, Home, Gem, GlassWater, Music, Camera, Star, Sun, Coffee, Bike,
 }
 
-type Tab = 'template' | 'start' | 'story' | 'rsvp' | 'share' | 'publish'
+type Tab = 'template' | 'style' | 'start' | 'story' | 'rsvp' | 'share' | 'publish'
 const TABS: { key: Tab; label: string }[] = [
   { key: 'template', label: 'Design' },
+  { key: 'style', label: 'Stil' },
   { key: 'start', label: 'Start' },
   { key: 'story', label: 'Geschichte' },
   { key: 'rsvp', label: 'RSVP' },
@@ -89,6 +95,9 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
 
   const [tab, setTab] = useState<Tab>('template')
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop')
+  const [fullscreen, setFullscreen] = useState(false)
+  const [fsDevice, setFsDevice] = useState<'desktop' | 'mobile'>('desktop')
+  const [fsSection, setFsSection] = useState<'landing' | 'story' | 'rsvp'>('landing')
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [slugError, setSlugError] = useState<string | null>(null)
   const [publishMsg, setPublishMsg] = useState<string | null>(null)
@@ -228,6 +237,10 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
             />
           )}
 
+          {tab === 'style' && (
+            <StylePanel style={content.style} update={update} />
+          )}
+
           {tab === 'start' && (
             <StartPanel content={content} event={event} update={update} imgUrls={imgUrls} pickImage={pickImage} setImgUrls={setImgUrls} />
           )}
@@ -268,6 +281,7 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.35rem' }}>
             <button className={`we-icon-btn${device === 'desktop' ? ' selected' : ''}`} onClick={() => setDevice('desktop')} title="Desktop" style={device === 'desktop' ? { background: 'var(--bp-gold)', color: '#fff' } : undefined}><Monitor size={16} /></button>
             <button className={`we-icon-btn${device === 'mobile' ? ' selected' : ''}`} onClick={() => setDevice('mobile')} title="Mobil" style={device === 'mobile' ? { background: 'var(--bp-gold)', color: '#fff' } : undefined}><Smartphone size={16} /></button>
+            <button className="we-icon-btn" onClick={() => setFullscreen(true)} title="Vollbild-Vorschau"><Maximize2 size={16} /></button>
           </div>
         </div>
         <div className="we-preview-frame">
@@ -281,6 +295,36 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Vollbild-Vorschau-Overlay */}
+      {fullscreen && (
+        <div className="we-fs">
+          <div className="we-fs-bar">
+            <div className="we-fs-sections">
+              {(['landing', 'story', 'rsvp'] as const).map(s => (
+                <button key={s} className={`we-tab${fsSection === s ? ' active' : ''}`} onClick={() => setFsSection(s)}>
+                  {s === 'landing' ? 'Start' : s === 'story' ? 'Geschichte' : 'RSVP'}
+                </button>
+              ))}
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.35rem' }}>
+              <button className={`we-icon-btn${fsDevice === 'desktop' ? ' selected' : ''}`} onClick={() => setFsDevice('desktop')} title="Desktop" style={fsDevice === 'desktop' ? { background: 'var(--bp-gold)', color: '#fff' } : undefined}><Monitor size={16} /></button>
+              <button className={`we-icon-btn${fsDevice === 'mobile' ? ' selected' : ''}`} onClick={() => setFsDevice('mobile')} title="Mobil" style={fsDevice === 'mobile' ? { background: 'var(--bp-gold)', color: '#fff' } : undefined}><Smartphone size={16} /></button>
+              <button className="we-icon-btn" onClick={() => setFullscreen(false)} title="Schließen"><X size={16} /></button>
+            </div>
+          </div>
+          <div className="we-fs-stage">
+            <div className={`we-iframe-shell ${fsDevice}`} style={fsDevice === 'desktop' ? { width: '100%', maxWidth: '100%', height: '100%' } : undefined}>
+              <iframe
+                key={`fs-${fsSection}-${iframeNonce}`}
+                className="we-iframe"
+                src={`/wedding-preview/${eventId}?section=${fsSection}`}
+                title="Vollbild-Vorschau"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -399,6 +443,94 @@ function TemplatePanel({ templateId, onSelect }: { templateId: string; onSelect:
           </button>
         ))}
       </div>
+    </>
+  )
+}
+
+// ── Stil-Panel ────────────────────────────────────────────────────────────────
+function StyleGroup({ label, onReset, children }: { label: string; onReset: () => void; children: React.ReactNode }) {
+  return (
+    <div className="we-field">
+      <div className="we-flabel">
+        <span>{label}</span>
+        <button className="we-reset" onClick={onReset} title="Auf Template-Standard zurücksetzen"><RotateCcw size={12} /></button>
+      </div>
+      {children}
+    </div>
+  )
+}
+function Chips({ value, options, onPick }: { value?: string; options: { key: string; label: string }[]; onPick: (v: string) => void }) {
+  return (
+    <div className="we-chips">
+      {options.map(o => (
+        <button key={o.key} className={`we-chip${value === o.key ? ' selected' : ''}`} onClick={() => onPick(o.key)}>{o.label}</button>
+      ))}
+    </div>
+  )
+}
+function SelectStd({ value, options, onChange }: { value?: string; options: { key: string; label: string }[]; onChange: (v: string | undefined) => void }) {
+  return (
+    <select className="we-input" value={value ?? ''} onChange={e => onChange(e.target.value || undefined)}>
+      <option value="">Standard (Template)</option>
+      {options.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+    </select>
+  )
+}
+
+function StylePanel({ style, update }: { style: WeddingContent['style']; update: (m: (c: WeddingContent) => void) => void }) {
+  const set = (k: string, v: string | undefined) => update(c => {
+    const s = c.style as Record<string, unknown>
+    if (v === undefined) delete s[k]; else s[k] = v
+  })
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+        <h2 className="we-section-title" style={{ margin: 0 }}>Stil anpassen</h2>
+        <button className="we-btn" onClick={() => update(c => { c.style = {} })}><RotateCcw size={14} /> Alles zurücksetzen</button>
+      </div>
+      <p className="we-section-sub">Feinschliff über dem Template. „Standard" bedeutet: Wert kommt vom gewählten Template.</p>
+
+      <StyleGroup label="Farbpalette" onReset={() => set('palette', undefined)}>
+        <div className="we-pal-grid">
+          {PALETTES.map(p => (
+            <button key={p.key} className={`we-pal${style.palette === p.key ? ' selected' : ''}`} onClick={() => set('palette', p.key)}>
+              <span className="we-pal-sw">{p.swatch.map((c, i) => <span key={i} style={{ background: c }} />)}</span>
+              <span className="we-pal-name">{p.label}</span>
+            </button>
+          ))}
+        </div>
+      </StyleGroup>
+
+      <StyleGroup label="Überschriften-Schrift" onReset={() => set('fontHeading', undefined)}>
+        <SelectStd value={style.fontHeading} options={HEADING_FONTS} onChange={v => set('fontHeading', v)} />
+      </StyleGroup>
+      <StyleGroup label="Fließtext-Schrift" onReset={() => set('fontBody', undefined)}>
+        <SelectStd value={style.fontBody} options={BODY_FONTS} onChange={v => set('fontBody', v)} />
+      </StyleGroup>
+
+      <StyleGroup label="Hintergrund-Textur" onReset={() => set('texture', undefined)}>
+        <Chips value={style.texture} options={TEXTURES} onPick={v => set('texture', v)} />
+      </StyleGroup>
+      <StyleGroup label="Ecken" onReset={() => set('radius', undefined)}>
+        <Chips value={style.radius} options={RADII} onPick={v => set('radius', v)} />
+      </StyleGroup>
+      <StyleGroup label="Buttons" onReset={() => set('button', undefined)}>
+        <Chips value={style.button} options={BUTTON_STYLES} onPick={v => set('button', v)} />
+      </StyleGroup>
+      <StyleGroup label="Ornamente / Trenner" onReset={() => set('ornament', undefined)}>
+        <Chips value={style.ornament} options={ORNAMENTS} onPick={v => set('ornament', v)} />
+      </StyleGroup>
+
+      <h2 className="we-section-title" style={{ marginTop: '1.75rem' }}>Geschichte · Roter Faden</h2>
+      <StyleGroup label="Ausrichtung / Layout" onReset={() => set('storyAlign', undefined)}>
+        <Chips value={style.storyAlign} options={STORY_ALIGNS} onPick={v => set('storyAlign', v)} />
+      </StyleGroup>
+      <StyleGroup label="Linien-Stil" onReset={() => set('storyLine', undefined)}>
+        <Chips value={style.storyLine} options={STORY_LINES} onPick={v => set('storyLine', v)} />
+      </StyleGroup>
+      <StyleGroup label="Marker" onReset={() => set('storyMarker', undefined)}>
+        <Chips value={style.storyMarker} options={STORY_MARKERS} onPick={v => set('storyMarker', v)} />
+      </StyleGroup>
     </>
   )
 }

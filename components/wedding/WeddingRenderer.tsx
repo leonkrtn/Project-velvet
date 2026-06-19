@@ -92,22 +92,22 @@ function useReveal() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (reduce || !('IntersectionObserver' in window)) { els.forEach(reveal); return }
 
-    root.classList.add('wd-anim')
     const io = new IntersectionObserver((entries) => {
       entries.forEach(en => { if (en.isIntersecting) { reveal(en.target); io.unobserve(en.target) } })
     }, { threshold: 0, rootMargin: '0px 0px -8% 0px' })
 
-    // Beim Laden bereits sichtbare Elemente sofort einblenden, Rest beobachten.
+    // Nur Elemente UNTERHALB des Sichtbereichs werden kurz versteckt + animiert.
+    // Alles, was beim Laden schon sichtbar ist, bleibt sofort sichtbar
+    // (kein globales Verstecken -> kein Reflow, der das anfängliche Scrollen blockiert).
     requestAnimationFrame(() => {
       const vh = window.innerHeight || 800
       els.forEach(el => {
         const top = el.getBoundingClientRect().top
-        if (top < vh * 0.92) reveal(el)
-        else io.observe(el)
+        if (top >= vh * 0.9) { el.classList.add('wd-reveal-init'); io.observe(el) }
       })
     })
 
-    // Sicherheitsnetz: nach 1,8s garantiert alles zeigen (falls der Observer nicht feuert).
+    // Sicherheitsnetz: nach 1,8s garantiert alles zeigen.
     const safety = setTimeout(() => els.forEach(reveal), 1800)
     return () => { io.disconnect(); clearTimeout(safety) }
   }, [])
@@ -308,10 +308,11 @@ export function LandingView({ content, event, imageUrls }: RenderProps) {
 }
 
 // ── Story / Roter Faden ─────────────────────────────────────────────────────────
-export function StoryView({ content, template, imageUrls }: RenderProps) {
+export interface StorySettings { align: string; line: string; marker: string }
+
+export function StoryView({ content, imageUrls, story }: Omit<RenderProps, 'template' | 'event'> & { story: StorySettings }) {
   useReveal()
   const { intro, stations } = content.story
-  const layout = template.storyLayout
   return (
     <div className="wd-page">
       <section className="wd-section wd-story-intro">
@@ -322,14 +323,18 @@ export function StoryView({ content, template, imageUrls }: RenderProps) {
         </div>
         {intro.text && <p className="wd-body wd-center wd-story-introtext" data-reveal>{intro.text}</p>}
       </section>
-      <section className={`wd-section wd-story wd-story-${layout}`} data-count={stations.length}>
+      <section className="wd-section wd-story" data-align={story.align} data-line={story.line} data-marker={story.marker} data-count={stations.length}>
         <div className="wd-thread" aria-hidden />
         <ol className="wd-stations">
           {stations.map((s, i) => {
             const url = imgUrl(imageUrls, s.image)
+            const marker = story.marker === 'number'
+              ? <span className="wd-marker-num">{i + 1}</span>
+              : story.marker === 'dot' ? null
+                : <StationIcon name={s.icon} size={17} />
             return (
               <li key={s.id} className="wd-station" data-index={i} data-side={i % 2 === 0 ? 'a' : 'b'} data-reveal>
-                <div className="wd-station-marker"><StationIcon name={s.icon} size={17} /></div>
+                <div className="wd-station-marker">{marker}</div>
                 <div className="wd-station-card">
                   {url && (
                     <div className="wd-station-media">
