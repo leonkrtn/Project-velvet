@@ -75,6 +75,7 @@ function sanitizeScheduleItems(v: unknown): WeddingScheduleItem[] {
       id: typeof o.id === 'string' ? o.id : rid(),
       time: clampStr(o.time, WEDDING_LIMITS.scheduleItemTime),
       label: clampStr(o.label, WEDDING_LIMITS.scheduleItemLabel),
+      description: clampStr(o.description, WEDDING_LIMITS.scheduleItemDescription) || undefined,
     }
   }).filter(i => i.time || i.label)
 }

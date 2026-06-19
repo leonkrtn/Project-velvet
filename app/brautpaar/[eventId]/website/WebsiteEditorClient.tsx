@@ -6,7 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Heart, Sparkles, MapPin, Plane, Home, Gem, GlassWater, Music, Camera,
   Star, Sun, Coffee, Bike, Loader, Plus, Trash2, ArrowUp, ArrowDown,
-  ImagePlus, Monitor, Smartphone, Globe, ExternalLink, type LucideIcon,
+  ImagePlus, Monitor, Smartphone, Globe, ExternalLink, CalendarDays, type LucideIcon,
 } from 'lucide-react'
 import { TEMPLATES } from '@/lib/wedding/templates'
 import {
@@ -351,6 +351,38 @@ function ImageField({ label, image, url, onPick, onRemove, onFocus }: {
 }
 
 // ── Panels ──────────────────────────────────────────────────────────────────────
+function ScheduleImport({ eventId, onImport }: { eventId?: string; onImport: (items: any[]) => void }) {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  async function run() {
+    if (!eventId) return
+    setBusy(true); setMsg(null)
+    try {
+      const res = await fetch(`/api/wedding/${eventId}/timeline`)
+      const d = await res.json()
+      if (!res.ok) throw new Error(d.error ?? 'Fehler')
+      const items = (d.items ?? []).slice(0, MAX_SCHEDULE_ITEMS).map((it: any) => ({
+        id: crypto.randomUUID(),
+        time: String(it.time ?? '').slice(0, WEDDING_LIMITS.scheduleItemTime),
+        label: String(it.label ?? '').slice(0, WEDDING_LIMITS.scheduleItemLabel),
+        description: it.description ? String(it.description).slice(0, WEDDING_LIMITS.scheduleItemDescription) : undefined,
+      }))
+      if (items.length === 0) { setMsg('Im Ablaufplan wurden keine Einträge gefunden.'); return }
+      onImport(items)
+      setMsg(`${items.length} Einträge übernommen.`)
+    } catch (e: any) { setMsg(e.message ?? 'Fehler') } finally { setBusy(false) }
+  }
+  return (
+    <div className="we-field">
+      <button className="we-btn we-btn-block" onClick={run} disabled={busy}>
+        {busy ? <Loader size={15} className="we-spin" /> : <CalendarDays size={15} />} Aus Ablaufplan übernehmen
+      </button>
+      <div className="we-hint">Übernimmt Uhrzeit & Programmpunkt aus eurem geplanten Ablaufplan (ersetzt die Liste).</div>
+      {msg && <div className="we-ok">{msg}</div>}
+    </div>
+  )
+}
+
 function TemplatePanel({ templateId, onSelect }: { templateId: string; onSelect: (id: string) => void }) {
   return (
     <>
@@ -415,6 +447,7 @@ function StartPanel({ content, event, update, imgUrls, pickImage }: {
       <hr style={{ border: 0, borderTop: '1px solid var(--bp-line)', margin: '1.5rem 0' }} />
       <Field label="Tagesablauf-Titel" max={WEDDING_LIMITS.scheduleTitle} value={L.schedule.title}
         onChange={v => update(c => { c.landing.schedule.title = v })} />
+      <ScheduleImport eventId={event?.id} onImport={items => update(c => { c.landing.schedule.items = items })} />
       {L.schedule.items.map((it, i) => (
         <div className="we-item" key={it.id}>
           <div className="we-item-head">
@@ -427,6 +460,7 @@ function StartPanel({ content, event, update, imgUrls, pickImage }: {
           </div>
           <Field label="Uhrzeit" max={WEDDING_LIMITS.scheduleItemTime} value={it.time} onChange={v => update(c => { c.landing.schedule.items[i].time = v })} placeholder="14:00" />
           <Field label="Programmpunkt" max={WEDDING_LIMITS.scheduleItemLabel} value={it.label} onChange={v => update(c => { c.landing.schedule.items[i].label = v })} placeholder="Freie Trauung" />
+          <Field label="Beschreibung (optional)" max={WEDDING_LIMITS.scheduleItemDescription} value={it.description ?? ''} onChange={v => update(c => { c.landing.schedule.items[i].description = v })} placeholder="z.B. im Schlossgarten" />
         </div>
       ))}
       {L.schedule.items.length < MAX_SCHEDULE_ITEMS && (
@@ -548,6 +582,7 @@ function RsvpPanel({ content, update, imgUrls, pickImage, rsvpCfg, updateRsvp }:
         </div>
       )}
 
+      <Toggle label="Übernachtung / Hotel abfragen" hint="Gäste können im RSVP ein Hotelzimmer wählen (sofern Hotels hinterlegt sind)." checked={t.hotel} onChange={v => setT({ hotel: v })} />
       <Toggle label="Musikwünsche sammeln" hint="Gäste können nach der Zusage Songs vorschlagen." checked={t.musikwunsch} onChange={v => setT({ musikwunsch: v })} />
       <Toggle label="Wunschliste anzeigen" hint="Zeigt eure Geschenk-/Wunschliste auf der RSVP-Seite." checked={t.geschenke} onChange={v => setT({ geschenke: v })} />
     </>

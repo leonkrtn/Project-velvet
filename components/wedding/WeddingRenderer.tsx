@@ -2,13 +2,13 @@
 // components/wedding/WeddingRenderer.tsx
 // Präsentationsschicht der öffentlichen Hochzeitswebsite. Wird sowohl von den
 // öffentlichen Seiten (/wedding/[slug]/*) als auch von der Editor-Live-Vorschau
-// verwendet. Erhält ausschließlich serialisierbare Props.
+// verwendet. Erhält ausschließlich serialisierbare Props (keine Funktionen!).
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Heart, Sparkles, MapPin, Plane, Home, Gem, GlassWater, Music, Camera,
-  Star, Sun, Coffee, Bike, Clock, type LucideIcon,
+  Star, Sun, Coffee, Bike, Clock, ChevronDown, type LucideIcon,
 } from 'lucide-react'
 import type { WeddingContent, WeddingEventData, WeddingImage } from '@/lib/wedding/types'
 import type { WeddingTemplate } from '@/lib/wedding/templates'
@@ -36,17 +36,86 @@ function focus(img: WeddingImage | null): string {
 
 function StationIcon({ name, size = 18 }: { name: string; size?: number }) {
   const Cmp = ICONS[name] ?? Heart
-  return <Cmp size={size} strokeWidth={1.6} />
+  return <Cmp size={size} strokeWidth={1.5} />
+}
+
+/** Namen mit kunstvollem Ampersand rendern ("Anna & Max"). */
+function Headline({ text }: { text: string }) {
+  const parts = text.split(/\s*&\s*|\s+und\s+/i)
+  if (parts.length === 2 && parts[0] && parts[1]) {
+    return (
+      <>
+        <span className="wd-name">{parts[0]}</span>
+        <span className="wd-amp">&amp;</span>
+        <span className="wd-name">{parts[1]}</span>
+      </>
+    )
+  }
+  return <>{text}</>
+}
+
+function initialsOf(name: string): string {
+  const parts = name.split(/\s*&\s*|\s+und\s+/i).map(p => p.trim()).filter(Boolean)
+  if (parts.length >= 2) return `${parts[0][0] ?? ''} & ${parts[1][0] ?? ''}`.toUpperCase()
+  return (name.trim()[0] ?? '').toUpperCase()
+}
+
+/** Dezenter Ornament-Trenner (Linie · Diamant · Linie). */
+function Ornament() {
+  return (
+    <span className="wd-ornament" aria-hidden>
+      <span className="wd-ornament-line" />
+      <span className="wd-ornament-mark" />
+      <span className="wd-ornament-line" />
+    </span>
+  )
+}
+
+function SectionHead({ eyebrow, title, align = 'center' }: { eyebrow?: string; title: string; align?: 'center' | 'left' }) {
+  return (
+    <div className={`wd-shead wd-shead-${align}`} data-reveal>
+      {eyebrow && <span className="wd-eyebrow">{eyebrow}</span>}
+      <h2 className="wd-h2">{title}</h2>
+      <Ornament />
+    </div>
+  )
+}
+
+// Scroll-Reveal (rein additiv; ohne JS bleibt alles sichtbar).
+function useReveal() {
+  useEffect(() => {
+    const root = document.querySelector('.wd-root') as HTMLElement | null
+    if (!root) return
+    const els = Array.from(root.querySelectorAll('[data-reveal]'))
+    if (!els.length) return
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce || !('IntersectionObserver' in window)) {
+      els.forEach(e => e.classList.add('is-visible')); return
+    }
+    root.classList.add('wd-anim')
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(en => {
+        if (en.isIntersecting) { en.target.classList.add('is-visible'); io.unobserve(en.target) }
+      })
+    }, { threshold: 0.1, rootMargin: '0px 0px -6% 0px' })
+    els.forEach(e => io.observe(e))
+    return () => io.disconnect()
+  }, [])
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
-// Nur serialisierbare Props (basePath/preview/active) — KEINE Funktionen, da diese
-// Komponente von Server-Komponenten gerendert wird (RSC erlaubt keine Funktions-Props).
 export function WeddingNav({
   coupleName, basePath, preview = false, active,
 }: { coupleName: string; basePath: string; preview?: boolean; active?: WeddingSection }) {
   const [open, setOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname() ?? ''
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
   const derived: WeddingSection =
     pathname.endsWith('/geschichte') ? 'story'
       : pathname.endsWith('/rsvp') ? 'rsvp'
@@ -63,9 +132,10 @@ export function WeddingNav({
     { key: 'rsvp', label: 'RSVP' },
   ]
   return (
-    <header className="wd-nav">
+    <header className={`wd-nav${scrolled ? ' scrolled' : ''}`}>
       <Link href={href('landing')} className="wd-nav-brand" onClick={() => setOpen(false)}>
-        {coupleName || 'Unsere Hochzeit'}
+        <span className="wd-nav-monogram">{initialsOf(coupleName)}</span>
+        <span className="wd-nav-brand-name">{coupleName || 'Unsere Hochzeit'}</span>
       </Link>
       <button
         className="wd-nav-burger"
@@ -93,10 +163,12 @@ export function WeddingNav({
 
 export function WeddingFooter({ coupleName, date }: { coupleName: string; date: string | null }) {
   return (
-    <footer className="wd-footer">
-      <Heart size={18} className="wd-footer-heart" strokeWidth={1.4} />
+    <footer className="wd-footer" data-reveal>
+      <div className="wd-footer-monogram">{initialsOf(coupleName)}</div>
       <div className="wd-footer-names">{coupleName}</div>
       {date && <div className="wd-footer-date">{formatLongDate(date)}</div>}
+      <Ornament />
+      <p className="wd-footer-note">Wir freuen uns darauf, diesen Tag mit euch zu feiern.</p>
     </footer>
   )
 }
@@ -124,18 +196,27 @@ function Countdown({ date }: { date: string | null }) {
   const hours = Math.floor((diff % 86400000) / 3600000)
   const mins = Math.floor((diff % 3600000) / 60000)
   const secs = Math.floor((diff % 60000) / 1000)
-  const cell = (v: number, l: string) => (
-    <div className="wd-cd-cell"><span className="wd-cd-num">{String(v).padStart(2, '0')}</span><span className="wd-cd-label">{l}</span></div>
-  )
+  const cells = [
+    [days, 'Tage'], [hours, 'Stunden'], [mins, 'Minuten'], [secs, 'Sekunden'],
+  ] as const
   return (
     <div className="wd-countdown" aria-label="Countdown bis zur Hochzeit">
-      {cell(days, 'Tage')}{cell(hours, 'Std')}{cell(mins, 'Min')}{cell(secs, 'Sek')}
+      {cells.map(([v, l], i) => (
+        <React.Fragment key={l}>
+          {i > 0 && <span className="wd-cd-sep" aria-hidden />}
+          <div className="wd-cd-cell">
+            <span className="wd-cd-num">{String(v).padStart(2, '0')}</span>
+            <span className="wd-cd-label">{l}</span>
+          </div>
+        </React.Fragment>
+      ))}
     </div>
   )
 }
 
 // ── Landing ─────────────────────────────────────────────────────────────────────
 export function LandingView({ content, event, imageUrls }: RenderProps) {
+  useReveal()
   const hero = content.landing.hero
   const heroUrl = imgUrl(imageUrls, hero.image)
   const loc = content.landing.location
@@ -154,32 +235,41 @@ export function LandingView({ content, event, imageUrls }: RenderProps) {
           : <div className="wd-hero-img wd-img-placeholder" aria-hidden />}
         <div className="wd-hero-scrim" aria-hidden />
         <div className="wd-hero-inner">
-          <div className="wd-hero-eyebrow">{formatLongDate(event.date)}</div>
-          <h1 className="wd-hero-title">{hero.headline || event.coupleName}</h1>
+          <span className="wd-hero-eyebrow">Wir heiraten</span>
+          <h1 className="wd-hero-title"><Headline text={hero.headline || event.coupleName} /></h1>
+          <span className="wd-hero-rule" aria-hidden />
+          {event.date && (
+            <div className="wd-hero-meta">
+              {formatLongDate(event.date)}{event.venue ? ` · ${event.venue}` : ''}
+            </div>
+          )}
           {hero.subline && <p className="wd-hero-subline">{hero.subline}</p>}
           <Countdown date={event.date} />
         </div>
+        <span className="wd-scrollcue" aria-hidden><ChevronDown size={22} /></span>
       </section>
 
       {/* LOCATION */}
       {(loc.description || event.venue || locUrl) && (
         <section className="wd-section wd-location">
           <div className="wd-location-grid">
-            <div className="wd-location-text">
+            <div className="wd-location-media" data-reveal>
+              {locUrl
+                ? <div className="wd-framed"><img src={locUrl} alt={loc.image?.alt ?? loc.title} style={{ objectPosition: focus(loc.image) }} /></div>
+                : <div className="wd-framed"><div className="wd-img-placeholder wd-location-ph" aria-hidden /></div>}
+            </div>
+            <div className="wd-location-text" data-reveal>
+              <span className="wd-eyebrow">Feiert mit uns</span>
               <h2 className="wd-h2">{loc.title}</h2>
+              <Ornament />
               {event.venue && <p className="wd-location-venue">{event.venue}</p>}
               {event.venueAddress && <p className="wd-location-addr">{event.venueAddress}</p>}
               {loc.description && <p className="wd-body">{loc.description}</p>}
               {mapsHref && (
                 <a className="wd-btn" href={mapsHref} target="_blank" rel="noreferrer">
-                  <MapPin size={16} /> Anfahrt & Karte
+                  <MapPin size={15} /> Anfahrt &amp; Karte
                 </a>
               )}
-            </div>
-            <div className="wd-location-media">
-              {locUrl
-                ? <img src={locUrl} alt={loc.image?.alt ?? loc.title} style={{ objectPosition: focus(loc.image) }} />
-                : <div className="wd-img-placeholder wd-location-ph" aria-hidden />}
             </div>
           </div>
         </section>
@@ -188,13 +278,16 @@ export function LandingView({ content, event, imageUrls }: RenderProps) {
       {/* TAGESABLAUF */}
       {schedule.items.length > 0 && (
         <section className="wd-section wd-schedule">
-          <h2 className="wd-h2 wd-center">{schedule.title}</h2>
-          <div className="wd-schedule-list">
+          <SectionHead eyebrow="Der große Tag" title={schedule.title} />
+          <div className="wd-timeline" data-reveal>
             {schedule.items.map(it => (
-              <div key={it.id} className="wd-schedule-item">
-                <div className="wd-schedule-time"><Clock size={14} /> {it.time}</div>
-                <div className="wd-schedule-dot" aria-hidden />
-                <div className="wd-schedule-label">{it.label}</div>
+              <div key={it.id} className="wd-tl-item">
+                <div className="wd-tl-time">{it.time}</div>
+                <div className="wd-tl-axis"><span className="wd-tl-dot" aria-hidden /></div>
+                <div className="wd-tl-main">
+                  <div className="wd-tl-label">{it.label}</div>
+                  {it.description && <div className="wd-tl-desc">{it.description}</div>}
+                </div>
               </div>
             ))}
           </div>
@@ -206,13 +299,18 @@ export function LandingView({ content, event, imageUrls }: RenderProps) {
 
 // ── Story / Roter Faden ─────────────────────────────────────────────────────────
 export function StoryView({ content, template, imageUrls }: RenderProps) {
+  useReveal()
   const { intro, stations } = content.story
   const layout = template.storyLayout
   return (
     <div className="wd-page">
       <section className="wd-section wd-story-intro">
-        <h1 className="wd-h1 wd-center">{intro.title}</h1>
-        {intro.text && <p className="wd-body wd-center wd-story-introtext">{intro.text}</p>}
+        <div className="wd-shead wd-shead-center" data-reveal>
+          <span className="wd-eyebrow">Wie alles begann</span>
+          <h1 className="wd-h1">{intro.title}</h1>
+          <Ornament />
+        </div>
+        {intro.text && <p className="wd-body wd-center wd-story-introtext" data-reveal>{intro.text}</p>}
       </section>
       <section className={`wd-section wd-story wd-story-${layout}`} data-count={stations.length}>
         <div className="wd-thread" aria-hidden />
@@ -220,8 +318,8 @@ export function StoryView({ content, template, imageUrls }: RenderProps) {
           {stations.map((s, i) => {
             const url = imgUrl(imageUrls, s.image)
             return (
-              <li key={s.id} className="wd-station" data-index={i} data-side={i % 2 === 0 ? 'a' : 'b'}>
-                <div className="wd-station-marker"><StationIcon name={s.icon} size={18} /></div>
+              <li key={s.id} className="wd-station" data-index={i} data-side={i % 2 === 0 ? 'a' : 'b'} data-reveal>
+                <div className="wd-station-marker"><StationIcon name={s.icon} size={17} /></div>
                 <div className="wd-station-card">
                   {url && (
                     <div className="wd-station-media">
@@ -231,7 +329,7 @@ export function StoryView({ content, template, imageUrls }: RenderProps) {
                   <div className="wd-station-body">
                     {s.date && <div className="wd-station-date">{s.date}</div>}
                     {s.title && <h3 className="wd-station-title">{s.title}</h3>}
-                    {s.location && <div className="wd-station-loc"><MapPin size={13} /> {s.location}</div>}
+                    {s.location && <div className="wd-station-loc"><MapPin size={12} /> {s.location}</div>}
                     {s.text && <p className="wd-station-text">{s.text}</p>}
                   </div>
                 </div>
@@ -256,7 +354,11 @@ export function RsvpIntroView({ content, imageUrls }: Pick<RenderProps, 'content
           <div className="wd-hero-scrim" aria-hidden />
         </div>
       )}
-      <h1 className="wd-h1 wd-center">{rsvp.title}</h1>
+      <div className="wd-shead wd-shead-center">
+        <span className="wd-eyebrow">Sagt uns Bescheid</span>
+        <h1 className="wd-h1">{rsvp.title}</h1>
+        <Ornament />
+      </div>
       {rsvp.text && <p className="wd-body wd-center" style={{ maxWidth: 560, margin: '0 auto' }}>{rsvp.text}</p>}
     </section>
   )

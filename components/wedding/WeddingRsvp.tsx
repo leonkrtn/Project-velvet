@@ -4,14 +4,18 @@
 // Einstieg: "Schon angemeldet?" → Code eingeben ODER neu (Name + E-Mail).
 // Danach: themed RSVP-Formular (nutzt die bestehende /api/rsvp/[token]-API).
 // Nach dem Absenden: persönlicher Code/Link + Foto-Upload, Wunschliste, Musikwunsch.
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Check, Loader, ArrowLeft, Plus, X, Music, Gift } from 'lucide-react'
 import RsvpPhotos from '@/components/rsvp/RsvpPhotos'
 
 type Step = 'choice' | 'code' | 'newguest' | 'loading' | 'form' | 'done'
 type Meal = 'fleisch' | 'fisch' | 'vegetarisch' | 'vegan'
+type Transport = 'auto' | 'bahn' | 'flugzeug' | 'andere'
 
 interface Companion { name: string; ageCategory: string; meal: Meal | '' }
+
+interface HotelRoom { id: string; type: string; totalRooms: number; bookedRooms: number; pricePerNight: number }
+interface Hotel { id: string; name: string; address: string | null; rooms: HotelRoom[] }
 
 interface RsvpData {
   event: {
@@ -20,11 +24,12 @@ interface RsvpData {
     maxBegleitpersonen: number
     isFrozen: boolean
     isDeadlinePassed: boolean
-    showMenu?: boolean
     rsvpShowMusikwunsch: boolean
     rsvpShowGeschenke: boolean
     rsvpShowBegleitpersonen: boolean
     rsvpShowMenu: boolean
+    rsvpShowHotel: boolean
+    hotels: Hotel[]
   }
   guest: any
   wishlist: any[]
@@ -54,6 +59,10 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
   const [allergies, setAllergies] = useState('')
   const [message, setMessage] = useState('')
   const [companions, setCompanions] = useState<Companion[]>([])
+  const [arrivalDate, setArrivalDate] = useState('')
+  const [arrivalTime, setArrivalTime] = useState('')
+  const [transport, setTransport] = useState<Transport | ''>('')
+  const [hotelRoomId, setHotelRoomId] = useState('')
 
   // Persönlicher Deep-Link aus der Gästeliste: /wedding/[slug]/rsvp?code=XXXX
   // → Code vorbefüllen und direkt einlösen.
@@ -94,6 +103,10 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
       setCompanions((g.begleitpersonen ?? []).map((b: any) => ({
         name: b.name ?? '', ageCategory: b.ageCategory ?? 'erwachsen', meal: (b.meal as Meal) ?? '',
       })))
+      setArrivalDate(g.arrivalDate ?? '')
+      setArrivalTime(g.arrivalTime ? String(g.arrivalTime).slice(11, 16) : '')
+      setTransport((g.transport as Transport) ?? '')
+      setHotelRoomId(g.hotelRoomId ?? '')
       setStep('form')
     } catch (e: any) {
       setError(e.message); setStep(personalCode ? 'done' : 'choice')
@@ -132,8 +145,8 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
     setCompanions(c => [...c, { name: '', ageCategory: 'erwachsen', meal: '' }])
   }
 
-  async function submitRsvp(e: React.FormEvent) {
-    e.preventDefault()
+  async function submitRsvp(e?: React.FormEvent) {
+    e?.preventDefault()
     if (attending === null) { setError('Bitte wähle Zusage oder Absage.'); return }
     setBusy(true); setError(null)
     try {
@@ -144,6 +157,10 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
         allergies: [],
         allergyCustom: attending ? (allergies || null) : null,
         message: message || null,
+        arrivalDate: attending ? (arrivalDate || null) : null,
+        arrivalTime: attending && arrivalDate && arrivalTime ? `${arrivalDate}T${arrivalTime}:00` : null,
+        transport: attending ? (transport || null) : null,
+        hotelRoomId: attending ? (hotelRoomId || 'none') : 'none',
         begleitpersonen: attending
           ? companions.filter(c => c.name.trim()).map(c => ({
               name: c.name, ageCategory: c.ageCategory, meal: c.meal || null,
@@ -235,6 +252,10 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
           meal={meal} setMeal={setMeal} alcohol={alcohol} setAlcohol={setAlcohol}
           allergies={allergies} setAllergies={setAllergies} message={message} setMessage={setMessage}
           companions={companions} setCompanions={setCompanions} addCompanion={addCompanion}
+          arrivalDate={arrivalDate} setArrivalDate={setArrivalDate}
+          arrivalTime={arrivalTime} setArrivalTime={setArrivalTime}
+          transport={transport} setTransport={setTransport}
+          hotelRoomId={hotelRoomId} setHotelRoomId={setHotelRoomId}
           busy={busy} error={error} onSubmit={submitRsvp}
         />
       )}
@@ -253,19 +274,59 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
 }
 
 // ── Formular ────────────────────────────────────────────────────────────────
+const TRANSPORT_LABEL: Record<string, string> = { auto: 'Auto', bahn: 'Bahn', flugzeug: 'Flugzeug', andere: 'Andere' }
+
 function RsvpForm(p: any) {
   const ev = p.data.event
   const frozen = ev.isFrozen || ev.isDeadlinePassed
   const mealOptions: string[] = ev.mealOptions ?? []
+  const hotels: Hotel[] = ev.hotels ?? []
+  const showHotel = ev.rsvpShowHotel && hotels.length > 0
+  const showCompanions = ev.rsvpShowBegleitpersonen && ev.maxBegleitpersonen > 0
+  const [wstep, setWstep] = useState(0)
+
+  // Dynamische Schrittfolge je nach Zu-/Absage und aktivierten Optionen.
+  const steps = useMemo<string[]>(() => {
+    if (p.attending === false) return ['attend', 'decline']
+    if (p.attending === true) {
+      const s = ['attend', 'details']
+      if (showCompanions) s.push('companions')
+      s.push('travel', 'message')
+      return s
+    }
+    return ['attend']
+  }, [p.attending, showCompanions])
+
+  useEffect(() => { if (wstep > steps.length - 1) setWstep(steps.length - 1) }, [steps, wstep])
+  const idx = Math.min(wstep, steps.length - 1)
+  const cur = steps[idx]
+  const isLast = idx === steps.length - 1
+  const canAdvance = cur !== 'attend' || p.attending !== null
+
+  const STEP_TITLE: Record<string, string> = {
+    attend: 'Bist du dabei?', details: 'Deine Angaben', companions: 'Begleitung',
+    travel: 'Anreise & Übernachtung', message: 'Fast geschafft', decline: 'Schade!',
+  }
+
   return (
-    <form className="wd-card" onSubmit={p.onSubmit}>
+    <div className="wd-card wd-wizard">
       {frozen && (
         <p className="wd-error" style={{ marginBottom: '1rem' }}>
           Die Anmeldung ist geschlossen — Änderungen sind nicht mehr möglich.
         </p>
       )}
-      <div className="wd-field">
-        <label className="wd-label">Bist du dabei?</label>
+
+      {/* Fortschritt */}
+      <div className="wd-wizard-head">
+        <span className="wd-eyebrow" style={{ margin: 0 }}>Schritt {idx + 1} von {steps.length}</span>
+        <div className="wd-steps" aria-hidden>
+          {steps.map((_, i) => <span key={i} className={`wd-step-dot${i === idx ? ' active' : ''}${i < idx ? ' done' : ''}`} />)}
+        </div>
+      </div>
+      <h3 className="wd-wizard-title">{STEP_TITLE[cur]}</h3>
+
+      {/* ── Schritt: Teilnahme ── */}
+      {cur === 'attend' && (
         <div className="wd-choice">
           <button type="button" className={`wd-choice-btn wd-choice-btn-lg${p.attending === true ? ' selected' : ''}`} onClick={() => p.setAttending(true)}>
             Ich komme
@@ -274,9 +335,10 @@ function RsvpForm(p: any) {
             Leider nicht
           </button>
         </div>
-      </div>
+      )}
 
-      {p.attending === true && (
+      {/* ── Schritt: Details ── */}
+      {cur === 'details' && (
         <>
           {ev.rsvpShowMenu && mealOptions.length > 0 && (
             <div className="wd-field">
@@ -301,47 +363,122 @@ function RsvpForm(p: any) {
             <label className="wd-label">Allergien / Unverträglichkeiten</label>
             <input className="wd-input" value={p.allergies} onChange={(e: any) => p.setAllergies(e.target.value.slice(0, 240))} placeholder="z.B. Nüsse, Laktose – oder leer lassen" />
           </div>
+        </>
+      )}
 
-          {ev.rsvpShowBegleitpersonen && ev.maxBegleitpersonen > 0 && (
+      {/* ── Schritt: Begleitung ── */}
+      {cur === 'companions' && (
+        <div className="wd-field">
+          <label className="wd-label">Begleitung ({p.companions.length}/{ev.maxBegleitpersonen})</label>
+          {p.companions.map((c: Companion, i: number) => (
+            <div className="wd-companion" key={i}>
+              <button type="button" className="wd-companion-remove" onClick={() => p.setCompanions((arr: Companion[]) => arr.filter((_, x) => x !== i))} aria-label="Entfernen"><X size={16} /></button>
+              <div className="wd-field" style={{ marginBottom: '0.6rem' }}>
+                <input className="wd-input" placeholder="Name der Begleitung" value={c.name}
+                  onChange={(e: any) => p.setCompanions((arr: Companion[]) => arr.map((x, xi) => xi === i ? { ...x, name: e.target.value } : x))} />
+              </div>
+              {ev.rsvpShowMenu && mealOptions.length > 0 && (
+                <div className="wd-pillrow">
+                  {mealOptions.map(m => (
+                    <button type="button" key={m} className={`wd-pill${c.meal === m ? ' selected' : ''}`}
+                      onClick={() => p.setCompanions((arr: Companion[]) => arr.map((x, xi) => xi === i ? { ...x, meal: m as Meal } : x))}>
+                      {MEAL_LABEL[m] ?? m}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          {p.companions.length < ev.maxBegleitpersonen && (
+            <button type="button" className="wd-btn wd-btn-ghost" onClick={p.addCompanion}><Plus size={15} /> Begleitung hinzufügen</button>
+          )}
+          {p.companions.length === 0 && <p className="wd-hint">Du kannst diesen Schritt auch ohne Begleitung überspringen.</p>}
+        </div>
+      )}
+
+      {/* ── Schritt: Anreise & Hotel ── */}
+      {cur === 'travel' && (
+        <>
+          <div className="wd-field" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div>
+              <label className="wd-label">Anreise (Datum)</label>
+              <input className="wd-input" type="date" value={p.arrivalDate} onChange={(e: any) => p.setArrivalDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="wd-label">Uhrzeit</label>
+              <input className="wd-input" type="time" value={p.arrivalTime} onChange={(e: any) => p.setArrivalTime(e.target.value)} />
+            </div>
+          </div>
+          <div className="wd-field">
+            <label className="wd-label">Anreise mit</label>
+            <div className="wd-pillrow">
+              {(['auto', 'bahn', 'flugzeug', 'andere'] as const).map(t => (
+                <button type="button" key={t} className={`wd-pill${p.transport === t ? ' selected' : ''}`} onClick={() => p.setTransport(p.transport === t ? '' : t)}>
+                  {TRANSPORT_LABEL[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+          {showHotel && (
             <div className="wd-field">
-              <label className="wd-label">Begleitung ({p.companions.length}/{ev.maxBegleitpersonen})</label>
-              {p.companions.map((c: Companion, i: number) => (
-                <div className="wd-companion" key={i}>
-                  <button type="button" className="wd-companion-remove" onClick={() => p.setCompanions((arr: Companion[]) => arr.filter((_, x) => x !== i))} aria-label="Entfernen"><X size={16} /></button>
-                  <div className="wd-field" style={{ marginBottom: '0.6rem' }}>
-                    <input className="wd-input" placeholder="Name der Begleitung" value={c.name}
-                      onChange={(e: any) => p.setCompanions((arr: Companion[]) => arr.map((x, xi) => xi === i ? { ...x, name: e.target.value } : x))} />
-                  </div>
-                  {ev.rsvpShowMenu && mealOptions.length > 0 && (
-                    <div className="wd-pillrow">
-                      {mealOptions.map(m => (
-                        <button type="button" key={m} className={`wd-pill${c.meal === m ? ' selected' : ''}`}
-                          onClick={() => p.setCompanions((arr: Companion[]) => arr.map((x, xi) => xi === i ? { ...x, meal: m as Meal } : x))}>
-                          {MEAL_LABEL[m] ?? m}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+              <label className="wd-label">Übernachtung</label>
+              <button type="button" className={`wd-hotel-room${!p.hotelRoomId ? ' selected' : ''}`} onClick={() => p.setHotelRoomId('')}>
+                <span>Keine Übernachtung benötigt</span>
+              </button>
+              {hotels.map(h => (
+                <div key={h.id} className="wd-hotel">
+                  <div className="wd-hotel-name">{h.name}{h.address ? <span className="wd-hint"> · {h.address}</span> : null}</div>
+                  {h.rooms.map(r => {
+                    const left = (r.totalRooms ?? 0) - (r.bookedRooms ?? 0)
+                    const sel = p.hotelRoomId === r.id
+                    const full = left <= 0 && !sel
+                    return (
+                      <button type="button" key={r.id} disabled={full}
+                        className={`wd-hotel-room${sel ? ' selected' : ''}`}
+                        onClick={() => p.setHotelRoomId(r.id)}>
+                        <span>{r.type}</span>
+                        <span className="wd-hotel-meta">
+                          {r.pricePerNight ? `${r.pricePerNight} €/Nacht` : ''}{r.pricePerNight ? ' · ' : ''}{full ? 'ausgebucht' : `${left} frei`}
+                        </span>
+                      </button>
+                    )
+                  })}
                 </div>
               ))}
-              {p.companions.length < ev.maxBegleitpersonen && (
-                <button type="button" className="wd-btn wd-btn-ghost" onClick={p.addCompanion}><Plus size={15} /> Begleitung hinzufügen</button>
-              )}
             </div>
           )}
         </>
       )}
 
-      <div className="wd-field">
-        <label className="wd-label">Nachricht an das Brautpaar (optional)</label>
-        <textarea className="wd-textarea" value={p.message} onChange={(e: any) => p.setMessage(e.target.value.slice(0, 1000))} placeholder="Eure Worte…" />
-      </div>
+      {/* ── Schritt: Nachricht / Absenden ── */}
+      {(cur === 'message' || cur === 'decline') && (
+        <div className="wd-field">
+          {cur === 'decline' && <p className="wd-body" style={{ marginTop: 0 }}>Schade, dass du nicht dabei sein kannst. Magst du dem Brautpaar etwas hinterlassen?</p>}
+          <label className="wd-label">Nachricht an das Brautpaar (optional)</label>
+          <textarea className="wd-textarea" value={p.message} onChange={(e: any) => p.setMessage(e.target.value.slice(0, 1000))} placeholder="Eure Worte…" />
+        </div>
+      )}
 
       {p.error && <p className="wd-error">{p.error}</p>}
-      <button className="wd-btn wd-btn-block wd-btn-lg" disabled={p.busy || frozen}>
-        {p.busy ? <Loader size={16} className="wd-spin" /> : 'Anmeldung absenden'}
-      </button>
-    </form>
+
+      {/* Navigation */}
+      <div className="wd-wizard-nav">
+        {idx > 0 && (
+          <button type="button" className="wd-btn wd-btn-ghost" onClick={() => setWstep(s => Math.max(0, s - 1))} disabled={p.busy}>
+            <ArrowLeft size={15} /> Zurück
+          </button>
+        )}
+        {!isLast ? (
+          <button type="button" className="wd-btn wd-btn-lg" style={{ marginLeft: 'auto' }} disabled={!canAdvance} onClick={() => setWstep(s => Math.min(steps.length - 1, s + 1))}>
+            Weiter
+          </button>
+        ) : (
+          <button type="button" className="wd-btn wd-btn-lg" style={{ marginLeft: 'auto' }} disabled={p.busy || frozen} onClick={() => p.onSubmit()}>
+            {p.busy ? <Loader size={16} className="wd-spin" /> : 'Anmeldung absenden'}
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
