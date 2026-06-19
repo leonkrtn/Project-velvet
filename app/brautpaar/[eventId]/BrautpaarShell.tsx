@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Music, Camera, Wallet, CheckSquare, Settings,
-  MessageSquare, File, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
+  MessageSquare, ChevronRight, X, Menu, LogOut, NotebookPen, GlassWater,
   Briefcase, FileDown, CreditCard, Lock, Sparkles, HelpCircle, Globe,
 } from 'lucide-react'
 import ForevrHeart from '@/components/ForevrHeart'
@@ -75,7 +75,6 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
         // Chat nur mit Forevr Pro (bei gegateten Solo-Events). Ungegatete
         // veranstalter-verwaltete Events behalten den Chat.
         ...(chatEnabled ? [b('nachrichten', 'Nachrichten', <MessageSquare size={16} />)] : []),
-        b('dateien', 'Dateien', <File size={16} />),
       ],
     },
   ]
