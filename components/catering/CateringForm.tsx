@@ -10,7 +10,7 @@ import { titleCaseName, capitalizeFirst, allergyLabel } from '@/lib/text'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-interface EventData {
+export interface EventData {
   id: string
   meal_options: string[] | null
   menu_type: string | null
@@ -69,7 +69,7 @@ interface MenuStructure {
   simple_items: string[]
 }
 
-interface OrganizerCost {
+export interface OrganizerCost {
   id: string
   category: string
   price_per_person: number
@@ -85,6 +85,8 @@ interface Props {
   mealCounts: Record<string, number>
   allergyCounts: Record<string, number>
   hideCosts?: boolean
+  /** Im kombinierten "Catering & Getränke"-Reiter rendert die Hülle die Überschrift. */
+  embedded?: boolean
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -338,7 +340,7 @@ function parsePlan(raw: Record<string, unknown> | null): CateringPlan {
 
 export default function CateringForm({
   eventId, initialEvent, initialPlan, initialCosts,
-  confirmedGuestCount, mealCounts, allergyCounts, hideCosts = false,
+  confirmedGuestCount, mealCounts, allergyCounts, hideCosts = false, embedded = false,
 }: Props) {
   const [event, setEvent] = useState(initialEvent)
   const [plan, setPlan] = useState<CateringPlan>(() => parsePlan(initialPlan))
@@ -612,12 +614,16 @@ export default function CateringForm({
 
   return (
     <div style={{ paddingBottom: 80 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>
-        Catering & Menü
-      </h1>
-      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>
-        Menükonzept, Service, Getränke und Kostenplanung
-      </p>
+      {!embedded && (
+        <>
+          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 6 }}>
+            Catering & Menü
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>
+            Menükonzept, Service, Getränke und Kostenplanung
+          </p>
+        </>
+      )}
 
       {/* ── Zusammenfassung ─────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>

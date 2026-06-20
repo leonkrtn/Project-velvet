@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Music, Camera, Wallet, CheckSquare, Settings,
-  MessageSquare, ChevronRight, X, Menu, LogOut, GlassWater,
+  MessageSquare, ChevronRight, X, Menu, LogOut,
   Briefcase, FileDown, CreditCard, Lock, Sparkles, HelpCircle, Globe,
 } from 'lucide-react'
 import ForevrHeart from '@/components/ForevrHeart'
@@ -48,8 +48,7 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
     {
       label: 'DETAILS',
       items: [
-        b('catering', 'Catering & Menü', <UtensilsCrossed size={16} />),
-        b('getraenke', 'Getränke', <GlassWater size={16} />),
+        b('catering-getraenke', 'Catering & Getränke', <UtensilsCrossed size={16} />),
         b('musik', 'Musik', <Music size={16} />),
         b('medien', 'Foto & Videograf', <Camera size={16} />),
       ],
@@ -213,6 +212,8 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
       if (item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'pdf-export' || item.key === 'abo' || item.key === 'website') return true
       // Kombinierter Eintrag: sichtbar, solange Aufgaben ODER Notizen freigeschaltet sind
       if (item.key === 'aufgaben-notizen') return (bpToggles['bp-aufgaben'] ?? true) || (bpToggles['bp-notizen'] ?? true)
+      // Kombinierter Eintrag: sichtbar, solange Catering ODER Getränke freigeschaltet sind
+      if (item.key === 'catering-getraenke') return (bpToggles['bp-catering'] ?? true) || (bpToggles['bp-getraenke'] ?? true)
       return bpToggles[`bp-${item.key}`] ?? true
     }),
   })).filter(g => g.items.length > 0)

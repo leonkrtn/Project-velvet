@@ -58,6 +58,8 @@ interface Props {
   eventId: string
   mode: Mode
   guestCount?: number
+  /** Im kombinierten "Catering & Getränke"-Reiter rendert die Hülle die Überschrift. */
+  embedded?: boolean
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -942,7 +944,7 @@ function BudgetFooter({ mode, kategorien, artikel, cocktails }: {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: Props) {
+export default function GetraenkeTabContent({ eventId, mode, guestCount = 0, embedded = false }: Props) {
   const [kategorien, setKategorien] = useState<Kategorie[]>([])
   const [artikel, setArtikel]       = useState<Artikel[]>([])
   const [cocktails, setCocktails]   = useState<Cocktail[]>([])
@@ -1163,9 +1165,11 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0 }: P
   return (
     <div>
       {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', margin: 0 }}>Getränke</h1>
-      </div>
+      {!embedded && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', margin: 0 }}>Getränke</h1>
+        </div>
+      )}
 
       {/* Planzahl + Billing widget */}
       {canEdit && (
