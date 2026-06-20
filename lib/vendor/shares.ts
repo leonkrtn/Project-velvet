@@ -9,7 +9,6 @@ export type ShareModule =
   | 'getraenke'
   | 'musik'
   | 'patisserie'
-  | 'medien'
 
 export type ShareMode = 'snapshot' | 'live'
 export type ShareStatus = 'active' | 'frozen' | 'revoked'
@@ -27,7 +26,6 @@ export const SHARE_MODULES: ShareModuleDef[] = [
   { key: 'getraenke',   label: 'Getränke' },
   { key: 'musik',       label: 'Musik' },
   { key: 'patisserie',  label: 'Patisserie' },
-  { key: 'medien',      label: 'Medien-Briefing' },
 ]
 
 export const SHARE_MODULE_LABELS: Record<ShareModule, string> =
