@@ -1060,7 +1060,10 @@ export default function MusikTabContent({ eventId, mode, hasFullModuleAccess = t
         event_id: eventId,
         title: sug.song_title,
         artist: sug.artist,
-        type: 'playlist',
+        // Gäste-Vorschläge sind Musikwünsche → als 'wish' speichern, damit sie
+        // in der "Wünsche"-Sektion des Brautpaars (BrautpaarMusikView) erscheinen.
+        // 'playlist' würde in dieser Ansicht herausgefiltert und nie angezeigt.
+        type: 'wish',
         moment: 'Allgemein',
         sort_order: 0,
         source: 'gast',
