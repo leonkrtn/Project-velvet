@@ -1,6 +1,6 @@
 import {
   MessageSquare, Calendar, MapPin, Users, Grid2X2,
-  UtensilsCrossed, Camera, Music2, Flower2, FileText,
+  UtensilsCrossed, Camera, Music2, FileText,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -21,7 +21,6 @@ export const ALL_MODULES: ModuleDef[] = [
   { key: 'mod_catering',   label: 'Catering',            icon: UtensilsCrossed, readonlyKey: 'mod_catering_read' },
   { key: 'mod_media',      label: 'Medien & Aufnahmen',  icon: Camera,         readonlyKey: 'mod_media_read' },
   { key: 'mod_music',      label: 'Musik',               icon: Music2,         readonlyKey: 'mod_music_read' },
-  { key: 'mod_decor',      label: 'Dekoration',          icon: Flower2,        readonlyKey: 'mod_decor_read' },
   { key: 'mod_files',      label: 'Dokumente',           icon: FileText,       readonlyKey: 'mod_files_read' },
 ]
 
@@ -33,7 +32,7 @@ export const ROLE_MODULE_DEFAULTS: Record<string, string[]> = {
   'Fotograf':              ['mod_chat', 'mod_timeline', 'mod_location', 'mod_guests', 'mod_seating', 'mod_media'],
   'Videograf':             ['mod_chat', 'mod_timeline', 'mod_location', 'mod_guests', 'mod_seating', 'mod_media', 'mod_music'],
   'Caterer':               ['mod_chat', 'mod_timeline', 'mod_location', 'mod_guests', 'mod_catering'],
-  'Floristin':             ['mod_chat', 'mod_timeline', 'mod_location', 'mod_decor'],
+  'Floristin':             ['mod_chat', 'mod_timeline', 'mod_location'],
   'Band / DJ':             ['mod_chat', 'mod_timeline', 'mod_location', 'mod_music'],
   'Konditorei':            ['mod_chat', 'mod_timeline', 'mod_location'],
   'Hairstylist / Make-up': ['mod_chat', 'mod_timeline', 'mod_location'],

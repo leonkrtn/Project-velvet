@@ -51,7 +51,6 @@ export interface TrauzeugePermissions {
   canViewTimeline: boolean
   canEditTimeline: boolean
   canViewVendors: boolean
-  canManageDeko: boolean
 }
 
 export interface BrautpaarPermissions {
@@ -60,7 +59,6 @@ export interface BrautpaarPermissions {
   subEvents: boolean
   erinnerungen: boolean
   sitzplan: boolean
-  dekorationen: boolean
   dienstleister: boolean
   hotel: boolean
   catering: boolean
@@ -72,7 +70,6 @@ export const DEFAULT_BRAUTPAAR_PERMISSIONS: Omit<BrautpaarPermissions, 'eventId'
   subEvents: false,
   erinnerungen: true,
   sitzplan: true,
-  dekorationen: true,
   dienstleister: true,
   hotel: true,
   catering: false,
@@ -89,5 +86,4 @@ export const DEFAULT_TRAUZEUGE_PERMISSIONS: Omit<TrauzeugePermissions, 'eventId'
   canViewTimeline: true,
   canEditTimeline: false,
   canViewVendors: false,
-  canManageDeko: true,
 }

@@ -138,14 +138,6 @@ export const DEFAULT_FEATURE_TOGGLES: Record<FeatureKey, boolean> = {
   'rsvp-begleitpersonen': true, 'rsvp-menu': true,
 }
 
-// ── Deko ──────────────────────────────────────────────────────────────────
-export interface DekoWish {
-  id: string
-  title: string
-  notes: string
-  imageUrl?: string
-}
-
 // ── Gäste-Fotos ───────────────────────────────────────────────────────────
 export interface GuestPhoto {
   id: string
@@ -180,7 +172,6 @@ export interface Event {
   // Locked catering fields (set when organizer suggestion is accepted)
   cateringLockedFields?: Partial<Record<keyof CateringPlan, boolean>>
   organizer?: OrganizerSettings
-  dekoWishes: DekoWish[]
   guestPhotos: GuestPhoto[]
   dataFreezeAt?: string  // ISO timestamp; set = data frozen (read-only)
 }
@@ -322,7 +313,6 @@ export const SEED_EVENT: Event = {
   onboardingComplete: true,
   maxBegleitpersonen: 2,
   organizer: SEED_ORGANIZER,
-  dekoWishes: [],
   guestPhotos: [],
 }
 
@@ -401,7 +391,6 @@ export function loadEvent(): Event {
         p.organizer.featureToggles = { ...DEFAULT_FEATURE_TOGGLES, ...p.organizer.featureToggles }
         if (!p.organizer.locationImages) p.organizer.locationImages = []
       }
-      p.dekoWishes  = p.dekoWishes   ?? []
       p.guestPhotos = p.guestPhotos  ?? []
       // migrate legacy single-hotel fields → hotels array
       if (!p.hotels) {
@@ -495,7 +484,6 @@ export function createEmptyEvent(): Event {
     reminders: [], createdAt: new Date().toISOString(),
     onboardingComplete: false,
     maxBegleitpersonen: 1,
-    dekoWishes: [],
     guestPhotos: [],
   }
 }

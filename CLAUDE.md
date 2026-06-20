@@ -107,7 +107,7 @@
   kommunikation/           → Chat (text + file attachments via R2) + "Geteilte Daten"-Box (data shares) + "Dateien"-Box (chat files)
   informationen/           → Standard event info (name, date, venue, guest count, couple/organizer contacts incl. phone)
                              + interne Notizen (privat pro Dienstleister-Firma, dienstleister_notes)
-  ⛔ uebersicht, catering, chats, ablaufplan, gaesteliste, musik, dekoration, medien, sitzplan, files, tabs/
+  ⛔ uebersicht, catering, chats, ablaufplan, gaesteliste, musik, medien, sitzplan, files, tabs/
                             → REMOVED. Module data is no longer browsed via tabs; the couple/organizer shares it
                               into the chat as a snapshot or live box (see "Vendor Data Sharing" below).
 ```
@@ -139,7 +139,7 @@
 
 ### NEW system (DB RLS enforced since migration 0042) — maßgeblich
 - Table: `dienstleister_permissions` (columns: `event_id`, `dienstleister_user_id`, `tab_key TEXT`, `item_id TEXT|NULL`, `access: none|read|write`)
-- Tab keys: `uebersicht`, `catering`, `chats`, `ablaufplan`, `gaesteliste`, `musik`, `patisserie`, `dekoration`, `medien`, `sitzplan`
+- Tab keys: `uebersicht`, `catering`, `chats`, `ablaufplan`, `gaesteliste`, `musik`, `patisserie`, `medien`, `sitzplan`
 - `allgemein` is **explicitly blocked** — migration 0043 added a CHECK constraint (`tab_key <> 'allgemein'`) and purged existing rows
 - Written by: `BerechtigungenClient.tsx` (permission editor UI)
 - Read by: `VendorSidebarLayout.tsx` (tab visibility)
@@ -147,7 +147,7 @@
 
 ### OLD system (Legacy, nicht mehr für Tab-Sichtbarkeit maßgeblich)
 - Table: `permissions` (columns: `event_id`, `user_id`, `permission TEXT`)
-- Keys: `mod_chat`, `mod_timeline`, `mod_timeline_read`, `mod_seating`, `mod_seating_read`, `mod_catering`, `mod_catering_read`, `mod_music`, `mod_music_read`, `mod_patisserie`, `mod_patisserie_read`, `mod_decor`, `mod_decor_read`, `mod_media`, `mod_media_read`, `mod_location`, `mod_guests`
+- Keys: `mod_chat`, `mod_timeline`, `mod_timeline_read`, `mod_seating`, `mod_seating_read`, `mod_catering`, `mod_catering_read`, `mod_music`, `mod_music_read`, `mod_patisserie`, `mod_patisserie_read`, `mod_media`, `mod_media_read`, `mod_location`, `mod_guests`
 - Still referenced by: `vendor-modules.ts` (`ALL_MODULES`), `lib/store.ts`
 
 ---
@@ -242,8 +242,7 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full schema.
 - `timeline_entries.responsibilities TEXT` — redundant with `assigned_staff`/`assigned_vendors`/`assigned_members` JSONB columns (added in 0025).
 - `dienstleister_item_permissions` table — old granular system, not cleanly migrated out.
 - Proposals/Vorschläge system — fully removed (migration 0048 drops all tables + functions). No UI remains.
-- `decor_setup_items` / `deko_wishes` tables — **dropped in migration 0064**.
-- Dekorations-System (Free-Canvas, `deko_*` Tabellen aus 0064) — **vollständig entfernt in Migration 0108** (Reiter + Routen + Components + lib/deko + Vendor-Snapshot + PDF-Sektion + Budget-Freeze-Links + Organizer-Vorlagen + Feature-Toggles `deko`/`bp-dekoration`).
+- Dekorations-System — **vollständig entfernt**. Historie: `decor_setup_items`/`deko_wishes` (0064), Free-Canvas `deko_*`-Tabellen (0108), letzte Permission-Spalten `brautpaar_permissions.dekorationen` + `trauzeuge_permissions.can_manage_deko` (0109). Keine Reiter/Routen/Components/Datenmodelle/Feature-Toggles mehr vorhanden.
 
 ---
 
@@ -369,6 +368,8 @@ supabase/migrations/
   0108_remove_deko_system.sql          Removes the deko free-canvas system: drops all deko_* tables + trigger,
                                        deletes 'deko'/'bp-dekoration' feature_toggles, redefines
                                        create_event_as_brautpaar_solo() without those toggles.
+  0109_remove_deko_permission_columns.sql  Drops the last deko leftovers: brautpaar_permissions.dekorationen +
+                                       trauzeuge_permissions.can_manage_deko.
 
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)

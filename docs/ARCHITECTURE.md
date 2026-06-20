@@ -67,8 +67,8 @@ const LEGACY_TAB_REGISTRY = {
 }
 
 // These use shared components:
-const SHARED_TAB_MODULES = ['musik', 'patisserie', 'dekoration', 'medien']
-// → MusikTabContent, PatisserieTabContent, DekoTabContent, MediaTabContent
+const SHARED_TAB_MODULES = ['musik', 'patisserie', 'medien']
+// → MusikTabContent, PatisserieTabContent, MediaTabContent
 ```
 
 Tab filtering logic (WRONG — uses old system):
@@ -232,7 +232,6 @@ Organizer adds content
   → Seating: seating_tables + seating_assignments
   → Catering: catering_plans CRUD
   → Music: music_songs + music_requirements
-  → Decor: decor_setup_items + deko_wishes
   → Media: media_shot_items + media_briefing
   → Patisserie: patisserie_config (upsert)
 ```
