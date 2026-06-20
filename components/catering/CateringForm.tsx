@@ -10,7 +10,7 @@ import { titleCaseName, capitalizeFirst, allergyLabel } from '@/lib/text'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-interface EventData {
+export interface EventData {
   id: string
   meal_options: string[] | null
   menu_type: string | null
@@ -69,7 +69,7 @@ interface MenuStructure {
   simple_items: string[]
 }
 
-interface OrganizerCost {
+export interface OrganizerCost {
   id: string
   category: string
   price_per_person: number

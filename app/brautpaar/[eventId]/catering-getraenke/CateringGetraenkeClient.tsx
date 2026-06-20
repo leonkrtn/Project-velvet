@@ -1,17 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import CateringForm from '@/components/catering/CateringForm'
+import CateringForm, { type EventData } from '@/components/catering/CateringForm'
 import GetraenkeTabContent from '@/components/tabs/GetraenkeTabContent'
-
-interface EventData {
-  id: string
-  meal_options: string[] | null
-  menu_type: string | null
-  collect_allergies: boolean | null
-  children_allowed: boolean
-  children_note: string | null
-}
 
 type Tab = 'catering' | 'getraenke'
 
