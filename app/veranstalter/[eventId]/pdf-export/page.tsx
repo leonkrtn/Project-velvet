@@ -21,9 +21,9 @@ export default async function PdfExportPage({ params }: Props) {
     .eq('user_id', user.id)
     .single()
 
-  // Solo-Brautpaare (eigener Admin ohne Veranstalter) dürfen den PDF-Export
+  // Brautpaare (Solo wie veranstalter-verwaltet) dürfen den PDF-Export
   // ebenfalls nutzen — eingebunden über /brautpaar/[eventId]/pdf-export
-  if (!member || !['veranstalter', 'brautpaar_solo'].includes(member.role)) {
+  if (!member || !['veranstalter', 'brautpaar_solo', 'brautpaar'].includes(member.role)) {
     redirect(member?.role ? '/brautpaar' : '/veranstalter')
   }
 

@@ -3,8 +3,6 @@
 import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import TimeInput from '@/components/ui/TimeInput'
-import SoloInviteSection from './SoloInviteSection'
-import DisplaySettingsLauncher from '@/components/display-studio/DisplaySettingsLauncher'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 
@@ -34,10 +32,6 @@ interface EventData {
 interface Props {
   eventId: string
   initialData: EventData
-  /** true für brautpaar_solo: zeigt die Invite-Sektion (Partner / Veranstalter) */
-  isSolo?: boolean
-  /** Eigene User-ID — von SoloInviteSection benötigt (Partner vs. eigener Eintrag) */
-  currentUserId?: string
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -62,7 +56,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export default function BrautpaarAllgemein({ eventId, initialData, isSolo, currentUserId }: Props) {
+export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
   const [data, setData] = useState<EventData>(initialData)
   const [error, setError]   = useState<string | null>(null)
   const [ceremonyTimeStr, setCeremonyTimeStr] = useState(() => {
@@ -112,7 +106,7 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
     <div className="bp-page">
       <div className="bp-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
         <div>
-          <h1 className="bp-page-title">Einstellungen</h1>
+          <h1 className="bp-page-title">Allgemein</h1>
           <p className="bp-page-subtitle">Grundlegende Details eurer Hochzeit</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', minHeight: 20, fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
@@ -216,14 +210,6 @@ export default function BrautpaarAllgemein({ eventId, initialData, isSolo, curre
         )}
 
       </Section>
-
-      {isSolo && currentUserId && <SoloInviteSection eventId={eventId} currentUserId={currentUserId} />}
-
-      {isSolo && (
-        <div data-tour="bp-display-settings" style={{ marginBottom: '1.5rem' }}>
-          <DisplaySettingsLauncher eventId={eventId} />
-        </div>
-      )}
 
       {/* Auto-Save footer */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', minHeight: 20, paddingTop: '0.5rem', paddingBottom: '2rem', fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
