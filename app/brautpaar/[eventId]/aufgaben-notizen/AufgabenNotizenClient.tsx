@@ -41,15 +41,16 @@ export default function AufgabenNotizenClient({ eventId, userId, initialTasks, w
         <h1 className="bp-page-title">Aufgaben &amp; Notizen</h1>
       </div>
 
-      <div className="bp-step-tabs">
-        {TABS.map((tab, idx) => (
+      <div className="bp-toggle" role="tablist">
+        {TABS.map(tab => (
           <button
             key={tab.key}
-            className="bp-step-tab"
+            className="bp-toggle-option"
+            role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
           >
-            <span className="bp-step-tab-num">{idx + 1}</span>
+            {tab.icon}
             {tab.label}
           </button>
         ))}
