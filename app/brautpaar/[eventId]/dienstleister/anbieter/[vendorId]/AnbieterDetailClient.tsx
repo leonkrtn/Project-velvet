@@ -2,9 +2,11 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, MapPin, Globe, Phone, Mail, Star, Send, Check, X, MessageSquare, Lock, BadgeCheck, ChevronDown } from 'lucide-react'
+import { ChevronLeft, MapPin, Globe, Phone, Mail, Star, Check, X, MessageSquare, Lock, BadgeCheck, ChevronDown } from 'lucide-react'
 import { categoryLabel, PRICE_UNITS, SOCIAL_PLATFORMS } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
+import RequestFlow from '@/components/marketplace/RequestFlow'
+import CoupleOfferPanel from '@/components/marketplace/CoupleOfferPanel'
 
 interface Vendor {
   id: string; company_name: string | null; category: string
@@ -33,10 +35,6 @@ function Stars({ value, size = 15 }: { value: number; size?: number }) {
 
 export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, reviews, reviewAvg, reviewCount, availability, contactUnlocked, canReview, existing }: Props) {
   const [lightbox, setLightbox] = useState<string | null>(null)
-  const [message, setMessage] = useState('')
-  const [budget, setBudget] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState('')
   const [sent, setSent] = useState<Existing | null>(existing)
   const [openFaq, setOpenFaq] = useState<string | null>(null)
 
@@ -53,21 +51,6 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
   const hero = vendor.photos[0]?.url ?? vendor.logo_url
   const rest = vendor.photos.slice(1)
   const socials = SOCIAL_PLATFORMS.filter(s => vendor.social_links?.[s.key])
-
-  async function send() {
-    setErr(''); setBusy(true)
-    try {
-      const res = await fetch('/api/marketplace/requests', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId, dienstleisterId: vendor.id, message, budget }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      setSent({ id: json.id, status: 'pending', conversation_id: null })
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Fehler')
-    } finally { setBusy(false) }
-  }
 
   async function submitReview() {
     setRevErr(''); setRevBusy(true)
@@ -247,7 +230,7 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
                   <Check size={16} /> {sent.status === 'accepted' ? 'Anfrage angenommen' : 'Anfrage gesendet'}
                 </div>
                 <p style={{ margin: 0, lineHeight: 1.5 }}>
-                  {sent.status === 'accepted' ? 'Ihr könnt jetzt im Chat schreiben.' : 'Ihr werdet benachrichtigt, sobald der Dienstleister antwortet.'}
+                  {sent.status === 'accepted' ? 'Ihr könnt jetzt im Chat schreiben.' : 'Ihr werdet benachrichtigt, sobald der Dienstleister euer Angebot freigibt.'}
                 </p>
                 {sent.status === 'accepted' && (
                   <Link href={`/brautpaar/${eventId}/nachrichten`} className="bp-btn bp-btn-primary" style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
@@ -256,18 +239,11 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
                 )}
               </div>
             ) : (
-              <>
-                <h3 className="bp-font-heading" style={{ fontSize: '1.2rem', margin: '0 0 4px' }}>Anfrage stellen</h3>
-                <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3)', margin: '0 0 12px' }}>Eure Event-Eckdaten (Datum, Ort, Gästezahl) werden automatisch mitgesendet.</p>
-                {err && <p style={{ color: '#C62828', fontSize: 12.5, margin: '0 0 8px' }}>{err}</p>}
-                <textarea className="bp-textarea" placeholder="Beschreibt euer Anliegen, Wünsche, offene Fragen…" value={message} onChange={e => setMessage(e.target.value)} style={{ minHeight: 96, marginBottom: 8 }} />
-                <input className="bp-input" type="number" placeholder="Budget (optional, €)" value={budget} onChange={e => setBudget(e.target.value)} style={{ marginBottom: 12 }} />
-                <button onClick={send} disabled={busy} className="bp-btn bp-btn-primary" style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <Send size={15} /> {busy ? 'Sendet…' : 'Anfrage senden'}
-                </button>
-              </>
+              <RequestFlow eventId={eventId} vendorId={vendor.id} onSent={setSent} />
             )}
           </div>
+
+          {sent && <CoupleOfferPanel requestId={sent.id} />}
 
           {/* Kontakt — Website offen, Kontaktdaten erst nach Annahme */}
           <div className="bp-card" style={{ padding: 18 }}>

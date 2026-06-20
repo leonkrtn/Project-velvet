@@ -370,6 +370,26 @@ supabase/migrations/
                                        create_event_as_brautpaar_solo() without those toggles.
   0109_remove_deko_permission_columns.sql  Drops the last deko leftovers: brautpaar_permissions.dekorationen +
                                        trauzeuge_permissions.can_manage_deko.
+  0110_vendor_questionnaires.sql       Dienstleister-Frageboegen + Auto-Angebote (Marktplatz). Tables:
+                                       vendor_questionnaires (1 pro Firma: Preislogik base_price/per_guest_price/
+                                       min_total/weekend_surcharge_pct/tax_mode), vendor_questionnaire_sections,
+                                       vendor_questionnaire_questions (type text|single|multi|number|boolean|date,
+                                       options/pricing JSONB), vendor_offers (1:1 zur marketplace_request:
+                                       answers/standard_info/line_items JSONB, status draft|released|accepted|declined).
+                                       RLS: Fragebogen NUR Eigentuemer (Preis-Leak-Schutz; Brautpaar erhaelt ihn
+                                       preislos via Service-Role-API); Angebote = Vendor (alle) + Brautpaar (ab released).
+
+# ── Vendor Frageboegen & Auto-Angebote (Migration 0110) ──────────────────────
+# Marktplatz-Dienstleister bauen 1 Fragebogen (Abschnitte+Fragen+Preislogik) unter
+# /vendor/fragebogen (FragebogenBuilderClient). Stellt ein Brautpaar eine Anfrage
+# (AnbieterDetailClient -> components/marketplace/RequestFlow.tsx, mit Review-Schritt),
+# erzeugt POST /api/marketplace/requests serverseitig ein Auto-Angebot (vendor_offers,
+# draft) via lib/vendor/{load,pricing,standard-info}.ts. Der Dienstleister prueft/justiert
+# es in VendorAnfragenClient (components/vendor/VendorOfferEditor.tsx) und gibt es frei
+# (PATCH /api/vendor/offers/[requestId] action:release -> lib/marketplace/accept.ts oeffnet
+# Chat). Brautpaar sieht/akzeptiert es (CoupleOfferPanel + /api/marketplace/offers/[requestId]).
+# PDF beidseitig via @react-pdf/renderer (lib/vendor/offer-pdf.tsx, Dienstleister-Branding).
+# Templates: lib/vendor/questionnaire-templates.ts. Nur Marktplatz-Anfragen, keine Versionierung.
 
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)

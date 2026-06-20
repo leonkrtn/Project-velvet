@@ -1,0 +1,159 @@
+// Reine Preislogik fuer Auto-Angebote. Keine Seiteneffekte, kein DB-Zugriff —
+// damit sowohl serverseitig (Angebot erzeugen) als auch fuer Client-Vorschau
+// nutzbar. Quelle der Wahrheit nach Erzeugung sind die line_items; diese
+// Funktion baut sie EINMAL aus den Antworten. Spaetere Dienstleister-Edits
+// ueberschreiben die line_items (siehe recomputeTotals()).
+
+import type { Answer, Questionnaire, TaxMode } from './questionnaire'
+
+export interface LineItem {
+  label: string
+  qty: number
+  unitPrice: number
+  total: number
+}
+
+export interface OfferTotals {
+  lineItems: LineItem[]
+  subtotal: number
+  taxMode: TaxMode
+  taxRate: number
+  taxAmount: number
+  total: number
+  currency: string
+  validUntil: string | null
+  footerNote: string
+}
+
+export interface StandardInfo {
+  coupleName?: string | null
+  date?: string | null
+  guestCount?: number | null
+  location?: string | null
+  eventType?: string | null
+  budget?: number | null
+}
+
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100
+}
+
+function num(v: unknown): number {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
+  return Number.isFinite(n) ? n : 0
+}
+
+function isWeekend(dateStr?: string | null): boolean {
+  if (!dateStr) return false
+  const d = new Date(`${dateStr}T00:00:00Z`)
+  if (Number.isNaN(d.getTime())) return false
+  const day = d.getUTCDay()
+  return day === 0 || day === 6
+}
+
+/** Berechnet Steuer + Gesamtsumme aus gegebenen line_items. */
+export function recomputeTotals(
+  lineItems: LineItem[],
+  opts: { taxMode: TaxMode; taxRate: number; currency: string; validUntil: string | null; footerNote: string },
+): OfferTotals {
+  const subtotal = round2(lineItems.reduce((s, li) => s + num(li.total), 0))
+  const taxRate = opts.taxMode === 'regular' ? num(opts.taxRate) : 0
+  const taxAmount = round2(subtotal * (taxRate / 100))
+  return {
+    lineItems,
+    subtotal,
+    taxMode: opts.taxMode,
+    taxRate,
+    taxAmount,
+    total: round2(subtotal + taxAmount),
+    currency: opts.currency,
+    validUntil: opts.validUntil,
+    footerNote: opts.footerNote,
+  }
+}
+
+/** Baut das initiale Auto-Angebot aus Fragebogen + Antworten + Eventdaten. */
+export function computeOffer(
+  q: Questionnaire,
+  answers: Answer[],
+  info: StandardInfo,
+): OfferTotals {
+  const items: LineItem[] = []
+  const answerById = new Map(answers.map(a => [a.questionId, a]))
+
+  // 1. Grundpreis
+  if (num(q.base_price) > 0) {
+    items.push({ label: 'Grundpreis', qty: 1, unitPrice: round2(num(q.base_price)), total: round2(num(q.base_price)) })
+  }
+
+  // 2. Pro-Gast-Pauschale
+  const guests = num(info.guestCount)
+  if (num(q.per_guest_price) > 0 && guests > 0) {
+    const unit = round2(num(q.per_guest_price))
+    items.push({ label: `Pro Gast (${guests})`, qty: guests, unitPrice: unit, total: round2(unit * guests) })
+  }
+
+  // 3. Frage-Positionen
+  for (const section of q.sections) {
+    for (const question of section.questions) {
+      const ans = answerById.get(question.id)
+      if (!ans) continue
+
+      if (question.type === 'number') {
+        const mode = question.pricing?.mode
+        const unit = num(question.pricing?.unitPrice)
+        if (mode === 'per_unit' && unit !== 0) {
+          const qty = num(ans.value)
+          if (qty !== 0) items.push({ label: question.label, qty, unitPrice: round2(unit), total: round2(unit * qty) })
+        }
+      } else if (question.type === 'boolean') {
+        const yes = ans.value === true || ans.value === 'true'
+        const price = num(question.pricing?.price)
+        if (yes && price !== 0) items.push({ label: question.label, qty: 1, unitPrice: round2(price), total: round2(price) })
+      } else if (question.type === 'single') {
+        const selected = question.options.find(o => o.id === ans.value)
+        const price = num(selected?.price)
+        if (selected && price !== 0) {
+          items.push({ label: `${question.label}: ${selected.label}`, qty: 1, unitPrice: round2(price), total: round2(price) })
+        }
+      } else if (question.type === 'multi') {
+        const ids = Array.isArray(ans.value) ? (ans.value as string[]) : []
+        for (const oid of ids) {
+          const opt = question.options.find(o => o.id === oid)
+          const price = num(opt?.price)
+          if (opt && price !== 0) {
+            items.push({ label: `${question.label}: ${opt.label}`, qty: 1, unitPrice: round2(price), total: round2(price) })
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Wochenend-Aufschlag (auf die bisherige Summe)
+  const baseSum = items.reduce((s, li) => s + li.total, 0)
+  const pct = num(q.weekend_surcharge_pct)
+  if (pct > 0 && isWeekend(info.date)) {
+    const surcharge = round2(baseSum * (pct / 100))
+    if (surcharge !== 0) items.push({ label: `Wochenend-Aufschlag (${pct}%)`, qty: 1, unitPrice: surcharge, total: surcharge })
+  }
+
+  // 5. Mindestbestellwert auffuellen
+  const running = items.reduce((s, li) => s + li.total, 0)
+  const minTotal = num(q.min_total)
+  if (minTotal > 0 && running < minTotal) {
+    const diff = round2(minTotal - running)
+    items.push({ label: 'Anpassung Mindestbestellwert', qty: 1, unitPrice: diff, total: diff })
+  }
+
+  const validUntil = q.valid_days > 0
+    ? new Date(Date.now() + q.valid_days * 86400000).toISOString().slice(0, 10)
+    : null
+
+  return recomputeTotals(items, {
+    taxMode: q.tax_mode,
+    taxRate: q.tax_rate,
+    currency: q.currency,
+    validUntil,
+    footerNote: q.footer_note,
+  })
+}

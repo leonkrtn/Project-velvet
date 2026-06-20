@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { loadFullQuestionnaire, normalizeAnswers } from '@/lib/vendor/load'
+import { buildStandardInfo } from '@/lib/vendor/standard-info'
+import { computeOffer } from '@/lib/vendor/pricing'
 
 const REQUESTER_ROLES = ['veranstalter', 'brautpaar', 'brautpaar_solo']
 
@@ -74,6 +77,23 @@ export async function POST(req: NextRequest) {
   const budget = typeof budgetRaw === 'number' ? budgetRaw
     : (typeof budgetRaw === 'string' && budgetRaw.trim() ? parseFloat(budgetRaw) : null)
 
+  // Aktiven Fragebogen laden (falls vorhanden) und Antworten normalisieren.
+  // Ohne Fragebogen bleibt es bei der klassischen Freitext-Anfrage (Fallback).
+  const questionnaire = await loadFullQuestionnaire(admin, dienstleisterId)
+  const hasQuestionnaire = !!questionnaire && questionnaire.is_active && questionnaire.sections.length > 0
+
+  const rawAnswers = (body.answers && typeof body.answers === 'object') ? body.answers as Record<string, unknown> : {}
+  let normalized: ReturnType<typeof normalizeAnswers> | null = null
+  if (hasQuestionnaire) {
+    normalized = normalizeAnswers(questionnaire!, rawAnswers)
+    if (normalized.missingRequired.length > 0) {
+      return NextResponse.json(
+        { error: `Bitte beantworte alle Pflichtfragen: ${normalized.missingRequired.join(', ')}` },
+        { status: 400 },
+      )
+    }
+  }
+
   const { data, error } = await admin
     .from('marketplace_requests')
     .insert({
@@ -87,5 +107,32 @@ export async function POST(req: NextRequest) {
     .select('id')
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true, id: data.id })
+
+  // Auto-Angebot (draft) erzeugen — nur Dienstleister sieht es, bis er freigibt.
+  if (hasQuestionnaire && normalized) {
+    const standardInfo = await buildStandardInfo(admin, eventId)
+    if (budget != null && Number.isFinite(budget as number)) standardInfo.budget = budget as number
+    const totals = computeOffer(questionnaire!, normalized.answers, standardInfo)
+    const { error: offerErr } = await admin.from('vendor_offers').insert({
+      request_id: data.id,
+      event_id: eventId,
+      dienstleister_id: dienstleisterId,
+      status: 'draft',
+      answers: normalized.answers,
+      standard_info: standardInfo,
+      line_items: totals.lineItems,
+      subtotal: totals.subtotal,
+      tax_mode: totals.taxMode,
+      tax_rate: totals.taxRate,
+      tax_amount: totals.taxAmount,
+      total: totals.total,
+      currency: totals.currency,
+      valid_until: totals.validUntil,
+      footer_note: totals.footerNote,
+    })
+    // Schlaegt die Angebotserstellung fehl, bleibt die Anfrage als Freitext bestehen.
+    if (offerErr) console.error('vendor_offers insert failed', offerErr.message)
+  }
+
+  return NextResponse.json({ success: true, id: data.id, hasOffer: hasQuestionnaire })
 }
