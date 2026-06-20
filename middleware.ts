@@ -3,6 +3,10 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 const PUBLIC_ROUTES = ['/', '/login', '/signup', '/signup/brautpaar', '/signup/veranstalter', '/auth/callback', '/join', '/password-reset']
 
+// Fallback-Lebensdauer für „angemeldet bleiben", falls die Frist im fv_pref-
+// Cookie fehlt/unlesbar ist. Hält Auth-Cookies persistent (30 Tage).
+const REMEMBER_DAYS_SECONDS = 30 * 24 * 60 * 60
+
 type Membership = { event_id: string; role: string }
 
 // Deterministische Portal-Auflösung mit fester Rollen-Priorität
@@ -109,6 +113,34 @@ export async function middleware(request: NextRequest) {
   if (pref) {
     supabaseResponse.cookies.set('fv_alive', '1', { path: '/', sameSite: 'lax' })
     supabaseResponse.cookies.set('fv_pref', pref, { path: '/', maxAge: 60 * 24 * 60 * 60, sameSite: 'lax' })
+
+    // Auth-Cookies an die gewählte Persistenz angleichen. @supabase/ssr schreibt
+    // die sb-*-Cookies beim Login (Browser-Client) teils als Session-Cookies
+    // (ohne max-age) → sie verschwinden beim Schließen des Browsers und man ist
+    // trotz „30 Tage angemeldet bleiben" wieder ausgeloggt. Deshalb stempeln wir
+    // sie hier server-seitig mit expliziter Lebensdauer neu (httpOnly bleibt aus,
+    // damit der Browser-Client sie weiter lesen kann).
+    const secure = request.nextUrl.protocol === 'https:'
+    if (pref.startsWith('r:')) {
+      const expiry = Number(pref.slice(2))
+      // Absolute Frist: max-age = Restlaufzeit bis zum Ablauf (≤ 30 Tage).
+      const maxAge = expiry
+        ? Math.max(0, Math.floor((expiry - Date.now()) / 1000))
+        : REMEMBER_DAYS_SECONDS
+      for (const c of request.cookies.getAll()) {
+        if (c.name.startsWith('sb-')) {
+          supabaseResponse.cookies.set(c.name, c.value, { path: '/', sameSite: 'lax', secure, maxAge })
+        }
+      }
+    } else if (pref === 's') {
+      // Nur diese Sitzung: Auth-Cookies bewusst als Session-Cookies (ohne
+      // max-age) setzen, damit der Browser sie beim Schließen selbst löscht.
+      for (const c of request.cookies.getAll()) {
+        if (c.name.startsWith('sb-')) {
+          supabaseResponse.cookies.set(c.name, c.value, { path: '/', sameSite: 'lax', secure })
+        }
+      }
+    }
   }
 
   // Layer 2b: /admin/* — only admins (profiles.is_admin)
