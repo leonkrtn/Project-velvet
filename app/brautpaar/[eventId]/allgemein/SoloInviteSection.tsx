@@ -7,9 +7,20 @@ interface Props {
   eventId: string
   /** Eigene User-ID — um den Partner vom eigenen Eintrag zu unterscheiden */
   currentUserId: string
+  /**
+   * Ziel-Rolle der Partner-Einladung. Solo-Paare laden ein zweites
+   * brautpaar_solo ein (voller Admin-Zugriff); veranstalter-verwaltete Paare
+   * laden ein zweites brautpaar in dasselbe Event ein.
+   */
+  partnerTarget?: 'brautpaar_solo' | 'brautpaar'
+  /**
+   * Den "Veranstalter hinzufügen"-Block anzeigen. Nur für Solo-Paare sinnvoll —
+   * veranstalter-verwaltete Paare haben bereits einen Veranstalter.
+   */
+  showOrganizer?: boolean
 }
 
-type InviteTarget = 'veranstalter' | 'brautpaar_solo'
+type InviteTarget = 'veranstalter' | 'brautpaar_solo' | 'brautpaar'
 
 interface Member {
   id: string
@@ -43,10 +54,13 @@ function initials(name: string | null, email: string | null): string {
 //      Einlösen erscheint das Event im Veranstalter-Dashboard.
 // Bereits verbundene Personen werden angezeigt; der Veranstalter kann vom
 // Solo-Paar auch wieder entfernt werden (DELETE /api/members/[memberId]).
-export default function SoloInviteSection({ eventId, currentUserId }: Props) {
-  const [states, setStates] = useState<Record<InviteTarget, InviteState>>({
-    veranstalter: { ...EMPTY },
+export default function SoloInviteSection({
+  eventId, currentUserId, partnerTarget = 'brautpaar_solo', showOrganizer = true,
+}: Props) {
+  const [states, setStates] = useState<Record<string, InviteState>>({
+    veranstalter:   { ...EMPTY },
     brautpaar_solo: { ...EMPTY },
+    brautpaar:      { ...EMPTY },
   })
   const [members, setMembers] = useState<Member[]>([])
   const [membersLoaded, setMembersLoaded] = useState(false)
@@ -68,7 +82,7 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
 
   useEffect(() => { void loadMembers() }, [loadMembers])
 
-  const partner   = members.find(m => m.role === 'brautpaar_solo' && m.user_id !== currentUserId)
+  const partner   = members.find(m => m.role === partnerTarget && m.user_id !== currentUserId)
   const organizer = members.find(m => m.role === 'veranstalter')
 
   async function createCode(target: InviteTarget) {
@@ -221,10 +235,11 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
             </div>
             {partner
               ? <PersonCard member={partner} roleLabel="Partner" />
-              : membersLoaded && <InviteControls target="brautpaar_solo" buttonLabel="Partner-Code erstellen" />}
+              : membersLoaded && <InviteControls target={partnerTarget} buttonLabel="Partner-Code erstellen" />}
           </div>
 
-          {/* ── Veranstalter dazuschalten ── */}
+          {/* ── Veranstalter dazuschalten (nur Solo) ── */}
+          {showOrganizer && (
           <div className="bp-invite-block">
             <div className="bp-invite-head">
               <span className="bp-invite-badge"><Briefcase size={18} /></span>
@@ -274,6 +289,7 @@ export default function SoloInviteSection({ eventId, currentUserId }: Props) {
               </>
             )}
           </div>
+          )}
 
         </div>
       </div>

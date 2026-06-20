@@ -14,7 +14,7 @@ export default function DisplaySettingsLauncher({ eventId }: { eventId: string }
           <Paintbrush size={20} />
         </span>
         <div>
-          <h2 className="bp-section-title" style={{ margin: 0 }}>Anzeige &amp; RSVP gestalten</h2>
+          <h2 className="bp-section-title" style={{ margin: 0 }}>Anzeigeeinstellungen</h2>
           <p className="bp-caption" style={{ margin: '2px 0 0', maxWidth: 460 }}>
             Farben, Schriften, Bilder und das RSVP-Formular eurer öffentlichen Einladungsseite – mit Live-Vorschau.
           </p>

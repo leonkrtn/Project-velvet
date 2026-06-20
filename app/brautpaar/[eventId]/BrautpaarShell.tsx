@@ -5,13 +5,13 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
-  Music, Camera, Wallet, CheckSquare, Settings,
+  Music, Camera, Wallet, CheckSquare, Settings, Info,
   MessageSquare, ChevronRight, X, Menu, LogOut,
-  Briefcase, FileDown, CreditCard, Lock, Sparkles, HelpCircle, Globe,
+  Briefcase, Lock, Sparkles, Globe,
 } from 'lucide-react'
 import ForevrHeart from '@/components/ForevrHeart'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
-import ProductTour, { TOUR_START_EVENT } from '@/components/tour/ProductTour'
+import ProductTour from '@/components/tour/ProductTour'
 import { createClient } from '@/lib/supabase/client'
 import { BpToastProvider } from '@/components/ui/BpToast'
 
@@ -62,9 +62,7 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
         // Dienstleister-Bereich für ALLE Brautpaare: enthält den Marktplatz
         // ("Entdecken") und – für Solo-Paare – die Verwaltung der Zugriffsrechte.
         b('dienstleister', 'Dienstleister', <Briefcase size={16} />),
-        ...(isSolo ? [b('pdf-export', 'PDF-Export', <FileDown size={16} />)] : []),
-        ...(isSolo ? [b('abo', 'Abo & Tarif', <CreditCard size={16} />)] : []),
-        b('allgemein', 'Allgemein', <Settings size={16} />),
+        b('allgemein', 'Allgemein', <Info size={16} />),
       ],
     },
     {
@@ -209,7 +207,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   const nav = fullNav.map(group => ({
     ...group,
     items: group.items.filter(item => {
-      if (item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'pdf-export' || item.key === 'abo' || item.key === 'website') return true
+      if (item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'website') return true
       // Kombinierter Eintrag: sichtbar, solange Aufgaben ODER Notizen freigeschaltet sind
       if (item.key === 'aufgaben-notizen') return (bpToggles['bp-aufgaben'] ?? true) || (bpToggles['bp-notizen'] ?? true)
       // Kombinierter Eintrag: sichtbar, solange Catering ODER Getränke freigeschaltet sind
@@ -326,18 +324,17 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
         ))}
       </nav>
 
-      {/* Footer — tote Platzhalter-Links (Support/AGB/Datenschutz) entfernt,
-          bis echte Zielseiten existieren */}
+      {/* Footer — nur zwei Aktionen: Einstellungen (Zahnrad) und Abmelden. */}
       <div className="bp-sidebar-footer">
-        {isSolo && (
-          <button
-            onClick={() => { setMobileOpen(false); window.dispatchEvent(new Event(TOUR_START_EVENT)) }}
-            className="bp-sidebar-footer-link"
-          >
-            <HelpCircle size={16} className="bp-nav-item-icon" />
-            <span>Tutorial starten</span>
-          </button>
-        )}
+        <Link
+          href={`/brautpaar/${eventId}/einstellungen`}
+          onClick={() => setMobileOpen(false)}
+          className="bp-sidebar-footer-link"
+          aria-current={pathname === `/brautpaar/${eventId}/einstellungen` || pathname.startsWith(`/brautpaar/${eventId}/einstellungen/`) ? 'page' : undefined}
+        >
+          <Settings size={16} className="bp-nav-item-icon" />
+          <span>Einstellungen</span>
+        </Link>
         <button
           onClick={async () => {
             const supabase = createClient()
@@ -465,7 +462,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
         </div>
       </div>
 
-      {isSolo && !welcomeVisible && <ProductTour eventId={eventId} available={tourAvailable} />}
+      {!welcomeVisible && <ProductTour eventId={eventId} available={tourAvailable} />}
     </BpToastProvider>
   )
 }

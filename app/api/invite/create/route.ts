@@ -6,6 +6,8 @@
 //                                     einlösbar nur von approved Veranstaltern,
 //                                     erzwungen durch redeem_invite_code, 0089)
 //   brautpaar_solo → brautpaar_solo  (Partner / Partnerin einladen)
+//   brautpaar      → brautpaar       (Partner / Partnerin in ein veranstalter-
+//                                     verwaltetes Event einladen)
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
@@ -49,7 +51,8 @@ export async function POST(request: Request) {
   const callerRole = member.role as string
   const allowed =
     (callerRole === 'veranstalter' && targetRole === 'brautpaar') ||
-    (callerRole === 'brautpaar_solo' && (targetRole === 'veranstalter' || targetRole === 'brautpaar_solo'))
+    (callerRole === 'brautpaar_solo' && (targetRole === 'veranstalter' || targetRole === 'brautpaar_solo')) ||
+    (callerRole === 'brautpaar' && targetRole === 'brautpaar')
 
   if (!allowed) {
     return NextResponse.json({ error: 'Keine Berechtigung für diese Einladung' }, { status: 403 })
