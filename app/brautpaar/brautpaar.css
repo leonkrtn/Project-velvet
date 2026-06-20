@@ -914,6 +914,56 @@
   color: #fff;
 }
 
+/* ── Binary content toggle (Aufgaben/Notizen, Catering/Getränke) ─────────── */
+/* iOS-style segmented control: light track, raised active pill. Unlike
+   .bp-step-tabs this has no step numbers and goes full-width on mobile so the
+   two options split the row evenly. */
+.bp-toggle {
+  display: inline-flex;
+  gap: 4px;
+  background: var(--bp-ivory-2);
+  border: 1px solid var(--bp-rule);
+  border-radius: var(--bp-r-pill);
+  padding: 4px;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.bp-toggle-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.5rem 1.4rem;
+  border-radius: var(--bp-r-pill);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--bp-ink-3);
+  transition: background var(--bp-transition), color var(--bp-transition), box-shadow var(--bp-transition);
+  white-space: nowrap;
+}
+
+.bp-toggle-option:hover { color: var(--bp-ink); }
+
+.bp-toggle-option[aria-selected="true"] {
+  background: var(--bp-white);
+  color: var(--bp-ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.bp-toggle-option svg { opacity: 0.65; }
+.bp-toggle-option[aria-selected="true"] svg { opacity: 1; }
+
+@media (max-width: 640px) {
+  .bp-toggle { display: flex; width: 100%; }
+  .bp-toggle-option { flex: 1; padding: 0.55rem 0.5rem; }
+}
+
 
 /* ── Table ──────────────────────────────────────────────────────────────── */
 .bp-table {

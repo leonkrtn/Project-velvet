@@ -1,14 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { UtensilsCrossed, GlassWater } from 'lucide-react'
 import CateringForm, { type EventData } from '@/components/catering/CateringForm'
 import GetraenkeTabContent from '@/components/tabs/GetraenkeTabContent'
 
 type Tab = 'catering' | 'getraenke'
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'catering',  label: 'Catering' },
-  { key: 'getraenke', label: 'Getränke' },
+const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+  { key: 'catering',  label: 'Catering',  icon: <UtensilsCrossed size={16} /> },
+  { key: 'getraenke', label: 'Getränke',  icon: <GlassWater size={16} /> },
 ]
 
 interface Props {
@@ -34,15 +35,16 @@ export default function CateringGetraenkeClient({
         <h1 className="bp-page-title">Catering &amp; Getränke</h1>
       </div>
 
-      <div className="bp-step-tabs">
-        {TABS.map((tab, idx) => (
+      <div className="bp-toggle" role="tablist">
+        {TABS.map(tab => (
           <button
             key={tab.key}
-            className="bp-step-tab"
+            className="bp-toggle-option"
+            role="tab"
             aria-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
           >
-            <span className="bp-step-tab-num">{idx + 1}</span>
+            {tab.icon}
             {tab.label}
           </button>
         ))}
