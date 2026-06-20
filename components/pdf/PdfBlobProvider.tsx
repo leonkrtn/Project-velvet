@@ -20,13 +20,16 @@ interface Props {
   data: PdfEventData
   mode: PdfMode
   sections: PdfSection[]
+  // Render the Budget section even in extern mode (used for couples, who may
+  // export their own budget while everything else stays extern).
+  allowBudget?: boolean
   children: (props: { url: string | null; loading: boolean; error: Error | null }) => ReactNode
 }
 
-export default function PdfBlobProviderWithDoc({ data, mode, sections, children }: Props) {
+export default function PdfBlobProviderWithDoc({ data, mode, sections, allowBudget, children }: Props) {
   const doc = useMemo(
-    () => <ForevrPdfDocument data={data} mode={mode} sections={sections} />,
-    [data, mode, sections],
+    () => <ForevrPdfDocument data={data} mode={mode} sections={sections} allowBudget={allowBudget} />,
+    [data, mode, sections, allowBudget],
   )
   return (
     <BlobProvider document={doc}>

@@ -22,6 +22,8 @@ interface Props {
   data: PdfEventData
   mode: PdfMode
   sections: PdfSection[]
+  // When true, the Budget section is included even in extern mode (couples).
+  allowBudget?: boolean
 }
 
 function buildExportTimestamp() {
@@ -30,8 +32,9 @@ function buildExportTimestamp() {
   return `${p(now.getDate())}.${p(now.getMonth() + 1)}.${String(now.getFullYear()).slice(2)}, ${p(now.getHours())}:${p(now.getMinutes())}`
 }
 
-export default function ForevrPdfDocument({ data, mode, sections }: Props) {
+export default function ForevrPdfDocument({ data, mode, sections, allowBudget }: Props) {
   const has = (s: PdfSection) => sections.includes(s)
+  const showBudget = mode === 'intern' || allowBudget === true
 
   const headerTitle = `${data.event.title} – Forevr`
   const exportTimestamp = buildExportTimestamp()
@@ -44,7 +47,7 @@ export default function ForevrPdfDocument({ data, mode, sections }: Props) {
   const idxMap: Partial<Record<PdfSection, number>> = {}
   let n = 0
   for (const s of orderedSections) {
-    if (sections.includes(s) && (s !== 'budget' || mode === 'intern')) {
+    if (sections.includes(s) && (s !== 'budget' || showBudget)) {
       n++
       idxMap[s] = n
     }
@@ -79,7 +82,7 @@ export default function ForevrPdfDocument({ data, mode, sections }: Props) {
       {has('getraenke') && (
         <PdfSectionGetraenke data={data} mode={mode} sectionIndex={idxMap.getraenke!} {...sharedProps} />
       )}
-      {has('budget') && mode === 'intern' && (
+      {has('budget') && showBudget && (
         <PdfSectionBudget data={data} mode={mode} sectionIndex={idxMap.budget!} {...sharedProps} />
       )}
       {has('musik') && (
