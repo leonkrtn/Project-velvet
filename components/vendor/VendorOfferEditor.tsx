@@ -1,14 +1,17 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Trash2, RefreshCw, Save, Check, X, FileDown, MessageSquare } from 'lucide-react'
+import { Loader2, Plus, Trash2, RefreshCw, Save, Check, X, FileDown, MessageSquare, ClipboardList, ReceiptText, Calendar, MapPin, Users } from 'lucide-react'
 import Link from 'next/link'
-import { formatMoney } from '@/lib/vendor/questionnaire'
+import { formatMoney, type Answer } from '@/lib/vendor/questionnaire'
 
 interface LineItem { label: string; qty: number; unitPrice: number; total: number }
+interface StandardInfo { coupleName?: string | null; date?: string | null; guestCount?: number | null; location?: string | null; eventType?: string | null; budget?: number | null }
 interface Offer {
   status: 'draft' | 'released' | 'accepted' | 'declined'
   line_items: LineItem[]
+  answers: Answer[]
+  standard_info: StandardInfo
   tax_mode: 'regular' | 'kleinunternehmer' | 'none'
   tax_rate: number
   currency: string
@@ -20,6 +23,8 @@ const C = { border: 'var(--border)', text: 'var(--text)', dim: 'var(--text-dim)'
 const inp: React.CSSProperties = { padding: '7px 9px', fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text }
 const btn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid transparent' }
 const btnGhost: React.CSSProperties = { ...btn, background: C.surface, color: C.text, border: `1px solid ${C.border}` }
+
+type View = 'antworten' | 'angebot'
 
 interface Props {
   requestId: string
@@ -36,6 +41,7 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
   const [validUntil, setValidUntil] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState('')
+  const [view, setView] = useState<View>('antworten')
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/vendor/offers/${requestId}`)
@@ -121,18 +127,120 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
 
   return (
     <div>
+      {/* Segmented toggle (Design wie Aufgaben & Notizen) */}
+      <div style={{ display: 'inline-flex', gap: 4, padding: 4, marginBottom: 16, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
+        {([['antworten', 'Antworten', <ClipboardList key="a" size={15} />], ['angebot', 'Angebot', <ReceiptText key="o" size={15} />]] as [View, string, React.ReactNode][]).map(([key, label, icon]) => {
+          const active = view === key
+          return (
+            <button key={key} onClick={() => setView(key)} style={{
+              display: 'flex', alignItems: 'center', gap: 7, padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
+              background: active ? C.surface : 'transparent', boxShadow: active ? 'var(--shadow-sm)' : 'none',
+              color: active ? C.text : C.dim, fontSize: 13.5, fontWeight: active ? 600 : 450, fontFamily: 'inherit', transition: 'background 0.12s',
+            }}>
+              {icon}{label}
+            </button>
+          )
+        })}
+      </div>
+
+      {err && <p style={{ color: C.red, fontSize: 12.5, margin: '0 0 8px' }}>{err}</p>}
+
+      {view === 'antworten' ? (
+        <AnswersView answers={offer.answers ?? []} info={offer.standard_info ?? {}} />
+      ) : (
+        <OfferBody
+          offer={offer} items={items} editable={!!editable} totals={totals}
+          notes={notes} setNotes={setNotes} validUntil={validUntil} setValidUntil={setValidUntil}
+          setItem={setItem} addItem={addItem} removeItem={removeItem}
+          busy={busy} onRecompute={recompute}
+        />
+      )}
+
+      {/* Aktionen (immer sichtbar) */}
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16, flexWrap: 'wrap' }}>
+        <a href={`/api/vendor/offers/${requestId}/pdf`} target="_blank" rel="noreferrer" style={{ ...btnGhost, textDecoration: 'none' }}><FileDown size={15} /> PDF</a>
+        {editable ? (
+          <>
+            <button onClick={() => requestAct('decline')} disabled={!!busy} style={btnGhost}><X size={15} /> Anfrage ablehnen</button>
+            <button onClick={() => patch('save')} disabled={!!busy} style={btnGhost}>
+              {busy === 'save' ? <Loader2 size={15} className="anf-spin" /> : <Save size={15} />} Entwurf speichern
+            </button>
+            <button onClick={() => patch('release')} disabled={!!busy} style={{ ...btn, background: '#1E7E34', color: '#fff' }}>
+              {busy === 'release' ? <Loader2 size={15} className="anf-spin" /> : <Check size={15} />} Angebot freigeben
+            </button>
+          </>
+        ) : (
+          <Link href={`/vendor/dashboard/${eventId}/kommunikation`} style={{ ...btn, background: C.gold, color: '#fff', textDecoration: 'none' }}><MessageSquare size={15} /> Zur Kommunikation</Link>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function AnswersView({ answers, info }: { answers: Answer[]; info: StandardInfo }) {
+  const grouped = useMemo(() => {
+    const map = new Map<string, Answer[]>()
+    for (const a of answers) {
+      const key = a.sectionTitle || 'Angaben'
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(a)
+    }
+    return Array.from(map.entries())
+  }, [answers])
+
+  return (
+    <div>
+      {/* Eckdaten */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginBottom: 16 }}>
+        {info.date && <Eck icon={<Calendar size={13} />} text={new Date(info.date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })} />}
+        {info.location && <Eck icon={<MapPin size={13} />} text={info.location} />}
+        {info.guestCount ? <Eck icon={<Users size={13} />} text={`${info.guestCount} Gäste`} /> : null}
+      </div>
+
+      {grouped.length === 0 ? (
+        <p style={{ fontSize: 13, color: C.dim, margin: 0 }}>Keine Angaben aus dem Fragebogen.</p>
+      ) : grouped.map(([section, items]) => (
+        <div key={section} style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.dim, marginBottom: 8 }}>{section}</div>
+          {items.map((a, i) => (
+            <div key={i} style={{ display: 'flex', gap: 12, fontSize: 13, padding: '5px 0', borderBottom: `1px solid ${C.border}` }}>
+              <span style={{ color: C.dim, flex: 1 }}>{a.label}</span>
+              <span style={{ color: C.text, fontWeight: 500, flex: 1, textAlign: 'right' }}>{a.display}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Eck({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.dim }}>
+      <span style={{ display: 'flex', flexShrink: 0 }}>{icon}</span>{text}
+    </span>
+  )
+}
+
+function OfferBody({ offer, items, editable, totals, notes, setNotes, validUntil, setValidUntil, setItem, addItem, removeItem, busy, onRecompute }: {
+  offer: Offer; items: LineItem[]; editable: boolean
+  totals: { cur: string; subtotal: number; tax: number; total: number; rate: number }
+  notes: string; setNotes: (v: string) => void; validUntil: string; setValidUntil: (v: string) => void
+  setItem: (i: number, patch: Partial<LineItem>) => void; addItem: () => void; removeItem: (i: number) => void
+  busy: string | null; onRecompute: () => void
+}) {
+  return (
+    <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
         <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.dim, margin: 0 }}>
           {editable ? 'Automatisches Angebot (Entwurf)' : 'Angebot'}
         </h3>
         {editable && (
-          <button onClick={recompute} disabled={!!busy} style={{ ...btnGhost, padding: '6px 11px', fontSize: 12 }} title="Aus den Antworten neu berechnen">
+          <button onClick={onRecompute} disabled={!!busy} style={{ ...btnGhost, padding: '6px 11px', fontSize: 12 }} title="Aus den Antworten neu berechnen">
             {busy === 'recompute' ? <Loader2 size={13} className="anf-spin" /> : <RefreshCw size={13} />} Neu berechnen
           </button>
         )}
       </div>
-
-      {err && <p style={{ color: C.red, fontSize: 12.5, margin: '0 0 8px' }}>{err}</p>}
 
       {/* Positionen */}
       <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
@@ -192,24 +300,6 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
           </div>
         </div>
       )}
-
-      {/* Aktionen */}
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16, flexWrap: 'wrap' }}>
-        <a href={`/api/vendor/offers/${requestId}/pdf`} target="_blank" rel="noreferrer" style={{ ...btnGhost, textDecoration: 'none' }}><FileDown size={15} /> PDF</a>
-        {editable ? (
-          <>
-            <button onClick={() => requestAct('decline')} disabled={!!busy} style={btnGhost}><X size={15} /> Anfrage ablehnen</button>
-            <button onClick={() => patch('save')} disabled={!!busy} style={btnGhost}>
-              {busy === 'save' ? <Loader2 size={15} className="anf-spin" /> : <Save size={15} />} Entwurf speichern
-            </button>
-            <button onClick={() => patch('release')} disabled={!!busy} style={{ ...btn, background: '#1E7E34', color: '#fff' }}>
-              {busy === 'release' ? <Loader2 size={15} className="anf-spin" /> : <Check size={15} />} Angebot freigeben
-            </button>
-          </>
-        ) : (
-          <Link href={`/vendor/dashboard/${eventId}/kommunikation`} style={{ ...btn, background: C.gold, color: '#fff', textDecoration: 'none' }}><MessageSquare size={15} /> Zur Kommunikation</Link>
-        )}
-      </div>
     </div>
   )
 }
