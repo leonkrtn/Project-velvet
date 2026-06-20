@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Loader2, Save, Send, Eye, EyeOff, Plus, Trash2, Image as ImageIcon, Star,
-  CheckCircle2, AlertTriangle, Clock, ArrowUp, ArrowDown,
+  CheckCircle2, AlertTriangle, Clock, ArrowUp, ArrowDown, FileText,
 } from 'lucide-react'
 import {
   MARKETPLACE_CATEGORIES, PRICE_RANGES, PRICE_UNITS, SOCIAL_PLATFORMS,
@@ -325,6 +325,18 @@ export default function VendorListingClient() {
             </div>
           )}
         </div>
+
+        {/* Fragebogen & Auto-Angebot */}
+        <a href="/vendor/fragebogen" style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit' }}>
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(184,153,104,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <FileText size={20} style={{ color: C.gold }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Fragebogen & Auto-Angebot</div>
+            <div style={{ fontSize: 12.5, color: C.dim, marginTop: 2 }}>Fragen festlegen, aus denen automatisch ein Angebotsentwurf entsteht.</div>
+          </div>
+          <span style={{ ...btnGhost, pointerEvents: 'none' }}>Öffnen</span>
+        </a>
 
         {/* Stammdaten (sensibel) */}
         <div style={card}>

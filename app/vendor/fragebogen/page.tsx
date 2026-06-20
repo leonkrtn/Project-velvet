@@ -1,0 +1,26 @@
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import FragebogenBuilderClient from './FragebogenBuilderClient'
+
+export const dynamic = 'force-dynamic'
+
+// Fragebogen-Builder: firmen-global (1 Fragebogen pro Dienstleister-Profil).
+export default async function FragebogenPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login?next=/vendor/fragebogen')
+
+  const admin = createAdminClient()
+  const { data: link } = await admin
+    .from('user_dienstleister')
+    .select('dienstleister_id, dienstleister_profiles(category)')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  // Ohne Marktplatz-Profil zuerst zum Profil-Onboarding.
+  if (!link) redirect('/vendor/listing')
+
+  const profile = Array.isArray(link.dienstleister_profiles) ? link.dienstleister_profiles[0] : link.dienstleister_profiles
+  return <FragebogenBuilderClient category={(profile?.category as string) ?? 'sonstiges'} />
+}

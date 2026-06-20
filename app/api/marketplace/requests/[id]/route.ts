@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { acceptMarketplaceRequest } from '@/lib/marketplace/accept'
 
 // PATCH — Anfrage bearbeiten.
 //   Vendor:    { action: 'accept' | 'decline' }
@@ -92,76 +93,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!isVendor) return NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 })
     if (request.status !== 'pending') return NextResponse.json({ error: 'Anfrage ist nicht mehr offen' }, { status: 409 })
 
-    const { data: vendorProfile } = await admin
-      .from('dienstleister_profiles')
-      .select('category, name, company_name')
-      .eq('id', request.dienstleister_id)
-      .maybeSingle()
-
-    // 0. Vendor als Event-Mitglied eintragen — sonst greift der Dashboard-Guard
-    //    (layout.tsx verlangt event_members.role='dienstleister') und leitet auf /vendor/join.
-    await admin.from('event_members').upsert({
-      event_id: request.event_id,
-      user_id: user.id,
-      role: 'dienstleister',
-      invited_by: request.requested_by,
-    }, { onConflict: 'event_id,user_id' })
-
-    // 1. event_dienstleister verknüpfen (idempotent über UNIQUE(event_id, dienstleister_id))
-    await admin.from('event_dienstleister').upsert({
-      event_id: request.event_id,
-      dienstleister_id: request.dienstleister_id,
-      user_id: user.id,
-      category: vendorProfile?.category ?? 'sonstiges',
-      status: 'akzeptiert',
-      invited_by: request.requested_by,
-      accepted_at: new Date().toISOString(),
-    }, { onConflict: 'event_id,dienstleister_id' })
-
-    // 2. Sinnvolle Default-Berechtigungen (Übersicht lesen, Chat schreiben)
-    await admin.from('dienstleister_permissions').upsert([
-      { event_id: request.event_id, dienstleister_user_id: user.id, tab_key: 'uebersicht', item_id: null, access: 'read' },
-      { event_id: request.event_id, dienstleister_user_id: user.id, tab_key: 'chats', item_id: null, access: 'write' },
-    ], { onConflict: 'event_id,dienstleister_user_id,tab_key,item_id' })
-
-    // 3. Chat eröffnen (Vendor ↔ anfragendes Brautpaar)
-    let conversationId: string | null = null
-    const otherUser = request.requested_by
-    const vendorName = vendorProfile?.company_name || vendorProfile?.name || 'Dienstleister'
-    const { data: conv } = await admin
-      .from('conversations')
-      .insert({ event_id: request.event_id, name: `Anfrage · ${vendorName}`, created_by: user.id })
-      .select('id')
-      .single()
-    if (conv) {
-      conversationId = conv.id
-      // Add the vendor + the requester + ALL couple/organizer members so the
-      // whole couple side sees the vendor chat (not just the requester).
-      const { data: coupleMembers } = await admin
-        .from('event_members')
-        .select('user_id')
-        .eq('event_id', request.event_id)
-        .in('role', ['veranstalter', 'brautpaar', 'brautpaar_solo'])
-      const ids = new Set<string>([user.id])
-      if (otherUser) ids.add(otherUser)
-      for (const m of (coupleMembers ?? [])) if (m.user_id) ids.add(m.user_id as string)
-      await admin.from('conversation_participants').upsert(
-        Array.from(ids).map(uid => ({ conversation_id: conv.id, user_id: uid })),
-        { onConflict: 'conversation_id,user_id' },
-      )
-      // Erste Nachricht mit dem Anfragetext
-      if (request.message) {
-        await admin.from('messages').insert({
-          conversation_id: conv.id, event_id: request.event_id,
-          sender_id: otherUser ?? user.id, content: request.message,
-        })
-      }
-    }
-
-    await admin.from('marketplace_requests')
-      .update({ status: 'accepted', responded_at: new Date().toISOString(), conversation_id: conversationId })
-      .eq('id', id)
-
+    const conversationId = await acceptMarketplaceRequest(admin, request, user.id)
     return NextResponse.json({ success: true, conversationId })
   }
 

@@ -3,9 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
-  Check, X, MessageSquare, MapPin, Calendar, Euro, Inbox,
+  X, MapPin, Calendar, Euro, Inbox,
   ChevronLeft, Heart, Loader2, Users, Mail, Phone, Tag, ArrowRight,
 } from 'lucide-react'
+import VendorOfferEditor from '@/components/vendor/VendorOfferEditor'
 
 interface Contact { name: string | null; email: string | null; phone: string | null }
 interface Req {
@@ -47,7 +48,6 @@ export default function VendorAnfragenClient() {
   const [requests, setRequests] = useState<Req[]>([])
   const [loading, setLoading] = useState(true)
   const [isVendor, setIsVendor] = useState(true)
-  const [busyId, setBusyId] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('offen')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -79,15 +79,6 @@ export default function VendorAnfragenClient() {
   }), [requests, filter])
 
   const selected = useMemo(() => requests.find(r => r.id === selectedId) ?? null, [requests, selectedId])
-
-  async function act(id: string, action: 'accept' | 'decline') {
-    setBusyId(id)
-    await fetch(`/api/marketplace/requests/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
-    })
-    await load()
-    setBusyId(null)
-  }
 
   const tabs: { key: Filter; label: string; count: number }[] = [
     { key: 'offen',      label: 'Offen',      count: counts.offen },
@@ -148,7 +139,7 @@ export default function VendorAnfragenClient() {
       </div>
 
       {selected && (
-        <RequestLightbox r={selected} busy={busyId === selected.id} onClose={() => setSelectedId(null)} onAct={act} />
+        <RequestLightbox r={selected} onClose={() => setSelectedId(null)} onReload={load} />
       )}
 
       <style>{`.anf-spin { animation: anfspin 1s linear infinite; } @keyframes anfspin { to { transform: rotate(360deg); } }`}</style>
@@ -198,7 +189,7 @@ function RequestTile({ r, onOpen }: { r: Req; onOpen: () => void }) {
   )
 }
 
-function RequestLightbox({ r, busy, onClose, onAct }: { r: Req; busy: boolean; onClose: () => void; onAct: (id: string, a: 'accept' | 'decline') => void }) {
+function RequestLightbox({ r, onClose, onReload }: { r: Req; onClose: () => void; onReload: () => void }) {
   const m = statusMeta[r.status]
   const loc = locationOf(r.events)
   const contacts = r.couple_contacts.length ? r.couple_contacts : (r.requester ? [r.requester] : [])
@@ -259,27 +250,13 @@ function RequestLightbox({ r, busy, onClose, onAct }: { r: Req; busy: boolean; o
               <p style={{ fontSize: 14, color: 'var(--text)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{r.message}</p>
             </Section>
           )}
-        </div>
 
-        {/* Footer actions */}
-        {(r.status === 'pending' || r.status === 'accepted') && (
-          <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            {r.status === 'pending' ? (
-              <>
-                <button onClick={() => onAct(r.id, 'decline')} disabled={busy} style={{ padding: '10px 18px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 13.5, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
-                  <X size={15} /> Ablehnen
-                </button>
-                <button onClick={() => onAct(r.id, 'accept')} disabled={busy} style={{ padding: '10px 20px', borderRadius: 10, border: 'none', background: '#1E7E34', color: '#fff', fontSize: 13.5, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
-                  {busy ? <Loader2 size={15} className="anf-spin" /> : <Check size={15} />} Annehmen
-                </button>
-              </>
-            ) : (
-              <Link href={`/vendor/dashboard/${r.event_id}/kommunikation`} style={{ padding: '10px 20px', borderRadius: 10, background: 'var(--gold)', color: '#fff', fontSize: 13.5, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                <MessageSquare size={15} /> Zur Kommunikation
-              </Link>
-            )}
-          </div>
-        )}
+          {r.status !== 'cancelled' && (
+            <Section title="Angebot">
+              <VendorOfferEditor requestId={r.id} eventId={r.event_id} requestStatus={r.status} onChanged={onReload} />
+            </Section>
+          )}
+        </div>
       </div>
     </div>
   )
