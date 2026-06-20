@@ -1,13 +1,30 @@
 import { createClient } from '@/lib/supabase/server'
-import CateringForm from '@/app/veranstalter/[eventId]/catering/CateringForm'
+import { redirect } from 'next/navigation'
+import CateringGetraenkeClient from './CateringGetraenkeClient'
 
 interface Props {
   params: Promise<{ eventId: string }>
+  searchParams: Promise<{ tab?: string }>
 }
 
-export default async function CateringPage({ params }: Props) {
+export default async function BrautpaarCateringGetraenkePage({ params, searchParams }: Props) {
   const { eventId } = await params
+  const { tab } = await searchParams
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: member } = await supabase
+    .from('event_members')
+    .select('role')
+    .eq('event_id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!member || !['brautpaar', 'brautpaar_solo', 'veranstalter'].includes(member.role)) {
+    redirect('/login')
+  }
 
   const { data: event } = await supabase
     .from('events')
@@ -54,17 +71,15 @@ export default async function CateringPage({ params }: Props) {
   }
 
   return (
-    <div className="bp-page">
-      <CateringForm
-        eventId={eventId}
-        initialEvent={event}
-        initialPlan={cateringPlan ?? null}
-        initialCosts={[]}
-        confirmedGuestCount={attending.length}
-        mealCounts={mealCounts}
-        allergyCounts={allergyCounts}
-        hideCosts
-      />
-    </div>
+    <CateringGetraenkeClient
+      eventId={eventId}
+      initialEvent={event}
+      initialPlan={cateringPlan ?? null}
+      confirmedGuestCount={attending.length}
+      mealCounts={mealCounts}
+      allergyCounts={allergyCounts}
+      getraenkeGuestCount={attending.length}
+      initialTab={tab === 'getraenke' ? 'getraenke' : 'catering'}
+    />
   )
 }

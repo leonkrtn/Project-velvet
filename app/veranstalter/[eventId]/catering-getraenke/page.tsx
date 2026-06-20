@@ -2,14 +2,16 @@ export const dynamic = 'force-dynamic'
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import CateringForm from './CateringForm'
+import CateringGetraenkeClient from './CateringGetraenkeClient'
 
 interface Props {
   params: Promise<{ eventId: string }>
+  searchParams: Promise<{ tab?: string }>
 }
 
-export default async function CateringPage({ params }: Props) {
+export default async function CateringGetraenkePage({ params, searchParams }: Props) {
   const { eventId } = await params
+  const { tab } = await searchParams
   const supabase = await createClient()
 
   const { data: event } = await supabase
@@ -62,7 +64,7 @@ export default async function CateringPage({ params }: Props) {
   }
 
   return (
-    <CateringForm
+    <CateringGetraenkeClient
       eventId={eventId}
       initialEvent={event}
       initialPlan={cateringPlan ?? null}
@@ -70,6 +72,8 @@ export default async function CateringPage({ params }: Props) {
       confirmedGuestCount={attending.length + attendingBegleit.length}
       mealCounts={mealCounts}
       allergyCounts={allergyCounts}
+      getraenkeGuestCount={attending.length}
+      initialTab={tab === 'getraenke' ? 'getraenke' : 'catering'}
     />
   )
 }

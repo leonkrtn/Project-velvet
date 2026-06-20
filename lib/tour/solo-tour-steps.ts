@@ -123,15 +123,10 @@ export const SOLO_TOUR_STEPS: TourStep[] = [
     title: 'Speichern',
     body: 'Mit „Hinzufügen" ist euer erster Budget-Posten angelegt.' },
 
-  // ── Getränke ───────────────────────────────────────────────────────────────
-  { module: 'getraenke', target: 'bp-content',
-    title: 'Getränke',
-    body: 'Plant Mengen pro Person, das Getränke-Budget und sogar Cocktails samt Zutaten.' },
-
-  // ── Catering & Menü ────────────────────────────────────────────────────────
-  { module: 'catering', target: 'bp-content',
-    title: 'Catering & Menü',
-    body: 'Hier haltet ihr Menügänge, Service und die Essenswünsche eurer Gäste fest.' },
+  // ── Catering & Getränke ─────────────────────────────────────────────────────
+  { module: 'catering-getraenke', target: 'bp-content',
+    title: 'Catering & Getränke',
+    body: 'Hier haltet ihr Menügänge, Service und Essenswünsche fest — und plant über den Reiter „Getränke" Mengen, Budget und Cocktails.' },
 
   // ── Musik ──────────────────────────────────────────────────────────────────
   { module: 'musik', target: 'bp-content',

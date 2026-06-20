@@ -459,7 +459,7 @@ export default function BrautpaarUebersicht({
     { key: 'sitzplan', label: 'Sitzplan', icon: <LayoutGrid size={18} />,
       detail: seatedCount > 0 ? `${seatedCount} ${seatedCount === 1 ? 'Platz' : 'Plätze'} vergeben` : 'Tische planen und Gäste platzieren' },
     { key: 'ablaufplan', label: 'Ablaufplan', icon: <Calendar size={18} />, detail: 'Den Tag im Kalender durchplanen' },
-    { key: 'catering', label: 'Catering', icon: <UtensilsCrossed size={18} />, detail: 'Menü, Service und Essenswünsche' },
+    { key: 'catering-getraenke', label: 'Catering', icon: <UtensilsCrossed size={18} />, detail: 'Menü, Service, Essenswünsche und Getränke' },
     { key: 'musik', label: 'Musik', icon: <Music size={18} />,
       detail: songCount > 0 ? `${songCount} ${songCount === 1 ? 'Song' : 'Songs'} gesammelt` : 'Wunschlieder und Playlists sammeln' },
   ]
@@ -489,7 +489,7 @@ export default function BrautpaarUebersicht({
     { key: 'ablaufplan', label: 'Ablaufplan erstellen', href: 'ablaufplan', icon: <Calendar size={14} />,
       todo: 'Plant den Tagesablauf im Kalender — von der Trauung bis zur Party.',
       cta: 'Ablauf planen', done: timelineCount > 0 },
-    { key: 'catering', label: 'Catering & Menü', href: 'catering', icon: <UtensilsCrossed size={14} />,
+    { key: 'catering', label: 'Catering & Menü', href: 'catering-getraenke', icon: <UtensilsCrossed size={14} />,
       todo: 'Legt Menüart, Service und die Essenswünsche eurer Gäste fest.',
       cta: 'Catering planen', done: cateringConfigured },
     { key: 'sitzplan', label: 'Sitzplan gestalten', href: 'sitzplan', icon: <LayoutGrid size={14} />,

@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Settings, Users, MessageSquare,
   Calendar, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
   Music2, Camera, FolderOpen, LogOut, UserCircle, SlidersHorizontal,
-  FileDown, GlassWater, CheckSquare,
+  FileDown, CheckSquare,
 } from 'lucide-react'
 
 interface Props {
@@ -25,8 +25,7 @@ const NAV_ITEMS = [
   { key: 'uebersicht',      label: 'Übersicht',        icon: LayoutDashboard },
   { key: 'aufgaben-notizen', label: 'Aufgaben & Notizen', icon: CheckSquare },
   { key: 'allgemein',       label: 'Allgemein',         icon: Settings },
-  { key: 'catering',        label: 'Catering & Menü',   icon: UtensilsCrossed },
-  { key: 'getraenke',       label: 'Getränke',           icon: GlassWater },
+  { key: 'catering-getraenke', label: 'Catering & Getränke', icon: UtensilsCrossed },
   { key: 'mitglieder',      label: 'Beteiligte',        icon: Users },
   { key: 'chats',           label: 'Chats',             icon: MessageSquare },
   { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
