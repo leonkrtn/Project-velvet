@@ -261,16 +261,6 @@ CREATE TABLE IF NOT EXISTS feature_toggles (
   PRIMARY KEY (event_id, key)
 );
 
--- ── Deko ──────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS deko_wishes (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id   UUID REFERENCES events(id) ON DELETE CASCADE,
-  title      TEXT,
-  notes      TEXT,
-  image_url  TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 -- ── Bilder ────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS location_images (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -396,7 +386,6 @@ CREATE TABLE IF NOT EXISTS trauzeuge_permissions (
   can_view_timeline BOOLEAN DEFAULT true,
   can_edit_timeline BOOLEAN DEFAULT false,
   can_view_vendors  BOOLEAN DEFAULT false,
-  can_manage_deko   BOOLEAN DEFAULT true,
   updated_at        TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(event_id, user_id)
 );
@@ -508,7 +497,6 @@ ALTER TABLE seating_tables                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE seating_assignments            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE catering_plans                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feature_toggles                ENABLE ROW LEVEL SECURITY;
-ALTER TABLE deko_wishes                    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE location_images                ENABLE ROW LEVEL SECURITY;
 ALTER TABLE guest_photos                   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles                       ENABLE ROW LEVEL SECURITY;
@@ -576,8 +564,6 @@ DO $$ BEGIN CREATE POLICY "catering_write"  ON catering_plans FOR ALL   USING (i
 
 DO $$ BEGIN CREATE POLICY "ft_select" ON feature_toggles FOR SELECT USING (is_event_member(event_id)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY "ft_write"  ON feature_toggles FOR ALL   USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[])); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN CREATE POLICY "deko_wish_all"   ON deko_wishes FOR ALL        USING (is_event_member(event_id, ARRAY['veranstalter','brautpaar','trauzeuge']::user_role[])); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN CREATE POLICY "loc_img_select" ON location_images FOR SELECT USING (is_event_member(event_id)); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN CREATE POLICY "loc_img_write"  ON location_images FOR ALL   USING (is_event_member(event_id, ARRAY['veranstalter']::user_role[])); EXCEPTION WHEN duplicate_object THEN NULL; END $$;

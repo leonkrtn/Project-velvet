@@ -10,7 +10,6 @@ interface Permissions {
   sub_events: boolean
   erinnerungen: boolean
   sitzplan: boolean
-  dekorationen: boolean
   dienstleister: boolean
   hotel: boolean
   catering: boolean
@@ -22,7 +21,6 @@ const DEFAULT_PERMS: Permissions = {
   sub_events: false,
   erinnerungen: true,
   sitzplan: true,
-  dekorationen: true,
   dienstleister: true,
   hotel: true,
   catering: false,
@@ -34,7 +32,6 @@ const PERM_LABELS: { key: keyof Omit<Permissions, 'id' | 'event_id'>; label: str
   { key: 'sub_events',          label: 'Sub-Events',           desc: 'Teilveranstaltungen einsehen' },
   { key: 'erinnerungen',        label: 'Erinnerungen',         desc: 'Terminbenachrichtigungen erhalten' },
   { key: 'sitzplan',            label: 'Sitzplan',             desc: 'Tischplan und Sitzordnung' },
-  { key: 'dekorationen',        label: 'Dekorationen',         desc: 'Deko-Vorschläge einsehen' },
   { key: 'dienstleister',       label: 'Dienstleister',        desc: 'Vendor-Vorschläge und Buchungen' },
   { key: 'hotel',               label: 'Hotel',                desc: 'Hotel-Vorschläge einsehen' },
   { key: 'catering',            label: 'Catering',             desc: 'Menü und Cateringdetails' },

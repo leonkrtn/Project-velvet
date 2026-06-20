@@ -232,32 +232,6 @@ Legacy table from 0002. Superseded by `music_songs`.
 
 ---
 
-## Decor
-
-### `decor_setup_items`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| event_id | UUID FK | |
-| name | TEXT | |
-| category | TEXT | |
-| quantity | INTEGER | |
-| status | TEXT | |
-| notes | TEXT | |
-| assigned_to | UUID FK → profiles | |
-
-### `deko_wishes`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| event_id | UUID FK | |
-| description | TEXT | |
-| reference_image_url | TEXT | |
-| status | TEXT | |
-| notes | TEXT | |
-
----
-
 ## Media
 
 ### `media_shot_items`
@@ -450,7 +424,7 @@ Links events to vendor users.
 | id | UUID PK | |
 | event_id | UUID FK | |
 | user_id | UUID FK → profiles | |
-| permission | TEXT | 'mod_chat', 'mod_timeline', 'mod_timeline_read', 'mod_seating', 'mod_seating_read', 'mod_catering', 'mod_catering_read', 'mod_music', 'mod_music_read', 'mod_patisserie', 'mod_patisserie_read', 'mod_decor', 'mod_decor_read', 'mod_media', 'mod_media_read', 'mod_location', 'mod_guests' |
+| permission | TEXT | 'mod_chat', 'mod_timeline', 'mod_timeline_read', 'mod_seating', 'mod_seating_read', 'mod_catering', 'mod_catering_read', 'mod_music', 'mod_music_read', 'mod_patisserie', 'mod_patisserie_read', 'mod_media', 'mod_media_read', 'mod_location', 'mod_guests' |
 | UNIQUE | (event_id, user_id, permission) | |
 
 ### `dienstleister_permissions` *(NEW system — written by UI, enforced by RLS)*
@@ -464,7 +438,7 @@ Links events to vendor users.
 | access | TEXT | 'none'\|'read'\|'write' |
 | UNIQUE NULLS NOT DISTINCT | (event_id, dienstleister_user_id, tab_key, item_id) | |
 
-Valid tab_key values: `uebersicht`, `allgemein`, `catering`, `chats`, `ablaufplan`, `gaesteliste`, `musik`, `patisserie`, `dekoration`, `medien`, `sitzplan`, `vorschlaege`
+Valid tab_key values: `uebersicht`, `allgemein`, `catering`, `chats`, `ablaufplan`, `gaesteliste`, `musik`, `patisserie`, `medien`, `sitzplan`, `vorschlaege`
 
 ### `dienstleister_item_permissions` *(OLD granular system — mostly superseded)*
 | Column | Type | Notes |
@@ -516,7 +490,7 @@ Valid tab_key values: `uebersicht`, `allgemein`, `catering`, `chats`, `ablaufpla
 |---|---|---|
 | id | UUID PK | |
 | event_id | UUID FK | |
-| segment | TEXT | 'catering'\|'ablaufplan'\|'hotel'\|'musik'\|'dekoration'\|'patisserie'\|'vendor'\|'sitzplan' |
+| segment | TEXT | 'catering'\|'ablaufplan'\|'hotel'\|'musik'\|'patisserie'\|'vendor'\|'sitzplan' |
 | created_by | UUID FK → profiles | |
 | title | TEXT | |
 | status | TEXT | 'draft'\|'sent'\|'resolved'\|'cancelled' |

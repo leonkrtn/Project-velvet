@@ -7,7 +7,7 @@ import { createClient as createBrowserClient } from '@/lib/supabase/client'
 import type {
   Event, Guest, Begleitperson, Hotel, HotelRoom, SubEvent,
   SeatingTable, BudgetItem, Vendor, Task, Reminder, TimelineEntry,
-  CateringPlan, OrganizerSettings, DekoWish, GuestPhoto,
+  CateringPlan, OrganizerSettings, GuestPhoto,
   DEFAULT_FEATURE_TOGGLES, FeatureKey,
 } from '@/lib/store'
 import { SEED_EVENT, DEFAULT_FEATURE_TOGGLES as DEFAULTS } from '@/lib/store'
@@ -112,7 +112,6 @@ export async function fetchEventFromDB(userId: string, specificEventId?: string)
     { data: seatingAssignmentRows },
     { data: cateringRow },
     { data: featureRows },
-    { data: dekoWishRows },
     { data: locationImageRows },
     { data: guestPhotoRows },
   ] = await Promise.all([
@@ -132,7 +131,6 @@ export async function fetchEventFromDB(userId: string, specificEventId?: string)
     supabase.from('seating_assignments').select('*').eq('event_id', eventId),
     supabase.from('catering_plans').select('*').eq('event_id', eventId).maybeSingle(),
     supabase.from('feature_toggles').select('*').eq('event_id', eventId),
-    supabase.from('deko_wishes').select('*').eq('event_id', eventId),
     supabase.from('location_images').select('*').eq('event_id', eventId),
     supabase.from('guest_photos').select('*').eq('event_id', eventId),
   ])
@@ -240,19 +238,13 @@ export async function fetchEventFromDB(userId: string, specificEventId?: string)
     locationImages: (locationImageRows ?? []).map(r => r.storage_url),
   }
 
-  // 10. Deko-Wünsche
-  const dekoWishes: DekoWish[] = (dekoWishRows ?? []).map(d => ({
-    id: d.id, title: d.title ?? '', notes: d.notes ?? '',
-    imageUrl: d.image_url ?? undefined,
-  }))
-
-  // 11. Gäste-Fotos
+  // 10. Gäste-Fotos
   const guestPhotos: GuestPhoto[] = (guestPhotoRows ?? []).map(p => ({
     id: p.id, uploaderName: p.uploader_name ?? '',
     dataUrl: p.storage_url, uploadedAt: p.uploaded_at ?? new Date().toISOString(),
   }))
 
-  // 12. Zusammenführen
+  // 11. Zusammenführen
   return {
     id: ev.id,
     coupleName: ev.couple_name || ev.title || '',
@@ -299,7 +291,6 @@ export async function fetchEventFromDB(userId: string, specificEventId?: string)
     })),
     catering,
     organizer,
-    dekoWishes,
     guestPhotos,
   }
 }
@@ -475,16 +466,7 @@ export async function upsertEventToDB(event: Event, userId: string): Promise<voi
     if (ftRows.length > 0) await supabase.from('feature_toggles').insert(ftRows)
   }
 
-  // 15. Deko-Wünsche
-  await supabase.from('deko_wishes').delete().eq('event_id', eventId)
-  if (event.dekoWishes.length > 0) {
-    await supabase.from('deko_wishes').insert(event.dekoWishes.map(d => ({
-      id: toUUID(d.id), event_id: eventId,
-      title: d.title, notes: d.notes, image_url: d.imageUrl ?? null,
-    })))
-  }
-
-  // 16. Gäste-Fotos (nur Metadaten, keine base64-Daten)
+  // 15. Gäste-Fotos (nur Metadaten, keine base64-Daten)
   await supabase.from('guest_photos').delete().eq('event_id', eventId)
   const storagePhoots = event.guestPhotos.filter(p => !p.dataUrl.startsWith('data:'))
   if (storagePhoots.length > 0) {
@@ -657,7 +639,6 @@ export async function fetchBrautpaarPermissions(eventId: string): Promise<Brautp
     subEvents: data.sub_events ?? false,
     erinnerungen: data.erinnerungen ?? true,
     sitzplan: data.sitzplan ?? true,
-    dekorationen: data.dekorationen ?? true,
     dienstleister: data.dienstleister ?? true,
     hotel: data.hotel ?? true,
     catering: data.catering ?? false,
@@ -687,7 +668,6 @@ export async function fetchTrauzeugePermissions(eventId: string, userId: string)
     canViewTimeline: data.can_view_timeline ?? true,
     canEditTimeline: data.can_edit_timeline ?? false,
     canViewVendors: data.can_view_vendors ?? false,
-    canManageDeko: data.can_manage_deko ?? true,
   }
 }
 
@@ -705,7 +685,6 @@ export async function upsertTrauzeugePermissions(perms: TrauzeugePermissions): P
     can_view_timeline: perms.canViewTimeline,
     can_edit_timeline: perms.canEditTimeline,
     can_view_vendors: perms.canViewVendors,
-    can_manage_deko: perms.canManageDeko,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'event_id,user_id' })
 }
