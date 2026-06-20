@@ -68,11 +68,14 @@ const ALL_SECTIONS: Array<{ key: PdfSection; label: string; Icon: React.ElementT
 interface Props {
   eventId: string
   data: PdfEventData
+  // Brautpaare exportieren immer im Extern-Modus (kein Umschalter), dürfen ihr
+  // eigenes Budget aber mitexportieren.
+  isCouple?: boolean
 }
 
-export default function PdfExportClient({ eventId: _eventId, data }: Props) {
+export default function PdfExportClient({ eventId: _eventId, data, isCouple = false }: Props) {
   const [mounted, setMounted]         = useState(false)
-  const [mode, setMode]               = useState<PdfMode>('intern')
+  const [mode, setMode]               = useState<PdfMode>(isCouple ? 'extern' : 'intern')
   const [selected, setSelected]       = useState<Set<PdfSection>>(
     new Set(ALL_SECTIONS.map(s => s.key))
   )
@@ -101,12 +104,14 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
   }, [])
 
   useEffect(() => {
-    if (mode === 'extern') {
+    // Couples always export extern but keep their budget — only the
+    // veranstalter's extern mode strips the budget section.
+    if (mode === 'extern' && !isCouple) {
       setSelected(prev => { const next = new Set(prev); next.delete('budget'); return next })
       setShowPreview(false)
       setBlobUrl(null)
     }
-  }, [mode])
+  }, [mode, isCouple])
 
   const toggleSection = (key: PdfSection) => {
     setSelected(prev => {
@@ -121,7 +126,7 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
 
   const selectAll = () => {
     const next = new Set(ALL_SECTIONS.map(s => s.key) as PdfSection[])
-    if (mode === 'extern') next.delete('budget')
+    if (mode === 'extern' && !isCouple) next.delete('budget')
     setSelected(next)
     setShowPreview(false)
     setBlobUrl(null)
@@ -154,7 +159,7 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
     setPdfError(msg)
   }, [])
 
-  const activeSections = ALL_SECTIONS.filter(s => !(s.key === 'budget' && mode === 'extern'))
+  const activeSections = ALL_SECTIONS.filter(s => !(s.key === 'budget' && mode === 'extern' && !isCouple))
 
   // Memoize sections array — only changes when selected Set reference changes
   const sections = useMemo(() => Array.from(selected), [selected])
@@ -181,26 +186,28 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{data.event.title}</p>
       </div>
 
-      {/* Mode toggle */}
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-        <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Modus</p>
-        <div style={{ display: 'flex', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
-          {(['intern', 'extern'] as PdfMode[]).map(m => (
-            <button key={m} onClick={() => setMode(m)} style={{
-              flex: 1, padding: '8px 0', border: 'none', cursor: 'pointer',
-              fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
-              background: mode === m ? 'var(--accent, #0F0F0F)' : 'transparent',
-              color: mode === m ? '#fff' : 'var(--text-secondary)',
-              transition: 'background 0.15s, color 0.15s',
-            }}>
-              {m === 'intern' ? 'Intern' : 'Extern'}
-            </button>
-          ))}
+      {/* Mode toggle — für Brautpaare ausgeblendet (Export immer extern) */}
+      {!isCouple && (
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)', marginBottom: 8 }}>Modus</p>
+          <div style={{ display: 'flex', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
+            {(['intern', 'extern'] as PdfMode[]).map(m => (
+              <button key={m} onClick={() => setMode(m)} style={{
+                flex: 1, padding: '8px 0', border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: 500, fontFamily: 'inherit',
+                background: mode === m ? 'var(--accent, #0F0F0F)' : 'transparent',
+                color: mode === m ? '#fff' : 'var(--text-secondary)',
+                transition: 'background 0.15s, color 0.15s',
+              }}>
+                {m === 'intern' ? 'Intern' : 'Extern'}
+              </button>
+            ))}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6, marginBottom: 0 }}>
+            {mode === 'intern' ? 'Alle Daten inkl. Budget, Preise und interne Notizen.' : 'Ohne Budget, Preise und persönliche Kontaktdaten.'}
+          </p>
         </div>
-        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6, marginBottom: 0 }}>
-          {mode === 'intern' ? 'Alle Daten inkl. Budget, Preise und interne Notizen.' : 'Ohne Budget, Preise und persönliche Kontaktdaten.'}
-        </p>
-      </div>
+      )}
 
       {/* Section list */}
       <div style={{ padding: '12px 20px', flex: 1 }}>
@@ -352,9 +359,11 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
                 {selected.size} {selected.size === 1 ? 'Bereich' : 'Bereiche'} ausgewählt
               </p>
-              <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
-                Modus: {mode === 'intern' ? 'Intern' : 'Extern'}
-              </p>
+              {!isCouple && (
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+                  Modus: {mode === 'intern' ? 'Intern' : 'Extern'}
+                </p>
+              )}
             </div>
 
             {/* Error state */}
@@ -371,7 +380,7 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
             {/* BlobProvider runs in background to generate PDF; no iframe shown */}
             {mounted && showPreview && sections.length > 0 && (
               <PdfErrorBoundary onError={handleError}>
-                <PdfBlobProvider data={data} mode={mode} sections={sections}>
+                <PdfBlobProvider data={data} mode={mode} sections={sections} allowBudget={isCouple}>
                   {({ url, loading, error }) => {
                     if (error) return <BlobError message={error.message} onError={handleError} />
                     return <BlobUrlCapture url={url} onCapture={handleBlobUrl} />
@@ -454,7 +463,7 @@ export default function PdfExportClient({ eventId: _eventId, data }: Props) {
           </div>
         ) : mounted && showPreview && sections.length > 0 ? (
           <PdfErrorBoundary onError={handleError}>
-            <PdfBlobProvider data={data} mode={mode} sections={sections}>
+            <PdfBlobProvider data={data} mode={mode} sections={sections} allowBudget={isCouple}>
               {({ url, loading, error }) => {
                 if (error) return <BlobError message={error.message} onError={handleError} />
                 if (loading || !url) return (

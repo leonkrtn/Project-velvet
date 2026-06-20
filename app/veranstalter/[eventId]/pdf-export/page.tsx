@@ -160,6 +160,10 @@ export default async function PdfExportPage({ params }: Props) {
 
   if (!eventRes.data) redirect('/veranstalter')
 
+  // Brautpaare exportieren immer im Extern-Modus (kein Intern/Extern-Umschalter),
+  // dürfen ihr eigenes Budget aber mitexportieren.
+  const isCouple = ['brautpaar', 'brautpaar_solo'].includes(member.role)
+
   // ── Compute derived data ─────────────────────────────────────────────────
   const begleit    = begleitRes.data ?? []
   const confirmedIds = new Set(guests.filter((g: { status: string }) => g.status === 'zugesagt').map((g: { id: string }) => g.id))
@@ -238,5 +242,5 @@ export default async function PdfExportPage({ params }: Props) {
     getraenkeCocktails:  (getraenkeCocRes.data ?? []) as PdfEventData['getraenkeCocktails'],
   }
 
-  return <PdfExportClient eventId={eventId} data={pdfData} />
+  return <PdfExportClient eventId={eventId} data={pdfData} isCouple={isCouple} />
 }
