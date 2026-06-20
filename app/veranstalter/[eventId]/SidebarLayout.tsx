@@ -31,7 +31,7 @@ const NAV_ITEMS = [
   { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
   { key: 'gaesteliste',     label: 'Gästeliste',        icon: Users },
   { key: 'musik',           label: 'Musik',             icon: Music2 },
-  { key: 'medien',          label: 'Foto & Videograf',  icon: Camera },
+  { key: 'medien',          label: 'Bilder',            icon: Camera },
   { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
   { key: 'personalplanung', label: 'Personalplanung',   icon: UserCog },
   { key: 'dateien',         label: 'Dateien',           icon: FolderOpen },

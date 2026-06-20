@@ -40,6 +40,7 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
     {
       label: 'PLANUNG',
       items: [
+        b('allgemein', 'Allgemein', <Info size={16} />),
         b('gaeste', 'Gäste', <Users size={16} />),
         b('sitzplan', 'Sitzplan', <LayoutGrid size={16} />),
         b('ablaufplan', 'Ablaufplan', <Calendar size={16} />),
@@ -50,7 +51,7 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
       items: [
         b('catering-getraenke', 'Catering & Getränke', <UtensilsCrossed size={16} />),
         b('musik', 'Musik', <Music size={16} />),
-        b('medien', 'Foto & Videograf', <Camera size={16} />),
+        b('medien', 'Bilder', <Camera size={16} />),
       ],
     },
     {
@@ -62,7 +63,6 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
         // Dienstleister-Bereich für ALLE Brautpaare: enthält den Marktplatz
         // ("Entdecken") und – für Solo-Paare – die Verwaltung der Zugriffsrechte.
         b('dienstleister', 'Dienstleister', <Briefcase size={16} />),
-        b('allgemein', 'Allgemein', <Info size={16} />),
       ],
     },
     {

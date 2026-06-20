@@ -2,7 +2,7 @@
 import React from 'react'
 import {
   CalendarClock, Armchair, Users, UtensilsCrossed, Wine, Music,
-  Cake, Camera, Database, type LucideIcon,
+  Cake, Database, type LucideIcon,
 } from 'lucide-react'
 import type { ModuleSnapshot, ShareModule, SnapshotBlock } from '@/lib/vendor/shares'
 
@@ -20,7 +20,6 @@ const MODULE_THEME: Record<ShareModule, { icon: LucideIcon; caption: string }> =
   getraenke:   { icon: Wine,           caption: 'Getränke- & Cocktailplanung' },
   musik:       { icon: Music,          caption: 'Musikwünsche & Technik' },
   patisserie:  { icon: Cake,           caption: 'Torte & Patisserie' },
-  medien:      { icon: Camera,         caption: 'Foto-/Video-Briefing & Shotlist' },
 }
 
 // Renders a ModuleSnapshot (the data inside a shared box) with a layout tuned per type.

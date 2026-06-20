@@ -133,9 +133,9 @@ export const SOLO_TOUR_STEPS: TourStep[] = [
     title: 'Musik',
     body: 'Sammelt Wunschlieder und bindet Playlists von Spotify, YouTube oder Apple Music direkt ein.' },
 
-  // ── Foto & Videograf ───────────────────────────────────────────────────────
+  // ── Bilder ───────────────────────────────────────────────────────────────────
   { module: 'medien', target: 'bp-content',
-    title: 'Foto & Videograf',
+    title: 'Bilder',
     body: 'Haltet gewünschte Aufnahmen fest und sammelt nach der Feier die Fotos eurer Gäste.' },
 
   // ── Aufgaben: erste Aufgabe begleitet anlegen ───────────────────────────────

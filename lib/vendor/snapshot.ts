@@ -253,28 +253,6 @@ async function buildBlocks(admin: SupabaseClient, eventId: string, module: Share
       }
       break
     }
-    case 'medien': {
-      const { data: briefing } = await admin.from('media_briefing').select('*').eq('event_id', eventId).maybeSingle()
-      if (briefing) {
-        const kv = kvFromRow(briefing, [
-          ['photo_briefing', 'Foto-Briefing'],
-          ['video_briefing', 'Video-Briefing'],
-          ['photo_restrictions', 'Einschränkungen'],
-          ['delivery_deadline', 'Lieferfrist'],
-        ])
-        if (kv) blocks.push(kv)
-      }
-      const { data: shots } = await byEvent('media_shot_items', 'sort_order')
-      if (shots?.length) {
-        blocks.push({
-          kind: 'table',
-          heading: 'Shotlist',
-          columns: ['Motiv', 'Typ', 'Kategorie'],
-          rows: shots.slice(0, 300).map((s: any) => [str(s.title), str(s.type), str(s.category)]),
-        })
-      }
-      break
-    }
   }
 
   return blocks

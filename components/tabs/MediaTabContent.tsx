@@ -41,7 +41,7 @@ export default function MediaTabContent({ eventId, mode }: Props) {
     return (
       <div>
         <div className="bp-page-header">
-          <h1 className="bp-page-title">Fotos</h1>
+          <h1 className="bp-page-title">Bilder</h1>
           <p className="bp-page-subtitle">Sammelt die schönsten Momente eures Tages an einem Ort.</p>
         </div>
 
@@ -70,7 +70,7 @@ export default function MediaTabContent({ eventId, mode }: Props) {
   // ── Veranstalter / Dienstleister: unchanged ─────────────────────────────
   return (
     <div>
-      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Fotos</h1>
+      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 24 }}>Bilder</h1>
 
       {loading ? (
         <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>Wird geladen…</div>

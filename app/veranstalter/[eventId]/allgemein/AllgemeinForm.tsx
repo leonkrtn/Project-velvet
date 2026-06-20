@@ -75,7 +75,7 @@ const BP_NAV_ITEMS = [
   { key: 'bp-ablaufplan',  label: 'Ablaufplan',        group: 'PLANUNG' },
   { key: 'bp-catering',    label: 'Catering & Menü',   group: 'DETAILS' },
   { key: 'bp-musik',       label: 'Musik',             group: 'DETAILS' },
-  { key: 'bp-medien',      label: 'Foto & Videograf',  group: 'DETAILS' },
+  { key: 'bp-medien',      label: 'Bilder',            group: 'DETAILS' },
   { key: 'bp-budget',      label: 'Budget',            group: 'VERWALTUNG' },
   { key: 'bp-aufgaben',    label: 'Aufgaben',          group: 'VERWALTUNG' },
   { key: 'bp-nachrichten', label: 'Nachrichten',       group: 'KOMMUNIKATION' },
