@@ -23,15 +23,17 @@
     "postgres": "^3.4.9",
     "qrcode": "^1.5.4",
     "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "uuid": "^9.0.1"
+    "react-dom": "18.2.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.0",
+    "postcss": "^8.5.10"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "@types/uuid": "^9",
     "eslint": "^8",
     "eslint-config-next": "^15",
     "typescript": "^5"
