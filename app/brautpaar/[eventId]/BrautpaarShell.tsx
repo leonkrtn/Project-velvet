@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Music, Camera, Wallet, CheckSquare, Settings, Info,
   MessageSquare, ChevronRight, X, Menu, LogOut,
-  Briefcase, Lock, Sparkles, Globe,
+  Briefcase, Lock, Sparkles, Globe, ReceiptText,
 } from 'lucide-react'
 import ForevrHeart from '@/components/ForevrHeart'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
@@ -64,6 +64,7 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
         // Dienstleister-Bereich für ALLE Brautpaare: enthält den Marktplatz
         // ("Entdecken") und – für Solo-Paare – die Verwaltung der Zugriffsrechte.
         b('dienstleister', 'Dienstleister', <Briefcase size={16} />),
+        b('angebote', 'Angebote', <ReceiptText size={16} />),
       ],
     },
     {
@@ -208,7 +209,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
   const nav = fullNav.map(group => ({
     ...group,
     items: group.items.filter(item => {
-      if (item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'website') return true
+      if (item.key === 'uebersicht' || item.key === 'allgemein' || item.key === 'dienstleister' || item.key === 'website' || item.key === 'angebote') return true
       // Kombinierter Eintrag: sichtbar, solange Aufgaben ODER Notizen freigeschaltet sind
       if (item.key === 'aufgaben-notizen') return (bpToggles['bp-aufgaben'] ?? true) || (bpToggles['bp-notizen'] ?? true)
       // Kombinierter Eintrag: sichtbar, solange Catering ODER Getränke freigeschaltet sind
