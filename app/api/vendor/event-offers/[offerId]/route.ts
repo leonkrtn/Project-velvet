@@ -16,7 +16,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ off
   const { offerId } = await params
   const offer = await loadOwnedOffer(admin, offerId, vendorId)
   if (!offer) return NextResponse.json({ error: 'Angebot nicht gefunden' }, { status: 404 })
-  return NextResponse.json({ offer })
+  const { data: profile } = await admin.from('dienstleister_profiles').select('category').eq('id', vendorId).maybeSingle()
+  return NextResponse.json({ offer, category: profile?.category ?? null })
 }
 
 // PATCH — { action: 'save'|'recompute'|'release'|'supersede', ...editFields }

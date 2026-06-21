@@ -30,14 +30,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 })
   }
 
-  const { data: offers } = await admin
-    .from('vendor_offers')
-    .select('id, title, status, version, parent_offer_id, total, currency, valid_until, request_id, created_at, updated_at, released_at, accepted_at')
-    .eq('event_id', eventId)
-    .eq('dienstleister_id', vendorId)
-    .order('created_at', { ascending: false })
+  const [{ data: offers }, { data: profile }] = await Promise.all([
+    admin
+      .from('vendor_offers')
+      .select('id, title, status, version, parent_offer_id, total, currency, valid_until, request_id, created_at, updated_at, released_at, accepted_at')
+      .eq('event_id', eventId)
+      .eq('dienstleister_id', vendorId)
+      .order('created_at', { ascending: false }),
+    admin.from('dienstleister_profiles').select('category').eq('id', vendorId).maybeSingle(),
+  ])
 
-  return NextResponse.json({ offers: offers ?? [] })
+  return NextResponse.json({ offers: offers ?? [], category: profile?.category ?? null })
 }
 
 // POST — neues Angebot anlegen.

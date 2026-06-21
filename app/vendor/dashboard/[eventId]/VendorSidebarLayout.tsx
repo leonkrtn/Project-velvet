@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { MessagesSquare, Info, ChevronLeft, LogOut } from 'lucide-react'
+import { MessagesSquare, Info, ReceiptText, ChevronLeft, LogOut } from 'lucide-react'
 import { performLogout } from '@/lib/logout'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 
@@ -15,6 +15,7 @@ interface Props {
 
 const NAV_ITEMS = [
   { key: 'kommunikation', label: 'Kommunikation', icon: MessagesSquare },
+  { key: 'angebote', label: 'Angebote', icon: ReceiptText },
   { key: 'informationen', label: 'Informationen', icon: Info },
 ]
 
