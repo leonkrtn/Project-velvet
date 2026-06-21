@@ -3,7 +3,7 @@ import { requireVendorOwner } from '@/lib/marketplace/owner'
 import { acceptMarketplaceRequest } from '@/lib/marketplace/accept'
 import { loadFullQuestionnaire } from '@/lib/vendor/load'
 import { computeOffer, recomputeTotals, type LineItem } from '@/lib/vendor/pricing'
-import type { Answer, TaxMode } from '@/lib/vendor/questionnaire'
+import { formatMoney, type Answer, type TaxMode } from '@/lib/vendor/questionnaire'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 function num(v: unknown): number {
@@ -89,21 +89,41 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ re
   if (action === 'release') {
     const { data: request } = await admin
       .from('marketplace_requests')
-      .select('id, event_id, dienstleister_id, requested_by, status, message')
+      .select('id, event_id, dienstleister_id, requested_by, status, message, conversation_id')
       .eq('id', requestId)
       .maybeSingle()
     if (!request) return NextResponse.json({ error: 'Anfrage nicht gefunden' }, { status: 404 })
 
+    const wasDraft = offer.status === 'draft'
     patch.status = 'released'
     patch.released_at = new Date().toISOString()
     const { error } = await admin.from('vendor_offers').update(patch).eq('id', offer.id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     // Annahme der Anfrage (idempotent) — oeffnet den Chat.
-    let conversationId: string | null = null
+    let conversationId: string | null = (request.conversation_id as string | null) ?? null
     if (request.status === 'pending') {
       conversationId = await acceptMarketplaceRequest(admin, request, userId)
     }
+
+    // Beim ersten Freigeben das Angebot als Karte in den Chat posten.
+    if (wasDraft && conversationId) {
+      const { data: updated } = await admin.from('vendor_offers').select('total, currency').eq('id', offer.id).maybeSingle()
+      const { data: vp } = await admin.from('dienstleister_profiles').select('company_name, name').eq('id', vendorId).maybeSingle()
+      const total = Number(updated?.total ?? 0)
+      const currency = (updated?.currency as string) ?? 'EUR'
+      const vendorName = vp?.company_name || vp?.name || 'Dienstleister'
+      await admin.from('messages').insert({
+        conversation_id: conversationId,
+        event_id: request.event_id,
+        sender_id: userId,
+        content: `Angebot: ${formatMoney(total, currency)}`,
+        message_type: 'offer',
+        metadata: { request_id: requestId, offer_id: offer.id, total, currency, vendor_name: vendorName },
+      })
+      await admin.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', conversationId)
+    }
+
     return NextResponse.json({ success: true, conversationId })
   }
 

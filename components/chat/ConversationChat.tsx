@@ -3,13 +3,14 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import ShareBox from '@/components/vendor/ShareBox'
+import ChatOfferMessage from '@/components/chat/ChatOfferMessage'
 import { Send, Paperclip, FileText, Download, Database, Loader2, X, Snowflake, Radio } from 'lucide-react'
 import { SHARE_MODULES, SHARE_MODULE_LABELS, type ModuleSnapshot, type ShareModule, type ShareMode } from '@/lib/vendor/shares'
 
 interface Message {
   id: string; conversation_id: string; sender_id: string | null
   content: string; created_at: string
-  message_type: 'text' | 'file' | 'data_share'
+  message_type: 'text' | 'file' | 'data_share' | 'offer'
   metadata: Record<string, unknown>
   sender?: { name: string } | null
 }
@@ -133,7 +134,9 @@ export default function ConversationChat({ eventId, conversationId, currentUserI
               <div key={msg.id} style={{ display: 'flex', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end', gap: 8 }}>
                 {!isMe && <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#E5E5EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: '#636366', flexShrink: 0 }}>{initials(msg.sender?.name ?? '?')}</div>}
                 <div style={{ maxWidth: '78%' }}>
-                  <Bubble msg={msg} isMe={isMe} onDownload={downloadFile} onViewShare={viewShare} />
+                  {msg.message_type === 'offer'
+                    ? <ChatOfferMessage requestId={String(msg.metadata.request_id ?? '')} side="couple" isMe={isMe} total={msg.metadata.total as number} currency={msg.metadata.currency as string} vendorName={msg.metadata.vendor_name as string} />
+                    : <Bubble msg={msg} isMe={isMe} onDownload={downloadFile} onViewShare={viewShare} />}
                   <div style={{ fontSize: 10, color: 'var(--text-tertiary, #999)', marginTop: 3, textAlign: isMe ? 'right' : 'left' }}>{fmtTime(msg.created_at)}</div>
                 </div>
               </div>

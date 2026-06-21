@@ -51,6 +51,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ re
       .update({ status: 'accepted', accepted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('id', res.offer.id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    // Bestaetigung in den Chat posten, damit der Dienstleister es sieht.
+    const { data: reqRow } = await admin
+      .from('marketplace_requests').select('conversation_id').eq('id', requestId).maybeSingle()
+    if (reqRow?.conversation_id) {
+      await admin.from('messages').insert({
+        conversation_id: reqRow.conversation_id,
+        event_id: res.offer.event_id,
+        sender_id: user.id,
+        content: 'Das Angebot wurde angenommen.',
+        message_type: 'text',
+      })
+      await admin.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', reqRow.conversation_id)
+    }
     return NextResponse.json({ success: true })
   }
 

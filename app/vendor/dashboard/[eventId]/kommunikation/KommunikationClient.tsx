@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import ShareBox from '@/components/vendor/ShareBox'
+import ChatOfferMessage from '@/components/chat/ChatOfferMessage'
 import {
   Send, MessageSquare, Paperclip, X, Database, FolderOpen,
   FileText, Download, Layers, Loader2, Search, ArrowLeft,
@@ -18,7 +19,7 @@ interface Conversation {
 interface Message {
   id: string; conversation_id: string; sender_id: string | null
   content: string; created_at: string
-  message_type: 'text' | 'file' | 'data_share'
+  message_type: 'text' | 'file' | 'data_share' | 'offer'
   metadata: Record<string, unknown>
   sender?: { name: string } | null
 }
@@ -48,6 +49,7 @@ function previewText(m: LastMsg | undefined): string {
   if (!m) return 'Noch keine Nachrichten'
   if (m.type === 'file') return '📎 Datei'
   if (m.type === 'data_share') return 'Daten geteilt'
+  if (m.type === 'offer') return 'Angebot'
   return m.content
 }
 
@@ -380,7 +382,9 @@ export default function KommunikationClient({ eventId, userId }: { eventId: stri
                   {!isMe && <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#E5E5EA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#636366', flexShrink: 0 }}>{initials(senderName ?? '?')}</div>}
                   <div style={{ maxWidth: isMobile ? '80%' : '66%' }}>
                     {!isMe && senderName && convIsGroup(activeConv) && <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 3, marginLeft: 4 }}>{senderName}</div>}
-                    <MessageBubble msg={msg} isMe={isMe} onDownload={downloadFile} onViewShare={viewShare} />
+                    {msg.message_type === 'offer'
+                      ? <ChatOfferMessage requestId={String(msg.metadata.request_id ?? '')} side="vendor" isMe={isMe} total={msg.metadata.total as number} currency={msg.metadata.currency as string} vendorName={msg.metadata.vendor_name as string} />
+                      : <MessageBubble msg={msg} isMe={isMe} onDownload={downloadFile} onViewShare={viewShare} />}
                     <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 3, textAlign: isMe ? 'right' : 'left', marginLeft: isMe ? 0 : 4, marginRight: isMe ? 4 : 0 }}>{fmtTime(msg.created_at)}</div>
                   </div>
                 </div>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useFileUpload } from '@/hooks/useFileUpload'
 import ShareBox from '@/components/vendor/ShareBox'
+import ChatOfferMessage from '@/components/chat/ChatOfferMessage'
 import { SHARE_MODULES, SHARE_MODULE_LABELS, type ModuleSnapshot, type ShareModule, type ShareMode } from '@/lib/vendor/shares'
 
 type UnreadMap = Record<string, number>
@@ -33,7 +34,7 @@ interface Message {
   sender_id: string | null
   content: string
   created_at: string
-  message_type?: 'text' | 'file' | 'data_share'
+  message_type?: 'text' | 'file' | 'data_share' | 'offer'
   metadata?: Record<string, unknown>
   sender?: { name: string } | null
 }
@@ -913,7 +914,9 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
                         {!isMe && senderName && convIsGroup(activeConv) && (
                           <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 3, marginLeft: 4 }}>{senderName}</div>
                         )}
-                        <ChatBubble msg={msg} isMe={isMe} onDownload={downloadFile} onViewShare={viewShare} />
+                        {msg.message_type === 'offer'
+                          ? <ChatOfferMessage requestId={String((msg.metadata ?? {}).request_id ?? '')} side="couple" isMe={isMe} total={(msg.metadata ?? {}).total as number} currency={(msg.metadata ?? {}).currency as string} vendorName={(msg.metadata ?? {}).vendor_name as string} />
+                          : <ChatBubble msg={msg} isMe={isMe} onDownload={downloadFile} onViewShare={viewShare} />}
                         <div style={{
                           fontSize: 10, color: 'var(--text-tertiary)', marginTop: 3,
                           textAlign: isMe ? 'right' : 'left',
