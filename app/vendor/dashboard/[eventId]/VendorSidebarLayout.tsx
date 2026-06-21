@@ -1,9 +1,9 @@
 'use client'
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { MessagesSquare, Info, ChevronLeft, LogOut } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { performLogout } from '@/lib/logout'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 
 interface Props {
@@ -20,14 +20,11 @@ const NAV_ITEMS = [
 
 export default function VendorSidebarLayout({ eventId, eventTitle, eventDate, children }: Props) {
   const pathname = usePathname()
-  const router = useRouter()
   const [loggingOut, setLoggingOut] = useState(false)
 
   async function handleLogout() {
     setLoggingOut(true)
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
+    await performLogout()
   }
 
   const base = `/vendor/dashboard/${eventId}`

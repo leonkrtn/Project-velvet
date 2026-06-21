@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { performLogout } from '@/lib/logout'
 import { Settings, Trash2, Plus, Search, LogOut, CalendarDays } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
 import EventKalenderModal from './EventKalenderModal'
@@ -350,7 +351,7 @@ export default function VeranstalterEventsPage() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <button
-            onClick={async () => { const { createClient: cc } = await import('@/lib/supabase/client'); await cc().auth.signOut(); router.push('/login') }}
+            onClick={() => { performLogout() }}
             aria-label="Abmelden"
             className="mob-touch"
             style={{

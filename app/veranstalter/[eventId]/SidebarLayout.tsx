@@ -1,9 +1,9 @@
 'use client'
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import ChatUnreadBadge from './chats/ChatUnreadBadge'
-import { createClient } from '@/lib/supabase/client'
+import { performLogout } from '@/lib/logout'
 import {
   LayoutDashboard, Settings, Users, MessageSquare,
   Calendar, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
@@ -44,13 +44,10 @@ function initials(name: string) {
 
 export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCode, userName, userAvatarUrl, children }: Props) {
   const pathname = usePathname()
-  const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   async function handleLogout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
+    await performLogout()
   }
 
   const base = `/veranstalter/${eventId}`

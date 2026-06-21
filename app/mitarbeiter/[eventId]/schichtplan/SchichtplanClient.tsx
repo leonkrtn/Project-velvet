@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { performLogout } from '@/lib/logout'
 import { LogOut, AlertTriangle, X, ArrowLeftRight, Send, Clock, Users, MessageSquare, CheckCircle, Circle, ArrowLeft } from 'lucide-react'
 
 type Day = { id: string; label: string; date: string; sort_order: number }
@@ -120,8 +121,7 @@ export default function SchichtplanClient({
 
   // ── Logout ──────────────────────────────────────────────────────────────────
   async function handleLogout() {
-    await supabase.auth.signOut()
-    window.location.href = '/login'
+    await performLogout()
   }
 
   // ── Swap ─────────────────────────────────────────────────────────────────────
