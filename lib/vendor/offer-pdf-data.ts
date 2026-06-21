@@ -64,6 +64,6 @@ export async function buildOfferPdfData(admin: SupabaseClient, offer: any): Prom
       guestCount: si.guestCount ?? null,
     },
     answers: (Array.isArray(offer.answers) ? offer.answers : []) as Answer[],
-    offerNumber: `ANG-${String(offer.request_id ?? '').slice(0, 8).toUpperCase()}`,
+    offerNumber: `ANG-${String(offer.request_id ?? offer.id ?? '').slice(0, 8).toUpperCase()}`,
   }
 }
