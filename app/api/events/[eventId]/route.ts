@@ -5,13 +5,42 @@ interface Params {
   params: Promise<{ eventId: string }>
 }
 
+// Sensible Felder (internal_notes, Budget/Honorar) NICHT pauschal ausliefern:
+// Die RLS-Policy `events_dl_select` erlaubt Dienstleistern SELECT auf die ganze
+// Zeile. Deshalb wird die Spaltenauswahl rollenabhängig eingeschränkt.
+const PUBLIC_EVENT_COLUMNS = [
+  'id', 'title', 'couple_name', 'date', 'ceremony_start', 'description',
+  'venue', 'venue_address',
+  'location_name', 'location_street', 'location_zip', 'location_city', 'location_website',
+  'max_begleitpersonen', 'children_allowed', 'children_note',
+  'meal_options', 'menu_type', 'collect_allergies', 'dresscode',
+  'event_type', 'event_code', 'created_at',
+].join(', ')
+
+const ADMIN_ROLES = ['veranstalter', 'brautpaar', 'brautpaar_solo', 'trauzeuge']
+
 export async function GET(_req: NextRequest, { params }: Params) {
   const { eventId } = await params
   const supabase = await createClient()
 
+  // Rolle des Aufrufers bestimmen — nur Event-Admins erhalten interne Felder.
+  let columns = PUBLIC_EVENT_COLUMNS
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: member } = await supabase
+      .from('event_members')
+      .select('role')
+      .eq('event_id', eventId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (member && ADMIN_ROLES.includes(member.role)) {
+      columns = '*'
+    }
+  }
+
   const { data, error } = await supabase
     .from('events')
-    .select('*')
+    .select(columns)
     .eq('id', eventId)
     .single()
 

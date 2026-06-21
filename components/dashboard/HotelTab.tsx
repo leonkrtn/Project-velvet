@@ -4,7 +4,6 @@ import { AlertTriangle } from 'lucide-react'
 import { Avatar, Badge, Card, SectionTitle, ProgressBar } from '@/components/ui'
 import { getStats, saveEvent, type Event, type Hotel, type HotelRoom } from '@/lib/store'
 import { useEvent } from '@/lib/event-context'
-import { v4 as uuid } from 'uuid'
 
 type Stats = ReturnType<typeof getStats>
 

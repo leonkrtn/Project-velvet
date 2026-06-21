@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requestUploadUrl, requestDownloadUrl } from '@/lib/files/worker-client'
 import { sanitizeFilename } from '@/lib/files/types'
+import { rateLimit, clientIp } from '@/lib/rate-limit'
 
 const ALLOWED_IMAGE_TYPES = new Set([
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
@@ -38,7 +39,8 @@ async function getToggles(eventId: string): Promise<{ enabled: boolean; isPublic
 
   return {
     enabled:  directEnabled || timedEnabled,
-    isPublic: map['gaeste-fotos-public']?.enabled ?? true,
+    // Privacy-Default: ohne explizite Freigabe sehen Gäste nur ihre eigenen Fotos.
+    isPublic: map['gaeste-fotos-public']?.enabled ?? false,
   }
 }
 
@@ -90,6 +92,18 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params
+
+  // Upload-Missbrauch pro Token begrenzen.
+  const rl = rateLimit(token, {
+    name: 'rsvp-photo-upload', limit: 60, windowMs: 10 * 60_000, blockMs: 15 * 60_000,
+  })
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Zu viele Uploads. Bitte versuche es später erneut.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } },
+    )
+  }
+
   const guest = await resolveGuest(token)
   if (!guest) return NextResponse.json({ error: 'Ungültiger Token' }, { status: 404 })
 

@@ -55,7 +55,8 @@ export async function GET(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const isPublic = toggleRow?.enabled ?? true
+  // Privacy-Default konsistent mit dem RSVP-Endpoint: ohne Freigabe nicht öffentlich.
+  const isPublic = toggleRow?.enabled ?? false
   const canDeleteAll = ['veranstalter', 'brautpaar', 'brautpaar_solo'].includes(member.role)
   const photos = await Promise.all(
     (rows ?? []).map(async p => {

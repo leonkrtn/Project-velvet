@@ -10,6 +10,7 @@ import { randomUUID } from 'crypto'
 import { titleCaseName } from '@/lib/text'
 import { normalizeSettings, DEFAULT_DISPLAY_SETTINGS } from '@/lib/display-settings'
 import { requestDownloadUrl } from '@/lib/files/worker-client'
+import { rateLimit, clientIp } from '@/lib/rate-limit'
 
 function getServiceClient() {
   return createServiceClient(
@@ -61,6 +62,18 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params
+
+  // Spam-/DoS-Schutz: unauthentifizierte Gast-Selbstregistrierung pro IP begrenzen.
+  const rl = rateLimit(clientIp(request), {
+    name: 'open-invite-register', limit: 8, windowMs: 10 * 60_000, blockMs: 30 * 60_000,
+  })
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Zu viele Anmeldungen. Bitte versuche es später erneut.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } },
+    )
+  }
+
   const { admin, event } = await findEvent(token)
 
   if (!event || !event.open_invite_enabled) {

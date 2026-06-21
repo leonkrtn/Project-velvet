@@ -3,20 +3,19 @@
 // Wird beim ersten authentifizierten App-Start aufgerufen.
 
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/admin/require-admin'
 import { runMigrations } from '@/lib/db/migrate'
 
 // Caching: verhindert mehrfache Ausführung pro Server-Instanz
 let migrationRan = false
 
 export async function POST() {
-  // Auth: nur eingeloggte Nutzer dürfen die Migration auslösen. Der Aufruf
-  // erfolgt ohnehin nur im angemeldeten App-Kontext (lib/event-context.tsx);
-  // ohne diesen Check wäre der DDL-Endpoint anonym erreichbar.
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Auth: DDL/Migrationen darf NUR ein Admin auslösen. Vorher genügte ein
+  // beliebiger eingeloggter Nutzer — das gab jedem Account die Möglichkeit,
+  // Schema-Läufe zu triggern.
+  const auth = await requireAdmin()
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
   // DATABASE_URL nicht gesetzt → überspringen (App läuft im localStorage-Modus)

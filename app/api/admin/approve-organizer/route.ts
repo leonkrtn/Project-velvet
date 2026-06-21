@@ -1,10 +1,23 @@
+import { timingSafeEqual } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
+// Konstantzeitiger Vergleich — verhindert Timing-Seitenkanäle beim Secret-Check.
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a)
+  const bb = Buffer.from(b)
+  if (ab.length !== bb.length) {
+    timingSafeEqual(ab, ab) // Dummy-Vergleich, normalisiert das Timing
+    return false
+  }
+  return timingSafeEqual(ab, bb)
+}
+
 export async function POST(request: Request) {
-  const authHeader = request.headers.get('Authorization')
+  const authHeader = request.headers.get('Authorization') ?? ''
   const adminSecret = process.env.ADMIN_SECRET
-  if (!adminSecret || authHeader !== `Bearer ${adminSecret}`) {
+  const expected = `Bearer ${adminSecret ?? ''}`
+  if (!adminSecret || !safeEqual(authHeader, expected)) {
     return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 })
   }
 

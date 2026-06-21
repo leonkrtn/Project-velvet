@@ -42,6 +42,17 @@ function isAuthorized(request: Request, env: Env): boolean {
   return typeof secret === 'string' && secret.length > 0 && secret === env.INTERNAL_SECRET
 }
 
+// Defense-in-depth: Auch mit gültigem Internal-Secret darf der aufrufende
+// App-Server nur Keys innerhalb der bekannten Namespaces signieren/löschen.
+// Verhindert, dass ein kompromittierter Aufrufer beliebige R2-Objekte adressiert
+// oder per Path-Traversal aus dem Namespace ausbricht.
+const ALLOWED_KEY_PREFIXES = ['events/', 'profiles/', 'marketplace/']
+function isValidKey(key: unknown): key is string {
+  if (typeof key !== 'string' || key.length === 0 || key.length > 1024) return false
+  if (key.includes('..') || key.startsWith('/') || key.includes('\0')) return false
+  return ALLOWED_KEY_PREFIXES.some(p => key.startsWith(p))
+}
+
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -90,6 +101,7 @@ export default {
 
       const { key, contentType } = body
       if (!key || !contentType) return err('key and contentType are required')
+      if (!isValidKey(key)) return err('Invalid key', 403)
 
       const s3 = makeS3(env)
       const command = new PutObjectCommand({
@@ -115,6 +127,7 @@ export default {
 
       const { key, filename } = body
       if (!key) return err('key is required')
+      if (!isValidKey(key)) return err('Invalid key', 403)
 
       const s3 = makeS3(env)
       const command = new GetObjectCommand({
@@ -142,6 +155,7 @@ export default {
 
       const { key } = body
       if (!key) return err('key is required')
+      if (!isValidKey(key)) return err('Invalid key', 403)
 
       await env.BUCKET.delete(key)
       return json({ deleted: true })
