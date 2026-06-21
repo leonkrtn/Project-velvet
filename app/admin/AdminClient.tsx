@@ -6,6 +6,7 @@ import {
   AlertCircle, Eye, EyeOff, RefreshCw, LogOut,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { performLogout } from '@/lib/logout'
 import SubscriptionsSection from './SubscriptionsSection'
 import PromoCodesSection from './PromoCodesSection'
 import MarketplaceVendorsSection from './MarketplaceVendorsSection'
@@ -182,9 +183,7 @@ export default function AdminClient({ adminName }: { adminName: string }) {
   }
 
   async function logout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    window.location.href = '/login'
+    await performLogout()
   }
 
   return (

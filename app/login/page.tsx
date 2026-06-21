@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 import React, { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import ForevrHeart from '@/components/ForevrHeart'
 import { createClient } from '@/lib/supabase/client'
@@ -11,7 +11,6 @@ import { setLoginPersistence, REMEMBER_DAYS } from '@/lib/auth-persistence'
 import '@/app/brautpaar/brautpaar.css'
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   // Nur interne Pfade als Redirect-Ziel akzeptieren (kein Open Redirect):
   // "//evil.com" wäre eine protokoll-relative externe URL
@@ -44,12 +43,18 @@ function LoginForm() {
           .single()
         isOrganizer = profile?.is_approved_organizer === true
       }
+      // Zielpfad bestimmen, dann EINMAL hart navigieren. Harte Navigation
+      // (window.location) statt router.push ist in Safari zuverlaessiger: sie
+      // erzwingt einen vollen Reload, sodass die Middleware mit den frisch
+      // gesetzten Auth-Cookies laeuft (router.push committet in Safari sonst
+      // mitunter nicht).
+      let dest = '/signup'
       if (nextUrl) {
-        router.push(nextUrl)
+        dest = nextUrl
       } else if (isOrganizer) {
-        router.push('/veranstalter/events')
+        dest = '/veranstalter/events'
       } else if (session?.user?.app_metadata?.role === 'mitarbeiter') {
-        router.push('/mitarbeiter')
+        dest = '/mitarbeiter'
       } else {
         const { data: memberships } = await supabase
           .from('event_members')
@@ -61,20 +66,20 @@ function LoginForm() {
         const roles = (memberships ?? []).map(m => m.role)
 
         if (roles.includes('brautpaar') || roles.includes('brautpaar_solo')) {
-          router.push('/brautpaar')
+          dest = '/brautpaar'
         } else if (roles.includes('dienstleister')) {
-          router.push('/vendor/dashboard')
+          dest = '/vendor/dashboard'
         } else if (roles.includes('veranstalter')) {
           // Veranstalter-Mitgliedschaft ohne Freischaltung (isOrganizer war false)
-          router.push('/veranstalter/pending')
+          dest = '/veranstalter/pending'
         } else if (isSoloSignup(session?.user)) {
           // Solo-Brautpaar ohne Event: Signup lief ohne Session (E-Mail-
           // Bestätigung) — Event jetzt anhand der Signup-Metadaten erstellen.
           try {
             const eventId = await ensureSoloEvent(supabase, session!.user.user_metadata)
-            router.push(`/brautpaar/${eventId}/uebersicht`)
+            dest = `/brautpaar/${eventId}/uebersicht`
           } catch {
-            router.push('/signup/brautpaar')
+            dest = '/signup/brautpaar'
           }
         } else {
           // Fallback: check organizer_staff table directly (covers cases where
@@ -85,7 +90,7 @@ function LoginForm() {
             .eq('auth_user_id', session!.user.id)
             .maybeSingle()
           if (staffRow) {
-            router.push('/mitarbeiter')
+            dest = '/mitarbeiter'
           } else {
             const { data: vsc } = await supabase
               .from('vendor_signup_codes')
@@ -93,16 +98,17 @@ function LoginForm() {
               .eq('used_by', session!.user.id)
               .limit(1)
             if (vsc && vsc.length > 0) {
-              router.push('/vendor/dashboard')
+              dest = '/vendor/dashboard'
             } else if (session?.user?.user_metadata?.signup_role === 'dienstleister') {
-              router.push('/vendor/listing')
+              dest = '/vendor/listing'
             } else {
-              router.push('/signup')
+              dest = '/signup'
             }
           }
         }
       }
-      router.refresh()
+      window.location.assign(dest)
+      return
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Anmeldung fehlgeschlagen.')
     } finally {

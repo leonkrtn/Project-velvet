@@ -6,6 +6,7 @@ import MitarbeiterKalender from './MitarbeiterKalender'
 import AbrechnungModal from './AbrechnungModal'
 import type { ShiftDay } from './page'
 import type { AbrechnungLog } from './AbrechnungModal'
+import { performLogout } from '@/lib/logout'
 
 type EventInfo = { id: string; title: string; date: string | null; shiftCount: number }
 
@@ -36,9 +37,7 @@ export default function MitarbeiterHub({
   const [showAbrechnung, setShowAbrechnung] = useState(false)
 
   async function handleLogout() {
-    const { createClient } = await import('@/lib/supabase/client')
-    await createClient().auth.signOut()
-    router.push('/login')
+    await performLogout()
   }
 
   return (

@@ -2,19 +2,15 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { CalendarDays, Search, LogOut } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { performLogout } from '@/lib/logout'
 
 type EventRow = { id: string; title: string; date: string | null; venue: string | null; event_code: string | null }
 
 export default function VendorEventsClient({ events }: { events: EventRow[] }) {
   const [search, setSearch] = useState('')
-  const router = useRouter()
 
   async function handleLogout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
+    await performLogout()
   }
 
   const filtered = search.trim()

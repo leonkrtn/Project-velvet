@@ -13,6 +13,7 @@ import ForevrHeart from '@/components/ForevrHeart'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 import ProductTour from '@/components/tour/ProductTour'
 import { createClient } from '@/lib/supabase/client'
+import { performLogout } from '@/lib/logout'
 import { BpToastProvider } from '@/components/ui/BpToast'
 
 interface NavItem {
@@ -336,11 +337,7 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
           <span>Einstellungen</span>
         </Link>
         <button
-          onClick={async () => {
-            const supabase = createClient()
-            await supabase.auth.signOut()
-            window.location.href = '/login'
-          }}
+          onClick={() => { performLogout() }}
           className="bp-sidebar-footer-link"
         >
           <LogOut size={16} className="bp-nav-item-icon" />
