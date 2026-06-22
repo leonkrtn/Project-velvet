@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   X, MapPin, Calendar, Euro, Inbox,
-  ChevronLeft, Heart, Loader2, Users, Mail, Phone, Tag, ArrowRight,
+  ChevronLeft, Heart, Loader2, Users, Mail, Phone, Tag, ArrowRight, ReceiptText,
 } from 'lucide-react'
 import VendorOfferEditor from '@/components/vendor/VendorOfferEditor'
 
@@ -254,6 +254,11 @@ function RequestLightbox({ r, onClose, onReload }: { r: Req; onClose: () => void
           {r.status !== 'cancelled' && (
             <Section title="Angebot">
               <VendorOfferEditor requestId={r.id} eventId={r.event_id} requestStatus={r.status} onChanged={onReload} />
+              {r.status === 'accepted' && (
+                <Link href={`/vendor/dashboard/${r.event_id}/angebote`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--gold)', textDecoration: 'none', marginTop: 12 }}>
+                  <ReceiptText size={14} /> Angebote &amp; Verträge im Event verwalten <ArrowRight size={14} />
+                </Link>
+              )}
             </Section>
           )}
         </div>
