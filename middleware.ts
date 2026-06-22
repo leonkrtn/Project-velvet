@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_ROUTES = ['/', '/login', '/signup', '/signup/brautpaar', '/signup/veranstalter', '/auth/callback', '/join', '/password-reset']
+const PUBLIC_ROUTES = ['/', '/login', '/signup', '/signup/brautpaar', '/signup/veranstalter', '/signup/dienstleister', '/bewerbung', '/auth/callback', '/join', '/password-reset']
 
 // Fallback-Lebensdauer für „angemeldet bleiben", falls die Frist im fv_pref-
 // Cookie fehlt/unlesbar ist. Hält Auth-Cookies persistent (30 Tage).
