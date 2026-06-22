@@ -119,35 +119,64 @@ export function computeOffer(
   }
 
   // 3. Frage-Positionen
+  // Baut eine Position aus einem Einzelpreis. perGuest → Menge = Gaestezahl,
+  // sonst Pauschale (Menge 1). optional → Brautpaar kann sie ab-/zuwaehlen.
+  function priced(label: string, price: number, perGuest: boolean, optional: boolean): LineItem | null {
+    if (price === 0) return null
+    // perGuest: Menge = Gaestezahl (falls bekannt), sonst 1 — aber stets als
+    // „pro Gast" kenntlich, damit der Dienstleister die Menge anpassen kann.
+    const qty = perGuest ? (guests > 0 ? guests : 1) : 1
+    const unit = round2(price)
+    const li: LineItem = {
+      label: perGuest ? `${label} (pro Gast${guests > 0 ? `, ${guests}` : ''})` : label,
+      qty, unitPrice: unit, total: round2(unit * qty),
+      type: optional ? 'optional' : 'qty',
+    }
+    if (optional) li.selected = true
+    return li
+  }
+
   for (const section of q.sections) {
     for (const question of section.questions) {
       const ans = answerById.get(question.id)
       if (!ans) continue
+      const optional = question.pricing?.optional === true
 
       if (question.type === 'number') {
         const mode = question.pricing?.mode
         const unit = num(question.pricing?.unitPrice)
         if (mode === 'per_unit' && unit !== 0) {
           const qty = num(ans.value)
-          if (qty !== 0) items.push({ label: question.label, qty, unitPrice: round2(unit), total: round2(unit * qty) })
+          if (qty !== 0) {
+            const unitLabel = question.pricing?.unitLabel?.trim()
+            const li: LineItem = {
+              label: unitLabel ? `${question.label} (${qty} ${unitLabel})` : question.label,
+              qty, unitPrice: round2(unit), total: round2(unit * qty),
+              type: optional ? 'optional' : 'qty',
+            }
+            if (optional) li.selected = true
+            items.push(li)
+          }
         }
       } else if (question.type === 'boolean') {
         const yes = ans.value === true || ans.value === 'true'
-        const price = num(question.pricing?.price)
-        if (yes && price !== 0) items.push({ label: question.label, qty: 1, unitPrice: round2(price), total: round2(price) })
+        if (yes) {
+          const li = priced(question.label, num(question.pricing?.price), question.pricing?.perGuest === true, optional)
+          if (li) items.push(li)
+        }
       } else if (question.type === 'single') {
         const selected = question.options.find(o => o.id === ans.value)
-        const price = num(selected?.price)
-        if (selected && price !== 0) {
-          items.push({ label: `${question.label}: ${selected.label}`, qty: 1, unitPrice: round2(price), total: round2(price) })
+        if (selected) {
+          const li = priced(`${question.label}: ${selected.label}`, num(selected.price), selected.perGuest === true, optional)
+          if (li) items.push(li)
         }
       } else if (question.type === 'multi') {
         const ids = Array.isArray(ans.value) ? (ans.value as string[]) : []
         for (const oid of ids) {
           const opt = question.options.find(o => o.id === oid)
-          const price = num(opt?.price)
-          if (opt && price !== 0) {
-            items.push({ label: `${question.label}: ${opt.label}`, qty: 1, unitPrice: round2(price), total: round2(price) })
+          if (opt) {
+            const li = priced(`${question.label}: ${opt.label}`, num(opt.price), opt.perGuest === true, optional)
+            if (li) items.push(li)
           }
         }
       }

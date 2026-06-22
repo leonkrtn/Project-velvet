@@ -11,6 +11,8 @@ export interface QOption {
   label: string
   /** Aufschlag in Waehrungseinheiten, wenn diese Option gewaehlt wird. */
   price?: number
+  /** Wenn true: `price` gilt pro Gast (× Gaestezahl) statt einmalig. */
+  perGuest?: boolean
 }
 
 export interface QuestionPricing {
@@ -19,6 +21,16 @@ export interface QuestionPricing {
   unitPrice?: number
   /** Fixer Aufschlag (type=boolean, mode=fixed, wenn Antwort = Ja). */
   price?: number
+  /** boolean: `price` gilt pro Gast (× Gaestezahl) statt einmalig. */
+  perGuest?: boolean
+  /** number: Bezeichnung der Einheit fuer Anzeige (z. B. „Stunden", „qm"). */
+  unitLabel?: string
+  /** number: Eingabe-Grenzen / Schrittweite fuer das Brautpaar-Formular. */
+  min?: number
+  max?: number
+  step?: number
+  /** Erzeugte Angebotsposition(en) sind optional (Brautpaar kann ab-/zuwaehlen). */
+  optional?: boolean
 }
 
 export interface QQuestion {
@@ -114,6 +126,11 @@ export interface PublicQQuestion {
   help_text: string
   required: boolean
   options: PublicQOption[]
+  /** Nur Anzeige-/Eingabehilfen (kein Preis-Leak) fuer type=number. */
+  unitLabel?: string
+  min?: number
+  max?: number
+  step?: number
 }
 export interface PublicQSection {
   id: string
@@ -144,6 +161,13 @@ export function stripPricing(q: Questionnaire): PublicQuestionnaire {
         help_text: qq.help_text,
         required: qq.required,
         options: qq.options.map(o => ({ id: o.id, label: o.label })),
+        // Nur sichere Anzeige-/Eingabehilfen — niemals Preisfelder.
+        ...(qq.type === 'number' ? {
+          unitLabel: qq.pricing?.unitLabel,
+          min: qq.pricing?.min,
+          max: qq.pricing?.max,
+          step: qq.pricing?.step,
+        } : {}),
       })),
     })),
   }

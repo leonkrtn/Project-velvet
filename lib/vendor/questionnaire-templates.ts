@@ -4,7 +4,7 @@
 
 import type { QuestionType, QuestionPricing, QuestionnaireSettings } from './questionnaire'
 
-export interface TemplateOption { label: string; price?: number }
+export interface TemplateOption { label: string; price?: number; perGuest?: boolean }
 export interface TemplateQuestion {
   type: QuestionType
   label: string
