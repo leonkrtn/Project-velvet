@@ -13,6 +13,7 @@ import {
 } from '@/lib/vendor/pricing'
 import { formatMoney, type TaxMode } from '@/lib/vendor/questionnaire'
 import { blocksForCategory, blockToLineItem } from '@/lib/vendor/offer-blocks'
+import PdfPreviewModal from '@/components/pdf/PdfPreviewModal'
 
 interface Offer {
   id: string
@@ -62,6 +63,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState('')
   const [blockMenu, setBlockMenu] = useState(false)
+  const [pdfPreview, setPdfPreview] = useState(false)
 
   // Editierbare Felder
   const [title, setTitle] = useState('')
@@ -197,9 +199,10 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
         <ChevronLeft size={15} /> Alle Angebote
       </Link>
 
+      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '26px 30px' }}>
       {/* Kopf */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
-        <div style={{ width: 42, height: 42, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 42, height: 42, borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <ReceiptText size={20} style={{ color: C.gold }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -304,7 +307,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
       </Section>
 
       {/* Anzahlung & Zahlung */}
-      <Section title="Anzahlung & Zahlung" card>
+      <Section title="Anzahlung & Zahlung">
         {editable ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 150px', gap: 10 }}>
@@ -341,7 +344,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
       </Section>
 
       {/* AGB / Stornobedingungen */}
-      <Section title="AGB & Stornobedingungen" card>
+      <Section title="AGB & Stornobedingungen">
         {editable ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <textarea style={{ ...inp, width: '100%', minHeight: 90, resize: 'vertical' }} value={agbText} onChange={e => setAgbText(e.target.value)} placeholder="AGB, Stornobedingungen, Leistungsumfang … Das Brautpaar bestätigt diese bei der Annahme." />
@@ -356,7 +359,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
       </Section>
 
       {/* Anmerkungen + Gültigkeit */}
-      <Section title="Anmerkungen & Gültigkeit" card>
+      <Section title="Anmerkungen & Gültigkeit">
         {editable ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 170px', gap: 12 }}>
             <Field label="Anmerkungen ans Brautpaar">
@@ -375,8 +378,8 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
       </Section>
 
       {/* Aktionen */}
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8, paddingTop: 18, borderTop: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
-        <a href={`/api/vendor/event-offers/${offerId}/pdf`} target="_blank" rel="noreferrer" style={{ ...btnGhost, textDecoration: 'none' }}><FileDown size={15} /> PDF</a>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 22, borderTop: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
+        <button onClick={() => setPdfPreview(true)} style={btnGhost}><FileDown size={15} /> PDF-Vorschau</button>
         {editable ? (
           <>
             <button onClick={remove} disabled={!!busy} style={{ ...btnGhost, color: C.red, borderColor: 'rgba(197,34,31,0.3)' }}><Trash2 size={15} /> Löschen</button>
@@ -398,22 +401,30 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
           </>
         )}
       </div>
+      </div>
+
+      {pdfPreview && (
+        <PdfPreviewModal
+          url={`/api/vendor/event-offers/${offerId}/pdf`}
+          title={`${title} – Vorschau`}
+          fileName={`${title || 'Angebot'}.pdf`}
+          onClose={() => setPdfPreview(false)}
+        />
+      )}
 
       <style>{`.ofe-spin { animation: ofespin 1s linear infinite; } @keyframes ofespin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
 
-function Section({ title, children, action, card }: { title: string; children: React.ReactNode; action?: React.ReactNode; card?: boolean }) {
+function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 22 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
+    <div style={{ marginTop: 24, paddingTop: 22, borderTop: `1px solid ${C.border}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
         <h2 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.dim, margin: 0 }}>{title}</h2>
         {action}
       </div>
-      {card ? (
-        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>{children}</div>
-      ) : children}
+      {children}
     </div>
   )
 }

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, FileDown, Check, X, ReceiptText, ChevronRight, Clock } from 'lucide-react'
 import { recomputeTotals, effectiveLineTotal, computeDeposit, type LineItem, type DepositType } from '@/lib/vendor/pricing'
 import { formatMoney, type TaxMode } from '@/lib/vendor/questionnaire'
+import PdfPreviewModal from '@/components/pdf/PdfPreviewModal'
 
 interface OfferListRow {
   id: string
@@ -133,6 +134,7 @@ function OfferModal({ offerId, onClose, onChanged }: { offerId: string; onClose:
   const [name, setName] = useState('')
   const [agbChecked, setAgbChecked] = useState(false)
   const [selections, setSelections] = useState<Record<number, boolean>>({})
+  const [pdfPreview, setPdfPreview] = useState(false)
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/couple/offers/${offerId}`)
@@ -191,6 +193,7 @@ function OfferModal({ offerId, onClose, onChanged }: { offerId: string; onClose:
   const canAct = offer?.status === 'released'
 
   return (
+    <>
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={e => e.stopPropagation()} className="bp-card" style={{ width: 600, maxWidth: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
         {loading || !offer ? (
@@ -274,7 +277,7 @@ function OfferModal({ offerId, onClose, onChanged }: { offerId: string; onClose:
             </div>
 
             <div style={{ padding: '14px 22px', borderTop: '1px solid var(--bp-border)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <a href={`/api/couple/offers/${offerId}/pdf`} target="_blank" rel="noreferrer" className="bp-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}><FileDown size={15} /> PDF</a>
+              <button onClick={() => setPdfPreview(true)} className="bp-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><FileDown size={15} /> PDF-Vorschau</button>
               {canAct ? (
                 <>
                   <button onClick={() => act('decline')} disabled={!!busy} className="bp-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -294,6 +297,15 @@ function OfferModal({ offerId, onClose, onChanged }: { offerId: string; onClose:
         )}
       </div>
     </div>
+    {pdfPreview && offer && (
+      <PdfPreviewModal
+        url={`/api/couple/offers/${offerId}/pdf`}
+        title={`${offer.title} – Vorschau`}
+        fileName={`${offer.title || 'Angebot'}.pdf`}
+        onClose={() => setPdfPreview(false)}
+      />
+    )}
+    </>
   )
 }
 

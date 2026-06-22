@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { ReceiptText, Loader2, Check, X, FileDown } from 'lucide-react'
 import OfferView, { OFFER_STATUS_META, type OfferRow } from '@/components/vendor/OfferView'
 import { formatMoney } from '@/lib/vendor/questionnaire'
+import PdfPreviewModal from '@/components/pdf/PdfPreviewModal'
 
 // In-Chat-Angebot: Bubble + Modal, self-contained und theme-agnostisch (nutzt
 // CSS-Variablen mit Fallbacks). Wird in allen Chat-Renderern (Brautpaar /
@@ -25,6 +26,7 @@ export default function ChatOfferMessage({ requestId, side, isMe, total, currenc
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [pdfPreview, setPdfPreview] = useState(false)
 
   const apiBase = side === 'couple' ? `/api/marketplace/offers/${requestId}` : `/api/vendor/offers/${requestId}`
 
@@ -96,7 +98,7 @@ export default function ChatOfferMessage({ requestId, side, isMe, total, currenc
 
             {offer && (
               <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border, #eee)', display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <a href={`${apiBase}/pdf`} target="_blank" rel="noreferrer" style={btnGhost}><FileDown size={15} /> PDF</a>
+                <button onClick={() => setPdfPreview(true)} style={btnGhost}><FileDown size={15} /> PDF-Vorschau</button>
                 {side === 'couple' && offer.status === 'released' && (
                   <>
                     <button onClick={() => act('decline')} disabled={busy} style={btnGhost}><X size={15} /> Ablehnen</button>
@@ -112,6 +114,15 @@ export default function ChatOfferMessage({ requestId, side, isMe, total, currenc
             )}
           </div>
         </div>
+      )}
+
+      {pdfPreview && (
+        <PdfPreviewModal
+          url={`${apiBase}/pdf`}
+          title="Angebot – Vorschau"
+          fileName="Angebot.pdf"
+          onClose={() => setPdfPreview(false)}
+        />
       )}
     </>
   )

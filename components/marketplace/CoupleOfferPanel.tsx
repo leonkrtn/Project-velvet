@@ -3,12 +3,14 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Loader2, Check, X, FileDown, FileText } from 'lucide-react'
 import OfferView, { OFFER_STATUS_META, type OfferRow } from '@/components/vendor/OfferView'
+import PdfPreviewModal from '@/components/pdf/PdfPreviewModal'
 
 // Zeigt dem Brautpaar das (freigegebene) Angebot zu einer Anfrage.
 export default function CoupleOfferPanel({ requestId }: { requestId: string }) {
   const [offer, setOffer] = useState<OfferRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [pdfPreview, setPdfPreview] = useState(false)
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/marketplace/offers/${requestId}`)
@@ -43,9 +45,9 @@ export default function CoupleOfferPanel({ requestId }: { requestId: string }) {
       <OfferView offer={offer} />
 
       <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-        <a href={`/api/marketplace/offers/${requestId}/pdf`} target="_blank" rel="noreferrer" className="bp-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
-          <FileDown size={15} /> Als PDF
-        </a>
+        <button onClick={() => setPdfPreview(true)} className="bp-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <FileDown size={15} /> PDF-Vorschau
+        </button>
         {offer.status === 'released' && (
           <>
             <button onClick={() => act('decline')} disabled={busy} className="bp-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -59,6 +61,15 @@ export default function CoupleOfferPanel({ requestId }: { requestId: string }) {
       </div>
       {offer.status === 'accepted' && (
         <p style={{ fontSize: 12.5, color: '#15803D', margin: '10px 0 0', fontWeight: 600 }}>Ihr habt dieses Angebot angenommen.</p>
+      )}
+
+      {pdfPreview && (
+        <PdfPreviewModal
+          url={`/api/marketplace/offers/${requestId}/pdf`}
+          title="Angebot – Vorschau"
+          fileName="Angebot.pdf"
+          onClose={() => setPdfPreview(false)}
+        />
       )}
     </div>
   )
