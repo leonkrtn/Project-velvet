@@ -53,7 +53,27 @@ export default function BrautpaarAngeboteClient({ eventId }: { eventId: string }
   const open = offers.filter(o => o.status === 'released')
   const done = offers.filter(o => o.status !== 'released')
 
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-3)', fontSize: 14, padding: '24px 0' }}><Loader2 size={16} className="bp-spin" /> Lädt…</div>
+  if (loading) {
+    return (
+      <section style={{ marginBottom: '1.75rem' }}>
+        <div className="bp-skeleton" style={{ height: 14, width: 90, marginBottom: '0.7rem', borderRadius: 4 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bp-card" style={{ padding: '1rem 1.2rem', display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                  <div className="bp-skeleton" style={{ height: 16, width: `${130 + (i * 37) % 70}px`, borderRadius: 6 }} />
+                  <div className="bp-skeleton" style={{ height: 16, width: 64, borderRadius: 100 }} />
+                </div>
+                <div className="bp-skeleton" style={{ height: 12, width: `${150 + (i * 53) % 80}px`, marginTop: 7, borderRadius: 4 }} />
+              </div>
+              <div className="bp-skeleton" style={{ height: 18, width: 72, borderRadius: 6, flexShrink: 0 }} />
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
 
   if (offers.length === 0) {
     return (

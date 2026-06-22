@@ -100,8 +100,26 @@ export default function AngeboteClient({ eventId }: { eventId: string }) {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-dim)', fontSize: 14, padding: '30px 0' }}>
-          <Loader2 size={16} className="ang-spin" /> Lädt…
+        <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {[3, 2].map((count, gi) => (
+            <section key={gi}>
+              <div className="ang-skel" style={{ height: 11, width: 90, borderRadius: 4, margin: '0 0 10px' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {Array.from({ length: count }).map((_, i) => (
+                  <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 13, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                        <div className="ang-skel" style={{ height: 15, width: `${120 + (i * 41) % 80}px`, borderRadius: 6 }} />
+                        <div className="ang-skel" style={{ height: 16, width: 70, borderRadius: 100 }} />
+                      </div>
+                      <div className="ang-skel" style={{ height: 12, width: `${150 + (i * 57) % 90}px`, marginTop: 6, borderRadius: 4 }} />
+                    </div>
+                    <div className="ang-skel" style={{ height: 15, width: 64, borderRadius: 6, flexShrink: 0 }} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
       ) : !hasAny ? (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '40px 24px', textAlign: 'center', marginTop: 22 }}>
@@ -130,7 +148,7 @@ export default function AngeboteClient({ eventId }: { eventId: string }) {
         </div>
       )}
 
-      <style>{`.ang-spin { animation: angspin 1s linear infinite; } @keyframes angspin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`.ang-spin { animation: angspin 1s linear infinite; } @keyframes angspin { to { transform: rotate(360deg); } } .ang-skel { background: linear-gradient(90deg, var(--bg) 25%, var(--border) 50%, var(--bg) 75%); background-size: 200% 100%; animation: ang-shimmer 1.4s ease infinite; } @keyframes ang-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
     </div>
   )
 }
