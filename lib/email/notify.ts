@@ -1,7 +1,7 @@
 // Server-only: Best-Effort-Versand von Transaktions-E-Mails ueber die Supabase
-// Edge Function 'notify-email'. Wirft NIE — Mail-Fehler duerfen den App-Flow
-// (Angebot freigeben/annehmen) nicht blockieren. Bei fehlendem Provider ist die
-// Function ein No-Op.
+// Edge Function 'notify-email' (Versand via Supabase-SMTP). Wirft NIE — Mail-
+// Fehler duerfen den App-Flow (Angebot freigeben/annehmen) nicht blockieren.
+// Ist kein SMTP konfiguriert, ist die Function ein No-Op.
 import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
