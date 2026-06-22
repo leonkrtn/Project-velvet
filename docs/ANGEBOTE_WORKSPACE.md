@@ -29,17 +29,25 @@ und `/api/couple/offers`-Routen 500er** (Spalten/Tabelle fehlen).
 ### 2. E-Mail-Benachrichtigung (Edge Function)
 `supabase/functions/notify-email/`
 
+Versand läuft **über den in Supabase hinterlegten SMTP-Server** (dieselben
+Zugangsdaten wie für die Auth-Mails) via Deno-SMTP-Client (`denomailer`) —
+kein Drittanbieter-API-SDK.
+
 ```bash
 supabase functions deploy notify-email
-supabase secrets set RESEND_API_KEY=re_xxx
-supabase secrets set EMAIL_FROM="Forevr <noreply@forevr.app>"
+# = eure Supabase-SMTP-Einstellungen:
+supabase secrets set SMTP_HOST=smtp.example.com SMTP_PORT=465 \
+  SMTP_USER=... SMTP_PASS=... EMAIL_FROM="Forevr <noreply@forevr.app>"
 ```
 
-- Versand über [Resend](https://resend.com). Ohne `RESEND_API_KEY` ist die
-  Function ein **No-Op** (`{ skipped: true }`) — Chat-Karte + Portal-Badge
-  funktionieren trotzdem, nur ohne Mail.
+- Port 465 = implizites TLS, 587/25 = STARTTLS.
+- Ohne gesetzte SMTP-Secrets ist die Function ein **No-Op**
+  (`{ skipped: true }`) — Chat-Karte + Portal-Badge funktionieren trotzdem,
+  nur ohne Mail.
 - Aufruf erfolgt serverseitig best-effort via `admin.functions.invoke`
   (`lib/email/notify.ts`); Mail-Fehler blockieren den App-Flow nie.
+- Die Edge Function ist Deno-Code und vom Next-Typecheck ausgeschlossen
+  (`tsconfig.json` → `exclude`), analog zum Cloudflare-Worker.
 
 ## Flow
 
