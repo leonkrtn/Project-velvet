@@ -216,7 +216,39 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
   }
 
   if (loading) {
-    return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--bp-ink-3)' }}><Loader className="we-spin" /></div>
+    return (
+      <div className="we-wrap" aria-busy="true">
+        {/* Linke Spalte: Formular-Skeleton */}
+        <div className="we-form">
+          <div className="we-form-inner">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '1.25rem' }}>
+              {[64, 58, 70, 56, 62, 68].map((w, i) => (
+                <div key={i} className="we-skeleton" style={{ height: 30, width: w, borderRadius: 999 }} />
+              ))}
+            </div>
+            <div className="we-skeleton" style={{ height: 14, width: 120, marginBottom: 10 }} />
+            <div className="we-skeleton" style={{ height: 44, width: '100%', marginBottom: 18, borderRadius: 10 }} />
+            <div className="we-skeleton" style={{ height: 14, width: 90, marginBottom: 10 }} />
+            <div className="we-skeleton" style={{ height: 44, width: '100%', marginBottom: 18, borderRadius: 10 }} />
+            <div className="we-skeleton" style={{ height: 14, width: 110, marginBottom: 10 }} />
+            <div className="we-skeleton" style={{ height: 140, width: '100%', marginBottom: 18, borderRadius: 10 }} />
+            <div className="we-skeleton" style={{ height: 44, width: '100%', borderRadius: 10 }} />
+          </div>
+        </div>
+        {/* Rechte Spalte: Vorschau-Skeleton */}
+        <div className="we-preview">
+          <div className="we-preview-bar">
+            <div className="we-skeleton" style={{ height: 14, width: 130 }} />
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.35rem' }}>
+              {[0, 1, 2].map(i => <div key={i} className="we-skeleton" style={{ height: 30, width: 30, borderRadius: 8 }} />)}
+            </div>
+          </div>
+          <div className="we-preview-frame">
+            <div className="we-skeleton" style={{ width: '100%', maxWidth: 1100, height: '100%', borderRadius: 8 }} />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

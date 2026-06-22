@@ -45,6 +45,13 @@ const btnGhost: React.CSSProperties = { ...btn, background: C.surface, color: C.
 
 const TYPE_LABELS: Record<LineItemType, string> = { qty: 'Menge', flat: 'Pauschale', discount: 'Rabatt', optional: 'Optional' }
 const DEPOSIT_LABELS: Record<DepositType, string> = { none: 'Keine Anzahlung', percent: 'Prozent vom Gesamt', fixed: 'Fester Betrag' }
+const STATUS_META: Record<Offer['status'], { label: string; bg: string; fg: string }> = {
+  draft:      { label: 'Entwurf',    bg: 'rgba(0,0,0,0.06)',       fg: '#666' },
+  released:   { label: 'Versendet',  bg: 'rgba(184,153,104,0.16)', fg: '#9a7b3f' },
+  accepted:   { label: 'Angenommen', bg: 'rgba(30,126,52,0.12)',   fg: '#1E7E34' },
+  declined:   { label: 'Abgelehnt',  bg: 'rgba(197,34,31,0.10)',   fg: '#C5221F' },
+  superseded: { label: 'Ersetzt',    bg: 'rgba(0,0,0,0.05)',       fg: '#999' },
+}
 
 export default function OfferEditorFull({ eventId, offerId }: { eventId: string; offerId: string }) {
   const router = useRouter()
@@ -191,14 +198,21 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
       </Link>
 
       {/* Kopf */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-        <ReceiptText size={22} style={{ color: C.gold, flexShrink: 0 }} />
-        {editable ? (
-          <input value={title} onChange={e => setTitle(e.target.value)} style={{ ...inp, fontSize: 19, fontWeight: 700, flex: 1, border: 'none', padding: '4px 0', background: 'transparent' }} placeholder="Angebotstitel" />
-        ) : (
-          <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, flex: 1 }}>{title}</h1>
-        )}
-        {offer.version > 1 && <span style={{ fontSize: 12, color: C.dim }}>Version {offer.version}</span>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
+        <div style={{ width: 42, height: 42, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <ReceiptText size={20} style={{ color: C.gold }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {editable ? (
+            <input value={title} onChange={e => setTitle(e.target.value)} style={{ ...inp, fontSize: 20, fontWeight: 700, width: '100%', border: 'none', padding: '2px 0', background: 'transparent', letterSpacing: '-0.3px' }} placeholder="Angebotstitel" />
+          ) : (
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: '-0.3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</h1>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: STATUS_META[offer.status].bg, color: STATUS_META[offer.status].fg }}>{STATUS_META[offer.status].label}</span>
+            {offer.version > 1 && <span style={{ fontSize: 12, color: C.dim }}>Version {offer.version}</span>}
+          </div>
+        </div>
       </div>
 
       {err && <p style={{ color: C.red, fontSize: 13, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={14} /> {err}</p>}
@@ -290,7 +304,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
       </Section>
 
       {/* Anzahlung & Zahlung */}
-      <Section title="Anzahlung & Zahlung">
+      <Section title="Anzahlung & Zahlung" card>
         {editable ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 150px', gap: 10 }}>
@@ -327,7 +341,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
       </Section>
 
       {/* AGB / Stornobedingungen */}
-      <Section title="AGB & Stornobedingungen">
+      <Section title="AGB & Stornobedingungen" card>
         {editable ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <textarea style={{ ...inp, width: '100%', minHeight: 90, resize: 'vertical' }} value={agbText} onChange={e => setAgbText(e.target.value)} placeholder="AGB, Stornobedingungen, Leistungsumfang … Das Brautpaar bestätigt diese bei der Annahme." />
@@ -342,7 +356,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
       </Section>
 
       {/* Anmerkungen + Gültigkeit */}
-      <Section title="Anmerkungen & Gültigkeit">
+      <Section title="Anmerkungen & Gültigkeit" card>
         {editable ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 170px', gap: 12 }}>
             <Field label="Anmerkungen ans Brautpaar">
@@ -361,7 +375,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
       </Section>
 
       {/* Aktionen */}
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8, paddingTop: 18, borderTop: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
         <a href={`/api/vendor/event-offers/${offerId}/pdf`} target="_blank" rel="noreferrer" style={{ ...btnGhost, textDecoration: 'none' }}><FileDown size={15} /> PDF</a>
         {editable ? (
           <>
@@ -390,14 +404,16 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
   )
 }
 
-function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+function Section({ title, children, action, card }: { title: string; children: React.ReactNode; action?: React.ReactNode; card?: boolean }) {
   return (
     <div style={{ marginBottom: 22 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
         <h2 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.dim, margin: 0 }}>{title}</h2>
         {action}
       </div>
-      {children}
+      {card ? (
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 }}>{children}</div>
+      ) : children}
     </div>
   )
 }
