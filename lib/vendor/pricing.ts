@@ -6,11 +6,33 @@
 
 import type { Answer, Questionnaire, TaxMode } from './questionnaire'
 
+// Positionstypen im Angebots-Editor:
+//   qty      — Menge x Einzelpreis (Standard)
+//   flat     — Pauschale (Festpreis, Menge wird ignoriert)
+//   discount — Nachlass/Rabatt (zaehlt negativ in die Summe)
+//   optional — vom Brautpaar zu-/abwaehlbar (zaehlt nur wenn `selected`)
+export type LineItemType = 'qty' | 'flat' | 'discount' | 'optional'
+
 export interface LineItem {
   label: string
   qty: number
   unitPrice: number
   total: number
+  /** Default 'qty', wenn nicht gesetzt (Abwaertskompatibilitaet). */
+  type?: LineItemType
+  /** Nur fuer type='optional': vom Brautpaar gewaehlt (Default true). */
+  selected?: boolean
+}
+
+/** Effektiver Betrag, mit dem eine Position in die Summe eingeht. */
+export function effectiveLineTotal(li: LineItem): number {
+  const type = li.type ?? 'qty'
+  const qty = num(li.qty)
+  const unit = num(li.unitPrice)
+  if (type === 'optional' && li.selected === false) return 0
+  if (type === 'flat') return round2(unit)
+  if (type === 'discount') return -Math.abs(round2(qty > 0 ? qty * unit : unit))
+  return round2(qty * unit)
 }
 
 export interface OfferTotals {
@@ -56,11 +78,14 @@ export function recomputeTotals(
   lineItems: LineItem[],
   opts: { taxMode: TaxMode; taxRate: number; currency: string; validUntil: string | null; footerNote: string },
 ): OfferTotals {
-  const subtotal = round2(lineItems.reduce((s, li) => s + num(li.total), 0))
+  // Pro Position den effektiven Betrag (Typ-abhaengig) frisch berechnen und in
+  // `total` zuruecklegen, damit die gespeicherten line_items konsistent sind.
+  const normalized = lineItems.map(li => ({ ...li, total: effectiveLineTotal(li) }))
+  const subtotal = round2(normalized.reduce((s, li) => s + num(li.total), 0))
   const taxRate = opts.taxMode === 'regular' ? num(opts.taxRate) : 0
   const taxAmount = round2(subtotal * (taxRate / 100))
   return {
-    lineItems,
+    lineItems: normalized,
     subtotal,
     taxMode: opts.taxMode,
     taxRate,
@@ -156,4 +181,20 @@ export function computeOffer(
     validUntil,
     footerNote: q.footer_note,
   })
+}
+
+export type DepositType = 'none' | 'percent' | 'fixed'
+
+/** Berechnet Anzahlung + Restbetrag aus dem Gesamtbetrag. */
+export function computeDeposit(total: number, depositType: DepositType, depositValue: number): { deposit: number; balance: number } {
+  const t = round2(num(total))
+  if (depositType === 'percent') {
+    const dep = Math.min(t, round2(t * (num(depositValue) / 100)))
+    return { deposit: dep, balance: round2(t - dep) }
+  }
+  if (depositType === 'fixed') {
+    const dep = Math.min(t, round2(num(depositValue)))
+    return { deposit: dep, balance: round2(t - dep) }
+  }
+  return { deposit: 0, balance: t }
 }
