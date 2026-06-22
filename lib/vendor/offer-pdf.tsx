@@ -1,12 +1,18 @@
 // Server-only: rendert ein Angebots-PDF mit @react-pdf/renderer.
-// Bewusst ohne Custom-Font-Registrierung (nutzt eingebautes Helvetica), damit
-// kein Laufzeit-Fontdownload fehlschlagen kann. Dienstleister-Branding ueber
-// Firmenname + optionales Logo; faellt ohne Logo sauber auf Text zurueck.
+// Übernimmt das etablierte Forevr-Dokumentdesign (siehe components/pdf/):
+// minimalistisch in Schwarz/Grau, Helvetica, Akzentbalken, eigene Titelfolie
+// + laufende Kopf-/Fußzeile mit Seitenzahlen. Bewusst ohne Custom-Font-
+// Registrierung (eingebautes Helvetica), damit kein Laufzeit-Fontdownload
+// fehlschlagen kann. Dienstleister-Branding über Firmenname + optionales Logo.
 import 'server-only'
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet, Image, renderToBuffer } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image, renderToBuffer, Font } from '@react-pdf/renderer'
 import { formatMoney, type Answer, type TaxMode } from './questionnaire'
 import type { LineItem } from './pricing'
+
+// In @react-pdf/renderer v4 kann die Default-Hyphenation null sein und
+// "re is not a function" werfen — No-op deaktiviert die Silbentrennung.
+Font.registerHyphenationCallback(word => [word])
 
 export interface OfferPdfData {
   vendor: {
@@ -39,147 +45,274 @@ export interface OfferPdfData {
   offerNumber: string
 }
 
-const GOLD = '#B89968'
-const INK = '#1c1c1c'
-const DIM = '#6b6b6b'
-const RULE = '#e2ddd4'
+// Etablierte Forevr-Palette (vgl. components/pdf/PdfStyles.ts)
+const BLACK = '#0F0F0F'
+const DARK = '#2D2D2D'
+const MID = '#6B6B6B'
+const HEADER = '#9CA3AF'
+const BORDER = '#D0D0D0'
+const ULTRA = '#F5F5F5'
+const ALT = '#F8F8F8'
 
 const s = StyleSheet.create({
-  page: { padding: 44, fontSize: 10, color: INK, fontFamily: 'Helvetica', lineHeight: 1.5 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
-  logo: { width: 120, maxHeight: 56, objectFit: 'contain' },
-  company: { fontSize: 18, fontFamily: 'Helvetica-Bold', color: INK },
-  vendorMeta: { fontSize: 9, color: DIM, marginTop: 2 },
-  docTitle: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: GOLD, letterSpacing: 1, marginTop: 24 },
-  docSub: { fontSize: 9, color: DIM, marginTop: 2 },
-  rule: { borderBottomWidth: 1, borderBottomColor: RULE, marginVertical: 14 },
-  twoCol: { flexDirection: 'row', justifyContent: 'space-between', gap: 24 },
-  col: { flex: 1 },
-  sectionLabel: { fontSize: 8, fontFamily: 'Helvetica-Bold', color: DIM, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
-  kv: { flexDirection: 'row', marginBottom: 2 },
-  kvLabel: { width: 70, color: DIM },
-  kvValue: { flex: 1, color: INK },
-  tableHead: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: INK, paddingBottom: 4, marginTop: 6 },
-  th: { fontFamily: 'Helvetica-Bold', fontSize: 9 },
-  tr: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: RULE, paddingVertical: 5 },
-  cDesc: { flex: 1, paddingRight: 8 },
-  cQty: { width: 44, textAlign: 'right' },
-  cUnit: { width: 70, textAlign: 'right' },
-  cTotal: { width: 78, textAlign: 'right' },
-  totalsBox: { marginTop: 10, marginLeft: 'auto', width: 240 },
-  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 },
-  grandRow: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: INK, marginTop: 4, paddingTop: 5 },
-  grandLabel: { fontFamily: 'Helvetica-Bold', fontSize: 12 },
-  grandValue: { fontFamily: 'Helvetica-Bold', fontSize: 12, color: GOLD },
-  notes: { marginTop: 16, fontSize: 9, color: INK },
-  answerRow: { marginBottom: 3 },
-  answerLabel: { color: DIM },
-  footer: { position: 'absolute', bottom: 28, left: 44, right: 44, fontSize: 7.5, color: DIM, borderTopWidth: 1, borderTopColor: RULE, paddingTop: 8, flexDirection: 'row', justifyContent: 'space-between' },
+  // Inhaltsseite
+  page: {
+    fontFamily: 'Helvetica', fontSize: 10, color: DARK, backgroundColor: '#FFFFFF',
+    paddingTop: 44, paddingBottom: 50, paddingLeft: 40, paddingRight: 40,
+  },
+
+  // Branding-Kopf der Inhaltsseite
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  company: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: BLACK },
+  vendorMeta: { fontSize: 8, color: MID, marginTop: 2, lineHeight: 1.4 },
+  logo: { width: 110, maxHeight: 50, objectFit: 'contain' },
+
+  sectionLabel: {
+    fontSize: 8, fontFamily: 'Helvetica-Bold', color: BLACK, textTransform: 'uppercase',
+    letterSpacing: 0.6, marginBottom: 8, marginTop: 16,
+  },
+
+  // Positionstabelle (Forevr-Stil: schwarze Kopfzeile, Zebrastreifen)
+  table: { borderWidth: 1, borderColor: BORDER, borderStyle: 'solid', borderRadius: 2, overflow: 'hidden' },
+  tHeadRow: { flexDirection: 'row', backgroundColor: BLACK },
+  tRow: { flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: BORDER, borderTopStyle: 'solid' },
+  tRowAlt: { flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: BORDER, borderTopStyle: 'solid', backgroundColor: ALT },
+  th: {
+    paddingVertical: 6, paddingHorizontal: 8, fontSize: 7, fontFamily: 'Helvetica-Bold',
+    color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: 0.4,
+  },
+  td: { paddingVertical: 6, paddingHorizontal: 8, fontSize: 9, color: DARK, lineHeight: 1.35 },
+  cDesc: { flex: 1 },
+  cQty: { width: 50, textAlign: 'right' },
+  cUnit: { width: 78, textAlign: 'right' },
+  cTotal: { width: 84, textAlign: 'right' },
+
+  // Summenblock
+  totalsBox: { marginTop: 12, marginLeft: 'auto', width: 250 },
+  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2, fontSize: 9.5 },
+  grandRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    borderTopWidth: 1, borderTopColor: BLACK, marginTop: 5, paddingTop: 7, backgroundColor: ULTRA,
+    paddingHorizontal: 8, paddingBottom: 7,
+  },
+  grandLabel: { fontFamily: 'Helvetica-Bold', fontSize: 12, color: BLACK },
+  grandValue: { fontFamily: 'Helvetica-Bold', fontSize: 13, color: BLACK },
+
+  notesText: { fontSize: 9, color: DARK, lineHeight: 1.5 },
+  answerRow: { marginBottom: 3, fontSize: 9 },
+  answerLabel: { color: MID },
+
+  footerNote: {
+    position: 'absolute', bottom: 20, left: 40, right: 100, fontSize: 7.5, color: HEADER,
+    fontFamily: 'Helvetica',
+  },
+})
+
+// Titelfolie-Bausteine (vgl. components/pdf/PdfCoverPage.tsx)
+const cover = StyleSheet.create({
+  page: {
+    fontFamily: 'Helvetica', fontSize: 10, color: DARK, backgroundColor: '#FFFFFF',
+    paddingTop: 40, paddingBottom: 50, paddingLeft: 40, paddingRight: 40,
+  },
+  badge: { borderWidth: 1, borderColor: BORDER, borderStyle: 'solid', borderRadius: 2, paddingVertical: 4, paddingHorizontal: 10 },
+  badgeText: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: DARK, textTransform: 'uppercase', letterSpacing: 0.5 },
+  accent: { width: 40, height: 3, backgroundColor: BLACK, marginBottom: 16 },
+  title: { fontSize: 28, fontFamily: 'Helvetica-Bold', color: BLACK, letterSpacing: -0.3, lineHeight: 1.15, marginBottom: 8 },
+  subtitle: { fontSize: 12, color: MID, marginBottom: 24 },
+  grid: { borderWidth: 1, borderColor: BORDER, borderStyle: 'solid', marginBottom: 10 },
+  gridRow: { flexDirection: 'row' },
+  gridRowTop: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: BORDER, borderTopStyle: 'solid' },
+  cell: { flex: 1, paddingVertical: 10, paddingHorizontal: 12 },
+  cellBorder: { borderRightWidth: 1, borderRightColor: BORDER, borderRightStyle: 'solid' },
+  cellLabel: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: HEADER, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
+  cellValue: { fontSize: 10, color: DARK, lineHeight: 1.35 },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  metaText: { fontSize: 8, color: MID },
 })
 
 function fmtDate(d?: string | null): string {
   if (!d) return '—'
   const dt = new Date(d)
-  if (Number.isNaN(dt.getTime())) return d
+  if (Number.isNaN(dt.getTime())) return typeof d === 'string' ? d : '—'
   return dt.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+function PageNumber() {
+  return (
+    <Text
+      fixed
+      style={{ position: 'absolute', bottom: 20, right: 40, fontSize: 8, color: HEADER, fontFamily: 'Helvetica' }}
+      render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`}
+    />
+  )
+}
+
+function RunningHeader({ title }: { title: string }) {
+  return (
+    <View
+      fixed
+      style={{ position: 'absolute', top: 20, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+    >
+      <Text style={{ fontSize: 8, color: HEADER, fontFamily: 'Helvetica' }}>{title}</Text>
+      <Text style={{ fontSize: 8, color: HEADER, fontFamily: 'Helvetica' }}>{`Angebot · ${fmtDate(new Date().toISOString())}`}</Text>
+    </View>
+  )
+}
+
+function CoverPage({ data }: { data: OfferPdfData }) {
+  const { vendor, offer, standardInfo, logoDataUri, offerNumber } = data
+  const coupleName = standardInfo.coupleName || '—'
+
+  return (
+    <Page size="A4" orientation="portrait" style={cover.page}>
+      {/* Eyebrow-Badges + optionales Logo */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={cover.badge}><Text style={cover.badgeText}>Angebot</Text></View>
+          <View style={cover.badge}><Text style={cover.badgeText}>{`Nr. ${offerNumber}`}</Text></View>
+        </View>
+        {logoDataUri ? <Image src={logoDataUri} style={s.logo} /> : null}
+      </View>
+
+      {/* Hauptinhalt — vertikal zentriert */}
+      <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 16 }}>
+        <View style={cover.accent} />
+        <Text style={cover.title}>{vendor.companyName}</Text>
+        <Text style={cover.subtitle}>{`Angebot für ${coupleName}`}</Text>
+
+        {/* Info-Grid — die drei Kerninfos zuerst */}
+        <View style={cover.grid}>
+          <View style={cover.gridRow}>
+            <View style={[cover.cell, cover.cellBorder]}>
+              <Text style={cover.cellLabel}>Datum</Text>
+              <Text style={cover.cellValue}>{fmtDate(standardInfo.date)}</Text>
+            </View>
+            <View style={[cover.cell, cover.cellBorder]}>
+              <Text style={cover.cellLabel}>Brautpaar</Text>
+              <Text style={cover.cellValue}>{coupleName}</Text>
+            </View>
+            <View style={cover.cell}>
+              <Text style={cover.cellLabel}>Dienstleister</Text>
+              <Text style={cover.cellValue}>{vendor.companyName}</Text>
+            </View>
+          </View>
+          <View style={cover.gridRowTop}>
+            <View style={[cover.cell, cover.cellBorder]}>
+              <Text style={cover.cellLabel}>Ort</Text>
+              <Text style={cover.cellValue}>{standardInfo.location || '—'}</Text>
+            </View>
+            <View style={[cover.cell, cover.cellBorder]}>
+              <Text style={cover.cellLabel}>Gäste</Text>
+              <Text style={cover.cellValue}>{standardInfo.guestCount ? String(standardInfo.guestCount) : '—'}</Text>
+            </View>
+            <View style={cover.cell}>
+              <Text style={cover.cellLabel}>Gültig bis</Text>
+              <Text style={cover.cellValue}>{fmtDate(offer.validUntil)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Meta-Zeile */}
+        <View style={cover.metaRow}>
+          <Text style={cover.metaText}>{`Erstellt am ${fmtDate(new Date().toISOString())}`}</Text>
+          <Text style={cover.metaText}>{`Gesamtsumme: ${formatMoney(offer.total, offer.currency || 'EUR')}`}</Text>
+        </View>
+      </View>
+
+      <PageNumber />
+    </Page>
+  )
 }
 
 function OfferDocument(data: OfferPdfData) {
   const { vendor, offer, standardInfo, answers, offerNumber, logoDataUri } = data
   const cur = offer.currency || 'EUR'
+  const headerTitle = `${vendor.companyName} – Angebot ${offerNumber}`
 
   return (
-    <Document title={`Angebot ${offerNumber}`} author={vendor.companyName}>
+    <Document
+      title={`Angebot ${offerNumber}`}
+      author={vendor.companyName}
+      subject={`Angebot für ${standardInfo.coupleName ?? ''}`.trim()}
+      creator="Forevr Event Management"
+    >
+      {/* Titelfolie */}
+      <CoverPage data={data} />
+
+      {/* Inhaltsseite */}
       <Page size="A4" style={s.page}>
-        {/* Kopf: Branding */}
+        <RunningHeader title={headerTitle} />
+
+        {/* Branding-Kopf */}
         <View style={s.headerRow}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={s.company}>{vendor.companyName}</Text>
             {vendor.address ? <Text style={s.vendorMeta}>{vendor.address}</Text> : null}
-            <Text style={s.vendorMeta}>
-              {[vendor.email, vendor.phone, vendor.website].filter(Boolean).join('  ·  ')}
-            </Text>
+            <Text style={s.vendorMeta}>{[vendor.email, vendor.phone, vendor.website].filter(Boolean).join('  ·  ')}</Text>
           </View>
           {logoDataUri ? <Image src={logoDataUri} style={s.logo} /> : null}
         </View>
 
-        <Text style={s.docTitle}>ANGEBOT</Text>
-        <Text style={s.docSub}>Nr. {offerNumber}  ·  erstellt am {fmtDate(new Date().toISOString())}</Text>
-
-        <View style={s.rule} />
-
-        {/* Empfaenger + Eckdaten */}
-        <View style={s.twoCol}>
-          <View style={s.col}>
-            <Text style={s.sectionLabel}>Fuer</Text>
-            <View style={s.kv}><Text style={s.kvLabel}>Anlass</Text><Text style={s.kvValue}>{standardInfo.coupleName ?? '—'}</Text></View>
-            <View style={s.kv}><Text style={s.kvLabel}>Datum</Text><Text style={s.kvValue}>{fmtDate(standardInfo.date)}</Text></View>
-            <View style={s.kv}><Text style={s.kvLabel}>Ort</Text><Text style={s.kvValue}>{standardInfo.location ?? '—'}</Text></View>
-            {standardInfo.guestCount ? <View style={s.kv}><Text style={s.kvLabel}>Gaeste</Text><Text style={s.kvValue}>{String(standardInfo.guestCount)}</Text></View> : null}
-          </View>
-          <View style={s.col}>
-            <Text style={s.sectionLabel}>Konditionen</Text>
-            <View style={s.kv}><Text style={s.kvLabel}>Gueltig bis</Text><Text style={s.kvValue}>{fmtDate(offer.validUntil)}</Text></View>
-            <View style={s.kv}><Text style={s.kvLabel}>Waehrung</Text><Text style={s.kvValue}>{cur}</Text></View>
-          </View>
-        </View>
-
         {/* Positionen */}
-        <View style={s.tableHead}>
-          <Text style={[s.th, s.cDesc]}>Position</Text>
-          <Text style={[s.th, s.cQty]}>Menge</Text>
-          <Text style={[s.th, s.cUnit]}>Einzel</Text>
-          <Text style={[s.th, s.cTotal]}>Summe</Text>
-        </View>
-        {offer.lineItems.length === 0 ? (
-          <View style={s.tr}><Text style={s.cDesc}>Keine Positionen.</Text></View>
-        ) : offer.lineItems.map((li, i) => (
-          <View style={s.tr} key={i}>
-            <Text style={s.cDesc}>{li.label}</Text>
-            <Text style={s.cQty}>{li.qty}</Text>
-            <Text style={s.cUnit}>{formatMoney(li.unitPrice, cur)}</Text>
-            <Text style={s.cTotal}>{formatMoney(li.total, cur)}</Text>
+        <Text style={s.sectionLabel}>Positionen</Text>
+        <View style={s.table}>
+          <View style={s.tHeadRow}>
+            <Text style={[s.th, s.cDesc]}>Position</Text>
+            <Text style={[s.th, s.cQty]}>Menge</Text>
+            <Text style={[s.th, s.cUnit]}>Einzel</Text>
+            <Text style={[s.th, s.cTotal]}>Summe</Text>
           </View>
-        ))}
+          {offer.lineItems.length === 0 ? (
+            <View style={s.tRow}><Text style={[s.td, s.cDesc]}>Keine Positionen.</Text></View>
+          ) : offer.lineItems.map((li, i) => (
+            <View style={i % 2 === 1 ? s.tRowAlt : s.tRow} key={i}>
+              <Text style={[s.td, s.cDesc]}>{li.label}</Text>
+              <Text style={[s.td, s.cQty]}>{li.type === 'flat' ? '—' : li.qty}</Text>
+              <Text style={[s.td, s.cUnit]}>{formatMoney(li.unitPrice, cur)}</Text>
+              <Text style={[s.td, s.cTotal]}>{formatMoney(li.total, cur)}</Text>
+            </View>
+          ))}
+        </View>
 
         {/* Summen */}
         <View style={s.totalsBox}>
           <View style={s.totalsRow}><Text>Zwischensumme</Text><Text>{formatMoney(offer.subtotal, cur)}</Text></View>
           {offer.taxMode === 'regular' ? (
-            <View style={s.totalsRow}><Text>zzgl. USt. ({offer.taxRate}%)</Text><Text>{formatMoney(offer.taxAmount, cur)}</Text></View>
+            <View style={s.totalsRow}><Text>{`zzgl. USt. (${offer.taxRate}%)`}</Text><Text>{formatMoney(offer.taxAmount, cur)}</Text></View>
           ) : null}
           <View style={s.grandRow}>
             <Text style={s.grandLabel}>Gesamt</Text>
             <Text style={s.grandValue}>{formatMoney(offer.total, cur)}</Text>
           </View>
           {offer.taxMode === 'kleinunternehmer' ? (
-            <Text style={[s.vendorMeta, { marginTop: 6 }]}>Gemaess §19 UStG wird keine Umsatzsteuer berechnet.</Text>
+            <Text style={[s.vendorMeta, { marginTop: 6 }]}>Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</Text>
           ) : null}
         </View>
 
+        {/* Anmerkungen */}
         {offer.vendorNotes ? (
-          <View style={s.notes}>
+          <View>
             <Text style={s.sectionLabel}>Anmerkungen</Text>
-            <Text>{offer.vendorNotes}</Text>
+            <Text style={s.notesText}>{offer.vendorNotes}</Text>
           </View>
         ) : null}
 
-        {/* Zusammenfassung des Bedarfs */}
+        {/* Eure Angaben */}
         {answers.length > 0 ? (
-          <View style={s.notes}>
+          <View>
             <Text style={s.sectionLabel}>Eure Angaben</Text>
             {answers.map((a, i) => (
               <View style={s.answerRow} key={i}>
-                <Text><Text style={s.answerLabel}>{a.label}: </Text>{a.display}</Text>
+                <Text><Text style={s.answerLabel}>{`${a.label}: `}</Text>{a.display}</Text>
               </View>
             ))}
           </View>
         ) : null}
 
-        <View style={s.footer} fixed>
-          <Text>{offer.footerNote || 'Dieses Angebot ist freibleibend und unverbindlich.'}</Text>
-          <Text>Erstellt mit Forevr</Text>
-        </View>
+        <Text style={s.footerNote} fixed>
+          {offer.footerNote || 'Dieses Angebot ist freibleibend und unverbindlich.'}
+        </Text>
+        <PageNumber />
       </Page>
     </Document>
   )
