@@ -13,6 +13,7 @@ import {
 } from '@/lib/vendor/pricing'
 import { formatMoney, type TaxMode } from '@/lib/vendor/questionnaire'
 import { blocksForCategory, blockToLineItem } from '@/lib/vendor/offer-blocks'
+import PdfPreviewModal from '@/components/pdf/PdfPreviewModal'
 
 interface Offer {
   id: string
@@ -62,6 +63,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState('')
   const [blockMenu, setBlockMenu] = useState(false)
+  const [pdfPreview, setPdfPreview] = useState(false)
 
   // Editierbare Felder
   const [title, setTitle] = useState('')
@@ -377,7 +379,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
 
       {/* Aktionen */}
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 22, borderTop: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
-        <a href={`/api/vendor/event-offers/${offerId}/pdf`} target="_blank" rel="noreferrer" style={{ ...btnGhost, textDecoration: 'none' }}><FileDown size={15} /> PDF</a>
+        <button onClick={() => setPdfPreview(true)} style={btnGhost}><FileDown size={15} /> PDF-Vorschau</button>
         {editable ? (
           <>
             <button onClick={remove} disabled={!!busy} style={{ ...btnGhost, color: C.red, borderColor: 'rgba(197,34,31,0.3)' }}><Trash2 size={15} /> Löschen</button>
@@ -400,6 +402,15 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
         )}
       </div>
       </div>
+
+      {pdfPreview && (
+        <PdfPreviewModal
+          url={`/api/vendor/event-offers/${offerId}/pdf`}
+          title={`${title} – Vorschau`}
+          fileName={`${title || 'Angebot'}.pdf`}
+          onClose={() => setPdfPreview(false)}
+        />
+      )}
 
       <style>{`.ofe-spin { animation: ofespin 1s linear infinite; } @keyframes ofespin { to { transform: rotate(360deg); } }`}</style>
     </div>

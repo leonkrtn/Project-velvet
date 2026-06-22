@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, Plus, Trash2, RefreshCw, Save, Check, X, FileDown, MessageSquare, ClipboardList, ReceiptText, Calendar, MapPin, Users } from 'lucide-react'
 import Link from 'next/link'
 import { formatMoney, type Answer } from '@/lib/vendor/questionnaire'
+import PdfPreviewModal from '@/components/pdf/PdfPreviewModal'
 
 interface LineItem { label: string; qty: number; unitPrice: number; total: number }
 interface StandardInfo { coupleName?: string | null; date?: string | null; guestCount?: number | null; location?: string | null; eventType?: string | null; budget?: number | null }
@@ -42,6 +43,7 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState('')
   const [view, setView] = useState<View>('antworten')
+  const [pdfPreview, setPdfPreview] = useState(false)
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/vendor/offers/${requestId}`)
@@ -158,7 +160,7 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
 
       {/* Aktionen (immer sichtbar) */}
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16, flexWrap: 'wrap' }}>
-        <a href={`/api/vendor/offers/${requestId}/pdf`} target="_blank" rel="noreferrer" style={{ ...btnGhost, textDecoration: 'none' }}><FileDown size={15} /> PDF</a>
+        <button onClick={() => setPdfPreview(true)} style={btnGhost}><FileDown size={15} /> PDF-Vorschau</button>
         {editable ? (
           <>
             <button onClick={() => requestAct('decline')} disabled={!!busy} style={btnGhost}><X size={15} /> Anfrage ablehnen</button>
@@ -173,6 +175,15 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
           <Link href={`/vendor/dashboard/${eventId}/kommunikation`} style={{ ...btn, background: C.gold, color: '#fff', textDecoration: 'none' }}><MessageSquare size={15} /> Zur Kommunikation</Link>
         )}
       </div>
+
+      {pdfPreview && (
+        <PdfPreviewModal
+          url={`/api/vendor/offers/${requestId}/pdf`}
+          title="Angebot – Vorschau"
+          fileName="Angebot.pdf"
+          onClose={() => setPdfPreview(false)}
+        />
+      )}
     </div>
   )
 }
