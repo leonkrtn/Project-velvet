@@ -104,8 +104,8 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
   const [imgUrls, setImgUrls] = useState<Record<string, string>>({})
   const [iframeNonce, setIframeNonce] = useState(0)
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>()
-  const rsvpTimer = useRef<ReturnType<typeof setTimeout>>()
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const rsvpTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const initialized = useRef(false)
 
   // Vorschau-Sektion folgt dem aktiven Tab.

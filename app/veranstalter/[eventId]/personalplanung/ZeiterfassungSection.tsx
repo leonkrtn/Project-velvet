@@ -89,7 +89,7 @@ function TimeLogRow({
   const [notes,     setNotes]     = useState(log.notes ?? '')
   const [saving,    setSaving]    = useState(false)
   const [saved,     setSaved]     = useState(false)
-  const savedTimer = useRef<ReturnType<typeof setTimeout>>()
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   async function persist(patch: Partial<{ actual_start: string | null; actual_end: string | null; notes: string }>) {
     setSaving(true)

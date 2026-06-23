@@ -145,7 +145,7 @@ export default function AblaufplanClient({
 
   // Toast
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
-  const toastTimer = useRef<ReturnType<typeof setTimeout>>()
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   function showToast(msg: string, ok = true) {
     clearTimeout(toastTimer.current)
     setToast({ msg, ok })

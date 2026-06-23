@@ -1,12 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['postgres'],
+  // @react-pdf/renderer MUSS serverseitig unbundled laufen (serverExternalPackages):
+  // Wird es vom Webpack-Server-Build gebundlet, bricht der interne Reconciler beim
+  // Rendern mit "Cannot read properties of undefined (reading 'S')". Unbundled (Node-
+  // Import des vorkompilierten lib/react-pdf.js) rendert es korrekt — Voraussetzung ist,
+  // dass App- und Server-React dieselbe Major-Version haben (React 19), damit
+  // @react-pdf/reconciler den passenden Reconciler (react-19.2) waehlt. Andernfalls
+  // lieferten ALLE Angebots-PDF-Routen keinen Output (PDF-Vorschau lud endlos).
+  serverExternalPackages: ['postgres', '@react-pdf/renderer'],
   // ESLint im Build erzwingen: schlägt nur bei Errors fehl (Warnings sind ok),
   // damit Lint-Fehler nicht unbemerkt in Produktion gelangen.
   eslint: { ignoreDuringBuilds: false },
-  // @react-pdf/renderer is ESM-only; transpilePackages bundles it into the
-  // client bundle sharing the same React instance — required for BlobProvider
-  transpilePackages: ['@react-pdf/renderer'],
   // Disable prerendering for dynamic content
   skipTrailingSlashRedirect: true,
   onDemandEntries: {
