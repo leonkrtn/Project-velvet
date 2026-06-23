@@ -106,7 +106,7 @@ export default function FragebogenBuilderClient({ category }: { category: string
         questions: sec.questions.map((q, qi) => ({
           id: uid(), section_id: sid, type: q.type, label: q.label, help_text: q.help_text ?? '',
           required: !!q.required,
-          options: (q.options ?? []).map(o => ({ id: uid(), label: o.label, price: o.price ?? 0 })),
+          options: (q.options ?? []).map(o => ({ id: uid(), label: o.label, price: o.price ?? 0, perGuest: !!o.perGuest })),
           pricing: q.pricing ?? {}, sort_order: qi,
         })),
       }
@@ -292,11 +292,16 @@ function QuestionEditor({ q, index, total, onChange, onRemove, onMove }: {
               <input style={{ ...inp, fontSize: 12.5 }} value={o.label} onChange={e => {
                 const opts = [...q.options]; opts[oi] = { ...o, label: e.target.value }; onChange({ options: opts })
               }} placeholder={`Option ${oi + 1}`} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 130, flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 120, flexShrink: 0 }}>
                 <input style={{ ...inp, fontSize: 12.5, textAlign: 'right' }} type="number" value={o.price ?? 0} onChange={e => {
                   const opts = [...q.options]; opts[oi] = { ...o, price: e.target.value === '' ? 0 : parseFloat(e.target.value) }; onChange({ options: opts })
                 }} /><span style={{ fontSize: 12, color: C.dim }}>€</span>
               </div>
+              <label title="Preis gilt pro Gast" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: C.dim, whiteSpace: 'nowrap', cursor: 'pointer', flexShrink: 0 }}>
+                <input type="checkbox" checked={!!o.perGuest} onChange={e => {
+                  const opts = [...q.options]; opts[oi] = { ...o, perGuest: e.target.checked }; onChange({ options: opts })
+                }} />/Gast
+              </label>
               <button style={{ ...iconBtn, color: C.red }} onClick={() => onChange({ options: q.options.filter(x => x.id !== o.id) })}><Trash2 size={14} /></button>
             </div>
           ))}
@@ -308,25 +313,55 @@ function QuestionEditor({ q, index, total, onChange, onRemove, onMove }: {
 
       {/* Preislogik je nach Typ */}
       {q.type === 'number' && (
-        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 12.5, color: C.dim }}>Preis pro Einheit:</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 140 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 120 }}>
             <input style={{ ...inp, fontSize: 12.5, textAlign: 'right' }} type="number" value={q.pricing.unitPrice ?? 0}
-              onChange={e => onChange({ pricing: { mode: 'per_unit', unitPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) } })} />
+              onChange={e => onChange({ pricing: { ...q.pricing, mode: 'per_unit', unitPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) } })} />
             <span style={{ fontSize: 12, color: C.dim }}>€</span>
           </div>
+          <input style={{ ...inp, fontSize: 12.5, width: 130 }} value={q.pricing.unitLabel ?? ''} placeholder="Einheit (z. B. Std.)"
+            onChange={e => onChange({ pricing: { ...q.pricing, unitLabel: e.target.value } })} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 11.5, color: C.dim }}>min</span>
+            <input style={{ ...inp, fontSize: 12, textAlign: 'right', width: 56 }} type="number" value={q.pricing.min ?? ''}
+              onChange={e => onChange({ pricing: { ...q.pricing, min: e.target.value === '' ? undefined : parseFloat(e.target.value) } })} />
+            <span style={{ fontSize: 11.5, color: C.dim }}>max</span>
+            <input style={{ ...inp, fontSize: 12, textAlign: 'right', width: 56 }} type="number" value={q.pricing.max ?? ''}
+              onChange={e => onChange({ pricing: { ...q.pricing, max: e.target.value === '' ? undefined : parseFloat(e.target.value) } })} />
+            <span style={{ fontSize: 11.5, color: C.dim }}>Schritt</span>
+            <input style={{ ...inp, fontSize: 12, textAlign: 'right', width: 56 }} type="number" value={q.pricing.step ?? ''}
+              onChange={e => onChange({ pricing: { ...q.pricing, step: e.target.value === '' ? undefined : parseFloat(e.target.value) } })} />
+          </div>
+          <OptionalToggle q={q} onChange={onChange} />
         </div>
       )}
       {q.type === 'boolean' && (
-        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 12.5, color: C.dim }}>Aufschlag bei {'„Ja"'}:</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 140 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 120 }}>
             <input style={{ ...inp, fontSize: 12.5, textAlign: 'right' }} type="number" value={q.pricing.price ?? 0}
-              onChange={e => onChange({ pricing: { mode: 'fixed', price: e.target.value === '' ? 0 : parseFloat(e.target.value) } })} />
+              onChange={e => onChange({ pricing: { ...q.pricing, mode: 'fixed', price: e.target.value === '' ? 0 : parseFloat(e.target.value) } })} />
             <span style={{ fontSize: 12, color: C.dim }}>€</span>
           </div>
+          <label title="Aufschlag gilt pro Gast" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.dim, cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!q.pricing.perGuest} onChange={e => onChange({ pricing: { ...q.pricing, perGuest: e.target.checked } })} /> pro Gast
+          </label>
+          <OptionalToggle q={q} onChange={onChange} />
         </div>
       )}
+      {hasOptions && (
+        <div style={{ marginTop: 10 }}><OptionalToggle q={q} onChange={onChange} /></div>
+      )}
     </div>
+  )
+}
+
+// Schalter: erzeugte Angebotsposition optional (Brautpaar kann ab-/zuwaehlen).
+function OptionalToggle({ q, onChange }: { q: QQuestion; onChange: (patch: Partial<QQuestion>) => void }) {
+  return (
+    <label title="Position im Angebot ist optional — das Brautpaar kann sie ab- oder zuwählen" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.dim, cursor: 'pointer' }}>
+      <input type="checkbox" checked={!!q.pricing.optional} onChange={e => onChange({ pricing: { ...q.pricing, optional: e.target.checked } })} /> optional
+    </label>
   )
 }

@@ -134,14 +134,27 @@ export async function PUT(req: NextRequest) {
             id: (o.id as string) || randomUUID(),
             label: (o.label as string)?.trim() || 'Option',
             price: num(o.price),
+            perGuest: !!o.perGuest,
           }))
         : []
       const rawPricing = (qq.pricing ?? {}) as Record<string, unknown>
+      const optional = !!rawPricing.optional
+      const optNum = (v: unknown): number | undefined => {
+        if (v === '' || v === null || v === undefined) return undefined
+        const n = num(v); return Number.isFinite(n) ? n : undefined
+      }
       const pricing = type === 'number'
-        ? { mode: 'per_unit', unitPrice: num(rawPricing.unitPrice) }
+        ? {
+            mode: 'per_unit', unitPrice: num(rawPricing.unitPrice),
+            unitLabel: (rawPricing.unitLabel as string)?.trim() || undefined,
+            min: optNum(rawPricing.min), max: optNum(rawPricing.max), step: optNum(rawPricing.step),
+            optional,
+          }
         : type === 'boolean'
-          ? { mode: 'fixed', price: num(rawPricing.price) }
-          : {}
+          ? { mode: 'fixed', price: num(rawPricing.price), perGuest: !!rawPricing.perGuest, optional }
+          : (type === 'single' || type === 'multi')
+            ? { optional }
+            : {}
       return {
         questionnaire_id: qId,
         section_id: secRow.id,

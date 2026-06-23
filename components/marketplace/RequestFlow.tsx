@@ -268,7 +268,16 @@ function QuestionInput({ q, value, onChange }: { q: PublicQQuestion; value: unkn
     )
   }
   if (q.type === 'number') {
-    return <div>{label}<input className="bp-input" type="number" value={value === undefined || value === null ? '' : String(value)} onChange={e => onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} /></div>
+    return (
+      <div>{label}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input className="bp-input" type="number" min={q.min} max={q.max} step={q.step}
+            value={value === undefined || value === null ? '' : String(value)}
+            onChange={e => onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} style={{ flex: 1 }} />
+          {q.unitLabel && <span style={{ fontSize: 13, color: 'var(--bp-ink-3)', whiteSpace: 'nowrap' }}>{q.unitLabel}</span>}
+        </div>
+      </div>
+    )
   }
   if (q.type === 'date') {
     return <div>{label}<input className="bp-input" type="date" value={value ? String(value) : ''} onChange={e => onChange(e.target.value)} /></div>
