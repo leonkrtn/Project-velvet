@@ -81,7 +81,7 @@ export default function MeineAnfragen({ eventId }: { eventId: string }) {
       <div className="bp-card" style={{ padding: '2rem', textAlign: 'center' }}>
         <Clock size={26} style={{ opacity: 0.35, marginBottom: 10 }} />
         <p style={{ fontWeight: 600, margin: '0 0 4px' }}>Keine offenen Anfragen</p>
-        <p className="bp-caption" style={{ margin: 0 }}>Im Tab „Entdecken" findest du Dienstleister und kannst Anfragen stellen.</p>
+        <p className="bp-caption" style={{ margin: 0 }}>Im Tab &quot;Entdecken&quot; findest du Dienstleister und kannst Anfragen stellen.</p>
       </div>
     )
   }

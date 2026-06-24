@@ -897,7 +897,7 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
               {/* Nachricht vom Gast */}
               {guest.message && (
                 <InfoSection title="Nachricht">
-                  <p style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)', fontStyle: 'italic', margin: 0, lineHeight: 1.6 }}>„{guest.message}"</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)', fontStyle: 'italic', margin: 0, lineHeight: 1.6 }}>&quot;{guest.message}&quot;</p>
                 </InfoSection>
               )}
 

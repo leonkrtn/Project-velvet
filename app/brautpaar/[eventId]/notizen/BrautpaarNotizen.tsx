@@ -488,7 +488,7 @@ export default function BrautpaarNotizen({ eventId, embedded = false }: Props) {
             {activeCategory === 'Alle' ? 'Noch keine Notizen angelegt.' : `Keine Notizen in „${activeCategory}".`}
           </p>
           <p style={{ fontSize: 12, color: 'var(--bp-ink-3)' }}>
-            Klicke auf „Neue Notiz", um loszulegen.
+            Klicke auf &quot;Neue Notiz&quot;, um loszulegen.
           </p>
         </div>
       ) : (
