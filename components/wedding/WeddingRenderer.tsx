@@ -268,7 +268,10 @@ export function LandingView({ content, event, imageUrls }: RenderProps) {
           <div className="wd-location-grid">
             <div className="wd-location-media" data-reveal>
               {locUrl
-                ? <div className="wd-framed">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={locUrl} alt={loc.image?.alt ?? loc.title} style={{ objectPosition: focus(loc.image) }} /></div>
+                ? <div className="wd-framed">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={locUrl} alt={loc.image?.alt ?? loc.title} style={{ objectPosition: focus(loc.image) }} />
+                  </div>
                 : <div className="wd-framed"><div className="wd-img-placeholder wd-location-ph" aria-hidden /></div>}
             </div>
             <div className="wd-location-text" data-reveal>
