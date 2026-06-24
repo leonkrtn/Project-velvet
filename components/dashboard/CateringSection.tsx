@@ -152,7 +152,7 @@ export function CateringSummary({event, catering, stats}: {event: Event; caterin
       {catering.cateringNotes&&(
         <Card>
           <SectionTitle>Notizen</SectionTitle>
-          <p style={{fontSize:13, color:'var(--text)', fontStyle:'italic'}}>„{catering.cateringNotes}"</p>
+          <p style={{fontSize:13, color:'var(--text)', fontStyle:'italic'}}>&quot;{catering.cateringNotes}&quot;</p>
         </Card>
       )}
     </div>

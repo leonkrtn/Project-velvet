@@ -774,7 +774,7 @@ export default function CateringForm({
         return (
           <SectionWrap title={sectionTitle}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16, marginTop: -4 }}>
-              Lege für jede Essensoption das konkrete Gericht fest. Mit „Übernehmen von…" kannst du eine andere Option kopieren und nur das Abweichende ändern.
+              Lege für jede Essensoption das konkrete Gericht fest. Mit &quot;Übernehmen von…&quot; kannst du eine andere Option kopieren und nur das Abweichende ändern.
             </p>
 
             {/* Globale Gang-/Positions-Verwaltung (eine Zeile pro Gang über alle Karten) */}

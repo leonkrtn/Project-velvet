@@ -386,6 +386,7 @@ export default function ChatsClient({ eventId, currentUserId, initialConversatio
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeConv?.id, loadMessages, supabase, currentUserId])
 
   // Realtime: unread counter for inactive conversations

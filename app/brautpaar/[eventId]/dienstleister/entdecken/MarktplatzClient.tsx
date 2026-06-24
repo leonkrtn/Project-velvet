@@ -143,11 +143,15 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
               <Link key={v.id} href={`/brautpaar/${eventId}/dienstleister/anbieter/${v.id}`} className="mp-card">
                 <div className="mp-media">
                   {v.cover_url
-                    ? <img src={v.cover_url} alt="" />
+                    ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={v.cover_url} alt="" />
+                    )
                     : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bp-gold-deep,#8a6f3f)', opacity: 0.5 }}><CategoryIcon category={v.category} size={48} /></div>}
                   {/* Logo-Badge unten links, wenn zusätzlich ein Logo existiert */}
                   {v.logo_url && v.cover_url && v.logo_url !== v.cover_url && (
                     <span style={{ position: 'absolute', left: 12, bottom: 12, width: 40, height: 40, borderRadius: 10, overflow: 'hidden', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', background: '#fff' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </span>
                   )}

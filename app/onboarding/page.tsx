@@ -78,6 +78,7 @@ export default function OnboardingPage() {
       } catch { /* no Supabase — allow demo mode */ }
     }
     checkApproval()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Step 1

@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { RaumPoint, RaumElement } from '@/components/room/RaumKonfigurator'
 import SitzplanReadOnlyView from '@/components/sitzplan/SitzplanReadOnlyView'
@@ -167,7 +168,7 @@ function SitzplanEditor({ eventId }: { eventId: string }) {
                 <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Kein Raum konfiguriert</p>
                 <p style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
                   Konfiguriere zuerst den Raum unter{' '}
-                  <a href="/veranstalter/konfiguration" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>Konfiguration</a>
+                  <Link href="/veranstalter/konfiguration" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>Konfiguration</Link>
                   {' '}oder erstelle eine event-spezifische Konfiguration oben rechts.
                 </p>
               </div>

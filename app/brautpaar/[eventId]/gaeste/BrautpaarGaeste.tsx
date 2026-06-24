@@ -897,7 +897,7 @@ function GuestLightbox({ guest, hotels, onClose, onUpdate }: {
               {/* Nachricht vom Gast */}
               {guest.message && (
                 <InfoSection title="Nachricht">
-                  <p style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)', fontStyle: 'italic', margin: 0, lineHeight: 1.6 }}>„{guest.message}"</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)', fontStyle: 'italic', margin: 0, lineHeight: 1.6 }}>&quot;{guest.message}&quot;</p>
                 </InfoSection>
               )}
 
@@ -1847,6 +1847,7 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
             {qrLoading && <div style={{ color: 'var(--bp-ink-3)', fontSize: '0.875rem', padding: '2rem 0' }}>Generiere QR-Code…</div>}
             {activeQrUrl && (
               <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={activeQrUrl} alt={`RSVP QR-Code für ${activeQrGuest.name}`} style={{ width: 200, height: 200, display: 'block' }} />
                 <button className="bp-btn bp-btn-secondary" onClick={() => downloadQr(activeQrGuest.name, activeQrUrl)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Download size={14} /> Als PNG speichern
@@ -2041,7 +2042,7 @@ export default function BrautpaarGaeste({ eventId, userId, initialGuests, initia
             key={tab.key}
             data-tour={`bp-gtab-${tab.key}`}
             className="bp-step-tab"
-            aria-selected={activeTab === tab.key}
+            data-selected={activeTab === tab.key}
             onClick={() => setActiveTab(tab.key)}
           >
             <span className="bp-step-tab-num">{idx + 1}</span>

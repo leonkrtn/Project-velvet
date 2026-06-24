@@ -134,15 +134,13 @@ export default function FragebogenBuilderClient({ category }: { category: string
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
           <div>
-            <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, fontSize: 22, color: C.gold, letterSpacing: '0.16em', lineHeight: 1, marginBottom: 6 }}>FOREVR</p>
             <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text, display: 'flex', alignItems: 'center', gap: 9 }}>
-              <FileText size={20} style={{ color: C.gold }} /> Fragebogen & Auto-Angebot
+              <FileText size={20} style={{ color: C.gold }} /> Anfrage-Formular
             </h1>
             <p style={{ fontSize: 13, color: C.dim, marginTop: 6, maxWidth: 560, lineHeight: 1.5 }}>
               Lege fest, welche Fragen Brautpaare bei einer Anfrage beantworten. Aus den Antworten erstellt Forevr automatisch einen Angebotsentwurf, den du vor dem Freigeben prüfst.
             </p>
           </div>
-          <a href="/vendor/dashboard" style={{ ...btnGhost, textDecoration: 'none' }}>Zu meinen Events</a>
         </div>
 
         {/* Aktionen */}

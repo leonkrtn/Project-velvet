@@ -171,6 +171,7 @@ function CoverPage({ data }: { data: OfferPdfData }) {
           <View style={cover.badge}><Text style={cover.badgeText}>Angebot</Text></View>
           <View style={cover.badge}><Text style={cover.badgeText}>{`Nr. ${offerNumber}`}</Text></View>
         </View>
+        {/* eslint-disable-next-line jsx-a11y/alt-text */}
         {logoDataUri ? <Image src={logoDataUri} style={s.logo} /> : null}
       </View>
 
@@ -250,6 +251,7 @@ function OfferDocument(data: OfferPdfData) {
             {vendor.address ? <Text style={s.vendorMeta}>{vendor.address}</Text> : null}
             <Text style={s.vendorMeta}>{[vendor.email, vendor.phone, vendor.website].filter(Boolean).join('  ·  ')}</Text>
           </View>
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
           {logoDataUri ? <Image src={logoDataUri} style={s.logo} /> : null}
         </View>
 

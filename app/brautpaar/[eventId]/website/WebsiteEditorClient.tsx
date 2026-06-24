@@ -168,7 +168,8 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
   }, [content, templateId, slug, og, isOnline, eventId])
 
   // Bei Inhalts-/OG-Änderung neu speichern
-  useEffect(() => { scheduleSave() /* eslint-disable-next-line */ }, [content, og])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { scheduleSave() }, [content, og])
 
   // RSVP-Einstellungen separat speichern (kein Einfluss auf die Inhalts-Vorschau).
   useEffect(() => {
@@ -397,6 +398,7 @@ function ImageField({ label, image, url, onPick, onRemove, onFocus }: {
         {image && url ? (
           <>
             <div className="we-image-preview" onClick={handleFocusClick} title="Klicken, um den Bildausschnitt (Fokus) zu setzen">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={url} alt="" style={{ objectPosition: `${image.focusX ?? 50}% ${image.focusY ?? 50}%` }} />
               <span className="we-image-focus" style={{ left: `${image.focusX ?? 50}%`, top: `${image.focusY ?? 50}%` }} />
             </div>
@@ -520,7 +522,7 @@ function StylePanel({ style, update }: { style: WeddingContent['style']; update:
         <h2 className="we-section-title" style={{ margin: 0 }}>Stil anpassen</h2>
         <button className="we-btn" onClick={() => update(c => { c.style = {} })}><RotateCcw size={14} /> Alles zurücksetzen</button>
       </div>
-      <p className="we-section-sub">Feinschliff über dem Template. „Standard" bedeutet: Wert kommt vom gewählten Template.</p>
+      <p className="we-section-sub">Feinschliff über dem Template. &quot;Standard&quot; bedeutet: Wert kommt vom gewählten Template.</p>
 
       <StyleGroup label="Farbpalette" onReset={() => set('palette', undefined)}>
         <div className="we-pal-grid">
@@ -788,14 +790,14 @@ function PublishPanel({ status, slug, isOnline, setOnline, onPublish, publishMsg
   return (
     <>
       <h2 className="we-section-title">Veröffentlichen</h2>
-      <p className="we-section-sub">Bis zur Veröffentlichung ist eure Seite privat. Änderungen werden als Entwurf gespeichert und erst durch „Veröffentlichen" live.</p>
+      <p className="we-section-sub">Bis zur Veröffentlichung ist eure Seite privat. Änderungen werden als Entwurf gespeichert und erst durch &quot;Veröffentlichen&quot; live.</p>
       <div className="we-publish-card">
         <div style={{ marginBottom: '0.75rem' }}>
           <strong>Status:</strong> {status === 'published' ? 'Veröffentlicht' : 'Entwurf (noch nicht live)'}
         </div>
         {slug
           ? <div style={{ marginBottom: '0.75rem' }}><div className="we-hint">Öffentlicher Link</div><a className="we-url" href={url} target="_blank" rel="noreferrer">{url} <ExternalLink size={12} /></a></div>
-          : <div className="we-error" style={{ marginBottom: '0.75rem' }}>Bitte zuerst im Tab „Teilen" einen Link festlegen.</div>}
+          : <div className="we-error" style={{ marginBottom: '0.75rem' }}>Bitte zuerst im Tab &quot;Teilen&quot; einen Link festlegen.</div>}
 
         {status === 'published' && (
           <label className="we-switch" style={{ marginBottom: '0.75rem' }}>

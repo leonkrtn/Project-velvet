@@ -386,7 +386,9 @@ export default function RaumKonfigurator({
     return { x: (e.clientX-r.left)*(canvas.width/r.width), y: (e.clientY-r.top)*(canvas.height/r.height) }
   }, [])
   const cellPx = () => GRID_SIZE * stateRef.current.meterToPx
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const cellTL = (el: RaumElement) => m2c(el.x, el.y)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const cellCenter = (el: RaumElement) => m2c(el.x + GRID_SIZE/2, el.y + GRID_SIZE/2)
 
   /* ── Grouping ── */

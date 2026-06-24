@@ -148,7 +148,7 @@ export default function EinstellungenClient({ eventId, currentUserId, isSolo, ha
 
       {sections.length === 0 ? (
         <p style={{ color: 'var(--bp-ink-3)', fontSize: '0.9375rem' }}>
-          Keine Einstellung gefunden für „{query}".
+          Keine Einstellung gefunden für &quot;{query}&quot;.
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

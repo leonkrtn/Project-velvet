@@ -25,6 +25,7 @@ export default function RsvpPhotos({ token }: Props) {
   const [toast, setToast]         = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [token])
 
   async function load() {
@@ -167,6 +168,7 @@ export default function RsvpPhotos({ token }: Props) {
                 onClick={() => setLightbox(photo)}
               >
                 {photo.url && (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={photo.url}
                     alt=""
@@ -205,6 +207,7 @@ export default function RsvpPhotos({ token }: Props) {
             <X size={18} color="#fff" />
           </button>
           {lightbox.url && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={lightbox.url}
               alt=""

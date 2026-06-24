@@ -530,6 +530,7 @@ export default function FilesSection({
     }
 
     setLoading(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, module])
 
   useEffect(() => { loadFiles() }, [loadFiles])

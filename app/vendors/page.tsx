@@ -155,7 +155,7 @@ export default function VendorsPage() {
                     {v.contactName && <p style={{fontSize:12,color:'var(--text-light)'}}>Kontakt: <strong style={{color:'var(--text-mid)'}}>{v.contactName}</strong></p>}
                     {v.phone && <a href={`tel:${v.phone}`} style={{display:'flex',alignItems:'center',gap:8,color:'var(--gold)',fontSize:13,textDecoration:'none'}}><Phone size={14}/>{v.phone}</a>}
                     {v.email && <a href={`mailto:${v.email}`} style={{display:'flex',alignItems:'center',gap:8,color:'var(--gold)',fontSize:13,textDecoration:'none',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}><Mail size={14}/>{v.email}</a>}
-                    {v.notes && <p style={{fontSize:12,color:'var(--text-dim)',fontStyle:'italic'}}>„{v.notes}"</p>}
+                    {v.notes && <p style={{fontSize:12,color:'var(--text-dim)',fontStyle:'italic'}}>&quot;{v.notes}&quot;</p>}
                   </div>
                   <button onClick={()=>deleteVendor(v.id)} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 14px',borderRadius:100,border:'1px solid var(--border)',background:'none',fontSize:11,fontWeight:600,color:'var(--text-dim)',cursor:'pointer',fontFamily:'inherit'}}>
                     <Trash2 size={12}/> Entfernen

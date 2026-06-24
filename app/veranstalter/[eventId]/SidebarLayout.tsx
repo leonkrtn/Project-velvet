@@ -183,6 +183,7 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)' }}
           >
             {userAvatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={userAvatarUrl}
                 alt={userName ?? 'Profil'}

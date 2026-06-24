@@ -296,6 +296,7 @@ export default function PersonalplanungPage() {
       supabase.removeChannel(chatChannelRef.current)
       chatChannelRef.current = null
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const [hoveredShiftId, setHoveredShiftId] = useState<string | null>(null)
@@ -364,9 +365,11 @@ export default function PersonalplanungPage() {
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drag])
 
   // ── Load ──────────────────────────────────────────────────────────────────
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadData() }, [eventId])
 
   async function loadData() {

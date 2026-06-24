@@ -332,6 +332,7 @@ export default function ZeiterfassungSection({ eventId }: Props) {
       setLoading(false)
     }
     load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId])
 
   if (loading) {

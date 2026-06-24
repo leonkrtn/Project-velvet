@@ -1,17 +1,12 @@
 'use client'
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { CalendarDays, Search, LogOut } from 'lucide-react'
-import { performLogout } from '@/lib/logout'
+import { CalendarDays, MapPin, Search, Check } from 'lucide-react'
 
 type EventRow = { id: string; title: string; date: string | null; venue: string | null; event_code: string | null }
 
-export default function VendorEventsClient({ events }: { events: EventRow[] }) {
+export default function VendorEventsClient({ events, acceptedEventIds = [] }: { events: EventRow[]; acceptedEventIds?: string[] }) {
   const [search, setSearch] = useState('')
-
-  async function handleLogout() {
-    await performLogout()
-  }
 
   const filtered = search.trim()
     ? events.filter(ev => {
@@ -34,7 +29,7 @@ export default function VendorEventsClient({ events }: { events: EventRow[] }) {
             placeholder="Nach Event oder Code suchen …"
             style={{
               width: '100%', padding: '10px 14px 10px 34px', fontSize: 13,
-              border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
+              border: '1px solid var(--border)', borderRadius: 10,
               background: 'var(--surface)', fontFamily: 'inherit', outline: 'none',
               boxSizing: 'border-box', color: 'var(--text)',
             }}
@@ -45,7 +40,7 @@ export default function VendorEventsClient({ events }: { events: EventRow[] }) {
       )}
 
       {events.length === 0 ? (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '40px 24px', textAlign: 'center' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '40px 24px', textAlign: 'center' }}>
           <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Noch keine Events zugewiesen</p>
           <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.6 }}>
             Du erhältst vom Veranstalter einen persönlichen Einladungslink,<br />
@@ -54,49 +49,51 @@ export default function VendorEventsClient({ events }: { events: EventRow[] }) {
         </div>
       ) : filtered.length === 0 ? (
         <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0' }}>
-          Kein Event gefunden für „{search}"
+          Kein Event gefunden für &quot;{search}&quot;
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {filtered.map(event => (
-            <Link
-              key={event.id}
-              href={`/vendor/dashboard/${event.id}`}
-              style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '20px 24px', textDecoration: 'none', color: 'inherit', transition: 'box-shadow 0.15s' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                <p style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>{event.title}</p>
-                {event.event_code && (
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-                    color: 'var(--text-dim)', background: 'rgba(0,0,0,0.05)',
-                    padding: '1px 7px', borderRadius: 4, fontFamily: 'monospace',
-                  }}>#{event.event_code}</span>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                {event.date && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-dim)' }}>
-                    <CalendarDays size={13} />
-                    {new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </span>
-                )}
-                {event.venue && (
-                  <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{event.venue}</span>
-                )}
-              </div>
-            </Link>
-          ))}
+          {filtered.map(event => {
+            const isBooked = acceptedEventIds.includes(event.id)
+            return (
+              <Link
+                key={event.id}
+                href={`/vendor/dashboard/${event.id}/kommunikation`}
+                style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 24px', textDecoration: 'none', color: 'inherit', transition: 'box-shadow 0.15s, border-color 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm, 0 4px 16px rgba(0,0,0,0.06))'; e.currentTarget.style.borderColor = 'var(--gold)' }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <p style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>{event.title}</p>
+                  {event.event_code && (
+                    <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)', background: 'rgba(0,0,0,0.05)', padding: '1px 7px', borderRadius: 4, fontFamily: 'monospace' }}>
+                      #{event.event_code}
+                    </span>
+                  )}
+                  {isBooked && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: 'rgba(30,126,52,0.12)', color: '#1E7E34' }}>
+                      <Check size={11} /> Gebucht
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  {event.date && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-dim)' }}>
+                      <CalendarDays size={13} />
+                      {new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                  )}
+                  {event.venue && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-dim)' }}>
+                      <MapPin size={13} /> {event.venue}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )
+          })}
         </div>
       )}
-      <div style={{ marginTop: 32, textAlign: 'center' }}>
-        <button
-          onClick={handleLogout}
-          style={{ background: 'none', border: 'none', fontSize: 13, color: 'var(--text-dim)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <LogOut size={13} /> Abmelden
-        </button>
-      </div>
     </>
   )
 }
