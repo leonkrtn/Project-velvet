@@ -1,6 +1,10 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import GlobalVendorShell from '@/components/vendor/GlobalVendorShell'
 import VendorEventsClient from './VendorEventsClient'
+
+export const dynamic = 'force-dynamic'
 
 export default async function VendorOverviewPage() {
   const supabase = await createClient()
@@ -14,31 +18,39 @@ export default async function VendorOverviewPage() {
     .eq('role', 'dienstleister')
     .order('joined_at', { ascending: false })
 
+  const admin = createAdminClient()
+  const { data: link } = await admin
+    .from('user_dienstleister')
+    .select('dienstleister_id')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  let acceptedEventIds: string[] = []
+  if (link) {
+    const { data: acceptedOffers } = await admin
+      .from('vendor_offers')
+      .select('event_id')
+      .eq('dienstleister_id', link.dienstleister_id)
+      .eq('status', 'accepted')
+    acceptedEventIds = (acceptedOffers ?? []).map((o: { event_id: string }) => o.event_id)
+  }
+
   type EventRow = { id: string; title: string; date: string | null; venue: string | null; event_code: string | null }
   const events = (memberships ?? [])
     .map(m => (Array.isArray(m.events) ? m.events[0] : m.events) as EventRow | null)
     .filter((e): e is EventRow => !!e)
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '40px 24px' }}>
-      <div style={{ maxWidth: 600, margin: '0 auto' }}>
-
-        <div style={{ marginBottom: 32 }}>
-          <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, fontSize: 28, color: 'var(--gold)', letterSpacing: '0.16em', lineHeight: 1, marginBottom: 8 }}>FOREVR</p>
-          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', marginBottom: 4 }}>Meine Events</h1>
-          <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>Alle Events, bei denen du als Dienstleister eingetragen bist.</p>
-          <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
-            <a href="/vendor/listing" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'var(--gold)', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-              Mein Anbieter-Profil
-            </a>
-            <a href="/vendor/anfragen" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: '#fff', color: 'var(--text)', border: '1px solid var(--border)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-              Anfragen aus dem Marktplatz
-            </a>
+    <GlobalVendorShell>
+      <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '32px 24px 48px' }}>
+        <div style={{ maxWidth: 680, margin: '0 auto' }}>
+          <div style={{ marginBottom: 28 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>Meine Events</h1>
+            <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 4 }}>Alle Events, bei denen du als Dienstleister eingetragen bist.</p>
           </div>
+          <VendorEventsClient events={events} acceptedEventIds={acceptedEventIds} />
         </div>
-
-        <VendorEventsClient events={events} />
       </div>
-    </div>
+    </GlobalVendorShell>
   )
 }

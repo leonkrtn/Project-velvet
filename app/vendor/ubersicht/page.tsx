@@ -1,17 +1,18 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import GlobalVendorShell from '@/components/vendor/GlobalVendorShell'
-import VendorAnfragenClient from './VendorAnfragenClient'
+import UbersichtClient from './UbersichtClient'
 
 export const dynamic = 'force-dynamic'
 
-export default async function VendorAnfragenPage() {
+export default async function VendorUbersichtPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login?next=/vendor/anfragen')
+  if (!user) redirect('/login?next=/vendor/ubersicht')
+
   return (
     <GlobalVendorShell>
-      <VendorAnfragenClient />
+      <UbersichtClient />
     </GlobalVendorShell>
   )
 }

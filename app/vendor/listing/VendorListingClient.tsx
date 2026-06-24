@@ -327,7 +327,7 @@ export default function VendorListingClient() {
         </div>
 
         {/* Fragebogen & Auto-Angebot */}
-        <a href="/vendor/fragebogen" style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit' }}>
+        <a href="/vendor/anfrage-formular" style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit' }}>
           <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(184,153,104,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <FileText size={20} style={{ color: C.gold }} />
           </div>

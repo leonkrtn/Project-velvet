@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import GlobalVendorShell from '@/components/vendor/GlobalVendorShell'
 import VendorListingClient from './VendorListingClient'
 
 export const dynamic = 'force-dynamic'
@@ -48,5 +49,9 @@ export default async function VendorListingPage() {
       .eq('is_marketplace', false)
   }
 
-  return <VendorListingClient />
+  return (
+    <GlobalVendorShell>
+      <VendorListingClient />
+    </GlobalVendorShell>
+  )
 }
