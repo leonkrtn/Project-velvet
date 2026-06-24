@@ -26,6 +26,7 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
   const [downloading, setDownloading] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [eventId])
 
   async function load() {
@@ -243,6 +244,7 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
               onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setLightbox(photo)}
             >
               {photo.url && (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={photo.url}
                   alt={photo.uploader_name ?? ''}
@@ -313,6 +315,7 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
             <X size={18} color="#fff" />
           </button>
           {lightbox.url && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={lightbox.url}
               alt=""

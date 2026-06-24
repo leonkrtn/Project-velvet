@@ -53,7 +53,10 @@ export default function VendorMarketplacePreview({ vendor, packages, faqs, revie
           <div style={{ aspectRatio: '16/9', borderRadius: 18, overflow: 'hidden', background: 'linear-gradient(135deg, var(--bp-gold-pale,#f3ecdd), var(--bp-ivory-2,#f2efe9))', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: hero ? 'zoom-in' : 'default' }}
             onClick={() => hero && setLightbox(hero)}>
             {hero
-              ? <img src={hero} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={hero} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              )
               : <div style={{ color: 'var(--bp-gold-deep,#8a6f3f)', opacity: 0.5 }}><CategoryIcon category={vendor.category} size={64} /></div>}
           </div>
 
@@ -61,6 +64,7 @@ export default function VendorMarketplacePreview({ vendor, packages, faqs, revie
             <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
               {rest.map(p => (
                 <button key={p.id} onClick={() => setLightbox(p.url)} style={{ width: 96, height: 72, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--bp-rule)', cursor: 'zoom-in', padding: 0, background: 'none' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </button>
               ))}
@@ -199,6 +203,7 @@ export default function VendorMarketplacePreview({ vendor, packages, faqs, revie
 
       {lightbox && (
         <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 6000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={lightbox} alt="" style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8, objectFit: 'contain' }} />
         </div>
       )}

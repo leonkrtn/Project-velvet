@@ -241,7 +241,10 @@ export function LandingView({ content, event, imageUrls }: RenderProps) {
       {/* HERO */}
       <section className="wd-hero">
         {heroUrl
-          ? <img src={heroUrl} alt={hero.image?.alt ?? ''} className="wd-hero-img" style={{ objectPosition: focus(hero.image) }} />
+          ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={heroUrl} alt={hero.image?.alt ?? ''} className="wd-hero-img" style={{ objectPosition: focus(hero.image) }} />
+          )
           : <div className="wd-hero-img wd-img-placeholder" aria-hidden />}
         <div className="wd-hero-scrim" aria-hidden />
         <div className="wd-hero-inner">
@@ -265,7 +268,7 @@ export function LandingView({ content, event, imageUrls }: RenderProps) {
           <div className="wd-location-grid">
             <div className="wd-location-media" data-reveal>
               {locUrl
-                ? <div className="wd-framed"><img src={locUrl} alt={loc.image?.alt ?? loc.title} style={{ objectPosition: focus(loc.image) }} /></div>
+                ? <div className="wd-framed">{/* eslint-disable-next-line @next/next/no-img-element */}<img src={locUrl} alt={loc.image?.alt ?? loc.title} style={{ objectPosition: focus(loc.image) }} /></div>
                 : <div className="wd-framed"><div className="wd-img-placeholder wd-location-ph" aria-hidden /></div>}
             </div>
             <div className="wd-location-text" data-reveal>
@@ -338,6 +341,7 @@ export function StoryView({ content, imageUrls, story }: Omit<RenderProps, 'temp
                 <div className="wd-station-card">
                   {url && (
                     <div className="wd-station-media">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={url} alt={s.image?.alt ?? s.title} style={{ objectPosition: focus(s.image) }} />
                     </div>
                   )}
@@ -365,6 +369,7 @@ export function RsvpIntroView({ content, imageUrls }: Pick<RenderProps, 'content
     <section className="wd-section wd-rsvp-intro">
       {url && (
         <div className="wd-rsvp-hero">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={url} alt={rsvp.image?.alt ?? ''} style={{ objectPosition: focus(rsvp.image) }} />
           <div className="wd-hero-scrim" aria-hidden />
         </div>

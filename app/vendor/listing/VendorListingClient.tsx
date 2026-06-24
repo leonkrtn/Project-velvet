@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import {
   Loader2, Save, Send, Eye, EyeOff, Plus, Trash2, Image as ImageIcon, Star,
   CheckCircle2, AlertTriangle, Clock, ArrowUp, ArrowDown, FileText,
@@ -286,7 +287,7 @@ export default function VendorListingClient() {
             <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, fontSize: 24, color: C.gold, letterSpacing: '0.16em', lineHeight: 1, marginBottom: 6 }}>FOREVR</p>
             <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text }}>Mein Anbieter-Profil</h1>
           </div>
-          <a href="/vendor/dashboard" style={{ ...btnGhost, textDecoration: 'none' }}>Zu meinen Events</a>
+          <Link href="/vendor/dashboard" style={{ ...btnGhost, textDecoration: 'none' }}>Zu meinen Events</Link>
         </div>
 
         {/* Status-Banner */}
@@ -406,7 +407,10 @@ export default function VendorListingClient() {
             <div>
               <label style={lbl}>Logo <SensitiveHint /></label>
               <div onClick={() => logoInput.current?.click()} style={{ width: 110, height: 110, borderRadius: 12, border: `1px dashed ${C.border}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden' }}>
-                {logoUrl ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <ImageIcon size={26} color={C.dim} />}
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : <ImageIcon size={26} color={C.dim} />}
               </div>
               <input ref={logoInput} type="file" accept="image/*" hidden onChange={onLogo} />
             </div>
@@ -415,7 +419,10 @@ export default function VendorListingClient() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {photos.map((p, i) => (
                   <div key={p.id} style={{ width: 96, height: 72, borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}`, position: 'relative', background: '#fff' }}>
-                    {p.url && <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                    {p.url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
                     {i === 0 && <span style={{ position: 'absolute', top: 3, left: 3, background: C.gold, color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 5 }}>Titel</span>}
                     <div style={{ position: 'absolute', bottom: 2, right: 2, display: 'flex', gap: 2 }}>
                       <button onClick={() => movePhoto(i, -1)} style={miniBtn} title="nach vorne"><ArrowUp size={11} /></button>

@@ -160,7 +160,7 @@ function RequirementsForm({ reqs, eventId, canEdit, onSaved }: { reqs: Requireme
           </button>
         </div>
         {!reqs ? (
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Noch keine Angaben. Klicke "Bearbeiten" um Anforderungen hinzuzufügen.</p>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Noch keine Angaben. Klicke &quot;Bearbeiten&quot; um Anforderungen hinzuzufügen.</p>
         ) : (
           <>
             {reqs.soundcheck_date && <InfoRow label="Soundcheck" value={[reqs.soundcheck_date, reqs.soundcheck_time].filter(Boolean).join(' ')} />}

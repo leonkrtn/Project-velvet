@@ -277,6 +277,7 @@ export default function BrautpaarNotizen({ eventId, embedded = false }: Props) {
         setCategories(cats)
         setLoading(false)
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId])
 
   async function addNote() {

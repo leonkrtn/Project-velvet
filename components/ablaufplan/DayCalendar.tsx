@@ -347,6 +347,7 @@ export default function DayCalendar({
     setDragState({ type: 'create', startMin, endMin: startMin + 60, movedEnough: false })
     containerRef.current!.setPointerCapture(e.pointerId)
     e.preventDefault()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readOnly, entries, startHour, endHour])
 
   // ─── Pointer move ────────────────────────────────────────────────────────────
@@ -377,6 +378,7 @@ export default function DayCalendar({
       const clampedStart = Math.max(startHour * 60, Math.min(curMin, ds.origEnd - SNAP_MIN))
       setDragState({ ...ds, currentStartMin: clampedStart, movedEnough })
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startHour, endHour])
 
   // ─── Pointer up ──────────────────────────────────────────────────────────────

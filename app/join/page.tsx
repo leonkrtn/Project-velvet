@@ -77,6 +77,7 @@ function JoinForm() {
   // Code aus der URL direkt prüfen, sobald Login-Status bekannt ist
   useEffect(() => {
     if (loggedIn !== null && code && !checked && !checking) void checkCode(code)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn, code, checked, checking])
 
   const handleJoin = async () => {

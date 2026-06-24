@@ -414,6 +414,7 @@ export default function GeschenkTab({ eventId }: { eventId: string }) {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [eventId])
 
   function openCreate() {

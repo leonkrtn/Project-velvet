@@ -207,6 +207,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('velvet-saved', reload)
       window.removeEventListener('storage', reload)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const switchEvent = useCallback(async (eventId: string) => {
@@ -270,6 +271,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       console.error('[Forevr] updateEvent Fehler:', err?.message ?? String(err))
       setSyncError('Daten konnten nicht synchronisiert werden.')
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

@@ -159,6 +159,7 @@ export default function AblaufplanClient({
       supabase.from('organizer_staff').select('id, name, role_category').eq('organizer_id', user.id).order('name')
         .then(({ data }) => { if (data) setStaff(data) })
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Derived ────────────────────────────────────────────────────────────────

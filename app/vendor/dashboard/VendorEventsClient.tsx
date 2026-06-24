@@ -49,7 +49,7 @@ export default function VendorEventsClient({ events, acceptedEventIds = [] }: { 
         </div>
       ) : filtered.length === 0 ? (
         <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0' }}>
-          Kein Event gefunden für „{search}"
+          Kein Event gefunden für &quot;{search}&quot;
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

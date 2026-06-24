@@ -251,6 +251,7 @@ export default function VeranstalterNotizen({ eventId }: { eventId: string }) {
         setCategories(['Alle', ...Array.from(new Set([...DEFAULT_CATEGORIES, ...loaded.map(n => n.category)]))])
         setLoading(false)
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId])
 
   async function addNote() {
@@ -441,7 +442,7 @@ export default function VeranstalterNotizen({ eventId }: { eventId: string }) {
             {activeCategory === 'Alle' ? 'Noch keine Notizen angelegt.' : `Keine Notizen in „${activeCategory}".`}
           </p>
           <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-            Klicke auf „Neue Notiz", um loszulegen.
+            Klicke auf &quot;Neue Notiz&quot;, um loszulegen.
           </p>
         </div>
       ) : (

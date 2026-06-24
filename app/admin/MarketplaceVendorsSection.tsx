@@ -98,7 +98,10 @@ export default function MarketplaceVendorsSection() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, flexWrap: 'wrap' }}>
                 <div style={{ width: 44, height: 44, borderRadius: 8, background: '#f3f3f3', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {v.logo_url
-                    ? <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )
                     : <span style={{ fontSize: 16, fontWeight: 700, color: '#bbb' }}>{v.name.charAt(0)}</span>}
                 </div>
                 <div style={{ flex: '1 1 150px', minWidth: 0 }}>
@@ -276,7 +279,10 @@ function VendorImages({ vendor, uploadImage }: { vendor: Vendor; uploadImage: (k
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ width: 56, height: 56, borderRadius: 8, background: '#f0f0f0', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {logoUrl ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, color: '#aaa' }}>Logo</span>}
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : <span style={{ fontSize: 11, color: '#aaa' }}>Logo</span>}
         </div>
         <label style={{ ...btnS, cursor: busy ? 'wait' : 'pointer' }}>
           <ImagePlus size={14} /> Logo hochladen
@@ -291,7 +297,10 @@ function VendorImages({ vendor, uploadImage }: { vendor: Vendor; uploadImage: (k
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {photos.map(p => (
             <div key={p.id} style={{ position: 'relative', width: 72, height: 72, borderRadius: 8, overflow: 'hidden', background: '#f0f0f0' }}>
-              {p.url && <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+              {p.url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              )}
               <button onClick={() => removePhoto(p.id)} style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: 100, width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <X size={12} color="#fff" />
               </button>
