@@ -82,7 +82,7 @@ export default function GlobalVendorShell({ children }: { children: React.ReactN
         <nav style={{ flex: 1, overflowY: 'auto', padding: '2px 10px' }}>
           {NAV.map(item => {
             const Icon = item.icon
-            const badge = item.badgeKey ? (data?.[item.badgeKey as keyof ShellData] as number ?? 0) : 0
+            const badge = 'badgeKey' in item && item.badgeKey ? (data?.[item.badgeKey as keyof ShellData] as number ?? 0) : 0
             return (
               <Link key={item.key} href={item.href} style={styleFor(item.key)}
                 onMouseEnter={e => { if (active !== item.key) e.currentTarget.style.background = 'var(--bg)' }}
