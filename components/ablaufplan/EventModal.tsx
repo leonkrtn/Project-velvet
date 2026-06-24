@@ -168,7 +168,7 @@ export default function EventModal({
   const [deleting, setDeleting] = useState(false)
 
   // Auto-save checklist for existing entries
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   function scheduleChecklistSave(newList: ChecklistItem[]) {
     if (!entry || !onChecklistChange) return
     clearTimeout(autoSaveTimer.current)
@@ -178,7 +178,7 @@ export default function EventModal({
   }
 
   // Auto-save assignments for existing entries
-  const autoSaveAssignTimer = useRef<ReturnType<typeof setTimeout>>()
+  const autoSaveAssignTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   function scheduleAssignmentSave(patch: Partial<Pick<TimelineEntry, 'assigned_staff' | 'assigned_vendors' | 'assigned_members'>>) {
     if (!entry || !onAssignmentsChange) return
     clearTimeout(autoSaveAssignTimer.current)

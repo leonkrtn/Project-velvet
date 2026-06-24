@@ -18,12 +18,12 @@
     "exceljs": "^4.4.0",
     "html-to-image": "^1.11.13",
     "jszip": "^3.10.1",
-    "lucide-react": "^0.383.0",
+    "lucide-react": "^0.469.0",
     "next": "^15",
     "postgres": "^3.4.9",
     "qrcode": "^1.5.4",
-    "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   },
   "overrides": {
     "uuid": "^11.1.0",
@@ -32,8 +32,8 @@
   "devDependencies": {
     "@types/node": "^20",
     "@types/qrcode": "^1.5.5",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "eslint": "^8",
     "eslint-config-next": "^15",
     "typescript": "^5"

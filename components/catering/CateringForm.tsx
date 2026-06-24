@@ -364,8 +364,8 @@ export default function CateringForm({
   eventRef.current = event
   const planRef = useRef(plan)
   planRef.current = plan
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>()
-  const handleSaveRef = useRef<() => Promise<void>>()
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const handleSaveRef = useRef<(() => Promise<void>) | undefined>(undefined)
 
   const mealOptions = event.meal_options ?? DEFAULT_MEAL_OPTIONS
   const effectiveGuestCount = plan.plan_guest_count_enabled

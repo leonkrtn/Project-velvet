@@ -184,8 +184,8 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
 
   const formRef = useRef(form)
   formRef.current = form
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>()
-  const handleSaveRef = useRef<() => Promise<void>>()
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const handleSaveRef = useRef<(() => Promise<void>) | undefined>(undefined)
 
   const update = useCallback(<K extends keyof EventData>(key: K, value: EventData[K]) => {
     setForm(f => ({ ...f, [key]: value }))

@@ -55,7 +55,7 @@ function NoteEditor({
   onDelete: (note: Note) => void
 }) {
   const supabase = createClient()
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>()
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [title,     setTitle]     = useState(note.title)
   const [content,   setContent]   = useState(note.content)
   const [checklist, setChecklist] = useState<ChecklistItem[]>(note.checklist_items)
