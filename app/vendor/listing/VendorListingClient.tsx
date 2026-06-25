@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
 import {
   Loader2, Save, Send, Eye, EyeOff, Plus, Trash2, Image as ImageIcon, Star,
   CheckCircle2, AlertTriangle, Clock, ArrowUp, ArrowDown, FileText,
@@ -282,12 +281,8 @@ export default function VendorListingClient() {
   return (
     <div style={{ minHeight: '100dvh', background: C.bg, padding: '32px 20px' }}>
       <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
-          <div>
-            <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500, fontSize: 24, color: C.gold, letterSpacing: '0.16em', lineHeight: 1, marginBottom: 6 }}>FOREVR</p>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text }}>Mein Anbieter-Profil</h1>
-          </div>
-          <Link href="/vendor/dashboard" style={{ ...btnGhost, textDecoration: 'none' }}>Zu meinen Events</Link>
+        <div style={{ marginBottom: 8 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text }}>Mein Anbieter-Profil</h1>
         </div>
 
         {/* Status-Banner */}

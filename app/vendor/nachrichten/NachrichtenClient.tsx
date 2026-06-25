@@ -33,8 +33,8 @@ function timeLabel(iso: string): string {
 }
 
 function previewText(msg: LastMessage): string {
-  if (msg.message_type === 'file') return '📎 Datei'
-  if (msg.message_type === 'data_share') return '📊 Geteilte Daten'
+  if (msg.message_type === 'file') return 'Datei'
+  if (msg.message_type === 'data_share') return 'Geteilte Daten'
   return msg.content ?? ''
 }
 
