@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import {
   Loader2, Save, Plus, Trash2, ArrowUp, ArrowDown, FileText, LayoutTemplate, GripVertical,
+  AlertTriangle, Eye, EyeOff,
 } from 'lucide-react'
 import {
   DEFAULT_SETTINGS, QUESTION_TYPE_LABELS, TAX_MODE_LABELS,
@@ -36,7 +37,7 @@ function newSection(sort: number): QSection {
   return { id, title: '', description: '', sort_order: sort, questions: [newQuestion(id, 0)] }
 }
 
-export default function FragebogenBuilderClient({ category }: { category: string }) {
+export default function FragebogenBuilderClient({ category, embedded }: { category: string; embedded?: boolean }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [settings, setSettings] = useState<QuestionnaireSettings>(DEFAULT_SETTINGS)
@@ -98,7 +99,7 @@ export default function FragebogenBuilderClient({ category }: { category: string
   function applyTemplate(cat: string) {
     if (sections.length > 0 && !window.confirm('Bestehende Abschnitte durch die Vorlage ersetzen?')) return
     const tpl = templateForCategory(cat)
-    setSettings(s => ({ ...s, ...tpl.settings }))
+    setSettings(s => ({ ...s, ...tpl.settings, is_active: true }))
     setSections(tpl.sections.map((sec, si) => {
       const sid = uid()
       return {
@@ -126,32 +127,43 @@ export default function FragebogenBuilderClient({ category }: { category: string
   }
 
   if (loading) {
-    return <div style={{ minHeight: '100dvh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="bp-spin" /></div>
+    return <div style={{ minHeight: embedded ? 120 : '100dvh', background: embedded ? 'transparent' : C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="bp-spin" /></div>
   }
 
-  return (
-    <div style={{ minHeight: '100dvh', background: C.bg, padding: '28px 24px 80px' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text, display: 'flex', alignItems: 'center', gap: 9 }}>
-              <FileText size={20} style={{ color: C.gold }} /> Anfrage-Formular
-            </h1>
-            <p style={{ fontSize: 13, color: C.dim, marginTop: 6, maxWidth: 560, lineHeight: 1.5 }}>
-              Lege fest, welche Fragen Brautpaare bei einer Anfrage beantworten. Aus den Antworten erstellt Forevr automatisch einen Angebotsentwurf, den du vor dem Freigeben prüfst.
-            </p>
+  const content = (
+    <>
+        {!embedded && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text, display: 'flex', alignItems: 'center', gap: 9 }}>
+                <FileText size={20} style={{ color: C.gold }} /> Anfrage-Formular
+              </h1>
+              <p style={{ fontSize: 13, color: C.dim, marginTop: 6, maxWidth: 560, lineHeight: 1.5 }}>
+                Lege fest, welche Fragen Brautpaare bei einer Anfrage beantworten. Aus den Antworten erstellt Forevr automatisch einen Angebotsentwurf, den du vor dem Freigeben prüfst.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Aktionen */}
         <div data-tour="vdr-fragebogen-actions" style={{ ...card, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={save} disabled={saving} style={btnGold}>
             {saving ? <Loader2 size={15} className="bp-spin" /> : <Save size={15} />} Speichern
           </button>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: C.text, cursor: 'pointer' }}>
-            <input type="checkbox" checked={settings.is_active} onChange={e => setSetting('is_active', e.target.checked)} />
-            Aktiv (Brautpaaren anzeigen)
-          </label>
+          <button
+            onClick={() => setSetting('is_active', !settings.is_active)}
+            title={settings.is_active ? 'Formular deaktivieren' : 'Formular aktivieren'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 13px',
+              borderRadius: 8, border: `1px solid ${settings.is_active ? '#16a34a' : C.border}`,
+              background: settings.is_active ? 'rgba(22,163,74,0.08)' : 'transparent',
+              cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+              color: settings.is_active ? '#16a34a' : C.dim,
+            }}
+          >
+            {settings.is_active ? <Eye size={14} /> : <EyeOff size={14} />}
+            {settings.is_active ? 'Aktiv' : 'Inaktiv'}
+          </button>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
             <LayoutTemplate size={15} style={{ color: C.dim }} />
             <select style={{ ...inp, width: 'auto', padding: '7px 10px' }} defaultValue="" onChange={e => { if (e.target.value) { applyTemplate(e.target.value); e.target.value = '' } }}>
@@ -162,6 +174,25 @@ export default function FragebogenBuilderClient({ category }: { category: string
           </div>
           {msg && <span style={{ fontSize: 13, fontWeight: 600, color: msg.kind === 'ok' ? '#15803D' : C.red, width: '100%' }}>{msg.text}</span>}
         </div>
+
+        {/* Warnung: Formular inaktiv */}
+        {!settings.is_active && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', marginBottom: 16, borderRadius: 12, background: 'rgba(202,138,4,0.07)', border: '1px solid rgba(202,138,4,0.28)' }}>
+            <AlertTriangle size={18} style={{ color: '#b45309', flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: '#92400e' }}>Formular ist inaktiv</p>
+              <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#78350f', lineHeight: 1.5 }}>
+                Brautpaare können aktuell keine Anfragen stellen. Klicke auf „Aktivieren" und speichere, damit Anfragen möglich sind.
+              </p>
+            </div>
+            <button
+              onClick={() => setSetting('is_active', true)}
+              style={{ ...btn, background: '#b45309', color: '#fff', flexShrink: 0, fontSize: 12.5, padding: '7px 12px' }}
+            >
+              Aktivieren
+            </button>
+          </div>
+        )}
 
         {/* Kopf des Fragebogens */}
         <div data-tour="vdr-fragebogen-allgemein" style={card}>
@@ -240,6 +271,15 @@ export default function FragebogenBuilderClient({ category }: { category: string
             <input style={inp} value={settings.footer_note} onChange={e => setSetting('footer_note', e.target.value)} />
           </div>
         </div>
+    </>
+  )
+
+  if (embedded) return content
+
+  return (
+    <div style={{ minHeight: '100dvh', background: C.bg, padding: '28px 24px 80px' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+        {content}
       </div>
     </div>
   )

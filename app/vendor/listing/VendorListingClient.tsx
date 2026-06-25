@@ -602,7 +602,7 @@ export default function VendorListingClient() {
             <div style={{ height: 40 }} />
           </>
         ) : (
-          <FragebogenBuilderClient category={f.category} />
+          <FragebogenBuilderClient category={f.category} embedded />
         )}
       </div>
 

@@ -91,13 +91,26 @@ export default function MarketplaceModerationSection({ card, cardHeader }: { car
                     </div>
 
                     {pc && (
-                      <div style={{ marginTop: 10, background: '#F8F9FB', borderRadius: 8, padding: '8px 12px', fontSize: 12.5 }}>
-                        <div style={{ fontWeight: 700, color: '#5A6068', marginBottom: 4 }}>Geänderte Felder:</div>
-                        {Object.entries(pc).map(([k, val]) => (
-                          <div key={k} style={{ color: '#1A1D21' }}>
-                            <b>{FIELD_LABEL[k] ?? k}:</b> {k === 'logo_r2_key' ? '(neues Logo)' : String(val ?? '—')}
-                          </div>
-                        ))}
+                      <div style={{ marginTop: 10 }}>
+                        <div style={{ fontSize: 11.5, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                          Geänderte Felder zur Prüfung:
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {Object.entries(pc).map(([k, val]) => (
+                            <div key={k} style={{
+                              background: 'rgba(251,191,36,0.10)',
+                              border: '1px solid rgba(202,138,4,0.30)',
+                              borderRadius: 7, padding: '7px 11px', fontSize: 13,
+                            }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#92400E' }}>
+                                {FIELD_LABEL[k] ?? k}
+                              </span>
+                              <div style={{ color: '#1A1D21', marginTop: 2, fontWeight: 500 }}>
+                                {k === 'logo_r2_key' ? '(neues Logo hochgeladen)' : String(val ?? '—')}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 
