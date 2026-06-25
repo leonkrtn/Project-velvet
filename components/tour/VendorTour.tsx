@@ -241,21 +241,39 @@ export default function VendorTour() {
 
   const { w: vw, h: vh } = viewport
   const cardH = measuredH || 200
+  const GAP = 14
   let cardTop: number, cardLeft: number
 
   if (isInteractive) {
-    // Interaktive Schritte: Karte unten mittig, damit sie das UI nicht verdeckt.
-    cardTop  = vh - cardH - 24
+    // Interaktive Schritte: Karte am Rand des Viewports, nie vor dem Zielelement.
+    // Ist das Ziel in der unteren Hälfte → Karte oben; sonst unten.
+    const targetInLowerHalf = rect ? rect.top > vh / 2 : false
+    cardTop  = targetInLowerHalf ? 24 : vh - cardH - 24
     cardLeft = (vw - CARD_W) / 2
   } else if (rect) {
-    cardLeft = Math.min(Math.max(12, rect.left), vw - CARD_W - 12)
-    if (rect.bottom + cardH + 16 < vh) {
-      cardTop = rect.bottom + 14
-    } else if (rect.top - cardH - 16 > 0) {
-      cardTop = rect.top - cardH - 14
+    const canBelow = rect.bottom + cardH + GAP < vh
+    const canAbove = rect.top - cardH - GAP > 0
+    const canRight = rect.right + CARD_W + GAP + 12 < vw
+    const canLeft  = rect.left - CARD_W - GAP > 12
+
+    if (canBelow) {
+      cardTop  = rect.bottom + GAP
+      cardLeft = Math.min(Math.max(12, rect.left), vw - CARD_W - 12)
+    } else if (canAbove) {
+      cardTop  = rect.top - cardH - GAP
+      cardLeft = Math.min(Math.max(12, rect.left), vw - CARD_W - 12)
+    } else if (canRight) {
+      cardLeft = rect.right + GAP
+      cardTop  = Math.max(12, Math.min(rect.top, vh - cardH - 12))
+    } else if (canLeft) {
+      cardLeft = rect.left - CARD_W - GAP
+      cardTop  = Math.max(12, Math.min(rect.top, vh - cardH - 12))
     } else {
-      cardTop  = (vh - cardH) / 2
+      // Element füllt fast den gesamten Viewport — auf der Seite mit mehr Platz platzieren.
+      const spaceBelow = vh - rect.bottom
+      const spaceAbove = rect.top
       cardLeft = (vw - CARD_W) / 2
+      cardTop  = spaceBelow >= spaceAbove ? rect.bottom + GAP : rect.top - cardH - GAP
     }
   } else {
     cardTop  = (vh - cardH) / 2
@@ -320,9 +338,14 @@ export default function VendorTour() {
           <h3 style={{ fontSize: '1.3rem', fontWeight: 700, letterSpacing: '-0.3px', color: 'var(--text-primary, #1a1a1a)', margin: '0 0 6px' }}>
             {step.title}
           </h3>
-          <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: 'var(--text-secondary)', margin: '0 0 16px' }}>
+          <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: 'var(--text-secondary)', margin: stepAppear ? '0 0 8px' : '0 0 16px' }}>
             {step.body}
           </p>
+          {stepAppear && (
+            <p style={{ fontSize: '0.75rem', color: 'var(--gold, #B89968)', margin: '0 0 16px', lineHeight: 1.5 }}>
+              Die Tour springt automatisch weiter, sobald du die Aktion ausführst — oder klicke „Weiter", um zu überspringen.
+            </p>
+          )}
 
           {/* Fortschrittsbalken */}
           <div style={{ display: 'flex', gap: 4, marginBottom: 14 }}>
@@ -366,7 +389,7 @@ export default function VendorTour() {
                   fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit',
                 }}
               >
-                {isLast ? (<><Check size={15} /> Fertig</>) : stepAppear ? (<>Warte auf Aktion …</>) : (<>Weiter <ChevronRight size={15} /></>)}
+                {isLast ? (<><Check size={15} /> Fertig</>) : (<>Weiter <ChevronRight size={15} /></>)}
               </button>
             </div>
           </div>
