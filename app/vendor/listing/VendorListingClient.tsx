@@ -424,7 +424,7 @@ export default function VendorListingClient() {
               </div>
 
               {/* Kategorie + Ab-Preis */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
                 <div>
                   <label style={lbl}>Kategorie</label>
                   <select value={f.category} onChange={set('category')} style={inp}>
@@ -481,7 +481,7 @@ export default function VendorListingClient() {
             {/* ── Weitere Stammdaten ── */}
             <div style={secCard}>
               <h2 style={h2s}>Weitere Angaben <SensitiveHint /></h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div><label style={lbl}>Firma / Anzeigename *</label><input style={inp} value={f.company_name} onChange={set('company_name')} placeholder="So erscheint ihr im Marktplatz" /></div>
                 <div><label style={lbl}>Ansprechpartner (intern)</label><input style={inp} value={f.name} onChange={set('name')} /></div>
                 <div><label style={lbl}>Straße</label><input style={inp} value={f.street} onChange={set('street')} /></div>
@@ -507,7 +507,7 @@ export default function VendorListingClient() {
             {/* ── Social-Media ── */}
             <div style={secCard}>
               <h2 style={h2s}>Social-Media</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 {SOCIAL_PLATFORMS.map(s => (
                   <div key={s.key}>
                     <label style={lbl}>{s.label}</label>
@@ -602,13 +602,14 @@ export default function VendorListingClient() {
             <div style={{ height: 40 }} />
           </>
         ) : (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20 }}>
-            <FragebogenBuilderClient category={f.category} />
-          </div>
+          <FragebogenBuilderClient category={f.category} />
         )}
       </div>
 
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @media(max-width:580px){.listing-two-col{grid-template-columns:1fr!important}}
+      `}</style>
     </div>
   )
 }

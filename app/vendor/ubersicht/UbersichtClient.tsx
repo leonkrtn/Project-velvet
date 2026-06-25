@@ -83,7 +83,12 @@ export default function UbersichtClient() {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
         <Loader2 size={20} className="ub-spin" style={{ color: 'var(--text-tertiary)' }} />
-        <style>{`.ub-spin{animation:ubspin 1s linear infinite}@keyframes ubspin{to{transform:rotate(360deg)}}`}</style>
+        <style>{`
+          .ub-spin{animation:ubspin 1s linear infinite}@keyframes ubspin{to{transform:rotate(360deg)}}
+          @media(max-width:860px){.ub-stat-grid{grid-template-columns:repeat(2,1fr)!important}}
+          @media(max-width:480px){.ub-stat-grid{grid-template-columns:1fr!important}}
+          @media(max-width:660px){.ub-bottom-grid{grid-template-columns:1fr!important}}
+        `}</style>
       </div>
     )
   }
@@ -111,7 +116,7 @@ export default function UbersichtClient() {
         </div>
 
         {/* ── 4 Stat cards ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+        <div className="ub-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
 
           {/* Offene Anfragen */}
           <Link href="/vendor/anfragen" style={{ ...card, display: 'block', textDecoration: 'none', color: 'inherit' }}>
@@ -162,7 +167,7 @@ export default function UbersichtClient() {
         </div>
 
         {/* ── Bottom: two columns ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'stretch' }}>
+        <div className="ub-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'stretch' }}>
 
           {/* Braucht deine Aufmerksamkeit */}
           <div style={card}>

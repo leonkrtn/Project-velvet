@@ -45,7 +45,6 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
   const active = activeKey(pathname)
   const isKommunikation = pathname.includes('/kommunikation')
 
-  // Skip sidebar for public pages
   const noShell = pathname.startsWith('/vendor/join') || pathname.startsWith('/vendor/signup')
 
   useEffect(() => {
@@ -69,10 +68,10 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
   }
 
   return (
-    <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
+    <div className="vdr-shell" style={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
 
       {/* ── Sidebar ── */}
-      <aside style={{
+      <aside className="vdr-sidebar" style={{
         width: 240, flexShrink: 0, height: '100dvh',
         background: 'var(--sidebar-bg)',
         borderRight: '1px solid var(--border)',
@@ -80,7 +79,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
       }}>
 
         {/* Company header */}
-        <div style={{ padding: '18px 14px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="vdr-company-header" style={{ padding: '18px 14px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10, flexShrink: 0,
             background: logoUrl ? 'transparent' : 'var(--accent)', color: '#fff',
@@ -94,7 +93,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
               : companyInitials
             }
           </div>
-          <div style={{ overflow: 'hidden' }}>
+          <div className="vdr-company-text" style={{ overflow: 'hidden' }}>
             <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {companyName || 'Mein Unternehmen'}
             </p>
@@ -107,17 +106,17 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '2px 8px' }}>
+        <nav className="vdr-nav" style={{ flex: 1, overflowY: 'auto', padding: '2px 8px' }}>
           {NAV.map(item => {
             const Icon = item.icon
             const badge = 'badgeKey' in item ? (badges[item.badgeKey] ?? 0) : 0
             const on = active === item.key
             return (
-              <Link key={item.key} href={item.href} style={navStyle(item.key)}>
+              <Link key={item.key} href={item.href} className="vdr-nav-link" style={navStyle(item.key)}>
                 <Icon size={16} style={{ flexShrink: 0, opacity: on ? 1 : 0.5 }} />
-                <span style={{ flex: 1 }}>{item.label}</span>
+                <span className="vdr-nav-text" style={{ flex: 1 }}>{item.label}</span>
                 {badge > 0 && (
-                  <span style={{
+                  <span className="vdr-badge" style={{
                     fontSize: 11, fontWeight: 700, minWidth: 20, textAlign: 'center',
                     padding: '2px 5px', borderRadius: 100,
                     background: 'var(--accent)', color: '#fff',
@@ -131,13 +130,14 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         </nav>
 
         {/* Bottom */}
-        <div style={{ padding: '8px 8px 16px', borderTop: '1px solid var(--border)' }}>
-          <Link href="/vendor/listing" style={navStyle('listing')}>
+        <div className="vdr-sidebar-bottom" style={{ padding: '8px 8px 16px', borderTop: '1px solid var(--border)' }}>
+          <Link href="/vendor/listing" className="vdr-nav-link" style={navStyle('listing')}>
             <User size={16} style={{ flexShrink: 0, opacity: active === 'listing' ? 1 : 0.5 }} />
-            <span>Anbieter-Profil</span>
+            <span className="vdr-nav-text">Anbieter-Profil</span>
           </Link>
           <button
             onClick={() => performLogout()}
+            className="vdr-logout-btn"
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '7px 10px', borderRadius: 8, width: '100%',
@@ -147,13 +147,13 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             }}
           >
             <LogOut size={16} style={{ flexShrink: 0, opacity: 0.5 }} />
-            <span>Abmelden</span>
+            <span className="vdr-nav-text">Abmelden</span>
           </button>
         </div>
       </aside>
 
       {/* ── Main ── */}
-      <div style={{
+      <div className="vdr-main" style={{
         flex: 1, minWidth: 0,
         height: '100dvh',
         overflow: isKommunikation ? 'hidden' : 'auto',
@@ -163,6 +163,64 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         {children}
       </div>
 
+      <style>{`
+        /* Tablet: icon-only sidebar */
+        @media (max-width: 768px) {
+          .vdr-sidebar { width: 56px !important; }
+          .vdr-company-text { display: none !important; }
+          .vdr-company-header { justify-content: center !important; padding: 14px 10px !important; gap: 0 !important; }
+          .vdr-nav { padding: 2px 6px !important; }
+          .vdr-nav-link { justify-content: center !important; padding: 10px !important; gap: 0 !important; }
+          .vdr-nav-text { display: none !important; }
+          .vdr-badge { display: none !important; }
+          .vdr-sidebar-bottom { padding: 6px 6px 12px !important; }
+          .vdr-logout-btn { justify-content: center !important; padding: 10px !important; gap: 0 !important; }
+        }
+        /* Mobile: bottom tab bar */
+        @media (max-width: 480px) {
+          .vdr-shell { flex-direction: column !important; }
+          .vdr-sidebar {
+            order: 2 !important;
+            width: 100% !important;
+            height: 56px !important;
+            flex-direction: row !important;
+            border-right: none !important;
+            border-top: 1px solid var(--border) !important;
+            overflow: hidden;
+          }
+          .vdr-main { order: 1 !important; height: auto !important; flex: 1 !important; min-height: 0 !important; }
+          .vdr-company-header { display: none !important; }
+          .vdr-nav {
+            flex: 1 !important;
+            overflow: visible !important;
+            display: flex !important;
+            flex-direction: row !important;
+            padding: 0 !important;
+            align-items: stretch !important;
+            height: 100% !important;
+          }
+          .vdr-nav-link {
+            flex: 1 !important;
+            flex-direction: column !important;
+            gap: 3px !important;
+            padding: 6px 2px !important;
+            border-radius: 0 !important;
+            margin-bottom: 0 !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          .vdr-sidebar-bottom {
+            border-top: none !important;
+            border-left: 1px solid var(--border) !important;
+            padding: 0 !important;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: stretch !important;
+            height: 100% !important;
+          }
+          .vdr-logout-btn { display: none !important; }
+        }
+      `}</style>
     </div>
   )
 }
