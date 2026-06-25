@@ -2,11 +2,11 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Loader2, Save, Send, Eye, EyeOff, Plus, Trash2, Image as ImageIcon, Star,
-  CheckCircle2, AlertTriangle, Clock, ArrowUp, ArrowDown, FileText,
+  Loader2, Upload, Save, Send, Eye, EyeOff, CheckCircle2, AlertTriangle, Clock,
+  Plus, Trash2, ArrowUp, ArrowDown, Star, FileText, Image as ImageIcon,
 } from 'lucide-react'
 import {
-  MARKETPLACE_CATEGORIES, PRICE_RANGES, PRICE_UNITS, SOCIAL_PLATFORMS,
+  MARKETPLACE_CATEGORIES, PRICE_UNITS, SOCIAL_PLATFORMS,
   moderationLabel, type ModerationStatus,
 } from '@/lib/marketplace/types'
 
@@ -23,20 +23,58 @@ interface Pkg { id: string; title: string; description: string; price_from: numb
 interface Faq { id: string; question: string; answer: string; sort_order: number }
 interface Avail { id: string; day: string; status: string }
 
-const C = {
-  bg: 'var(--bg)', surface: 'var(--surface)', border: 'var(--border)',
-  text: 'var(--text)', dim: 'var(--text-dim)', gold: 'var(--gold)', red: 'var(--red)',
-}
 const inp: React.CSSProperties = {
-  width: '100%', padding: '11px 13px', fontSize: 14, border: `1px solid ${C.border}`,
-  borderRadius: 8, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text,
+  width: '100%', padding: '11px 13px', fontSize: 14, border: '1px solid var(--border)',
+  borderRadius: 10, background: '#fff', fontFamily: 'inherit', outline: 'none',
+  boxSizing: 'border-box', color: 'var(--text)',
 }
-const lbl: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: C.dim, marginBottom: 6 }
-const card: React.CSSProperties = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 22, marginBottom: 18 }
-const h2: React.CSSProperties = { fontSize: 16, fontWeight: 700, color: C.text, margin: '0 0 16px' }
-const btn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 8, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid transparent' }
-const btnGold: React.CSSProperties = { ...btn, background: C.gold, color: '#fff' }
-const btnGhost: React.CSSProperties = { ...btn, background: '#fff', color: C.text, border: `1px solid ${C.border}` }
+const lbl: React.CSSProperties = {
+  display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 8,
+}
+const secCard: React.CSSProperties = {
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
+  padding: 20, marginBottom: 16,
+}
+const h2s: React.CSSProperties = { fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 14px' }
+const btnDark: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10,
+  fontSize: 13.5, fontWeight: 600, cursor: 'pointer', background: 'var(--accent)', color: '#fff',
+  border: 'none', fontFamily: 'inherit',
+}
+const btnGhost: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 8,
+  fontSize: 13.5, fontWeight: 600, cursor: 'pointer', background: '#fff', color: 'var(--text)',
+  border: '1px solid var(--border)', fontFamily: 'inherit',
+}
+
+function getInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase() || '?'
+}
+
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={disabled ? undefined : onChange}
+      aria-checked={checked}
+      role="switch"
+      style={{
+        width: 44, height: 26, borderRadius: 13, padding: 0,
+        background: checked ? '#34C759' : '#D1D5DB',
+        border: 'none', cursor: disabled ? 'default' : 'pointer',
+        position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+        opacity: disabled ? 0.55 : 1,
+      }}
+    >
+      <span style={{
+        position: 'absolute', top: 2, left: checked ? 20 : 2,
+        width: 22, height: 22, borderRadius: '50%', background: '#fff',
+        transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.18)', display: 'block',
+      }} />
+    </button>
+  )
+}
 
 export default function VendorListingClient() {
   const [loading, setLoading] = useState(true)
@@ -49,7 +87,6 @@ export default function VendorListingClient() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
-  // Formularfelder
   const [f, setF] = useState({
     name: '', company_name: '', category: 'sonstiges', street: '', zip: '', city: '',
     description: '', email: '', phone: '', website: '', price_range: '',
@@ -57,9 +94,6 @@ export default function VendorListingClient() {
   })
   const [social, setSocial] = useState<Record<string, string>>({})
 
-  // initial=true zeigt den Vollbild-Spinner (nur beim allerersten Laden). Alle
-  // späteren Aktualisierungen laufen still, damit die Seite nicht neu aufbaut
-  // und der Scroll nicht nach oben springt.
   const load = useCallback(async (initial = false) => {
     if (initial) setLoading(true)
     const res = await fetch('/api/vendor/marketplace/profile')
@@ -67,15 +101,12 @@ export default function VendorListingClient() {
     const d = await res.json()
     const v: Vendor = d.vendor
     setVendor(v); setLogoUrl(d.logoUrl)
-    // Galerie nur ersetzen, wenn sich die Foto-Menge wirklich geändert hat —
-    // sonst würden frisch signierte URLs die <img> unnötig neu laden (Flackern).
     const incoming: Photo[] = d.photos ?? []
     setPhotos(prev => {
       const sameSet = prev.length === incoming.length && prev.every((p, i) => p.id === incoming[i].id)
       return sameSet ? prev : incoming
     })
     setPackages(d.packages ?? []); setFaqs(d.faqs ?? []); setAvailability(d.availability ?? [])
-    // Bei freigegebenem Profil ggf. gestaffelte (in Prüfung befindliche) Werte anzeigen.
     const pc = (v.pending_changes ?? {}) as Record<string, unknown>
     const pick = (k: string, fallback: unknown) => (k in pc ? pc[k] : fallback)
     setF({
@@ -99,10 +130,10 @@ export default function VendorListingClient() {
 
   useEffect(() => { load(true) }, [load])
 
-  const flash = (kind: 'ok' | 'err', text: string) => { setMsg({ kind, text }); setTimeout(() => setMsg(null), 4000) }
+  const flash = (kind: 'ok' | 'err', text: string) => {
+    setMsg({ kind, text }); setTimeout(() => setMsg(null), 4000)
+  }
 
-  // Positive UX: sofort bestätigen, im Hintergrund speichern, danach still
-  // synchronisieren (für den „in Prüfung"-Hinweis bei sensiblen Feldern).
   function saveProfile() {
     const payload = {
       name: f.name, company_name: f.company_name, category: f.category,
@@ -124,7 +155,6 @@ export default function VendorListingClient() {
     }).catch(() => load(false))
   }
 
-  // Positive UX: Status sofort umstellen, Anfrage im Hintergrund; bei Fehler resync.
   function submitForReview() {
     setVendor(v => v ? { ...v, moderation_status: 'pending', rejected_reason: null } : v)
     flash('ok', 'Zur Prüfung eingereicht.')
@@ -143,7 +173,6 @@ export default function VendorListingClient() {
     }).then(res => { if (!res.ok) load(false) }).catch(() => load(false))
   }
 
-  // ── Uploads ────────────────────────────────────────────────────────────────
   const logoInput = useRef<HTMLInputElement>(null)
   const photoInput = useRef<HTMLInputElement>(null)
 
@@ -197,7 +226,6 @@ export default function VendorListingClient() {
     })
   }
 
-  // ── Pakete ───────────────────────────────────────────────────────────────
   async function addPackage() {
     const res = await fetch('/api/vendor/marketplace/packages', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Neues Paket' }),
@@ -218,7 +246,6 @@ export default function VendorListingClient() {
     setPackages(x => x.filter(p => p.id !== id))
   }
 
-  // ── FAQ ──────────────────────────────────────────────────────────────────
   async function addFaq() {
     const res = await fetch('/api/vendor/marketplace/faqs', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: 'Neue Frage' }),
@@ -238,7 +265,6 @@ export default function VendorListingClient() {
     setFaqs(x => x.filter(q => q.id !== id))
   }
 
-  // ── Verfügbarkeit ──────────────────────────────────────────────────────────
   const [newDay, setNewDay] = useState('')
   async function addDay() {
     if (!newDay) return
@@ -257,18 +283,26 @@ export default function VendorListingClient() {
     setAvailability(a => a.filter(d => d.day !== day))
   }
 
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setF(s => ({ ...s, [k]: e.target.value }))
+
   if (loading) {
-    return <div style={{ minHeight: '100dvh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="bp-spin" /></div>
+    return (
+      <div style={{ flex: 1, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 size={22} style={{ animation: 'spin 1s linear infinite' }} />
+      </div>
+    )
   }
   if (!vendor) {
-    return <div style={{ minHeight: '100dvh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dim }}>Kein Profil gefunden.</div>
+    return (
+      <div style={{ flex: 1, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+        Kein Profil gefunden.
+      </div>
+    )
   }
 
   const hasPending = !!vendor.pending_changes && Object.keys(vendor.pending_changes).length > 0
   const status = vendor.moderation_status
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setF(s => ({ ...s, [k]: e.target.value }))
-
-  // Pflichtangaben vor dem Einreichen (Spiegel der Server-Prüfung).
   const requirements = [
     { key: 'company', label: 'Firma / Anzeigename', ok: !!f.company_name.trim() },
     { key: 'desc', label: 'Beschreibung (mind. 30 Zeichen)', ok: f.description.trim().length >= 30 },
@@ -278,114 +312,193 @@ export default function VendorListingClient() {
   const allRequirementsMet = requirements.every(r => r.ok)
   const showRequirements = status === 'draft' || status === 'rejected'
 
+  const categoryLabel = MARKETPLACE_CATEGORIES.find(c => c.key === f.category)?.label ?? f.category
+
   return (
-    <div style={{ minHeight: '100dvh', background: C.bg, padding: '32px 20px' }}>
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        <div style={{ marginBottom: 8 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text }}>Mein Anbieter-Profil</h1>
+    <div style={{ flex: 1, background: 'var(--bg)', padding: '32px 24px 48px' }}>
+      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+
+        {/* ── Header ── */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div>
+            <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px', margin: 0 }}>Anbieter-Profil</h1>
+            <p style={{ fontSize: 13.5, color: 'var(--text-dim)', marginTop: 6, marginBottom: 0 }}>
+              So erscheint du im Forevr-Marktplatz.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, paddingTop: 4 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text)' }}>Öffentlich sichtbar</span>
+            <Toggle
+              checked={vendor.published}
+              onChange={togglePublish}
+              disabled={status !== 'approved'}
+            />
+          </div>
         </div>
 
-        {/* Status-Banner */}
-        <StatusBanner status={status} hasPending={hasPending} verified={vendor.verified} published={vendor.published} reason={vendor.rejected_reason} />
+        {/* ── Main profile card (matches design) ── */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
 
-        {/* Aktionen */}
-        <div style={card}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button onClick={saveProfile} style={btnGold}>
-              <Save size={15} /> Speichern
-            </button>
-            {showRequirements && (
-              <button onClick={submitForReview} disabled={!allRequirementsMet} style={{ ...btnGhost, opacity: allRequirementsMet ? 1 : 0.5, cursor: allRequirementsMet ? 'pointer' : 'not-allowed' }} title={allRequirementsMet ? '' : 'Bitte zuerst alle Pflichtangaben ausfüllen'}>
-                <Send size={15} /> Zur Prüfung einreichen
+          {/* Avatar + company info */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <div
+                onClick={() => logoInput.current?.click()}
+                style={{
+                  width: 56, height: 56, borderRadius: 14, cursor: 'pointer', overflow: 'hidden',
+                  background: logoUrl ? 'transparent' : 'var(--accent)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                {logoUrl
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px' }}>
+                      {getInitials(f.company_name)}
+                    </span>
+                }
+              </div>
+              <button
+                onClick={() => logoInput.current?.click()}
+                style={{
+                  position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%)',
+                  width: 22, height: 22, borderRadius: '50%', padding: 0,
+                  background: 'var(--accent)', border: '2px solid var(--bg)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                }}
+              >
+                <Upload size={11} color="#fff" />
               </button>
-            )}
-            {status === 'approved' && (
-              <button onClick={togglePublish} style={vendor.published ? btnGhost : btnGold}>
-                {vendor.published ? <><EyeOff size={15} /> Offline nehmen</> : <><Eye size={15} /> Online schalten</>}
-              </button>
-            )}
-            {msg && <span style={{ fontSize: 13, fontWeight: 600, color: msg.kind === 'ok' ? '#15803D' : C.red }}>{msg.text}</span>}
-          </div>
+              <input ref={logoInput} type="file" accept="image/*" hidden onChange={onLogo} />
+            </div>
 
-          {showRequirements && (
-            <div style={{ marginTop: 14, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.dim, marginBottom: 8 }}>Pflichtangaben vor dem Einreichen</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {requirements.map(r => (
-                  <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: r.ok ? '#15803D' : C.dim }}>
-                    {r.ok ? <CheckCircle2 size={15} /> : <span style={{ width: 15, height: 15, borderRadius: '50%', border: `1.5px solid ${C.border}`, display: 'inline-block' }} />}
-                    {r.label}
-                  </div>
-                ))}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.3px', color: 'var(--text)' }}>
+                {f.company_name || <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>Unternehmensname</span>}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 3 }}>
+                {categoryLabel}
+                {f.city ? ` · ${f.city}` : ''}
+                {f.service_radius_km ? ' & Umgebung' : ''}
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Fragebogen & Auto-Angebot */}
-        <a href="/vendor/anfrage-formular" style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit' }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(184,153,104,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <FileText size={20} style={{ color: C.gold }} />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Fragebogen & Auto-Angebot</div>
-            <div style={{ fontSize: 12.5, color: C.dim, marginTop: 2 }}>Fragen festlegen, aus denen automatisch ein Angebotsentwurf entsteht.</div>
-          </div>
-          <span style={{ ...btnGhost, pointerEvents: 'none' }}>Öffnen</span>
-        </a>
 
-        {/* Stammdaten (sensibel) */}
-        <div style={card}>
-          <h2 style={h2}>Stammdaten <SensitiveHint /></h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div><label style={lbl}>Firma / Anzeigename *</label><input style={inp} value={f.company_name} onChange={set('company_name')} placeholder="So erscheint ihr im Marktplatz" /></div>
-            <div><label style={lbl}>Ansprechpartner (intern, nicht öffentlich)</label><input style={inp} value={f.name} onChange={set('name')} /></div>
+          <div style={{ borderTop: '1px solid var(--border)', marginBottom: 18 }} />
+
+          {/* Kurzbeschreibung */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={lbl}>Kurzbeschreibung</label>
+            <textarea
+              value={f.description}
+              onChange={set('description')}
+              placeholder="Beschreibe deine Leistung kurz und prägnant…"
+              style={{ ...inp, minHeight: 90, resize: 'vertical', lineHeight: 1.55 }}
+            />
+          </div>
+
+          {/* Kategorie + Ab-Preis */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
             <div>
-              <label style={lbl}>Kategorie *</label>
-              <select style={inp} value={f.category} onChange={set('category')}>
+              <label style={lbl}>Kategorie</label>
+              <select value={f.category} onChange={set('category')} style={inp}>
                 {MARKETPLACE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
               </select>
             </div>
-            <div><label style={lbl}>Straße</label><input style={inp} value={f.street} onChange={set('street')} /></div>
-            <div><label style={lbl}>PLZ</label><input style={inp} value={f.zip} onChange={set('zip')} /></div>
-            <div><label style={lbl}>Stadt</label><input style={inp} value={f.city} onChange={set('city')} /></div>
+            <div>
+              <label style={lbl}>Ab-Preis</label>
+              <input value={f.price_range} onChange={set('price_range')} placeholder="ab 1.600 €" style={inp} />
+            </div>
+          </div>
+
+          {/* Save */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button onClick={saveProfile} style={btnDark}>
+              <Save size={15} /> Speichern
+            </button>
+            {msg && (
+              <span style={{ fontSize: 13, fontWeight: 600, color: msg.kind === 'ok' ? '#15803D' : 'var(--red)' }}>
+                {msg.text}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Profil-Inhalt (sofort live) */}
-        <div style={card}>
-          <h2 style={h2}>Beschreibung & Kontakt</h2>
-          <label style={lbl}>Beschreibung</label>
-          <textarea style={{ ...inp, minHeight: 110, resize: 'vertical' }} value={f.description} onChange={set('description')} placeholder="Stell dich und deine Leistung vor…" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
-            <div>
-              <label style={lbl}>Preisklasse</label>
-              <select style={inp} value={f.price_range} onChange={set('price_range')}>
-                <option value="">—</option>
-                {PRICE_RANGES.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
+        {/* ── Status banner ── */}
+        <StatusBanner status={status} hasPending={hasPending} verified={vendor.verified} published={vendor.published} reason={vendor.rejected_reason} />
+
+        {/* ── Submit for review (draft/rejected) ── */}
+        {showRequirements && (
+          <div style={{ ...secCard, marginBottom: 16 }}>
+            <h2 style={h2s}>Zur Prüfung einreichen</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+              {requirements.map(r => (
+                <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: r.ok ? '#15803D' : 'var(--text-dim)' }}>
+                  {r.ok
+                    ? <CheckCircle2 size={15} />
+                    : <span style={{ width: 15, height: 15, borderRadius: '50%', border: '1.5px solid var(--border)', display: 'inline-block', flexShrink: 0 }} />
+                  }
+                  {r.label}
+                </div>
+              ))}
             </div>
+            <button
+              onClick={submitForReview}
+              disabled={!allRequirementsMet}
+              style={{ ...btnDark, opacity: allRequirementsMet ? 1 : 0.5, cursor: allRequirementsMet ? 'pointer' : 'not-allowed' }}
+            >
+              <Send size={15} /> Zur Prüfung einreichen
+            </button>
+          </div>
+        )}
+
+        {/* ── Fragebogen & Auto-Angebot ── */}
+        <a
+          href="/vendor/fragebogen"
+          style={{ ...secCard, display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit' }}
+        >
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(29,29,31,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <FileText size={20} style={{ color: 'var(--accent)' }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Fragebogen & Auto-Angebot</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>
+              Fragen festlegen, aus denen automatisch ein Angebotsentwurf entsteht.
+            </div>
+          </div>
+          <span style={{ ...btnGhost, pointerEvents: 'none', flexShrink: 0 }}>Öffnen</span>
+        </a>
+
+        {/* ── Weitere Stammdaten ── */}
+        <div style={secCard}>
+          <h2 style={h2s}>Weitere Angaben <SensitiveHint /></h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div><label style={lbl}>Firma / Anzeigename *</label><input style={inp} value={f.company_name} onChange={set('company_name')} placeholder="So erscheint ihr im Marktplatz" /></div>
+            <div><label style={lbl}>Ansprechpartner (intern)</label><input style={inp} value={f.name} onChange={set('name')} /></div>
+            <div><label style={lbl}>Straße</label><input style={inp} value={f.street} onChange={set('street')} /></div>
+            <div><label style={lbl}>PLZ</label><input style={inp} value={f.zip} onChange={set('zip')} /></div>
+            <div><label style={lbl}>Stadt *</label><input style={inp} value={f.city} onChange={set('city')} /></div>
             <div><label style={lbl}>Website</label><input style={inp} value={f.website} onChange={set('website')} placeholder="https://" /></div>
             <div><label style={lbl}>E-Mail (öffentlich nach Anfrage)</label><input style={inp} value={f.email} onChange={set('email')} /></div>
             <div><label style={lbl}>Telefon (öffentlich nach Anfrage)</label><input style={inp} value={f.phone} onChange={set('phone')} /></div>
           </div>
         </div>
 
-        {/* Einsatzgebiet */}
-        <div style={card}>
-          <h2 style={h2}>Einsatzgebiet</h2>
+        {/* ── Einsatzgebiet ── */}
+        <div style={secCard}>
+          <h2 style={h2s}>Einsatzgebiet</h2>
           <label style={lbl}>Städte / Regionen (mit Komma trennen)</label>
           <input style={inp} value={f.service_cities} onChange={set('service_cities')} placeholder="München, Augsburg, Allgäu" />
-          <div style={{ marginTop: 14, maxWidth: 220 }}>
+          <div style={{ marginTop: 12, maxWidth: 220 }}>
             <label style={lbl}>Anfahrtsradius (km, optional)</label>
             <input style={inp} type="number" value={f.service_radius_km} onChange={set('service_radius_km')} placeholder="100" />
           </div>
         </div>
 
-        {/* Social-Links */}
-        <div style={card}>
-          <h2 style={h2}>Social-Media</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        {/* ── Social-Media ── */}
+        <div style={secCard}>
+          <h2 style={h2s}>Social-Media</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {SOCIAL_PLATFORMS.map(s => (
               <div key={s.key}>
                 <label style={lbl}>{s.label}</label>
@@ -395,58 +508,50 @@ export default function VendorListingClient() {
           </div>
         </div>
 
-        {/* Logo & Galerie */}
-        <div style={card}>
-          <h2 style={h2}>Logo & Galerie</h2>
-          <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div>
-              <label style={lbl}>Logo <SensitiveHint /></label>
-              <div onClick={() => logoInput.current?.click()} style={{ width: 110, height: 110, borderRadius: 12, border: `1px dashed ${C.border}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden' }}>
-                {logoUrl ? (
+        {/* ── Galerie ── */}
+        <div style={secCard}>
+          <h2 style={h2s}>Galerie</h2>
+          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px' }}>
+            Erstes Bild = Titelbild. Max. 15 Fotos.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+            {photos.map((p, i) => (
+              <div key={p.id} style={{ width: 96, height: 72, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', background: '#fff' }}>
+                {p.url && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : <ImageIcon size={26} color={C.dim} />}
-              </div>
-              <input ref={logoInput} type="file" accept="image/*" hidden onChange={onLogo} />
-            </div>
-            <div style={{ flex: 1, minWidth: 240 }}>
-              <label style={lbl}>Galerie (max. 15, erstes Bild = Titelbild)</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                {photos.map((p, i) => (
-                  <div key={p.id} style={{ width: 96, height: 72, borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.border}`, position: 'relative', background: '#fff' }}>
-                    {p.url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    )}
-                    {i === 0 && <span style={{ position: 'absolute', top: 3, left: 3, background: C.gold, color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 5 }}>Titel</span>}
-                    <div style={{ position: 'absolute', bottom: 2, right: 2, display: 'flex', gap: 2 }}>
-                      <button onClick={() => movePhoto(i, -1)} style={miniBtn} title="nach vorne"><ArrowUp size={11} /></button>
-                      <button onClick={() => movePhoto(i, 1)} style={miniBtn} title="nach hinten"><ArrowDown size={11} /></button>
-                      <button onClick={() => deletePhoto(p.id)} style={{ ...miniBtn, color: '#fff', background: 'rgba(185,28,28,0.85)' }} title="löschen"><Trash2 size={11} /></button>
-                    </div>
-                  </div>
-                ))}
-                {photos.length < 15 && (
-                  <button onClick={() => photoInput.current?.click()} disabled={uploadingPhoto} style={{ width: 96, height: 72, borderRadius: 8, border: `1px dashed ${C.border}`, background: '#fff', cursor: uploadingPhoto ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.dim }}>
-                    {uploadingPhoto ? <Loader2 size={18} className="bp-spin" /> : <Plus size={20} />}
-                  </button>
+                  <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 )}
+                {i === 0 && (
+                  <span style={{ position: 'absolute', top: 3, left: 3, background: 'var(--accent)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4 }}>
+                    Titel
+                  </span>
+                )}
+                <div style={{ position: 'absolute', bottom: 2, right: 2, display: 'flex', gap: 2 }}>
+                  <button onClick={() => movePhoto(i, -1)} style={miniBtn} title="nach vorne"><ArrowUp size={11} /></button>
+                  <button onClick={() => movePhoto(i, 1)} style={miniBtn} title="nach hinten"><ArrowDown size={11} /></button>
+                  <button onClick={() => deletePhoto(p.id)} style={{ ...miniBtn, color: '#fff', background: 'rgba(185,28,28,0.85)' }} title="löschen"><Trash2 size={11} /></button>
+                </div>
               </div>
-              <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
-            </div>
+            ))}
+            {photos.length < 15 && (
+              <button onClick={() => photoInput.current?.click()} disabled={uploadingPhoto} style={{ width: 96, height: 72, borderRadius: 8, border: '1px dashed var(--border)', background: '#fff', cursor: uploadingPhoto ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+                {uploadingPhoto ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={20} />}
+              </button>
+            )}
           </div>
+          <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
         </div>
 
-        {/* Pakete */}
-        <div style={card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ ...h2, margin: 0 }}>Pakete & Leistungen</h2>
+        {/* ── Pakete & Leistungen ── */}
+        <div style={secCard}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h2 style={{ ...h2s, margin: 0 }}>Pakete & Leistungen</h2>
             <button onClick={addPackage} style={btnGhost}><Plus size={15} /> Paket</button>
           </div>
-          {packages.length === 0 && <p style={{ color: C.dim, fontSize: 13, margin: 0 }}>Noch keine Pakete.</p>}
+          {packages.length === 0 && <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: 0 }}>Noch keine Pakete.</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {packages.map((p, idx) => (
-              <div key={p.id} style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 14 }}>
+              <div key={p.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
                 <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
                   <input style={{ ...inp, flex: 1 }} value={p.title} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, title: e.target.value } : x))} placeholder="Titel" />
                   <input style={{ ...inp, width: 120 }} type="number" value={p.price_from ?? ''} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, price_from: e.target.value === '' ? null : Number(e.target.value) } : x))} placeholder="Preis €" />
@@ -456,67 +561,78 @@ export default function VendorListingClient() {
                 </div>
                 <textarea style={{ ...inp, minHeight: 60, resize: 'vertical' }} value={p.description} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, description: e.target.value } : x))} placeholder="Was ist enthalten?" />
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button onClick={() => savePackage(p)} style={btnGold}><Save size={14} /> Speichern</button>
-                  <button onClick={() => delPackage(p.id)} style={{ ...btnGhost, color: C.red }}><Trash2 size={14} /></button>
+                  <button onClick={() => savePackage(p)} style={btnDark}><Save size={14} /> Speichern</button>
+                  <button onClick={() => delPackage(p.id)} style={{ ...btnGhost, color: 'var(--red)' }}><Trash2 size={14} /></button>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* FAQ */}
-        <div style={card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ ...h2, margin: 0 }}>FAQ</h2>
+        {/* ── FAQ ── */}
+        <div style={secCard}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <h2 style={{ ...h2s, margin: 0 }}>FAQ</h2>
             <button onClick={addFaq} style={btnGhost}><Plus size={15} /> Frage</button>
           </div>
-          {faqs.length === 0 && <p style={{ color: C.dim, fontSize: 13, margin: 0 }}>Noch keine Fragen.</p>}
+          {faqs.length === 0 && <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: 0 }}>Noch keine Fragen.</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {faqs.map((q, idx) => (
-              <div key={q.id} style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 14 }}>
+              <div key={q.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
                 <input style={{ ...inp, marginBottom: 8 }} value={q.question} onChange={e => setFaqs(a => a.map((x, i) => i === idx ? { ...x, question: e.target.value } : x))} placeholder="Frage" />
                 <textarea style={{ ...inp, minHeight: 60, resize: 'vertical' }} value={q.answer} onChange={e => setFaqs(a => a.map((x, i) => i === idx ? { ...x, answer: e.target.value } : x))} placeholder="Antwort" />
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button onClick={() => saveFaq(q)} style={btnGold}><Save size={14} /> Speichern</button>
-                  <button onClick={() => delFaq(q.id)} style={{ ...btnGhost, color: C.red }}><Trash2 size={14} /></button>
+                  <button onClick={() => saveFaq(q)} style={btnDark}><Save size={14} /> Speichern</button>
+                  <button onClick={() => delFaq(q.id)} style={{ ...btnGhost, color: 'var(--red)' }}><Trash2 size={14} /></button>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Verfügbarkeit */}
-        <div style={card}>
-          <h2 style={h2}>Verfügbarkeit — belegte Tage</h2>
-          <p style={{ color: C.dim, fontSize: 13, margin: '0 0 12px' }}>Markiere belegte Termine. Brautpaare sehen, ob du an ihrem Hochzeitsdatum frei bist.</p>
+        {/* ── Verfügbarkeit ── */}
+        <div style={secCard}>
+          <h2 style={h2s}>Verfügbarkeit — belegte Tage</h2>
+          <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: '0 0 12px' }}>
+            Markiere belegte Termine. Brautpaare sehen, ob du an ihrem Hochzeitsdatum frei bist.
+          </p>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <input style={{ ...inp, maxWidth: 200 }} type="date" value={newDay} onChange={e => setNewDay(e.target.value)} />
             <button onClick={addDay} style={btnGhost}><Plus size={15} /> Tag blockieren</button>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {availability.map(d => (
-              <span key={d.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 999, background: '#fff', border: `1px solid ${C.border}`, fontSize: 12.5 }}>
+              <span key={d.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 999, background: '#fff', border: '1px solid var(--border)', fontSize: 12.5 }}>
                 {new Date(d.day).toLocaleDateString('de-DE')}
-                <button onClick={() => delDay(d.day)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex', padding: 0 }}><Trash2 size={12} /></button>
+                <button onClick={() => delDay(d.day)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', display: 'flex', padding: 0 }}>
+                  <Trash2 size={12} />
+                </button>
               </span>
             ))}
-            {availability.length === 0 && <span style={{ color: C.dim, fontSize: 13 }}>Keine belegten Tage.</span>}
+            {availability.length === 0 && <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>Keine belegten Tage.</span>}
           </div>
         </div>
 
         <div style={{ height: 40 }} />
       </div>
+
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
 
 const miniBtn: React.CSSProperties = {
   display: 'flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18,
-  borderRadius: 5, border: 'none', background: 'rgba(255,255,255,0.85)', cursor: 'pointer', color: '#333', padding: 0,
+  borderRadius: 5, border: 'none', background: 'rgba(255,255,255,0.85)', cursor: 'pointer',
+  color: '#333', padding: 0,
 }
 
 function SensitiveHint() {
-  return <span title="Änderungen werden vor der Veröffentlichung geprüft" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginLeft: 6 }}>· wird geprüft</span>
+  return (
+    <span title="Änderungen werden vor der Veröffentlichung geprüft" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginLeft: 6 }}>
+      · wird geprüft
+    </span>
+  )
 }
 
 function StatusBanner({ status, hasPending, verified, published, reason }: {
@@ -525,20 +641,25 @@ function StatusBanner({ status, hasPending, verified, published, reason }: {
   const map: Record<string, { bg: string; fg: string; icon: React.ReactNode; text: string }> = {
     draft: { bg: '#FEF9F0', fg: '#92600A', icon: <Clock size={16} />, text: 'Entwurf — vervollständige dein Profil und reiche es zur Prüfung ein.' },
     pending: { bg: '#EFF6FF', fg: '#1D4ED8', icon: <Clock size={16} />, text: 'In Prüfung — wir melden uns, sobald dein Profil freigegeben ist.' },
-    approved: { bg: '#F0FDF4', fg: '#15803D', icon: <CheckCircle2 size={16} />, text: published ? 'Freigegeben und online sichtbar.' : 'Freigegeben — aktuell offline. Schalte es online, um sichtbar zu sein.' },
+    approved: { bg: '#F0FDF4', fg: '#15803D', icon: <CheckCircle2 size={16} />, text: published ? 'Freigegeben und online sichtbar.' : 'Freigegeben — aktuell offline.' },
     rejected: { bg: '#FEF2F2', fg: '#B91C1C', icon: <AlertTriangle size={16} />, text: `Abgelehnt: ${reason ?? 'Bitte überarbeite dein Profil.'}` },
     suspended: { bg: '#FEF2F2', fg: '#B91C1C', icon: <AlertTriangle size={16} />, text: 'Gesperrt — bitte kontaktiere den Support.' },
   }
   const s = map[status]
+  if (!s) return null
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderRadius: 10, background: s.bg, color: s.fg, fontSize: 13.5, fontWeight: 600 }}>
         {s.icon} {moderationLabel(status)} · {s.text}
-        {verified && <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#15803D' }}><Star size={14} /> Verifiziert</span>}
+        {verified && (
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4, color: '#15803D' }}>
+            <Star size={14} /> Verifiziert
+          </span>
+        )}
       </div>
       {hasPending && status === 'approved' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: 10, background: '#EFF6FF', color: '#1D4ED8', fontSize: 13, fontWeight: 600 }}>
-          <Clock size={15} /> Du hast Änderungen an sensiblen Feldern vorgenommen — sie werden geprüft. Bis dahin bleibt die freigegebene Version online.
+          <Clock size={15} /> Du hast Änderungen an sensiblen Feldern vorgenommen — sie werden geprüft.
         </div>
       )}
     </div>
