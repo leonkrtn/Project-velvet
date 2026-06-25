@@ -478,6 +478,40 @@ export default function VendorListingClient() {
               </div>
             )}
 
+            {/* ── Galerie ── */}
+            <div style={secCard}>
+              <h2 style={h2s}>Galerie</h2>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px' }}>
+                Erstes Bild = Titelbild. Max. 15 Fotos.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+                {photos.map((p, i) => (
+                  <div key={p.id} style={{ width: 96, height: 72, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', background: '#fff' }}>
+                    {p.url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
+                    {i === 0 && (
+                      <span style={{ position: 'absolute', top: 3, left: 3, background: 'var(--accent)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4 }}>
+                        Titel
+                      </span>
+                    )}
+                    <div style={{ position: 'absolute', bottom: 2, right: 2, display: 'flex', gap: 2 }}>
+                      <button onClick={() => movePhoto(i, -1)} style={miniBtn} title="nach vorne"><ArrowUp size={11} /></button>
+                      <button onClick={() => movePhoto(i, 1)} style={miniBtn} title="nach hinten"><ArrowDown size={11} /></button>
+                      <button onClick={() => deletePhoto(p.id)} style={{ ...miniBtn, color: '#fff', background: 'rgba(185,28,28,0.85)' }} title="löschen"><Trash2 size={11} /></button>
+                    </div>
+                  </div>
+                ))}
+                {photos.length < 15 && (
+                  <button onClick={() => photoInput.current?.click()} disabled={uploadingPhoto} style={{ width: 96, height: 72, borderRadius: 8, border: '1px dashed var(--border)', background: '#fff', cursor: uploadingPhoto ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+                    {uploadingPhoto ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={20} />}
+                  </button>
+                )}
+              </div>
+              <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
+            </div>
+
             {/* ── Weitere Stammdaten ── */}
             <div style={secCard}>
               <h2 style={h2s}>Weitere Angaben <SensitiveHint /></h2>
@@ -515,40 +549,6 @@ export default function VendorListingClient() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* ── Galerie ── */}
-            <div style={secCard}>
-              <h2 style={h2s}>Galerie</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px' }}>
-                Erstes Bild = Titelbild. Max. 15 Fotos.
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-                {photos.map((p, i) => (
-                  <div key={p.id} style={{ width: 96, height: 72, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', background: '#fff' }}>
-                    {p.url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    )}
-                    {i === 0 && (
-                      <span style={{ position: 'absolute', top: 3, left: 3, background: 'var(--accent)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4 }}>
-                        Titel
-                      </span>
-                    )}
-                    <div style={{ position: 'absolute', bottom: 2, right: 2, display: 'flex', gap: 2 }}>
-                      <button onClick={() => movePhoto(i, -1)} style={miniBtn} title="nach vorne"><ArrowUp size={11} /></button>
-                      <button onClick={() => movePhoto(i, 1)} style={miniBtn} title="nach hinten"><ArrowDown size={11} /></button>
-                      <button onClick={() => deletePhoto(p.id)} style={{ ...miniBtn, color: '#fff', background: 'rgba(185,28,28,0.85)' }} title="löschen"><Trash2 size={11} /></button>
-                    </div>
-                  </div>
-                ))}
-                {photos.length < 15 && (
-                  <button onClick={() => photoInput.current?.click()} disabled={uploadingPhoto} style={{ width: 96, height: 72, borderRadius: 8, border: '1px dashed var(--border)', background: '#fff', cursor: uploadingPhoto ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
-                    {uploadingPhoto ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={20} />}
-                  </button>
-                )}
-              </div>
-              <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
             </div>
 
             {/* ── Pakete & Leistungen ── */}

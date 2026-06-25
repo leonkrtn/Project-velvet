@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ReceiptText, FileText, Check, X, Clock, Copy, ChevronRight, Loader2 } from 'lucide-react'
+import { ReceiptText, FileText, Check, X, Clock, Copy, ChevronRight, Loader2, Search } from 'lucide-react'
 import { formatMoney } from '@/lib/vendor/questionnaire'
 
 interface OfferRow {
@@ -37,6 +37,7 @@ const GROUPS: { key: OfferRow['status']; label: string }[] = [
 export default function AngeboteGlobalClient() {
   const [offers, setOffers] = useState<OfferRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
   const load = useCallback(async () => {
     const res = await fetch('/api/vendor/global-offers')
@@ -47,11 +48,26 @@ export default function AngeboteGlobalClient() {
 
   useEffect(() => { load() }, [load])
 
+  const filtered = useMemo(() => {
+    if (!search.trim()) return offers
+    const q = search.trim().toUpperCase()
+    return offers.filter(o => {
+      const ev = o.events
+      return (
+        o.title.toUpperCase().includes(q) ||
+        (ev?.couple_name ?? '').toUpperCase().includes(q) ||
+        (ev?.title ?? '').toUpperCase().includes(q) ||
+        o.id.toUpperCase().includes(q) ||
+        (ev?.date ? new Date(ev.date).toLocaleDateString('de-DE') : '').includes(q)
+      )
+    })
+  }, [offers, search])
+
   const grouped = useMemo(() => {
     const map: Record<string, OfferRow[]> = {}
-    for (const o of offers) (map[o.status] ??= []).push(o)
+    for (const o of filtered) (map[o.status] ??= []).push(o)
     return map
-  }, [offers])
+  }, [filtered])
 
   const hasAny = offers.length > 0
 
@@ -67,6 +83,20 @@ export default function AngeboteGlobalClient() {
             <p style={{ fontSize: 13.5, color: 'var(--text-dim)', marginTop: 2 }}>Alle Angebote über alle Events hinweg.</p>
           </div>
         </div>
+
+        {!loading && offers.length > 0 && (
+          <div style={{ position: 'relative', marginBottom: 20 }}>
+            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Nach Brautpaar, Datum oder Angebots-ID suchen …"
+              style={{ width: '100%', padding: '10px 14px 10px 34px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: 'var(--text)' }}
+              onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+            />
+          </div>
+        )}
 
         {loading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 8 }}>
@@ -125,7 +155,9 @@ export default function AngeboteGlobalClient() {
 function GlobalOfferTile({ o }: { o: OfferRow }) {
   const m = STATUS_META[o.status]
   const ev = o.events
-  const eventLabel = ev?.couple_name ?? ev?.title ?? 'Event'
+  const coupleName = ev?.couple_name ?? ev?.title ?? 'Unbekanntes Event'
+  const dateStr = ev?.date ? new Date(ev.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null
+  const displayTitle = dateStr ? `${coupleName} | ${dateStr}` : coupleName
   return (
     <Link href={`/vendor/dashboard/${o.event_id}/angebote/${o.id}`} style={{
       textAlign: 'left', textDecoration: 'none', fontFamily: 'inherit', width: '100%',
@@ -138,12 +170,12 @@ function GlobalOfferTile({ o }: { o: OfferRow }) {
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 15, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.title}</span>
+          <span style={{ fontSize: 15, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayTitle}</span>
           {o.version > 1 && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>v{o.version}</span>}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: m.bg, color: m.fg }}>{m.icon} {m.label}</span>
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4 }}>
-          {eventLabel} · Aktualisiert {new Date(o.updated_at).toLocaleDateString('de-DE')}
+          {o.title} · #{o.id.slice(0, 8).toUpperCase()} · Aktualisiert {new Date(o.updated_at).toLocaleDateString('de-DE')}
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
