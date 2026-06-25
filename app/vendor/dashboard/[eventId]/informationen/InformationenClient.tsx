@@ -54,9 +54,11 @@ export default function InformationenClient({ eventId, event, confirmed, pending
   }
 
   return (
-    <div style={{ padding: '28px 24px 48px' }}>
-    <div style={{ maxWidth: 720, margin: '0 auto' }}>
-      <div style={{ marginBottom: 28 }}>
+    <div style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1 }}>
+    <div style={{ maxWidth: 1400, margin: '0 auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
+
+      {/* ── Title ── */}
+      <div style={{ marginBottom: 24 }}>
         <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-tertiary)', marginBottom: 6 }}>Informationen</p>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>{event.title}</h1>
         {event.couple_name && (
@@ -66,56 +68,62 @@ export default function InformationenClient({ eventId, event, confirmed, pending
         )}
       </div>
 
-      {/* Event details */}
-      <Card title="Veranstaltungsdetails">
-        {event.event_type && <DetailRow icon={<Tag size={15} />} label="Art">{EVENT_TYPE_LABELS[event.event_type] ?? event.event_type}</DetailRow>}
-        <DetailRow icon={<Calendar size={15} />} label="Datum">
-          {event.date ? new Date(event.date).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
-        </DetailRow>
-        <DetailRow icon={<MapPin size={15} />} label="Location">
-          {event.venue ? <>{event.venue}{event.venue_address ? <span style={{ color: 'var(--text-tertiary)', marginLeft: 6 }}>· {event.venue_address}</span> : null}</> : '—'}
-        </DetailRow>
-        <DetailRow icon={<Users size={15} />} label="Gäste" last>
-          {confirmed > 0 ? <>{confirmed} bestätigt{pending > 0 ? <span style={{ color: 'var(--text-tertiary)', marginLeft: 6 }}>· {pending} ausstehend</span> : null}</> : '—'}
-        </DetailRow>
-      </Card>
+      {/* ── Two-column layout ── */}
+      <div className="info-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
-      {/* Contacts */}
-      {(brautpaar.length > 0 || veranstalter.length > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: brautpaar.length && veranstalter.length ? '1fr 1fr' : '1fr', gap: 14, marginTop: 18 }} className="info-contact-grid">
-          {brautpaar.length > 0 && <ContactCard title="Brautpaar" icon={<Heart size={14} style={{ color: 'var(--gold)' }} />} contacts={brautpaar} />}
-          {veranstalter.length > 0 && <ContactCard title="Veranstalter" icon={<UserCircle size={14} />} contacts={veranstalter} />}
-        </div>
-      )}
+        {/* Left: Details + Contacts */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Card title="Veranstaltungsdetails">
+            {event.event_type && <DetailRow icon={<Tag size={15} />} label="Art">{EVENT_TYPE_LABELS[event.event_type] ?? event.event_type}</DetailRow>}
+            <DetailRow icon={<Calendar size={15} />} label="Datum">
+              {event.date ? new Date(event.date).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+            </DetailRow>
+            <DetailRow icon={<MapPin size={15} />} label="Location">
+              {event.venue ? <>{event.venue}{event.venue_address ? <span style={{ color: 'var(--text-tertiary)', marginLeft: 6 }}>· {event.venue_address}</span> : null}</> : '—'}
+            </DetailRow>
+            <DetailRow icon={<Users size={15} />} label="Gäste" last>
+              {confirmed > 0 ? <>{confirmed} bestätigt{pending > 0 ? <span style={{ color: 'var(--text-tertiary)', marginLeft: 6 }}>· {pending} ausstehend</span> : null}</> : '—'}
+            </DetailRow>
+          </Card>
 
-      {/* Internal notes */}
-      <div style={{ marginTop: 28 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <Lock size={14} style={{ color: 'var(--text-tertiary)' }} />
-          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-tertiary)', margin: 0 }}>Interne Notizen</p>
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            {saveState === 'saving' && <><Loader2 size={12} className="spin" /> Speichert…</>}
-            {saveState === 'saved' && <><Check size={12} /> Gespeichert</>}
-          </span>
+          {(brautpaar.length > 0 || veranstalter.length > 0) && (
+            <div style={{ display: 'grid', gridTemplateColumns: brautpaar.length && veranstalter.length ? '1fr 1fr' : '1fr', gap: 14 }} className="info-contact-grid">
+              {brautpaar.length > 0 && <ContactCard title="Brautpaar" icon={<Heart size={14} style={{ color: 'var(--gold)' }} />} contacts={brautpaar} />}
+              {veranstalter.length > 0 && <ContactCard title="Veranstalter" icon={<UserCircle size={14} />} contacts={veranstalter} />}
+            </div>
+          )}
         </div>
-        <p style={{ fontSize: 12.5, color: 'var(--text-tertiary)', marginBottom: 10 }}>
-          Nur für euer Team sichtbar — das Brautpaar kann diese Notizen nicht sehen.
-        </p>
-        <textarea
-          value={notes}
-          onChange={e => onNotesChange(e.target.value)}
-          disabled={!loadedNotes}
-          placeholder="z. B. Anfahrt, Ansprechpartner vor Ort, interne To-Dos…"
-          rows={8}
-          style={{
-            width: '100%', boxSizing: 'border-box', padding: '14px 16px',
-            border: '1px solid var(--border)', borderRadius: 12, fontSize: 14.5, lineHeight: 1.6,
-            fontFamily: 'inherit', resize: 'vertical', outline: 'none', background: 'var(--surface)', color: 'var(--text-primary)',
-          }}
-        />
+
+        {/* Right: Internal notes */}
+        <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px 18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <Lock size={14} style={{ color: 'var(--text-tertiary)' }} />
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-tertiary)', margin: 0 }}>Interne Notizen</p>
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              {saveState === 'saving' && <><Loader2 size={12} className="spin" /> Speichert…</>}
+              {saveState === 'saved' && <><Check size={12} /> Gespeichert</>}
+            </span>
+          </div>
+          <p style={{ fontSize: 12.5, color: 'var(--text-tertiary)', marginBottom: 10 }}>
+            Nur für euer Team sichtbar — das Brautpaar kann diese Notizen nicht sehen.
+          </p>
+          <textarea
+            value={notes}
+            onChange={e => onNotesChange(e.target.value)}
+            disabled={!loadedNotes}
+            placeholder="z. B. Anfahrt, Ansprechpartner vor Ort, interne To-Dos…"
+            rows={10}
+            style={{
+              width: '100%', boxSizing: 'border-box', padding: '14px 16px',
+              border: '1px solid var(--border)', borderRadius: 12, fontSize: 14.5, lineHeight: 1.6,
+              fontFamily: 'inherit', resize: 'vertical', outline: 'none', background: 'var(--surface)', color: 'var(--text-primary)',
+            }}
+          />
+        </div>
       </div>
 
       <style>{`
+        @media (max-width: 900px) { .info-two-col { grid-template-columns: 1fr !important; } }
         @media (max-width: 540px) { .info-contact-grid { grid-template-columns: 1fr !important; } }
         .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>

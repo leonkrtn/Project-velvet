@@ -71,8 +71,8 @@ export default function AngeboteClient({ eventId }: { eventId: string }) {
   }
 
   return (
-    <div style={{ padding: '28px 24px 48px' }}>
-    <div style={{ maxWidth: 760, margin: '0 auto' }}>
+    <div style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1 }}>
+    <div style={{ maxWidth: 1400, margin: '0 auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <ReceiptText size={20} style={{ color: 'var(--gold)' }} />
