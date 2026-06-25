@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
-  Calendar, MessageSquare, User, LogOut, Bell,
+  Calendar, MessageSquare, User, LogOut, Bell, ClipboardList,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
@@ -25,6 +25,7 @@ const NAV = [
   { key: 'ubersicht',   label: 'Übersicht',    href: '/vendor/ubersicht',   icon: LayoutDashboard },
   { key: 'anfragen',    label: 'Anfragen',     href: '/vendor/anfragen',    icon: Inbox,         badgeKey: 'pendingAnfragen' as const },
   { key: 'angebote',   label: 'Angebote',     href: '/vendor/angebote',    icon: ReceiptText },
+  { key: 'anfrage-formular', label: 'Anfrage-Formular', href: '/vendor/fragebogen', icon: ClipboardList },
   { key: 'events',     label: 'Events',       href: '/vendor/dashboard',   icon: Calendar },
   { key: 'nachrichten',label: 'Nachrichten',  href: '/vendor/nachrichten', icon: MessageSquare, badgeKey: 'unreadNachrichten' as const },
 ] as const
@@ -45,7 +46,7 @@ function activeKey(pathname: string): NavKey {
   if (pathname.startsWith('/vendor/ubersicht'))       return 'ubersicht'
   if (pathname.startsWith('/vendor/anfragen'))        return 'anfragen'
   if (pathname.startsWith('/vendor/angebote'))        return 'angebote'
-  if (pathname.startsWith('/vendor/anfrage-formular'))return 'anfrage-formular'
+  if (pathname.startsWith('/vendor/fragebogen') || pathname.startsWith('/vendor/anfrage-formular')) return 'anfrage-formular'
   if (pathname.startsWith('/vendor/nachrichten'))     return 'nachrichten'
   if (pathname.startsWith('/vendor/listing'))         return 'listing'
   if (pathname.startsWith('/vendor/dashboard'))       return 'events'
