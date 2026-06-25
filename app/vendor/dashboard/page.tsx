@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import GlobalVendorShell from '@/components/vendor/GlobalVendorShell'
 import VendorEventsClient from './VendorEventsClient'
 
 export const dynamic = 'force-dynamic'
@@ -41,16 +40,14 @@ export default async function VendorOverviewPage() {
     .filter((e): e is EventRow => !!e)
 
   return (
-    <GlobalVendorShell>
-      <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '32px 24px 48px' }}>
-        <div style={{ maxWidth: 680, margin: '0 auto' }}>
-          <div style={{ marginBottom: 28 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>Meine Events</h1>
-            <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 4 }}>Alle Events, bei denen du als Dienstleister eingetragen bist.</p>
-          </div>
-          <VendorEventsClient events={events} acceptedEventIds={acceptedEventIds} />
+    <div style={{ minHeight: '100%', background: 'var(--bg)', padding: '32px 24px 48px' }}>
+      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+        <div style={{ marginBottom: 28 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>Meine Events</h1>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>Alle Events, bei denen du als Dienstleister eingetragen bist.</p>
         </div>
+        <VendorEventsClient events={events} acceptedEventIds={acceptedEventIds} />
       </div>
-    </GlobalVendorShell>
+    </div>
   )
 }

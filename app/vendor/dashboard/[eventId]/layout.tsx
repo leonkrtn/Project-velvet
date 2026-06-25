@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import VendorSidebarLayout from './VendorSidebarLayout'
+import VendorEventTabBar from './VendorEventTabBar'
 
 interface Props {
   children: React.ReactNode
@@ -32,12 +32,12 @@ export default async function VendorDashboardLayout({ children, params }: Props)
   if (!event) redirect('/vendor/dashboard')
 
   return (
-    <VendorSidebarLayout
+    <VendorEventTabBar
       eventId={eventId}
       eventTitle={event.title}
       eventDate={event.date ?? null}
     >
       {children}
-    </VendorSidebarLayout>
+    </VendorEventTabBar>
   )
 }
