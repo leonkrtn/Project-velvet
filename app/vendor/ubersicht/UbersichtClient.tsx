@@ -94,8 +94,8 @@ export default function UbersichtClient() {
   const pipelineTotal = s.pipelineValue || 1
 
   return (
-    <div style={{ padding: '28px 32px 48px', background: 'var(--bg)', flex: 1 }}>
-      <div style={{ maxWidth: 940, margin: '0 auto' }}>
+    <div style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1 }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
 
         {/* ── Greeting ── */}
         <div style={{ marginBottom: 28 }}>

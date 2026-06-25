@@ -320,7 +320,7 @@ export default function VendorListingClient() {
 
   return (
     <div style={{ flex: 1, background: 'var(--bg)', padding: '28px 24px 48px', overflow: 'auto' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
 
         {/* ── Header ── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -602,7 +602,9 @@ export default function VendorListingClient() {
             <div style={{ height: 40 }} />
           </>
         ) : (
-          <FragebogenBuilderClient category={f.category} />
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20 }}>
+            <FragebogenBuilderClient category={f.category} />
+          </div>
         )}
       </div>
 
