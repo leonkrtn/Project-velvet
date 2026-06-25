@@ -2,45 +2,70 @@
 
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Inbox, Calendar, ReceiptText, Check, ArrowRight, Loader2 } from 'lucide-react'
+import { Inbox, Loader2 } from 'lucide-react'
 
 interface Stats {
   pendingAnfragen: number
-  eventCount: number
+  newAnfragenThisWeek: number
   releasedOffers: number
+  offersValue: number
   acceptedOffers: number
+  upcomingEvents: number
+  nextEventDays: number | null
+  pipelineValue: number
+  pipelineAnfragenCount: number
+  pipelineAnfragenValue: number
+  pipelineAngeboteCount: number
+  pipelineAngeboteValue: number
 }
 
-interface RecentAnfrage {
+interface AttentionItem {
   id: string
-  status: string
+  type: 'anfrage'
+  title: string
   created_at: string
-  events: { title: string; date: string | null; couple_name: string | null } | null
 }
 
 interface Data {
+  vendorName: string
   stats: Stats
-  recentAnfragen: RecentAnfrage[]
+  attentionItems: AttentionItem[]
+}
+
+function formatEur(n: number): string {
+  return new Intl.NumberFormat('de-DE').format(Math.round(n)) + ' €'
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (mins < 2) return 'gerade'
+  if (mins < 60) return `vor ${mins} Min.`
+  if (hours < 24) return `vor ${hours} Std.`
+  if (days < 7) return `vor ${days} Tagen`
+  return new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: 'long' })
+}
+
+function todayGerman(): string {
+  return new Date().toLocaleDateString('de-DE', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  })
 }
 
 const card: React.CSSProperties = {
-  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '22px 24px',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
+  padding: '20px',
 }
 
-function KpiCard({ icon, label, value, href }: { icon: React.ReactNode; label: string; value: number; href?: string }) {
-  const inner = (
-    <div style={{ ...card, display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(184,153,104,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        {icon}
-      </div>
-      <div>
-        <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.8px', lineHeight: 1 }}>{value}</div>
-        <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 4 }}>{label}</div>
-      </div>
-    </div>
-  )
-  if (href) return <Link href={href} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>{inner}</Link>
-  return inner
+const EMPTY_STATS: Stats = {
+  pendingAnfragen: 0, newAnfragenThisWeek: 0, releasedOffers: 0, offersValue: 0,
+  acceptedOffers: 0, upcomingEvents: 0, nextEventDays: null,
+  pipelineValue: 0, pipelineAnfragenCount: 0, pipelineAnfragenValue: 0,
+  pipelineAngeboteCount: 0, pipelineAngeboteValue: 0,
 }
 
 export default function UbersichtClient() {
@@ -56,100 +81,198 @@ export default function UbersichtClient() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Loader2 size={20} className="ub-spin" style={{ color: 'var(--text-dim)' }} />
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <Loader2 size={20} className="ub-spin" style={{ color: 'var(--text-tertiary)' }} />
         <style>{`.ub-spin{animation:ubspin 1s linear infinite}@keyframes ubspin{to{transform:rotate(360deg)}}`}</style>
       </div>
     )
   }
 
-  const stats = data?.stats ?? { pendingAnfragen: 0, eventCount: 0, releasedOffers: 0, acceptedOffers: 0 }
-  const recent = data?.recentAnfragen ?? []
+  const s = data?.stats ?? EMPTY_STATS
+  const vendorName = data?.vendorName ?? ''
+  const attention = data?.attentionItems ?? []
+  const pipelineTotal = s.pipelineValue || 1
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '32px 24px 48px' }}>
-      <div style={{ maxWidth: 800, margin: '0 auto' }}>
+    <div style={{ padding: '28px 32px 48px', background: 'var(--bg)', flex: 1 }}>
+      <div style={{ maxWidth: 940, margin: '0 auto' }}>
+
+        {/* ── Greeting ── */}
         <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>Übersicht</h1>
-          <p style={{ fontSize: 14, color: 'var(--text-dim)', marginTop: 4 }}>Dein persönliches Anbieter-Dashboard.</p>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+            {todayGerman()}
+          </p>
+          <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.5px', color: 'var(--text-primary)', marginBottom: 6, lineHeight: 1.1 }}>
+            Guten Tag{vendorName ? `, ${vendorName}` : ''}
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+            Hier ist dein Überblick über alle Anfragen, Angebote und Events.
+          </p>
         </div>
 
-        {/* KPI cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16, marginBottom: 32 }}>
-          <KpiCard
-            icon={<Inbox size={18} style={{ color: 'var(--gold)' }} />}
-            label="Offene Anfragen"
-            value={stats.pendingAnfragen}
-            href="/vendor/anfragen"
-          />
-          <KpiCard
-            icon={<Calendar size={18} style={{ color: 'var(--gold)' }} />}
-            label="Meine Events"
-            value={stats.eventCount}
-            href="/vendor/dashboard"
-          />
-          <KpiCard
-            icon={<ReceiptText size={18} style={{ color: 'var(--gold)' }} />}
-            label="Angebote versendet"
-            value={stats.releasedOffers}
-            href="/vendor/angebote"
-          />
-          <KpiCard
-            icon={<Check size={18} style={{ color: 'var(--gold)' }} />}
-            label="Aufträge angenommen"
-            value={stats.acceptedOffers}
-            href="/vendor/angebote"
-          />
-        </div>
+        {/* ── 4 Stat cards ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
 
-        {/* Recent requests */}
-        {recent.length > 0 && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Letzte Anfragen</h2>
-              <Link href="/vendor/anfragen" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--gold)', textDecoration: 'none', fontWeight: 600 }}>
-                Alle ansehen <ArrowRight size={14} />
-              </Link>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {recent.map(r => {
-                const ev = r.events
-                const title = ev?.couple_name ?? ev?.title ?? 'Anfrage'
-                const date = ev?.date ? new Date(ev.date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : null
-                const statusMeta = r.status === 'pending'
-                  ? { label: 'Offen', bg: 'rgba(184,153,104,0.14)', fg: 'var(--gold)' }
-                  : r.status === 'accepted'
-                  ? { label: 'Angenommen', bg: 'rgba(30,126,52,0.12)', fg: '#1E7E34' }
-                  : { label: 'Erledigt', bg: 'var(--bg)', fg: 'var(--text-dim)' }
-                return (
-                  <Link key={r.id} href="/vendor/anfragen" style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit', transition: 'box-shadow .15s, border-color .15s' }}
-                    onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm, 0 4px 16px rgba(0,0,0,0.06))'; e.currentTarget.style.borderColor = 'var(--gold)' }}
-                    onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
-                  >
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 15, fontWeight: 600 }}>{title}</span>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: statusMeta.bg, color: statusMeta.fg }}>{statusMeta.label}</span>
-                      </div>
-                      {date && <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 3 }}>{date}</div>}
-                    </div>
-                    <ArrowRight size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {recent.length === 0 && stats.pendingAnfragen === 0 && (
-          <div style={{ ...card, textAlign: 'center', padding: '40px 24px' }}>
-            <div style={{ opacity: 0.3, display: 'flex', justifyContent: 'center', marginBottom: 12 }}><Inbox size={30} /></div>
-            <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Noch keine Aktivität</p>
-            <p style={{ fontSize: 13.5, color: 'var(--text-dim)', lineHeight: 1.6, maxWidth: 340, margin: '0 auto' }}>
-              Sobald Brautpaare eine Anfrage stellen oder du einem Event beitrittst, erscheint hier deine Aktivität.
+          {/* Offene Anfragen */}
+          <Link href="/vendor/anfragen" style={{ ...card, display: 'block', textDecoration: 'none', color: 'inherit' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>Offene Anfragen</p>
+            <p style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-1px', lineHeight: 1, color: 'var(--text-primary)', marginBottom: 8 }}>
+              {s.pendingAnfragen}
             </p>
+            {s.newAnfragenThisWeek > 0
+              ? <p style={{ fontSize: 12, color: 'var(--orange)', fontWeight: 500 }}>+{s.newAnfragenThisWeek} diese Woche</p>
+              : <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Keine neuen diese Woche</p>
+            }
+          </Link>
+
+          {/* Angebote versendet */}
+          <Link href="/vendor/angebote" style={{ ...card, display: 'block', textDecoration: 'none', color: 'inherit' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>Angebote versendet</p>
+            <p style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-1px', lineHeight: 1, color: 'var(--text-primary)', marginBottom: 8 }}>
+              {s.releasedOffers}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              {s.offersValue > 0 ? `Wert ${formatEur(s.offersValue)}` : 'Keine ausstehend'}
+            </p>
+          </Link>
+
+          {/* Anstehende Events */}
+          <Link href="/vendor/dashboard" style={{ ...card, display: 'block', textDecoration: 'none', color: 'inherit' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>Anstehende Events</p>
+            <p style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-1px', lineHeight: 1, color: 'var(--text-primary)', marginBottom: 8 }}>
+              {s.upcomingEvents}
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              {s.nextEventDays === 0
+                ? 'Heute'
+                : s.nextEventDays != null
+                ? `nächstes in ${s.nextEventDays} Tagen`
+                : 'Keine bevorstehenden'}
+            </p>
+          </Link>
+
+          {/* Pipeline-Wert — dark card */}
+          <div style={{ ...card, background: 'var(--accent)', border: 'none' }}>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginBottom: 10 }}>Pipeline-Wert</p>
+            <p style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.8px', lineHeight: 1.15, color: '#fff', marginBottom: 8, wordBreak: 'break-word' }}>
+              {formatEur(s.pipelineValue)}
+            </p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>offen · noch nicht gebucht</p>
           </div>
-        )}
+        </div>
+
+        {/* ── Bottom: two columns ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'start' }}>
+
+          {/* Braucht deine Aufmerksamkeit */}
+          <div style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', flex: 1, margin: 0 }}>
+                Braucht deine Aufmerksamkeit
+              </h2>
+              {attention.length > 0 && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, background: 'var(--red)', color: '#fff',
+                  borderRadius: '50%', width: 22, height: 22,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  {attention.length > 9 ? '9+' : attention.length}
+                </span>
+              )}
+            </div>
+
+            {attention.length === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 0', gap: 8 }}>
+                <div style={{ opacity: 0.25 }}><Inbox size={28} /></div>
+                <p style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>
+                  Alles erledigt — keine offenen Anfragen.
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {attention.map((item, i) => (
+                  <Link
+                    key={item.id}
+                    href="/vendor/anfragen"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
+                      borderTop: i > 0 ? '1px solid var(--border)' : 'none',
+                      textDecoration: 'none', color: 'inherit',
+                    }}
+                  >
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                      background: 'rgba(255,149,0,0.1)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Inbox size={16} style={{ color: 'var(--orange)' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{
+                        fontSize: 14, fontWeight: 600, color: 'var(--text-primary)',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0,
+                      }}>
+                        Neue Anfrage · {item.title}
+                      </p>
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                      {timeAgo(item.created_at)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Pipeline */}
+          <div style={card}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 18, margin: '0 0 18px' }}>
+              Pipeline
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Anfragen row */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 7 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>Anfragen</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {s.pipelineAnfragenCount} · {formatEur(s.pipelineAnfragenValue)}
+                  </span>
+                </div>
+                <div style={{ height: 5, borderRadius: 100, background: 'var(--border2)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%', borderRadius: 100, background: 'var(--accent)',
+                    width: `${Math.round((s.pipelineAnfragenValue / pipelineTotal) * 100)}%`,
+                    transition: 'width 0.6s ease',
+                  }} />
+                </div>
+              </div>
+
+              {/* Angebote row */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 7 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>Angebote</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {s.pipelineAngeboteCount} · {formatEur(s.pipelineAngeboteValue)}
+                  </span>
+                </div>
+                <div style={{ height: 5, borderRadius: 100, background: 'var(--border2)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%', borderRadius: 100, background: 'var(--accent)',
+                    width: `${Math.round((s.pipelineAngeboteValue / pipelineTotal) * 100)}%`,
+                    transition: 'width 0.6s ease',
+                  }} />
+                </div>
+              </div>
+            </div>
+
+            {s.pipelineValue === 0 && (
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 16 }}>
+                Noch keine Pipeline-Daten vorhanden.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
