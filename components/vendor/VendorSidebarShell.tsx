@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
-  Calendar, MessageSquare, User, LogOut, Bell, ClipboardList,
+  Calendar, MessageSquare, User, LogOut, ClipboardList,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
@@ -25,7 +25,7 @@ const NAV = [
   { key: 'ubersicht',   label: 'Übersicht',    href: '/vendor/ubersicht',   icon: LayoutDashboard },
   { key: 'anfragen',    label: 'Anfragen',     href: '/vendor/anfragen',    icon: Inbox,         badgeKey: 'pendingAnfragen' as const },
   { key: 'angebote',   label: 'Angebote',     href: '/vendor/angebote',    icon: ReceiptText },
-  { key: 'anfrage-formular', label: 'Anfrage-Formular', href: '/vendor/fragebogen', icon: ClipboardList },
+  { key: 'anfrage-formular', label: 'Anfrage-Formular', href: '/vendor/anfrage-formular', icon: ClipboardList },
   { key: 'events',     label: 'Events',       href: '/vendor/dashboard',   icon: Calendar },
   { key: 'nachrichten',label: 'Nachrichten',  href: '/vendor/nachrichten', icon: MessageSquare, badgeKey: 'unreadNachrichten' as const },
 ] as const
@@ -172,37 +172,13 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         {/* Top header bar — only for global pages (event pages have VendorEventTabBar) */}
         {!isEventPage && (
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            display: 'flex', alignItems: 'center',
             padding: '0 24px', height: 52, flexShrink: 0,
             background: '#fff', borderBottom: '1px solid var(--border)',
           }}>
             <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)' }}>
               {PAGE_TITLES[active]}
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button style={{
-                background: 'none', border: 'none', cursor: 'pointer', padding: 6,
-                color: 'var(--text-secondary)', display: 'flex', alignItems: 'center',
-                position: 'relative',
-              }}>
-                <Bell size={18} />
-                {(badges.pendingAnfragen + badges.unreadNachrichten) > 0 && (
-                  <span style={{
-                    position: 'absolute', top: 4, right: 4,
-                    width: 7, height: 7, borderRadius: '50%',
-                    background: '#EF4444', border: '1.5px solid #fff',
-                  }} />
-                )}
-              </button>
-              <div style={{
-                width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                background: 'var(--accent)', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 700, letterSpacing: '-0.2px',
-              }}>
-                {companyInitials}
-              </div>
-            </div>
           </div>
         )}
         {children}
