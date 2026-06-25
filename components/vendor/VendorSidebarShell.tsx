@@ -3,9 +3,10 @@ import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Inbox, ReceiptText, FileText,
-  Calendar, MessageSquare, User, LogOut,
+  LayoutDashboard, Inbox, ReceiptText,
+  Calendar, MessageSquare, User, LogOut, Bell,
 } from 'lucide-react'
+
 import { performLogout } from '@/lib/logout'
 
 interface Props {
@@ -24,11 +25,21 @@ const NAV = [
   { key: 'ubersicht',   label: 'Übersicht',    href: '/vendor/ubersicht',   icon: LayoutDashboard },
   { key: 'anfragen',    label: 'Anfragen',     href: '/vendor/anfragen',    icon: Inbox,         badgeKey: 'pendingAnfragen' as const },
   { key: 'angebote',   label: 'Angebote',     href: '/vendor/angebote',    icon: ReceiptText },
-  { key: 'events',     label: 'Meine Events', href: '/vendor/dashboard',   icon: Calendar },
+  { key: 'events',     label: 'Events',       href: '/vendor/dashboard',   icon: Calendar },
   { key: 'nachrichten',label: 'Nachrichten',  href: '/vendor/nachrichten', icon: MessageSquare, badgeKey: 'unreadNachrichten' as const },
 ] as const
 
 type NavKey = (typeof NAV)[number]['key'] | 'listing' | 'anfrage-formular'
+
+const PAGE_TITLES: Record<NavKey, string> = {
+  ubersicht: 'Übersicht',
+  anfragen: 'Anfragen',
+  angebote: 'Angebote',
+  events: 'Events',
+  nachrichten: 'Nachrichten',
+  listing: 'Anbieter-Profil',
+  'anfrage-formular': 'Anfrage-Formular',
+}
 
 function activeKey(pathname: string): NavKey {
   if (pathname.startsWith('/vendor/ubersicht'))       return 'ubersicht'
@@ -46,6 +57,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
   const [badges, setBadges] = useState<BadgeData>({ pendingAnfragen: 0, unreadNachrichten: 0 })
   const active = activeKey(pathname)
   const isKommunikation = pathname.includes('/kommunikation')
+  const isEventPage = pathname.startsWith('/vendor/dashboard/')
 
   // Skip sidebar for public pages
   const noShell = pathname.startsWith('/vendor/join') || pathname.startsWith('/vendor/signup')
@@ -129,10 +141,6 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
 
         {/* Bottom */}
         <div style={{ padding: '8px 8px 16px', borderTop: '1px solid var(--border)' }}>
-          <Link href="/vendor/anfrage-formular" style={navStyle('anfrage-formular')}>
-            <FileText size={16} style={{ flexShrink: 0, opacity: active === 'anfrage-formular' ? 1 : 0.5 }} />
-            <span>Anfrage-Formular</span>
-          </Link>
           <Link href="/vendor/listing" style={navStyle('listing')}>
             <User size={16} style={{ flexShrink: 0, opacity: active === 'listing' ? 1 : 0.5 }} />
             <span>Anbieter-Profil</span>
@@ -160,6 +168,42 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         overflow: isKommunikation ? 'hidden' : 'auto',
         display: 'flex', flexDirection: 'column',
       }}>
+        {/* Top header bar — only for global pages (event pages have VendorEventTabBar) */}
+        {!isEventPage && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '0 24px', height: 52, flexShrink: 0,
+            background: '#fff', borderBottom: '1px solid var(--border)',
+          }}>
+            <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)' }}>
+              {PAGE_TITLES[active]}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 6,
+                color: 'var(--text-secondary)', display: 'flex', alignItems: 'center',
+                position: 'relative',
+              }}>
+                <Bell size={18} />
+                {(badges.pendingAnfragen + badges.unreadNachrichten) > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 4, right: 4,
+                    width: 7, height: 7, borderRadius: '50%',
+                    background: '#EF4444', border: '1.5px solid #fff',
+                  }} />
+                )}
+              </button>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                background: 'var(--accent)', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 700, letterSpacing: '-0.2px',
+              }}>
+                {companyInitials}
+              </div>
+            </div>
+          </div>
+        )}
         {children}
       </div>
 
