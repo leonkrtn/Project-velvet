@@ -54,7 +54,8 @@ export default function InformationenClient({ eventId, event, confirmed, pending
   }
 
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div style={{ padding: '28px 24px 48px' }}>
+    <div style={{ maxWidth: 720, margin: '0 auto' }}>
       <div style={{ marginBottom: 28 }}>
         <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-tertiary)', marginBottom: 6 }}>Informationen</p>
         <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>{event.title}</h1>
@@ -118,6 +119,7 @@ export default function InformationenClient({ eventId, event, confirmed, pending
         @media (max-width: 540px) { .info-contact-grid { grid-template-columns: 1fr !important; } }
         .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
+    </div>
     </div>
   )
 }

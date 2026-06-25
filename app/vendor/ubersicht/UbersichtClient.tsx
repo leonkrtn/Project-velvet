@@ -154,7 +154,7 @@ export default function UbersichtClient() {
           {/* Pipeline-Wert — dark card */}
           <div style={{ ...card, background: 'var(--accent)', border: 'none' }}>
             <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginBottom: 10 }}>Pipeline-Wert</p>
-            <p style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.8px', lineHeight: 1.15, color: '#fff', marginBottom: 8, wordBreak: 'break-word' }}>
+            <p style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.8px', lineHeight: 1.15, color: '#fff', marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {formatEur(s.pipelineValue)}
             </p>
             <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>offen · noch nicht gebucht</p>
@@ -162,7 +162,7 @@ export default function UbersichtClient() {
         </div>
 
         {/* ── Bottom: two columns ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'stretch' }}>
 
           {/* Braucht deine Aufmerksamkeit */}
           <div style={card}>

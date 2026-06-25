@@ -2,13 +2,14 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Loader2, Upload, Save, Send, Eye, EyeOff, CheckCircle2, AlertTriangle, Clock,
-  Plus, Trash2, ArrowUp, ArrowDown, Star, FileText, Image as ImageIcon,
+  Loader2, Upload, Save, Send, CheckCircle2, AlertTriangle, Clock,
+  Plus, Trash2, ArrowUp, ArrowDown, Star,
 } from 'lucide-react'
 import {
   MARKETPLACE_CATEGORIES, PRICE_UNITS, SOCIAL_PLATFORMS,
   moderationLabel, type ModerationStatus,
 } from '@/lib/marketplace/types'
+import FragebogenBuilderClient from '@/app/vendor/anfrage-formular/FragebogenBuilderClient'
 
 interface Vendor {
   id: string; name: string; company_name: string | null; category: string
@@ -76,7 +77,10 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
   )
 }
 
+type ListingTab = 'anzeige' | 'anfrageformular'
+
 export default function VendorListingClient() {
+  const [activeTab, setActiveTab] = useState<ListingTab>('anzeige')
   const [loading, setLoading] = useState(true)
   const [vendor, setVendor] = useState<Vendor | null>(null)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
@@ -315,7 +319,7 @@ export default function VendorListingClient() {
   const categoryLabel = MARKETPLACE_CATEGORIES.find(c => c.key === f.category)?.label ?? f.category
 
   return (
-    <div style={{ flex: 1, background: 'var(--bg)', padding: '32px 24px 48px' }}>
+    <div style={{ flex: 1, background: 'var(--bg)', padding: '28px 24px 48px', overflow: 'auto' }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
 
         {/* ── Header ── */}
@@ -336,284 +340,270 @@ export default function VendorListingClient() {
           </div>
         </div>
 
-        {/* ── Main profile card (matches design) ── */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
-
-          {/* Avatar + company info */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-            <div style={{ position: 'relative', flexShrink: 0 }}>
-              <div
-                onClick={() => logoInput.current?.click()}
-                style={{
-                  width: 56, height: 56, borderRadius: 14, cursor: 'pointer', overflow: 'hidden',
-                  background: logoUrl ? 'transparent' : 'var(--accent)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                {logoUrl
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px' }}>
-                      {getInitials(f.company_name)}
-                    </span>
-                }
-              </div>
-              <button
-                onClick={() => logoInput.current?.click()}
-                style={{
-                  position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%)',
-                  width: 22, height: 22, borderRadius: '50%', padding: 0,
-                  background: 'var(--accent)', border: '2px solid var(--bg)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                }}
-              >
-                <Upload size={11} color="#fff" />
-              </button>
-              <input ref={logoInput} type="file" accept="image/*" hidden onChange={onLogo} />
-            </div>
-
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.3px', color: 'var(--text)' }}>
-                {f.company_name || <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>Unternehmensname</span>}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 3 }}>
-                {categoryLabel}
-                {f.city ? ` · ${f.city}` : ''}
-                {f.service_radius_km ? ' & Umgebung' : ''}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid var(--border)', marginBottom: 18 }} />
-
-          {/* Kurzbeschreibung */}
-          <div style={{ marginBottom: 16 }}>
-            <label style={lbl}>Kurzbeschreibung</label>
-            <textarea
-              value={f.description}
-              onChange={set('description')}
-              placeholder="Beschreibe deine Leistung kurz und prägnant…"
-              style={{ ...inp, minHeight: 90, resize: 'vertical', lineHeight: 1.55 }}
-            />
-          </div>
-
-          {/* Kategorie + Ab-Preis */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-            <div>
-              <label style={lbl}>Kategorie</label>
-              <select value={f.category} onChange={set('category')} style={inp}>
-                {MARKETPLACE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Ab-Preis</label>
-              <input value={f.price_range} onChange={set('price_range')} placeholder="ab 1.600 €" style={inp} />
-            </div>
-          </div>
-
-          {/* Save */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={saveProfile} style={btnDark}>
-              <Save size={15} /> Speichern
-            </button>
-            {msg && (
-              <span style={{ fontSize: 13, fontWeight: 600, color: msg.kind === 'ok' ? '#15803D' : 'var(--red)' }}>
-                {msg.text}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* ── Status banner ── */}
-        <StatusBanner status={status} hasPending={hasPending} verified={vendor.verified} published={vendor.published} reason={vendor.rejected_reason} />
-
-        {/* ── Submit for review (draft/rejected) ── */}
-        {showRequirements && (
-          <div style={{ ...secCard, marginBottom: 16 }}>
-            <h2 style={h2s}>Zur Prüfung einreichen</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-              {requirements.map(r => (
-                <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: r.ok ? '#15803D' : 'var(--text-dim)' }}>
-                  {r.ok
-                    ? <CheckCircle2 size={15} />
-                    : <span style={{ width: 15, height: 15, borderRadius: '50%', border: '1.5px solid var(--border)', display: 'inline-block', flexShrink: 0 }} />
-                  }
-                  {r.label}
-                </div>
-              ))}
-            </div>
+        {/* ── Tab switcher ── */}
+        <div style={{ display: 'inline-flex', background: 'var(--border)', borderRadius: 10, padding: 3, marginBottom: 24, gap: 2 }}>
+          {(['anzeige', 'anfrageformular'] as ListingTab[]).map(tab => (
             <button
-              onClick={submitForReview}
-              disabled={!allRequirementsMet}
-              style={{ ...btnDark, opacity: allRequirementsMet ? 1 : 0.5, cursor: allRequirementsMet ? 'pointer' : 'not-allowed' }}
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: '7px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600,
+                background: activeTab === tab ? 'var(--surface)' : 'transparent',
+                color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
+                boxShadow: activeTab === tab ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
+                transition: 'all 0.15s',
+              }}
             >
-              <Send size={15} /> Zur Prüfung einreichen
+              {tab === 'anzeige' ? 'Anzeige' : 'Anfrageformular'}
             </button>
-          </div>
-        )}
-
-        {/* ── Fragebogen & Auto-Angebot ── */}
-        <a
-          href="/vendor/fragebogen"
-          style={{ ...secCard, display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none', color: 'inherit' }}
-        >
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(29,29,31,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <FileText size={20} style={{ color: 'var(--accent)' }} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>Fragebogen & Auto-Angebot</div>
-            <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 2 }}>
-              Fragen festlegen, aus denen automatisch ein Angebotsentwurf entsteht.
-            </div>
-          </div>
-          <span style={{ ...btnGhost, pointerEvents: 'none', flexShrink: 0 }}>Öffnen</span>
-        </a>
-
-        {/* ── Weitere Stammdaten ── */}
-        <div style={secCard}>
-          <h2 style={h2s}>Weitere Angaben <SensitiveHint /></h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div><label style={lbl}>Firma / Anzeigename *</label><input style={inp} value={f.company_name} onChange={set('company_name')} placeholder="So erscheint ihr im Marktplatz" /></div>
-            <div><label style={lbl}>Ansprechpartner (intern)</label><input style={inp} value={f.name} onChange={set('name')} /></div>
-            <div><label style={lbl}>Straße</label><input style={inp} value={f.street} onChange={set('street')} /></div>
-            <div><label style={lbl}>PLZ</label><input style={inp} value={f.zip} onChange={set('zip')} /></div>
-            <div><label style={lbl}>Stadt *</label><input style={inp} value={f.city} onChange={set('city')} /></div>
-            <div><label style={lbl}>Website</label><input style={inp} value={f.website} onChange={set('website')} placeholder="https://" /></div>
-            <div><label style={lbl}>E-Mail (öffentlich nach Anfrage)</label><input style={inp} value={f.email} onChange={set('email')} /></div>
-            <div><label style={lbl}>Telefon (öffentlich nach Anfrage)</label><input style={inp} value={f.phone} onChange={set('phone')} /></div>
-          </div>
+          ))}
         </div>
 
-        {/* ── Einsatzgebiet ── */}
-        <div style={secCard}>
-          <h2 style={h2s}>Einsatzgebiet</h2>
-          <label style={lbl}>Städte / Regionen (mit Komma trennen)</label>
-          <input style={inp} value={f.service_cities} onChange={set('service_cities')} placeholder="München, Augsburg, Allgäu" />
-          <div style={{ marginTop: 12, maxWidth: 220 }}>
-            <label style={lbl}>Anfahrtsradius (km, optional)</label>
-            <input style={inp} type="number" value={f.service_radius_km} onChange={set('service_radius_km')} placeholder="100" />
-          </div>
-        </div>
+        {activeTab === 'anzeige' ? (
+          <>
+            {/* ── Main profile card ── */}
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
 
-        {/* ── Social-Media ── */}
-        <div style={secCard}>
-          <h2 style={h2s}>Social-Media</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {SOCIAL_PLATFORMS.map(s => (
-              <div key={s.key}>
-                <label style={lbl}>{s.label}</label>
-                <input style={inp} value={social[s.key] ?? ''} onChange={e => setSocial(p => ({ ...p, [s.key]: e.target.value }))} placeholder="https://" />
-              </div>
-            ))}
-          </div>
-        </div>
+              {/* Avatar + company info */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <div
+                    onClick={() => logoInput.current?.click()}
+                    style={{
+                      width: 56, height: 56, borderRadius: 14, cursor: 'pointer', overflow: 'hidden',
+                      background: logoUrl ? 'transparent' : 'var(--accent)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    {logoUrl
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <span style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px' }}>
+                          {getInitials(f.company_name)}
+                        </span>
+                    }
+                  </div>
+                  <button
+                    onClick={() => logoInput.current?.click()}
+                    style={{
+                      position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%)',
+                      width: 22, height: 22, borderRadius: '50%', padding: 0,
+                      background: 'var(--accent)', border: '2px solid var(--bg)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                    }}
+                  >
+                    <Upload size={11} color="#fff" />
+                  </button>
+                  <input ref={logoInput} type="file" accept="image/*" hidden onChange={onLogo} />
+                </div>
 
-        {/* ── Galerie ── */}
-        <div style={secCard}>
-          <h2 style={h2s}>Galerie</h2>
-          <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px' }}>
-            Erstes Bild = Titelbild. Max. 15 Fotos.
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-            {photos.map((p, i) => (
-              <div key={p.id} style={{ width: 96, height: 72, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', background: '#fff' }}>
-                {p.url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                )}
-                {i === 0 && (
-                  <span style={{ position: 'absolute', top: 3, left: 3, background: 'var(--accent)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4 }}>
-                    Titel
-                  </span>
-                )}
-                <div style={{ position: 'absolute', bottom: 2, right: 2, display: 'flex', gap: 2 }}>
-                  <button onClick={() => movePhoto(i, -1)} style={miniBtn} title="nach vorne"><ArrowUp size={11} /></button>
-                  <button onClick={() => movePhoto(i, 1)} style={miniBtn} title="nach hinten"><ArrowDown size={11} /></button>
-                  <button onClick={() => deletePhoto(p.id)} style={{ ...miniBtn, color: '#fff', background: 'rgba(185,28,28,0.85)' }} title="löschen"><Trash2 size={11} /></button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.3px', color: 'var(--text)' }}>
+                    {f.company_name || <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>Unternehmensname</span>}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 3 }}>
+                    {categoryLabel}
+                    {f.city ? ` · ${f.city}` : ''}
+                    {f.service_radius_km ? ' & Umgebung' : ''}
+                  </div>
                 </div>
               </div>
-            ))}
-            {photos.length < 15 && (
-              <button onClick={() => photoInput.current?.click()} disabled={uploadingPhoto} style={{ width: 96, height: 72, borderRadius: 8, border: '1px dashed var(--border)', background: '#fff', cursor: uploadingPhoto ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
-                {uploadingPhoto ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={20} />}
-              </button>
-            )}
-          </div>
-          <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
-        </div>
 
-        {/* ── Pakete & Leistungen ── */}
-        <div style={secCard}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h2 style={{ ...h2s, margin: 0 }}>Pakete & Leistungen</h2>
-            <button onClick={addPackage} style={btnGhost}><Plus size={15} /> Paket</button>
-          </div>
-          {packages.length === 0 && <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: 0 }}>Noch keine Pakete.</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {packages.map((p, idx) => (
-              <div key={p.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-                  <input style={{ ...inp, flex: 1 }} value={p.title} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, title: e.target.value } : x))} placeholder="Titel" />
-                  <input style={{ ...inp, width: 120 }} type="number" value={p.price_from ?? ''} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, price_from: e.target.value === '' ? null : Number(e.target.value) } : x))} placeholder="Preis €" />
-                  <select style={{ ...inp, width: 140 }} value={p.price_unit} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, price_unit: e.target.value } : x))}>
-                    {PRICE_UNITS.map(u => <option key={u.key} value={u.key}>{u.label}</option>)}
+              <div style={{ borderTop: '1px solid var(--border)', marginBottom: 18 }} />
+
+              {/* Kurzbeschreibung */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={lbl}>Kurzbeschreibung</label>
+                <textarea
+                  value={f.description}
+                  onChange={set('description')}
+                  placeholder="Beschreibe deine Leistung kurz und prägnant…"
+                  style={{ ...inp, minHeight: 90, resize: 'vertical', lineHeight: 1.55 }}
+                />
+              </div>
+
+              {/* Kategorie + Ab-Preis */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                <div>
+                  <label style={lbl}>Kategorie</label>
+                  <select value={f.category} onChange={set('category')} style={inp}>
+                    {MARKETPLACE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                   </select>
                 </div>
-                <textarea style={{ ...inp, minHeight: 60, resize: 'vertical' }} value={p.description} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, description: e.target.value } : x))} placeholder="Was ist enthalten?" />
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button onClick={() => savePackage(p)} style={btnDark}><Save size={14} /> Speichern</button>
-                  <button onClick={() => delPackage(p.id)} style={{ ...btnGhost, color: 'var(--red)' }}><Trash2 size={14} /></button>
+                <div>
+                  <label style={lbl}>Ab-Preis</label>
+                  <input value={f.price_range} onChange={set('price_range')} placeholder="ab 1.600 €" style={inp} />
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* ── FAQ ── */}
-        <div style={secCard}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h2 style={{ ...h2s, margin: 0 }}>FAQ</h2>
-            <button onClick={addFaq} style={btnGhost}><Plus size={15} /> Frage</button>
-          </div>
-          {faqs.length === 0 && <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: 0 }}>Noch keine Fragen.</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {faqs.map((q, idx) => (
-              <div key={q.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-                <input style={{ ...inp, marginBottom: 8 }} value={q.question} onChange={e => setFaqs(a => a.map((x, i) => i === idx ? { ...x, question: e.target.value } : x))} placeholder="Frage" />
-                <textarea style={{ ...inp, minHeight: 60, resize: 'vertical' }} value={q.answer} onChange={e => setFaqs(a => a.map((x, i) => i === idx ? { ...x, answer: e.target.value } : x))} placeholder="Antwort" />
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button onClick={() => saveFaq(q)} style={btnDark}><Save size={14} /> Speichern</button>
-                  <button onClick={() => delFaq(q.id)} style={{ ...btnGhost, color: 'var(--red)' }}><Trash2 size={14} /></button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Verfügbarkeit ── */}
-        <div style={secCard}>
-          <h2 style={h2s}>Verfügbarkeit — belegte Tage</h2>
-          <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: '0 0 12px' }}>
-            Markiere belegte Termine. Brautpaare sehen, ob du an ihrem Hochzeitsdatum frei bist.
-          </p>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <input style={{ ...inp, maxWidth: 200 }} type="date" value={newDay} onChange={e => setNewDay(e.target.value)} />
-            <button onClick={addDay} style={btnGhost}><Plus size={15} /> Tag blockieren</button>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {availability.map(d => (
-              <span key={d.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 999, background: '#fff', border: '1px solid var(--border)', fontSize: 12.5 }}>
-                {new Date(d.day).toLocaleDateString('de-DE')}
-                <button onClick={() => delDay(d.day)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red)', display: 'flex', padding: 0 }}>
-                  <Trash2 size={12} />
+              {/* Save */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button onClick={saveProfile} style={btnDark}>
+                  <Save size={15} /> Speichern
                 </button>
-              </span>
-            ))}
-            {availability.length === 0 && <span style={{ color: 'var(--text-dim)', fontSize: 13 }}>Keine belegten Tage.</span>}
-          </div>
-        </div>
+                {msg && (
+                  <span style={{ fontSize: 13, fontWeight: 600, color: msg.kind === 'ok' ? '#15803D' : 'var(--red)' }}>
+                    {msg.text}
+                  </span>
+                )}
+              </div>
+            </div>
 
-        <div style={{ height: 40 }} />
+            {/* ── Status banner ── */}
+            <StatusBanner status={status} hasPending={hasPending} verified={vendor.verified} published={vendor.published} reason={vendor.rejected_reason} />
+
+            {/* ── Submit for review (draft/rejected) ── */}
+            {showRequirements && (
+              <div style={{ ...secCard, marginBottom: 16 }}>
+                <h2 style={h2s}>Zur Prüfung einreichen</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                  {requirements.map(r => (
+                    <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: r.ok ? '#15803D' : 'var(--text-dim)' }}>
+                      {r.ok
+                        ? <CheckCircle2 size={15} />
+                        : <span style={{ width: 15, height: 15, borderRadius: '50%', border: '1.5px solid var(--border)', display: 'inline-block', flexShrink: 0 }} />
+                      }
+                      {r.label}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={submitForReview}
+                  disabled={!allRequirementsMet}
+                  style={{ ...btnDark, opacity: allRequirementsMet ? 1 : 0.5, cursor: allRequirementsMet ? 'pointer' : 'not-allowed' }}
+                >
+                  <Send size={15} /> Zur Prüfung einreichen
+                </button>
+              </div>
+            )}
+
+            {/* ── Weitere Stammdaten ── */}
+            <div style={secCard}>
+              <h2 style={h2s}>Weitere Angaben <SensitiveHint /></h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div><label style={lbl}>Firma / Anzeigename *</label><input style={inp} value={f.company_name} onChange={set('company_name')} placeholder="So erscheint ihr im Marktplatz" /></div>
+                <div><label style={lbl}>Ansprechpartner (intern)</label><input style={inp} value={f.name} onChange={set('name')} /></div>
+                <div><label style={lbl}>Straße</label><input style={inp} value={f.street} onChange={set('street')} /></div>
+                <div><label style={lbl}>PLZ</label><input style={inp} value={f.zip} onChange={set('zip')} /></div>
+                <div><label style={lbl}>Stadt *</label><input style={inp} value={f.city} onChange={set('city')} /></div>
+                <div><label style={lbl}>Website</label><input style={inp} value={f.website} onChange={set('website')} placeholder="https://" /></div>
+                <div><label style={lbl}>E-Mail (öffentlich nach Anfrage)</label><input style={inp} value={f.email} onChange={set('email')} /></div>
+                <div><label style={lbl}>Telefon (öffentlich nach Anfrage)</label><input style={inp} value={f.phone} onChange={set('phone')} /></div>
+              </div>
+            </div>
+
+            {/* ── Einsatzgebiet ── */}
+            <div style={secCard}>
+              <h2 style={h2s}>Einsatzgebiet</h2>
+              <label style={lbl}>Städte / Regionen (mit Komma trennen)</label>
+              <input style={inp} value={f.service_cities} onChange={set('service_cities')} placeholder="München, Augsburg, Allgäu" />
+              <div style={{ marginTop: 12, maxWidth: 220 }}>
+                <label style={lbl}>Anfahrtsradius (km, optional)</label>
+                <input style={inp} type="number" value={f.service_radius_km} onChange={set('service_radius_km')} placeholder="100" />
+              </div>
+            </div>
+
+            {/* ── Social-Media ── */}
+            <div style={secCard}>
+              <h2 style={h2s}>Social-Media</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {SOCIAL_PLATFORMS.map(s => (
+                  <div key={s.key}>
+                    <label style={lbl}>{s.label}</label>
+                    <input style={inp} value={social[s.key] ?? ''} onChange={e => setSocial(p => ({ ...p, [s.key]: e.target.value }))} placeholder="https://" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Galerie ── */}
+            <div style={secCard}>
+              <h2 style={h2s}>Galerie</h2>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px' }}>
+                Erstes Bild = Titelbild. Max. 15 Fotos.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+                {photos.map((p, i) => (
+                  <div key={p.id} style={{ width: 96, height: 72, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', background: '#fff' }}>
+                    {p.url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
+                    {i === 0 && (
+                      <span style={{ position: 'absolute', top: 3, left: 3, background: 'var(--accent)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4 }}>
+                        Titel
+                      </span>
+                    )}
+                    <div style={{ position: 'absolute', bottom: 2, right: 2, display: 'flex', gap: 2 }}>
+                      <button onClick={() => movePhoto(i, -1)} style={miniBtn} title="nach vorne"><ArrowUp size={11} /></button>
+                      <button onClick={() => movePhoto(i, 1)} style={miniBtn} title="nach hinten"><ArrowDown size={11} /></button>
+                      <button onClick={() => deletePhoto(p.id)} style={{ ...miniBtn, color: '#fff', background: 'rgba(185,28,28,0.85)' }} title="löschen"><Trash2 size={11} /></button>
+                    </div>
+                  </div>
+                ))}
+                {photos.length < 15 && (
+                  <button onClick={() => photoInput.current?.click()} disabled={uploadingPhoto} style={{ width: 96, height: 72, borderRadius: 8, border: '1px dashed var(--border)', background: '#fff', cursor: uploadingPhoto ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+                    {uploadingPhoto ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={20} />}
+                  </button>
+                )}
+              </div>
+              <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
+            </div>
+
+            {/* ── Pakete & Leistungen ── */}
+            <div style={secCard}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <h2 style={{ ...h2s, margin: 0 }}>Pakete & Leistungen</h2>
+                <button onClick={addPackage} style={btnGhost}><Plus size={15} /> Paket</button>
+              </div>
+              {packages.length === 0 && <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: 0 }}>Noch keine Pakete.</p>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {packages.map((p, idx) => (
+                  <div key={p.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                      <input style={{ ...inp, flex: 1 }} value={p.title} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, title: e.target.value } : x))} placeholder="Titel" />
+                      <input style={{ ...inp, width: 120 }} type="number" value={p.price_from ?? ''} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, price_from: e.target.value === '' ? null : Number(e.target.value) } : x))} placeholder="Preis €" />
+                      <select style={{ ...inp, width: 140 }} value={p.price_unit} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, price_unit: e.target.value } : x))}>
+                        {PRICE_UNITS.map(u => <option key={u.key} value={u.key}>{u.label}</option>)}
+                      </select>
+                    </div>
+                    <textarea style={{ ...inp, minHeight: 60, resize: 'vertical' }} value={p.description} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, description: e.target.value } : x))} placeholder="Was ist enthalten?" />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button onClick={() => savePackage(p)} style={btnDark}><Save size={14} /> Speichern</button>
+                      <button onClick={() => delPackage(p.id)} style={{ ...btnGhost, color: 'var(--red)' }}><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── FAQ ── */}
+            <div style={secCard}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <h2 style={{ ...h2s, margin: 0 }}>FAQ</h2>
+                <button onClick={addFaq} style={btnGhost}><Plus size={15} /> Frage</button>
+              </div>
+              {faqs.length === 0 && <p style={{ color: 'var(--text-dim)', fontSize: 13, margin: 0 }}>Noch keine Fragen.</p>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {faqs.map((q, idx) => (
+                  <div key={q.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
+                    <input style={{ ...inp, marginBottom: 8 }} value={q.question} onChange={e => setFaqs(a => a.map((x, i) => i === idx ? { ...x, question: e.target.value } : x))} placeholder="Frage" />
+                    <textarea style={{ ...inp, minHeight: 60, resize: 'vertical' }} value={q.answer} onChange={e => setFaqs(a => a.map((x, i) => i === idx ? { ...x, answer: e.target.value } : x))} placeholder="Antwort" />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button onClick={() => saveFaq(q)} style={btnDark}><Save size={14} /> Speichern</button>
+                      <button onClick={() => delFaq(q.id)} style={{ ...btnGhost, color: 'var(--red)' }}><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ height: 40 }} />
+          </>
+        ) : (
+          <FragebogenBuilderClient category={f.category} />
+        )}
       </div>
 
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>

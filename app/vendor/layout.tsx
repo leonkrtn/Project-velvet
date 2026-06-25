@@ -2,6 +2,7 @@ import React from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import VendorSidebarShell from '@/components/vendor/VendorSidebarShell'
+import { requestDownloadUrl } from '@/lib/files/worker-client'
 
 function initials(name: string): string {
   const w = name.trim().split(/\s+/).filter(Boolean)
@@ -14,6 +15,7 @@ export default async function VendorLayout({ children }: { children: React.React
   let companyName = ''
   let companyInitials = '?'
   let category = ''
+  let logoUrl: string | null = null
 
   try {
     const supabase = await createClient()
@@ -28,13 +30,16 @@ export default async function VendorLayout({ children }: { children: React.React
       if (link) {
         const { data: vendor } = await admin
           .from('dienstleister_profiles')
-          .select('name, company_name, category')
+          .select('name, company_name, category, logo_r2_key')
           .eq('id', link.dienstleister_id)
           .maybeSingle()
         if (vendor) {
           companyName = ((vendor.company_name as string) || (vendor.name as string) || '').trim()
           companyInitials = initials(companyName || (vendor.name as string) || '')
           category = (vendor.category as string) || ''
+          if (vendor.logo_r2_key) {
+            logoUrl = await requestDownloadUrl(vendor.logo_r2_key as string).catch(() => null)
+          }
         }
       }
     }
@@ -47,6 +52,7 @@ export default async function VendorLayout({ children }: { children: React.React
       companyName={companyName}
       companyInitials={companyInitials}
       category={category}
+      logoUrl={logoUrl ?? undefined}
     >
       {children}
     </VendorSidebarShell>
