@@ -36,7 +36,7 @@ function newSection(sort: number): QSection {
   return { id, title: '', description: '', sort_order: sort, questions: [newQuestion(id, 0)] }
 }
 
-export default function FragebogenBuilderClient({ category }: { category: string }) {
+export default function FragebogenBuilderClient({ category, embedded }: { category: string; embedded?: boolean }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [settings, setSettings] = useState<QuestionnaireSettings>(DEFAULT_SETTINGS)
@@ -126,22 +126,23 @@ export default function FragebogenBuilderClient({ category }: { category: string
   }
 
   if (loading) {
-    return <div style={{ minHeight: '100dvh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="bp-spin" /></div>
+    return <div style={{ minHeight: embedded ? 120 : '100dvh', background: embedded ? 'transparent' : C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="bp-spin" /></div>
   }
 
-  return (
-    <div style={{ minHeight: '100dvh', background: C.bg, padding: '28px 24px 80px' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text, display: 'flex', alignItems: 'center', gap: 9 }}>
-              <FileText size={20} style={{ color: C.gold }} /> Anfrage-Formular
-            </h1>
-            <p style={{ fontSize: 13, color: C.dim, marginTop: 6, maxWidth: 560, lineHeight: 1.5 }}>
-              Lege fest, welche Fragen Brautpaare bei einer Anfrage beantworten. Aus den Antworten erstellt Forevr automatisch einen Angebotsentwurf, den du vor dem Freigeben prüfst.
-            </p>
+  const content = (
+    <>
+        {!embedded && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text, display: 'flex', alignItems: 'center', gap: 9 }}>
+                <FileText size={20} style={{ color: C.gold }} /> Anfrage-Formular
+              </h1>
+              <p style={{ fontSize: 13, color: C.dim, marginTop: 6, maxWidth: 560, lineHeight: 1.5 }}>
+                Lege fest, welche Fragen Brautpaare bei einer Anfrage beantworten. Aus den Antworten erstellt Forevr automatisch einen Angebotsentwurf, den du vor dem Freigeben prüfst.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Aktionen */}
         <div data-tour="vdr-fragebogen-actions" style={{ ...card, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -240,6 +241,15 @@ export default function FragebogenBuilderClient({ category }: { category: string
             <input style={inp} value={settings.footer_note} onChange={e => setSetting('footer_note', e.target.value)} />
           </div>
         </div>
+    </>
+  )
+
+  if (embedded) return content
+
+  return (
+    <div style={{ minHeight: '100dvh', background: C.bg, padding: '28px 24px 80px' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+        {content}
       </div>
     </div>
   )

@@ -181,6 +181,11 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
       </div>
 
       <style>{`
+        /* Hover-Highlight für alle Navigationslinks — sieht aus wie aktiver Zustand.
+           Wenn ein Link bereits aktiv ist, hat er inline background: var(--accent-light);
+           das CSS setzt denselben Wert → kein sichtbarer Unterschied beim Hovern. */
+        .vdr-nav-link:hover { background: var(--accent-light) !important; }
+
         /* Tablet: icon-only sidebar */
         @media (max-width: 768px) {
           .vdr-sidebar { width: 56px !important; }
