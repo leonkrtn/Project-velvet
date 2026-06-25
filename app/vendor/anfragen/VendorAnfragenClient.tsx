@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   X, MapPin, Calendar, Euro, Inbox,
-  Heart, Loader2, Users, Mail, Phone, Tag, ArrowRight, ReceiptText,
+  Heart, Loader2, Users, Mail, Phone, Tag, ArrowRight, ReceiptText, Search, Trash2,
 } from 'lucide-react'
 import VendorOfferEditor from '@/components/vendor/VendorOfferEditor'
 
@@ -50,6 +50,7 @@ export default function VendorAnfragenClient() {
   const [isVendor, setIsVendor] = useState(true)
   const [filter, setFilter] = useState<Filter>('offen')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
   const load = useCallback(async () => {
     const res = await fetch('/api/marketplace/vendor-requests')
@@ -72,11 +73,21 @@ export default function VendorAnfragenClient() {
     else if (counts.offen === 0 && counts.angenommen === 0 && counts.erledigt > 0) setFilter('erledigt')
   }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const visible = useMemo(() => requests.filter(r => {
-    if (filter === 'offen') return r.status === 'pending'
-    if (filter === 'angenommen') return r.status === 'accepted'
-    return r.status === 'declined' || r.status === 'cancelled'
-  }), [requests, filter])
+  const visible = useMemo(() => {
+    const byFilter = requests.filter(r => {
+      if (filter === 'offen') return r.status === 'pending'
+      if (filter === 'angenommen') return r.status === 'accepted'
+      return r.status === 'declined' || r.status === 'cancelled'
+    })
+    if (!search.trim()) return byFilter
+    const q = search.trim().toUpperCase()
+    return byFilter.filter(r =>
+      titleOf(r).toUpperCase().includes(q) ||
+      (r.events?.date ? new Date(r.events.date).toLocaleDateString('de-DE') : '').includes(q) ||
+      (r.requester?.name ?? '').toUpperCase().includes(q) ||
+      r.id.toUpperCase().includes(q)
+    )
+  }, [requests, filter, search])
 
   const selected = useMemo(() => requests.find(r => r.id === selectedId) ?? null, [requests, selectedId])
 
@@ -101,7 +112,21 @@ export default function VendorAnfragenClient() {
         </div>
 
         {isVendor && !loading && requests.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, margin: '22px 0 18px', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', margin: '22px 0 12px' }}>
+            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Nach Brautpaar, Datum oder ID suchen …"
+              style={{ width: '100%', padding: '10px 14px 10px 34px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: 'var(--text)' }}
+              onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+            />
+          </div>
+        )}
+
+        {isVendor && !loading && requests.length > 0 && (
+          <div data-tour="vdr-anfragen-filters" style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
             {tabs.map(t => {
               const active = filter === t.key
               return (
@@ -128,7 +153,7 @@ export default function VendorAnfragenClient() {
         ) : visible.length === 0 ? (
           <EmptyState title="Nichts hier" text={`Keine Anfragen im Bereich „${tabs.find(t => t.key === filter)?.label}".`} />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
+          <div data-tour="vdr-anfragen-list" style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
             {visible.map(r => <RequestTile key={r.id} r={r} onOpen={() => setSelectedId(r.id)} />)}
           </div>
         )}
@@ -189,12 +214,21 @@ function RequestLightbox({ r, onClose, onReload }: { r: Req; onClose: () => void
   const m = statusMeta[r.status]
   const loc = locationOf(r.events)
   const contacts = r.couple_contacts.length ? r.couple_contacts : (r.requester ? [r.requester] : [])
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  async function handleDelete() {
+    if (!confirm('Anfrage wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return
+    setDeleting(true)
+    const res = await fetch(`/api/marketplace/vendor-requests?id=${r.id}`, { method: 'DELETE' })
+    setDeleting(false)
+    if (res.ok) { onClose(); onReload() }
+  }
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
@@ -211,7 +245,12 @@ function RequestLightbox({ r, onClose, onReload }: { r: Req; onClose: () => void
               <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>Angefragt am {new Date(r.created_at).toLocaleDateString('de-DE')}</span>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', flexShrink: 0, padding: 2 }}><X size={20} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <button onClick={handleDelete} disabled={deleting} title="Anfrage löschen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', padding: 4, borderRadius: 6, opacity: deleting ? 0.5 : 1 }}>
+              {deleting ? <Loader2 size={16} className="anf-spin" /> : <Trash2 size={16} />}
+            </button>
+            <button onClick={onClose} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', padding: 2 }}><X size={20} /></button>
+          </div>
         </div>
 
         {/* Body */}

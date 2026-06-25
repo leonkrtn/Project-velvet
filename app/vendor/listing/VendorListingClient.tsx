@@ -341,7 +341,7 @@ export default function VendorListingClient() {
         </div>
 
         {/* ── Tab switcher ── */}
-        <div style={{ display: 'inline-flex', background: 'var(--border)', borderRadius: 10, padding: 3, marginBottom: 24, gap: 2 }}>
+        <div data-tour="vdr-listing-tabs" style={{ display: 'inline-flex', background: 'var(--border)', borderRadius: 10, padding: 3, marginBottom: 24, gap: 2 }}>
           {(['anzeige', 'anfrageformular'] as ListingTab[]).map(tab => (
             <button
               key={tab}
@@ -424,7 +424,7 @@ export default function VendorListingClient() {
               </div>
 
               {/* Kategorie + Ab-Preis */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
                 <div>
                   <label style={lbl}>Kategorie</label>
                   <select value={f.category} onChange={set('category')} style={inp}>
@@ -478,47 +478,8 @@ export default function VendorListingClient() {
               </div>
             )}
 
-            {/* ── Weitere Stammdaten ── */}
-            <div style={secCard}>
-              <h2 style={h2s}>Weitere Angaben <SensitiveHint /></h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={lbl}>Firma / Anzeigename *</label><input style={inp} value={f.company_name} onChange={set('company_name')} placeholder="So erscheint ihr im Marktplatz" /></div>
-                <div><label style={lbl}>Ansprechpartner (intern)</label><input style={inp} value={f.name} onChange={set('name')} /></div>
-                <div><label style={lbl}>Straße</label><input style={inp} value={f.street} onChange={set('street')} /></div>
-                <div><label style={lbl}>PLZ</label><input style={inp} value={f.zip} onChange={set('zip')} /></div>
-                <div><label style={lbl}>Stadt *</label><input style={inp} value={f.city} onChange={set('city')} /></div>
-                <div><label style={lbl}>Website</label><input style={inp} value={f.website} onChange={set('website')} placeholder="https://" /></div>
-                <div><label style={lbl}>E-Mail (öffentlich nach Anfrage)</label><input style={inp} value={f.email} onChange={set('email')} /></div>
-                <div><label style={lbl}>Telefon (öffentlich nach Anfrage)</label><input style={inp} value={f.phone} onChange={set('phone')} /></div>
-              </div>
-            </div>
-
-            {/* ── Einsatzgebiet ── */}
-            <div style={secCard}>
-              <h2 style={h2s}>Einsatzgebiet</h2>
-              <label style={lbl}>Städte / Regionen (mit Komma trennen)</label>
-              <input style={inp} value={f.service_cities} onChange={set('service_cities')} placeholder="München, Augsburg, Allgäu" />
-              <div style={{ marginTop: 12, maxWidth: 220 }}>
-                <label style={lbl}>Anfahrtsradius (km, optional)</label>
-                <input style={inp} type="number" value={f.service_radius_km} onChange={set('service_radius_km')} placeholder="100" />
-              </div>
-            </div>
-
-            {/* ── Social-Media ── */}
-            <div style={secCard}>
-              <h2 style={h2s}>Social-Media</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {SOCIAL_PLATFORMS.map(s => (
-                  <div key={s.key}>
-                    <label style={lbl}>{s.label}</label>
-                    <input style={inp} value={social[s.key] ?? ''} onChange={e => setSocial(p => ({ ...p, [s.key]: e.target.value }))} placeholder="https://" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* ── Galerie ── */}
-            <div style={secCard}>
+            <div data-tour="vdr-listing-gallery" style={secCard}>
               <h2 style={h2s}>Galerie</h2>
               <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px' }}>
                 Erstes Bild = Titelbild. Max. 15 Fotos.
@@ -549,6 +510,45 @@ export default function VendorListingClient() {
                 )}
               </div>
               <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
+            </div>
+
+            {/* ── Weitere Stammdaten ── */}
+            <div style={secCard}>
+              <h2 style={h2s}>Weitere Angaben <SensitiveHint /></h2>
+              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div><label style={lbl}>Firma / Anzeigename *</label><input style={inp} value={f.company_name} onChange={set('company_name')} placeholder="So erscheint ihr im Marktplatz" /></div>
+                <div><label style={lbl}>Ansprechpartner (intern)</label><input style={inp} value={f.name} onChange={set('name')} /></div>
+                <div><label style={lbl}>Straße</label><input style={inp} value={f.street} onChange={set('street')} /></div>
+                <div><label style={lbl}>PLZ</label><input style={inp} value={f.zip} onChange={set('zip')} /></div>
+                <div><label style={lbl}>Stadt *</label><input style={inp} value={f.city} onChange={set('city')} /></div>
+                <div><label style={lbl}>Website</label><input style={inp} value={f.website} onChange={set('website')} placeholder="https://" /></div>
+                <div><label style={lbl}>E-Mail (öffentlich nach Anfrage)</label><input style={inp} value={f.email} onChange={set('email')} /></div>
+                <div><label style={lbl}>Telefon (öffentlich nach Anfrage)</label><input style={inp} value={f.phone} onChange={set('phone')} /></div>
+              </div>
+            </div>
+
+            {/* ── Einsatzgebiet ── */}
+            <div style={secCard}>
+              <h2 style={h2s}>Einsatzgebiet</h2>
+              <label style={lbl}>Städte / Regionen (mit Komma trennen)</label>
+              <input style={inp} value={f.service_cities} onChange={set('service_cities')} placeholder="München, Augsburg, Allgäu" />
+              <div style={{ marginTop: 12, maxWidth: 220 }}>
+                <label style={lbl}>Anfahrtsradius (km, optional)</label>
+                <input style={inp} type="number" value={f.service_radius_km} onChange={set('service_radius_km')} placeholder="100" />
+              </div>
+            </div>
+
+            {/* ── Social-Media ── */}
+            <div style={secCard}>
+              <h2 style={h2s}>Social-Media</h2>
+              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {SOCIAL_PLATFORMS.map(s => (
+                  <div key={s.key}>
+                    <label style={lbl}>{s.label}</label>
+                    <input style={inp} value={social[s.key] ?? ''} onChange={e => setSocial(p => ({ ...p, [s.key]: e.target.value }))} placeholder="https://" />
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* ── Pakete & Leistungen ── */}
@@ -602,13 +602,14 @@ export default function VendorListingClient() {
             <div style={{ height: 40 }} />
           </>
         ) : (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20 }}>
-            <FragebogenBuilderClient category={f.category} />
-          </div>
+          <FragebogenBuilderClient category={f.category} />
         )}
       </div>
 
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @media(max-width:580px){.listing-two-col{grid-template-columns:1fr!important}}
+      `}</style>
     </div>
   )
 }

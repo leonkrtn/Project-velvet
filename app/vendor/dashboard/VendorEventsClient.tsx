@@ -1,41 +1,85 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { CalendarDays, Search } from 'lucide-react'
+import { CalendarDays, Search, Archive, ArchiveRestore } from 'lucide-react'
 
 type EventRow = { id: string; title: string; date: string | null; venue: string | null; event_code: string | null }
 
+const ARCHIVE_KEY = 'vdr_archived_events'
+
+function loadArchived(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(ARCHIVE_KEY) ?? '[]')) }
+  catch { return new Set() }
+}
+function saveArchived(s: Set<string>) {
+  localStorage.setItem(ARCHIVE_KEY, JSON.stringify(Array.from(s)))
+}
+
 export default function VendorEventsClient({ events }: { events: EventRow[] }) {
   const [search, setSearch] = useState('')
+  const [archived, setArchived] = useState<Set<string>>(new Set())
+  const [showArchived, setShowArchived] = useState(false)
+
+  useEffect(() => { setArchived(loadArchived()) }, [])
+
+  function toggleArchive(id: string) {
+    setArchived(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      saveArchived(next)
+      return next
+    })
+  }
+
+  const activeEvents = events.filter(e => !archived.has(e.id))
+  const archivedEvents = events.filter(e => archived.has(e.id))
+  const pool = showArchived ? archivedEvents : activeEvents
 
   const filtered = search.trim()
-    ? events.filter(ev => {
+    ? pool.filter(ev => {
         const q = search.trim().toUpperCase()
         return (
           ev.title.toUpperCase().includes(q) ||
           (ev.event_code ?? '').toUpperCase().includes(q)
         )
       })
-    : events
+    : pool
 
   return (
     <>
       {events.length > 0 && (
-        <div style={{ position: 'relative', marginBottom: 16 }}>
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Nach Event oder Code suchen …"
-            style={{
-              width: '100%', padding: '10px 14px 10px 34px', fontSize: 13,
-              border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
-              background: 'var(--surface)', fontFamily: 'inherit', outline: 'none',
-              boxSizing: 'border-box', color: 'var(--text)',
-            }}
-            onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
-            onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
-          />
+        <div data-tour="vdr-events-controls" style={{ display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Nach Event oder Code suchen …"
+              style={{
+                width: '100%', padding: '10px 14px 10px 34px', fontSize: 13,
+                border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
+                background: 'var(--surface)', fontFamily: 'inherit', outline: 'none',
+                boxSizing: 'border-box', color: 'var(--text)',
+              }}
+              onFocus={e => { e.target.style.borderColor = 'var(--gold)' }}
+              onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+            />
+          </div>
+          {archivedEvents.length > 0 && (
+            <button
+              onClick={() => setShowArchived(v => !v)}
+              title={showArchived ? 'Aktive Events anzeigen' : 'Archiv anzeigen'}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 'var(--r-md)',
+                border: '1px solid var(--border)', background: showArchived ? 'var(--accent)' : 'var(--surface)',
+                color: showArchived ? '#fff' : 'var(--text-dim)', cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 13, fontWeight: 600, flexShrink: 0,
+              }}
+            >
+              <Archive size={14} /> {showArchived ? 'Archiv' : `Archiv (${archivedEvents.length})`}
+            </button>
+          )}
         </div>
       )}
 
@@ -49,38 +93,53 @@ export default function VendorEventsClient({ events }: { events: EventRow[] }) {
         </div>
       ) : filtered.length === 0 ? (
         <p style={{ fontSize: 14, color: 'var(--text-dim)', textAlign: 'center', padding: '24px 0' }}>
-          Kein Event gefunden für „{search}"
+          {search.trim() ? `Kein Event gefunden für „${search}"` : showArchived ? 'Archiv ist leer.' : 'Keine aktiven Events.'}
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div data-tour="vdr-events-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {filtered.map(event => (
-            <Link
-              key={event.id}
-              href={`/vendor/dashboard/${event.id}/kommunikation`}
-              style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '20px 24px', textDecoration: 'none', color: 'inherit', transition: 'box-shadow 0.15s' }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                <p style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>{event.title}</p>
-                {event.event_code && (
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-                    color: 'var(--text-dim)', background: 'rgba(0,0,0,0.05)',
-                    padding: '1px 7px', borderRadius: 4, fontFamily: 'monospace',
-                  }}>#{event.event_code}</span>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                {event.date && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-dim)' }}>
-                    <CalendarDays size={13} />
-                    {new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </span>
-                )}
-                {event.venue && (
-                  <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{event.venue}</span>
-                )}
-              </div>
-            </Link>
+            <div key={event.id} style={{ position: 'relative' }}>
+              <Link
+                href={`/vendor/dashboard/${event.id}/kommunikation`}
+                style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '20px 56px 20px 24px', textDecoration: 'none', color: 'inherit', transition: 'box-shadow 0.15s' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <p style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>{event.title}</p>
+                  {event.event_code && (
+                    <span style={{
+                      fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+                      color: 'var(--text-dim)', background: 'rgba(0,0,0,0.05)',
+                      padding: '1px 7px', borderRadius: 4, fontFamily: 'monospace',
+                    }}>#{event.event_code}</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  {event.date && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-dim)' }}>
+                      <CalendarDays size={13} />
+                      {new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                  )}
+                  {event.venue && (
+                    <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{event.venue}</span>
+                  )}
+                </div>
+              </Link>
+              <button
+                onClick={() => toggleArchive(event.id)}
+                title={archived.has(event.id) ? 'Archivierung aufheben' : 'Archivieren'}
+                style={{
+                  position: 'absolute', top: '50%', right: 14, transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 6,
+                  color: 'var(--text-dim)', display: 'flex', borderRadius: 6,
+                  opacity: 0.6,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'var(--bg)' }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.background = 'none' }}
+              >
+                {archived.has(event.id) ? <ArchiveRestore size={16} /> : <Archive size={16} />}
+              </button>
+            </div>
           ))}
         </div>
       )}
