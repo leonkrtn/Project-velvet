@@ -128,9 +128,9 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
   }
 
   return (
-    <div>
+    <div data-tour="vdr-offer-editor">
       {/* Segmented toggle (Design wie Aufgaben & Notizen) */}
-      <div style={{ display: 'inline-flex', gap: 4, padding: 4, marginBottom: 16, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
+      <div data-tour="vdr-offer-tabs" style={{ display: 'inline-flex', gap: 4, padding: 4, marginBottom: 16, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
         {([['antworten', 'Antworten', <ClipboardList key="a" size={15} />], ['angebot', 'Angebot', <ReceiptText key="o" size={15} />]] as [View, string, React.ReactNode][]).map(([key, label, icon]) => {
           const active = view === key
           return (
@@ -159,7 +159,7 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
       )}
 
       {/* Aktionen (immer sichtbar) */}
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16, flexWrap: 'wrap' }}>
+      <div data-tour="vdr-offer-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16, flexWrap: 'wrap' }}>
         <button onClick={() => setPdfPreview(true)} style={btnGhost}><FileDown size={15} /> PDF-Vorschau</button>
         {editable ? (
           <>
