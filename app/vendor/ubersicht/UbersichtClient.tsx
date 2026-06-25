@@ -116,7 +116,7 @@ export default function UbersichtClient() {
         </div>
 
         {/* ── 4 Stat cards ── */}
-        <div className="ub-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+        <div className="ub-stat-grid" data-tour="vdr-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
 
           {/* Offene Anfragen */}
           <Link href="/vendor/anfragen" style={{ ...card, display: 'block', textDecoration: 'none', color: 'inherit' }}>
@@ -170,7 +170,7 @@ export default function UbersichtClient() {
         <div className="ub-bottom-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'stretch' }}>
 
           {/* Braucht deine Aufmerksamkeit */}
-          <div style={card}>
+          <div data-tour="vdr-attention" style={card}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', flex: 1, margin: 0 }}>
                 Braucht deine Aufmerksamkeit
@@ -230,7 +230,7 @@ export default function UbersichtClient() {
           </div>
 
           {/* Pipeline */}
-          <div style={card}>
+          <div data-tour="vdr-pipeline" style={card}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 18, margin: '0 0 18px' }}>
               Pipeline
             </h2>

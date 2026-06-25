@@ -4,10 +4,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
-  Calendar, User, LogOut,
+  Calendar, User, LogOut, HelpCircle,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
+import { VENDOR_TOUR_START_EVENT } from '@/lib/tour/vendor-tour-steps'
+import VendorTour from '@/components/tour/VendorTour'
 
 interface Props {
   companyName: string
@@ -136,6 +138,21 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             <span className="vdr-nav-text">Anbieter-Profil</span>
           </Link>
           <button
+            onClick={() => window.dispatchEvent(new Event(VENDOR_TOUR_START_EVENT))}
+            className="vdr-help-btn"
+            title="Hilfe-Tour starten"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '7px 10px', borderRadius: 8, width: '100%',
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontFamily: 'inherit', fontSize: 14, fontWeight: 450,
+              color: 'var(--text-secondary)', marginTop: 1,
+            }}
+          >
+            <HelpCircle size={16} style={{ flexShrink: 0, opacity: 0.5 }} />
+            <span className="vdr-nav-text">Hilfe</span>
+          </button>
+          <button
             onClick={() => performLogout()}
             className="vdr-logout-btn"
             style={{
@@ -175,6 +192,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
           .vdr-badge { display: none !important; }
           .vdr-sidebar-bottom { padding: 6px 6px 12px !important; }
           .vdr-logout-btn { justify-content: center !important; padding: 10px !important; gap: 0 !important; }
+          .vdr-help-btn { justify-content: center !important; padding: 10px !important; gap: 0 !important; }
         }
         /* Mobile: bottom tab bar */
         @media (max-width: 480px) {
@@ -219,8 +237,11 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             height: 100% !important;
           }
           .vdr-logout-btn { display: none !important; }
+          .vdr-help-btn { display: none !important; }
         }
       `}</style>
+
+      <VendorTour />
     </div>
   )
 }

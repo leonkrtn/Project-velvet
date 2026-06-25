@@ -85,7 +85,7 @@ export default function AngeboteGlobalClient() {
         </div>
 
         {!loading && offers.length > 0 && (
-          <div style={{ position: 'relative', marginBottom: 20 }}>
+          <div data-tour="vdr-angebote-search" style={{ position: 'relative', marginBottom: 20 }}>
             <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
             <input
               value={search}
@@ -129,7 +129,7 @@ export default function AngeboteGlobalClient() {
             </p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <div data-tour="vdr-angebote-list" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {GROUPS.map(g => {
               const items = grouped[g.key] ?? []
               if (items.length === 0) return null

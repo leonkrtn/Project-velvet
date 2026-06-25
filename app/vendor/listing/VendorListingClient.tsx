@@ -341,7 +341,7 @@ export default function VendorListingClient() {
         </div>
 
         {/* ── Tab switcher ── */}
-        <div style={{ display: 'inline-flex', background: 'var(--border)', borderRadius: 10, padding: 3, marginBottom: 24, gap: 2 }}>
+        <div data-tour="vdr-listing-tabs" style={{ display: 'inline-flex', background: 'var(--border)', borderRadius: 10, padding: 3, marginBottom: 24, gap: 2 }}>
           {(['anzeige', 'anfrageformular'] as ListingTab[]).map(tab => (
             <button
               key={tab}
@@ -479,7 +479,7 @@ export default function VendorListingClient() {
             )}
 
             {/* ── Galerie ── */}
-            <div style={secCard}>
+            <div data-tour="vdr-listing-gallery" style={secCard}>
               <h2 style={h2s}>Galerie</h2>
               <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px' }}>
                 Erstes Bild = Titelbild. Max. 15 Fotos.

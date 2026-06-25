@@ -12,7 +12,7 @@ function loadArchived(): Set<string> {
   catch { return new Set() }
 }
 function saveArchived(s: Set<string>) {
-  localStorage.setItem(ARCHIVE_KEY, JSON.stringify([...s]))
+  localStorage.setItem(ARCHIVE_KEY, JSON.stringify(Array.from(s)))
 }
 
 export default function VendorEventsClient({ events }: { events: EventRow[] }) {
@@ -49,7 +49,7 @@ export default function VendorEventsClient({ events }: { events: EventRow[] }) {
   return (
     <>
       {events.length > 0 && (
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center' }}>
+        <div data-tour="vdr-events-controls" style={{ display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
             <input
@@ -96,7 +96,7 @@ export default function VendorEventsClient({ events }: { events: EventRow[] }) {
           {search.trim() ? `Kein Event gefunden für „${search}"` : showArchived ? 'Archiv ist leer.' : 'Keine aktiven Events.'}
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div data-tour="vdr-events-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {filtered.map(event => (
             <div key={event.id} style={{ position: 'relative' }}>
               <Link

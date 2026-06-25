@@ -126,7 +126,7 @@ export default function VendorAnfragenClient() {
         )}
 
         {isVendor && !loading && requests.length > 0 && (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div data-tour="vdr-anfragen-filters" style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
             {tabs.map(t => {
               const active = filter === t.key
               return (
@@ -153,7 +153,7 @@ export default function VendorAnfragenClient() {
         ) : visible.length === 0 ? (
           <EmptyState title="Nichts hier" text={`Keine Anfragen im Bereich „${tabs.find(t => t.key === filter)?.label}".`} />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
+          <div data-tour="vdr-anfragen-list" style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
             {visible.map(r => <RequestTile key={r.id} r={r} onOpen={() => setSelectedId(r.id)} />)}
           </div>
         )}
