@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, MapPin, Globe, Phone, Mail, Star, Check, X, MessageSquare, Lock, BadgeCheck, ChevronDown } from 'lucide-react'
+import { ChevronLeft, MapPin, Globe, Phone, Mail, Star, Check, X, MessageSquare, Lock, BadgeCheck, ChevronDown, Flag } from 'lucide-react'
 import { categoryLabel, PRICE_UNITS, SOCIAL_PLATFORMS } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 import RequestFlow from '@/components/marketplace/RequestFlow'
@@ -33,6 +33,13 @@ function Stars({ value, size = 15 }: { value: number; size?: number }) {
   </span>
 }
 
+const REPORT_REASONS = [
+  { key: 'falsche_angaben', label: 'Falsche Angaben' },
+  { key: 'unangemessene_bilder', label: 'Unangemessene Bilder' },
+  { key: 'betrug', label: 'Betrug' },
+  { key: 'spam', label: 'Spam' },
+] as const
+
 export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, reviews, reviewAvg, reviewCount, availability, contactUnlocked, canReview, existing }: Props) {
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [sent, setSent] = useState<Existing | null>(existing)
@@ -45,6 +52,29 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
   const [revBusy, setRevBusy] = useState(false)
   const [revDone, setRevDone] = useState(false)
   const [revErr, setRevErr] = useState('')
+
+  // Anbieter melden
+  const [showReport, setShowReport] = useState(false)
+  const [reportReason, setReportReason] = useState<string>('falsche_angaben')
+  const [reportComment, setReportComment] = useState('')
+  const [reportBusy, setReportBusy] = useState(false)
+  const [reportDone, setReportDone] = useState(false)
+  const [reportErr, setReportErr] = useState('')
+
+  async function submitReport() {
+    setReportErr(''); setReportBusy(true)
+    try {
+      const res = await fetch('/api/vendor/report', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendorId: vendor.id, reason: reportReason, comment: reportComment }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      setReportDone(true)
+    } catch (e) {
+      setReportErr(e instanceof Error ? e.message : 'Fehler beim Senden')
+    } finally { setReportBusy(false) }
+  }
 
   const addressParts = [vendor.street, [vendor.zip, vendor.city].filter(Boolean).join(' ')].filter(Boolean)
   const address = addressParts.join(', ')
@@ -288,7 +318,90 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
         </aside>
       </div>
 
+      {/* Melden-Link */}
+      <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid var(--bp-rule)', textAlign: 'right' }}>
+        <button
+          onClick={() => setShowReport(true)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, color: 'var(--bp-ink-3)', display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit', padding: 0 }}
+        >
+          <Flag size={13} /> Anbieter melden
+        </button>
+      </div>
+
       <style>{`@media (max-width: 880px){ .mp-detail-grid{ grid-template-columns:1fr !important; } .mp-detail-aside{ position:static !important; } }`}</style>
+
+      {/* Report-Modal */}
+      {showReport && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setShowReport(false) }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        >
+          <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            {reportDone ? (
+              <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                <div style={{ width: 48, height: 48, borderRadius: 999, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                  <Check size={24} style={{ color: '#15803D' }} />
+                </div>
+                <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px', color: 'var(--bp-ink)' }}>Meldung eingegangen</p>
+                <p style={{ fontSize: 13.5, color: 'var(--bp-ink-2)', margin: '0 0 18px', lineHeight: 1.6 }}>
+                  Wir prüfen deine Meldung und handeln, wenn nötig. Danke für dein Feedback.
+                </p>
+                <button onClick={() => setShowReport(false)} className="bp-btn">Schließen</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--bp-ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Flag size={16} style={{ color: '#DC2626' }} /> Anbieter melden
+                  </h3>
+                  <button onClick={() => setShowReport(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--bp-ink-3)', padding: 4 }}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <p style={{ fontSize: 13.5, color: 'var(--bp-ink-2)', margin: '0 0 16px', lineHeight: 1.6 }}>
+                  Bitte wähle den Grund für deine Meldung:
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                  {REPORT_REASONS.map(r => (
+                    <label key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '9px 12px', borderRadius: 8, border: `1px solid ${reportReason === r.key ? '#DC2626' : 'var(--bp-rule)'}`, background: reportReason === r.key ? 'rgba(220,38,38,0.04)' : '#fff' }}>
+                      <input type="radio" name="reportReason" value={r.key} checked={reportReason === r.key} onChange={() => setReportReason(r.key)} style={{ accentColor: '#DC2626' }} />
+                      <span style={{ fontSize: 13.5, fontWeight: reportReason === r.key ? 600 : 450, color: 'var(--bp-ink)' }}>{r.label}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--bp-ink-2)', display: 'block', marginBottom: 6 }}>
+                    Kommentar (optional)
+                  </label>
+                  <textarea
+                    value={reportComment}
+                    onChange={e => setReportComment(e.target.value)}
+                    placeholder="Beschreibe das Problem kurz…"
+                    className="bp-textarea"
+                    style={{ minHeight: 72 }}
+                  />
+                </div>
+
+                {reportErr && <p style={{ fontSize: 13, color: '#DC2626', margin: '0 0 12px' }}>{reportErr}</p>}
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={submitReport}
+                    disabled={reportBusy}
+                    style={{ flex: 1, padding: '10px 16px', borderRadius: 9, border: 'none', background: '#DC2626', color: '#fff', fontSize: 14, fontWeight: 600, cursor: reportBusy ? 'wait' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+                  >
+                    <Flag size={15} /> {reportBusy ? 'Wird gesendet…' : 'Meldung absenden'}
+                  </button>
+                  <button onClick={() => setShowReport(false)} className="bp-btn" style={{ whiteSpace: 'nowrap' }}>Abbrechen</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {lightbox && (
         <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
