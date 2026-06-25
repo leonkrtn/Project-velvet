@@ -11,11 +11,12 @@ const MAX_WAIT_MS = POLL_MS * 45   // ~5.4 s warten, bis ein Zielelement erschei
 
 // Vendor-Route-Karte: Modul-Schlüssel → Pfad
 const ROUTE_MAP: Record<string, string> = {
-  ubersicht: '/vendor/ubersicht',
-  anfragen:  '/vendor/anfragen',
-  angebote:  '/vendor/angebote',
-  events:    '/vendor/dashboard',
-  listing:   '/vendor/listing',
+  ubersicht:        '/vendor/ubersicht',
+  anfragen:         '/vendor/anfragen',
+  angebote:         '/vendor/angebote',
+  events:           '/vendor/dashboard',
+  listing:          '/vendor/listing',
+  'anfrage-formular': '/vendor/anfrage-formular',
 }
 
 export default function VendorTour() {
@@ -35,6 +36,8 @@ export default function VendorTour() {
   const step       = active ? steps[index] ?? null : null
   const stepModule = step?.module
   const stepTarget = step?.target
+  const stepAppear = step?.advanceOnAppear
+  const isInteractive = !!(step?.interactive || step?.advanceOnAppear)
 
   useEffect(() => {
     setMounted(true)
@@ -125,7 +128,10 @@ export default function VendorTour() {
     let saved: { position: string; zIndex: string; borderRadius: string; boxShadow: string; transition: string } | null = null
     let startTime: number | null = null
 
-    const ring = '0 0 0 3px var(--gold, #B89968), 0 0 0 9999px rgba(31,26,22,0.55)'
+    // Interaktive Schritte: subtiler Ring ohne Abdunklung.
+    const ring = isInteractive
+      ? '0 0 0 3px rgba(184,153,104,0.9), 0 0 0 6px rgba(184,153,104,0.18)'
+      : '0 0 0 3px var(--gold, #B89968), 0 0 0 9999px rgba(31,26,22,0.55)'
 
     const same = (a: DOMRect, b: DOMRect) =>
       Math.abs(a.top - b.top) < 0.5 && Math.abs(a.left - b.left) < 0.5 &&
@@ -183,7 +189,25 @@ export default function VendorTour() {
     }
     raf = window.requestAnimationFrame(loop)
     return () => { cancelled = true; window.cancelAnimationFrame(raf); restore() }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, stepTarget, index])
+
+  // advanceOnAppear: warten bis ein Element mit dem gegebenen data-tour erscheint,
+  // dann automatisch zum nächsten Schritt springen.
+  useEffect(() => {
+    if (!active || !stepAppear) return
+    let raf = 0
+    let cancelled = false
+
+    const poll = () => {
+      if (cancelled) return
+      const el = document.querySelector(`[data-tour="${stepAppear}"]`)
+      if (el) { advance(); return }
+      raf = window.requestAnimationFrame(poll)
+    }
+    raf = window.requestAnimationFrame(poll)
+    return () => { cancelled = true; window.cancelAnimationFrame(raf) }
+  }, [active, stepAppear, index, advance])
 
   // Tastatursteuerung.
   useEffect(() => {
@@ -219,7 +243,11 @@ export default function VendorTour() {
   const cardH = measuredH || 200
   let cardTop: number, cardLeft: number
 
-  if (rect) {
+  if (isInteractive) {
+    // Interaktive Schritte: Karte unten mittig, damit sie das UI nicht verdeckt.
+    cardTop  = vh - cardH - 24
+    cardLeft = (vw - CARD_W) / 2
+  } else if (rect) {
     cardLeft = Math.min(Math.max(12, rect.left), vw - CARD_W - 12)
     if (rect.bottom + cardH + 16 < vh) {
       cardTop = rect.bottom + 14
@@ -239,16 +267,19 @@ export default function VendorTour() {
     <div style={{ position: 'fixed', inset: 0, zIndex: 4000, pointerEvents: 'none' }} aria-live="polite" role="dialog" aria-label="Plattform-Tour">
       <style>{`@keyframes vdrTourIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
 
-      {/* Klick-Fänger / Abdunklung (die sichtbare Abdunklung kommt vom box-shadow
-          direkt am Zielelement — hier nur transparenter Fänger, falls rect gesetzt) */}
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          position: 'fixed', inset: 0,
-          background: rect ? 'transparent' : 'rgba(31,26,22,0.55)',
-          pointerEvents: 'auto',
-        }}
-      />
+      {/* Overlay: bei interaktiven Schritten transparent (Nutzer kann klicken).
+          Bei normalen Schritten: Abdunklung kommt vom box-shadow am Zielelement,
+          hier nur opaker Fänger ohne Abdunklung wenn rect gesetzt, sonst dunkler BG. */}
+      {!isInteractive && (
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            position: 'fixed', inset: 0,
+            background: rect ? 'transparent' : 'rgba(31,26,22,0.55)',
+            pointerEvents: 'auto',
+          }}
+        />
+      )}
 
       {positioned && (
         <div
@@ -335,7 +366,7 @@ export default function VendorTour() {
                   fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit',
                 }}
               >
-                {isLast ? (<><Check size={15} /> Fertig</>) : (<>Weiter <ChevronRight size={15} /></>)}
+                {isLast ? (<><Check size={15} /> Fertig</>) : stepAppear ? (<>Warte auf Aktion …</>) : (<>Weiter <ChevronRight size={15} /></>)}
               </button>
             </div>
           </div>

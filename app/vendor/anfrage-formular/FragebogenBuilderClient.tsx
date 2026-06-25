@@ -130,8 +130,8 @@ export default function FragebogenBuilderClient({ category }: { category: string
   }
 
   return (
-    <div style={{ minHeight: '100dvh', background: C.bg, padding: '32px 20px 80px' }}>
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+    <div style={{ minHeight: '100dvh', background: C.bg, padding: '28px 24px 80px' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text, display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -144,7 +144,7 @@ export default function FragebogenBuilderClient({ category }: { category: string
         </div>
 
         {/* Aktionen */}
-        <div style={{ ...card, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div data-tour="vdr-fragebogen-actions" style={{ ...card, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={save} disabled={saving} style={btnGold}>
             {saving ? <Loader2 size={15} className="bp-spin" /> : <Save size={15} />} Speichern
           </button>
@@ -164,7 +164,7 @@ export default function FragebogenBuilderClient({ category }: { category: string
         </div>
 
         {/* Kopf des Fragebogens */}
-        <div style={card}>
+        <div data-tour="vdr-fragebogen-allgemein" style={card}>
           <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>Allgemein</h2>
           <div style={{ marginBottom: 12 }}>
             <label style={lbl}>Titel</label>
@@ -177,6 +177,7 @@ export default function FragebogenBuilderClient({ category }: { category: string
         </div>
 
         {/* Abschnitte */}
+        <div data-tour="vdr-fragebogen-sections">
         {sections.map((sec, si) => (
           <div key={sec.id} style={card}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -201,9 +202,10 @@ export default function FragebogenBuilderClient({ category }: { category: string
         ))}
 
         <button onClick={addSection} style={{ ...btnGhost, marginBottom: 20 }}><Plus size={15} /> Abschnitt hinzufügen</button>
+        </div>
 
         {/* Preislogik */}
-        <div style={card}>
+        <div data-tour="vdr-fragebogen-pricing" style={card}>
           <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px' }}>Preislogik</h2>
           <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 16px', lineHeight: 1.5 }}>
             Diese Werte bilden den automatischen Angebotsentwurf. Du prüfst und passt jedes Angebot vor dem Freigeben an — die Automatik ist nur ein Startpunkt.
@@ -217,7 +219,7 @@ export default function FragebogenBuilderClient({ category }: { category: string
         </div>
 
         {/* Steuer & Konditionen */}
-        <div style={card}>
+        <div data-tour="vdr-fragebogen-tax" style={card}>
           <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>Steuer & Konditionen</h2>
           <div style={{ marginBottom: 14 }}>
             <label style={lbl}>Umsatzsteuer</label>
