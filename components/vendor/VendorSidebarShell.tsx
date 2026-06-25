@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
-  Calendar, MessageSquare, User, LogOut, ClipboardList,
+  Calendar, User, LogOut,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
@@ -13,52 +13,37 @@ interface Props {
   companyName: string
   companyInitials: string
   category: string
+  logoUrl?: string
   children: React.ReactNode
 }
 
 interface BadgeData {
   pendingAnfragen: number
-  unreadNachrichten: number
 }
 
 const NAV = [
   { key: 'ubersicht',   label: 'Übersicht',    href: '/vendor/ubersicht',   icon: LayoutDashboard },
   { key: 'anfragen',    label: 'Anfragen',     href: '/vendor/anfragen',    icon: Inbox,         badgeKey: 'pendingAnfragen' as const },
   { key: 'angebote',   label: 'Angebote',     href: '/vendor/angebote',    icon: ReceiptText },
-  { key: 'anfrage-formular', label: 'Anfrage-Formular', href: '/vendor/anfrage-formular', icon: ClipboardList },
   { key: 'events',     label: 'Events',       href: '/vendor/dashboard',   icon: Calendar },
-  { key: 'nachrichten',label: 'Nachrichten',  href: '/vendor/nachrichten', icon: MessageSquare, badgeKey: 'unreadNachrichten' as const },
 ] as const
 
-type NavKey = (typeof NAV)[number]['key'] | 'listing' | 'anfrage-formular'
-
-const PAGE_TITLES: Record<NavKey, string> = {
-  ubersicht: 'Übersicht',
-  anfragen: 'Anfragen',
-  angebote: 'Angebote',
-  events: 'Events',
-  nachrichten: 'Nachrichten',
-  listing: 'Anbieter-Profil',
-  'anfrage-formular': 'Anfrage-Formular',
-}
+type NavKey = (typeof NAV)[number]['key'] | 'listing'
 
 function activeKey(pathname: string): NavKey {
-  if (pathname.startsWith('/vendor/ubersicht'))       return 'ubersicht'
-  if (pathname.startsWith('/vendor/anfragen'))        return 'anfragen'
-  if (pathname.startsWith('/vendor/angebote'))        return 'angebote'
-  if (pathname.startsWith('/vendor/fragebogen') || pathname.startsWith('/vendor/anfrage-formular')) return 'anfrage-formular'
-  if (pathname.startsWith('/vendor/nachrichten'))     return 'nachrichten'
-  if (pathname.startsWith('/vendor/listing'))         return 'listing'
-  if (pathname.startsWith('/vendor/dashboard'))       return 'events'
+  if (pathname.startsWith('/vendor/ubersicht'))  return 'ubersicht'
+  if (pathname.startsWith('/vendor/anfragen'))   return 'anfragen'
+  if (pathname.startsWith('/vendor/angebote'))   return 'angebote'
+  if (pathname.startsWith('/vendor/listing'))    return 'listing'
+  if (pathname.startsWith('/vendor/dashboard'))  return 'events'
   return 'ubersicht'
 }
 
-export default function VendorSidebarShell({ companyName, companyInitials, category, children }: Props) {
+export default function VendorSidebarShell({ companyName, companyInitials, category, logoUrl, children }: Props) {
   const pathname = usePathname()
-  const [badges, setBadges] = useState<BadgeData>({ pendingAnfragen: 0, unreadNachrichten: 0 })
+  const [badges, setBadges] = useState<BadgeData>({ pendingAnfragen: 0 })
   const active = activeKey(pathname)
   const isKommunikation = pathname.includes('/kommunikation')
-  const isEventPage = pathname.startsWith('/vendor/dashboard/')
 
   // Skip sidebar for public pages
   const noShell = pathname.startsWith('/vendor/join') || pathname.startsWith('/vendor/signup')
@@ -67,7 +52,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
     fetch('/api/vendor/shell-data')
       .then(r => r.ok ? r.json() : null)
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      .then(d => { if (d) setBadges({ pendingAnfragen: d.pendingAnfragen ?? 0, unreadNachrichten: d.unreadNachrichten ?? 0 }) })
+      .then(d => { if (d) setBadges({ pendingAnfragen: d.pendingAnfragen ?? 0 }) })
   }, [])
 
   if (noShell) return <>{children}</>
@@ -98,11 +83,16 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         <div style={{ padding: '18px 14px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-            background: 'var(--accent)', color: '#fff',
+            background: logoUrl ? 'transparent' : 'var(--accent)', color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 13, fontWeight: 700, letterSpacing: '-0.3px',
+            overflow: 'hidden',
           }}>
-            {companyInitials}
+            {logoUrl
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : companyInitials
+            }
           </div>
           <div style={{ overflow: 'hidden' }}>
             <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -168,19 +158,8 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         height: '100dvh',
         overflow: isKommunikation ? 'hidden' : 'auto',
         display: 'flex', flexDirection: 'column',
+        background: 'var(--bg)',
       }}>
-        {/* Top header bar — only for global pages (event pages have VendorEventTabBar) */}
-        {!isEventPage && (
-          <div style={{
-            display: 'flex', alignItems: 'center',
-            padding: '0 24px', height: 52, flexShrink: 0,
-            background: '#fff', borderBottom: '1px solid var(--border)',
-          }}>
-            <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-primary)' }}>
-              {PAGE_TITLES[active]}
-            </span>
-          </div>
-        )}
         {children}
       </div>
 

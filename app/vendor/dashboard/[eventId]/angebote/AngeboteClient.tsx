@@ -71,8 +71,9 @@ export default function AngeboteClient({ eventId }: { eventId: string }) {
   }
 
   return (
+    <div style={{ padding: '28px 24px 48px' }}>
     <div style={{ maxWidth: 760, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <ReceiptText size={20} style={{ color: 'var(--gold)' }} />
         </div>
@@ -149,6 +150,7 @@ export default function AngeboteClient({ eventId }: { eventId: string }) {
       )}
 
       <style>{`.ang-spin { animation: angspin 1s linear infinite; } @keyframes angspin { to { transform: rotate(360deg); } } .ang-skel { background: linear-gradient(90deg, var(--bg) 25%, var(--border) 50%, var(--bg) 75%); background-size: 200% 100%; animation: ang-shimmer 1.4s ease infinite; } @keyframes ang-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+    </div>
     </div>
   )
 }

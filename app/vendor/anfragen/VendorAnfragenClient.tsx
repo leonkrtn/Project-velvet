@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   X, MapPin, Calendar, Euro, Inbox,
-  ChevronLeft, Heart, Loader2, Users, Mail, Phone, Tag, ArrowRight, ReceiptText,
+  Heart, Loader2, Users, Mail, Phone, Tag, ArrowRight, ReceiptText,
 } from 'lucide-react'
 import VendorOfferEditor from '@/components/vendor/VendorOfferEditor'
 
@@ -87,19 +87,15 @@ export default function VendorAnfragenClient() {
   ]
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '28px 20px 64px' }}>
-      <div style={{ maxWidth: 920, margin: '0 auto' }}>
-
-        <Link href="/vendor/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-dim)', textDecoration: 'none', marginBottom: 18 }}>
-          <ChevronLeft size={15} /> Zurück zu meinen Events
-        </Link>
+    <div style={{ background: 'var(--bg)', flex: 1, padding: '28px 24px 48px', overflow: 'auto' }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Inbox size={20} style={{ color: 'var(--gold)' }} />
           </div>
           <div>
-            <h1 style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>Marktplatz-Anfragen</h1>
+            <h1 style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>Anfragen</h1>
             <p style={{ fontSize: 13.5, color: 'var(--text-dim)', marginTop: 2 }}>Anfragen von Brautpaaren aus dem Marktplatz.</p>
           </div>
         </div>
@@ -111,10 +107,10 @@ export default function VendorAnfragenClient() {
               return (
                 <button key={t.key} onClick={() => setFilter(t.key)} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 100, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
-                  border: `1px solid ${active ? 'var(--gold)' : 'var(--border)'}`, background: active ? 'var(--gold)' : 'var(--surface)', color: active ? '#fff' : 'var(--text)',
+                  border: `1px solid ${active ? 'var(--gold)' : 'var(--border)'}`, background: active ? 'var(--gold)' : 'var(--bg)', color: active ? '#fff' : 'var(--text)',
                 }}>
                   {t.label}
-                  <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 100, minWidth: 18, textAlign: 'center', padding: '0 5px', background: active ? 'rgba(255,255,255,0.25)' : 'var(--bg)', color: active ? '#fff' : 'var(--text-dim)' }}>{t.count}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 100, minWidth: 18, textAlign: 'center', padding: '0 5px', background: active ? 'rgba(255,255,255,0.25)' : 'var(--border)', color: active ? '#fff' : 'var(--text-dim)' }}>{t.count}</span>
                 </button>
               )
             })}
@@ -132,7 +128,7 @@ export default function VendorAnfragenClient() {
         ) : visible.length === 0 ? (
           <EmptyState title="Nichts hier" text={`Keine Anfragen im Bereich „${tabs.find(t => t.key === filter)?.label}".`} />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
             {visible.map(r => <RequestTile key={r.id} r={r} onOpen={() => setSelectedId(r.id)} />)}
           </div>
         )}
