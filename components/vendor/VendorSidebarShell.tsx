@@ -273,6 +273,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
           }
           .vdr-logout-btn { display: none !important; }
           .vdr-help-btn { display: none !important; }
+          .vdr-nav-text { display: block !important; font-size: 9px !important; font-weight: 500 !important; line-height: 1.2 !important; text-align: center !important; }
         }
       `}</style>
 

@@ -85,9 +85,9 @@ function CompRow({ label, cur, base, format = 'money' }: { label: string; cur: n
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
       <span style={{ flex: 1, fontSize: 13, color: 'var(--text-secondary)' }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', minWidth: 80, textAlign: 'right' }}>{fmt(cur)}</span>
-      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', minWidth: 70, textAlign: 'right' }}>{fmt(base)}</span>
-      <div style={{ minWidth: 80, textAlign: 'right' }}><DeltaBadge cur={cur} base={base} /></div>
+      <span className="rpt-comp-cur" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', minWidth: 80, textAlign: 'right' }}>{fmt(cur)}</span>
+      <span className="rpt-comp-base" style={{ fontSize: 12, color: 'var(--text-tertiary)', minWidth: 70, textAlign: 'right' }}>{fmt(base)}</span>
+      <div className="rpt-comp-delta" style={{ minWidth: 80, textAlign: 'right' }}><DeltaBadge cur={cur} base={base} /></div>
     </div>
   )
 }
@@ -162,12 +162,21 @@ export default function ReportClient() {
         @keyframes rpt-pulse{0%,100%{opacity:1}50%{opacity:0.5}}
         @keyframes rpt-spin{to{transform:rotate(360deg)}}
         .rpt-spin{animation:rpt-spin 1s linear infinite}
+        @media(max-width:640px){
+          .rpt-kpi-grid{grid-template-columns:repeat(2,1fr)!important}
+          .rpt-header{flex-wrap:wrap!important}
+          .rpt-export-label{display:none!important}
+          .rpt-comp-base,.rpt-comp-hdr-base{display:none!important}
+          .rpt-comp-cur,.rpt-comp-hdr-cur{min-width:60px!important}
+          .rpt-comp-delta,.rpt-comp-hdr-delta{min-width:52px!important}
+          .rpt-compare-toggle{margin-left:0!important;width:100%}
+        }
       `}</style>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
 
         {/* ── Header ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <div className="rpt-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
           <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <BarChart2 size={20} style={{ color: 'var(--accent)' }} />
           </div>
@@ -188,7 +197,7 @@ export default function ReportClient() {
               }}
             >
               {exporting === 'excel' ? <Loader2 size={14} className="rpt-spin" /> : <FileSpreadsheet size={14} />}
-              Excel
+              <span className="rpt-export-label">Excel</span>
             </button>
             <button
               onClick={() => exportFile('pdf')}
@@ -200,7 +209,7 @@ export default function ReportClient() {
               }}
             >
               {exporting === 'pdf' ? <Loader2 size={14} className="rpt-spin" /> : <FileText size={14} />}
-              PDF
+              <span className="rpt-export-label">PDF</span>
             </button>
           </div>
         </div>
@@ -236,7 +245,7 @@ export default function ReportClient() {
           </select>
 
           {/* Compare mode */}
-          <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 9, padding: 3, gap: 2, marginLeft: 'auto' }}>
+          <div className="rpt-compare-toggle" style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 9, padding: 3, gap: 2, marginLeft: 'auto' }}>
             {([['prev', 'vs. Vorperiode'], ['lastyear', 'vs. Vorjahr']] as const).map(([k, lbl]) => (
               <button
                 key={k}
@@ -256,7 +265,7 @@ export default function ReportClient() {
 
         {loading && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+            <div className="rpt-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               {[0,1,2,3].map(i => <Skeleton key={i} h={88} />)}
             </div>
             <Skeleton h={180} />
@@ -268,7 +277,7 @@ export default function ReportClient() {
           <>
             {/* ── Finance KPIs ── */}
             <SectionTitle label="Finanzen" />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
+            <div className="rpt-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
               <KpiCard label="Umsatz" value={eur(data.current.finance.accepted_revenue)} sub={`${data.current.finance.accepted_count} Aufträge`} highlight />
               <KpiCard label="Ø Auftragswert" value={eur(data.current.finance.avg_order_value)} />
               <KpiCard label="Pipeline" value={eur(data.current.finance.pipeline_value)} sub={`${data.current.finance.pipeline_count} offen`} />
@@ -280,9 +289,9 @@ export default function ReportClient() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0', marginBottom: 2 }}>
                   <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Kennzahl</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 80, textAlign: 'right' }}>{data.period_label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 70, textAlign: 'right' }}>{compareLabel}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 80, textAlign: 'right' }}>Δ</span>
+                  <span className="rpt-comp-hdr-cur" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 80, textAlign: 'right' }}>{data.period_label}</span>
+                  <span className="rpt-comp-hdr-base" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 70, textAlign: 'right' }}>{compareLabel}</span>
+                  <span className="rpt-comp-hdr-delta" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 80, textAlign: 'right' }}>Δ</span>
                 </div>
 
                 <CompRow label="Umsatz (angenommene Angebote)"   cur={data.current.finance.accepted_revenue}   base={compareData.finance.accepted_revenue}   baseLabel={compareLabel} />
@@ -295,7 +304,7 @@ export default function ReportClient() {
 
             {/* ── Requests & Conversion ── */}
             <SectionTitle label="Anfragen & Angebote" />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
+            <div className="rpt-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
               <KpiCard label="Anfragen" value={String(data.current.requests.received)} />
               <KpiCard label="Versendet" value={String(data.current.requests.offers_sent)} />
               <KpiCard label="Angenommen" value={String(data.current.requests.offers_accepted)} />
@@ -306,9 +315,9 @@ export default function ReportClient() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0', marginBottom: 2 }}>
                   <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Kennzahl</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 80, textAlign: 'right' }}>{data.period_label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 70, textAlign: 'right' }}>{compareLabel}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 80, textAlign: 'right' }}>Δ</span>
+                  <span className="rpt-comp-hdr-cur" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 80, textAlign: 'right' }}>{data.period_label}</span>
+                  <span className="rpt-comp-hdr-base" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 70, textAlign: 'right' }}>{compareLabel}</span>
+                  <span className="rpt-comp-hdr-delta" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 80, textAlign: 'right' }}>Δ</span>
                 </div>
                 {[
                   { label: 'Anfragen eingegangen', cur: data.current.requests.received,       base: compareData.requests.received,       format: 'number' as const },
@@ -322,7 +331,7 @@ export default function ReportClient() {
 
             {/* ── Events ── */}
             <SectionTitle label="Events im Zeitraum" />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+            <div className="rpt-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
               <KpiCard label="Events (aktuell)" value={String(data.current.events.count)} />
               <KpiCard label={compareLabel} value={String(compareData?.events.count ?? 0)} />
             </div>
