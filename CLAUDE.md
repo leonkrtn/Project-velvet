@@ -5,6 +5,24 @@
 
 ---
 
+## ⚠️ AGB-Pflichthinweis (CRM)
+
+Das CRM-System speichert automatisch Kundendaten aus Marktplatz-Anfragen, angenommenen Angeboten und verknüpften Events:
+- Name, E-Mail, Telefon, Adresse
+- Hochzeitsdatum / Veranstaltungsdatum
+- Anfrage-Nachricht des Brautpaars
+- Budget/Umsatz-Informationen
+- Gästezahl (Snapshot zum Import-Zeitpunkt)
+
+**TODO für Rechtsabteilung / AGB-Update:**
+In den AGB des Dienstleisters (und ggf. der Forevr-Plattform-AGB) muss explizit erwähnt werden:
+- Welche Kundendaten im CRM gespeichert werden und woher sie stammen (Plattform-Anfragen, Angebote)
+- Zweck der Verarbeitung (Kundenverwaltung, Folge-Kommunikation)
+- Aufbewahrungsdauer und Löschung auf Anfrage (DSGVO Art. 17)
+- Dass Brautpaar-Kontaktdaten (inkl. Telefon) nach Annahme einer Anfrage an den Dienstleister weitergegeben werden
+
+---
+
 ## ⚠️ Branding: Forevr (ehemals Velvet)
 
 - Der Produktname ist **Forevr** — im UI als Wordmark **FOREVR** (Cormorant Garamond, Letterspacing ~0.16em, Großbuchstaben), im Fließtext **Forevr**, Tarife **Forevr** / **Forevr Pro**.

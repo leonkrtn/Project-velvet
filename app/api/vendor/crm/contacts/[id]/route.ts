@@ -48,7 +48,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     'name','email','phone','address_line1','address_line2',
     'lifecycle_stage','source','event_type','wedding_date',
     'deal_value','notes','priority','custom_tags',
-    'offer_id','event_id','anniversary_remind',
+    'offer_id','event_id','request_id','anniversary_remind',
+    'guest_count','location','event_title','request_message',
   ]
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
