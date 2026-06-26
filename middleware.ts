@@ -28,7 +28,7 @@ function resolvePortal(
   if (roles.includes('veranstalter')) {
     return organizerKnownUnapproved ? '/veranstalter/pending' : '/veranstalter/events'
   }
-  if (roles.includes('dienstleister')) return '/vendor/dashboard'
+  if (roles.includes('dienstleister')) return '/vendor/ubersicht'
   return '/signup'
 }
 

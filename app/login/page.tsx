@@ -68,7 +68,7 @@ function LoginForm() {
         if (roles.includes('brautpaar') || roles.includes('brautpaar_solo')) {
           dest = '/brautpaar'
         } else if (roles.includes('dienstleister')) {
-          dest = '/vendor/dashboard'
+          dest = '/vendor/ubersicht'
         } else if (roles.includes('veranstalter')) {
           // Veranstalter-Mitgliedschaft ohne Freischaltung (isOrganizer war false)
           dest = '/veranstalter/pending'
@@ -98,7 +98,7 @@ function LoginForm() {
               .eq('used_by', session!.user.id)
               .limit(1)
             if (vsc && vsc.length > 0) {
-              dest = '/vendor/dashboard'
+              dest = '/vendor/ubersicht'
             } else if (session?.user?.user_metadata?.signup_role === 'dienstleister') {
               dest = '/vendor/listing'
             } else {
