@@ -182,7 +182,7 @@ function RequestTile({ r, onOpen }: { r: Req; onOpen: () => void }) {
       padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 16,
       transition: 'box-shadow .15s, border-color .15s',
     }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm, 0 4px 16px rgba(0,0,0,0.06))'; e.currentTarget.style.borderColor = 'var(--gold)' }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
     >
       {/* Avatar */}

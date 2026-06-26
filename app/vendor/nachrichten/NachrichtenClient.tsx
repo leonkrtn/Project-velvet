@@ -79,7 +79,10 @@ export default function NachrichtenClient() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {convs.map(conv => (
-              <div key={conv.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+              <div key={conv.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', transition: 'box-shadow .15s, border-color .15s' }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
+              >
                 {/* Event header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px 8px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
                   <Link href={`/vendor/dashboard/${conv.event_id}/kommunikation`} style={{ flex: 1, minWidth: 0 }}>

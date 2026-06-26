@@ -119,7 +119,10 @@ export default function UbersichtClient() {
         <div className="ub-stat-grid" data-tour="vdr-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
 
           {/* Offene Anfragen */}
-          <Link href="/vendor/anfragen" style={{ ...card, display: 'block', textDecoration: 'none', color: 'inherit' }}>
+          <Link href="/vendor/anfragen" style={{ ...card, display: 'block', textDecoration: 'none', color: 'inherit', transition: 'box-shadow .15s, border-color .15s' }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
+          >
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>Offene Anfragen</p>
             <p style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-1px', lineHeight: 1, color: 'var(--text-primary)', marginBottom: 8 }}>
               {s.pendingAnfragen}
@@ -131,7 +134,10 @@ export default function UbersichtClient() {
           </Link>
 
           {/* Angebote versendet */}
-          <Link href="/vendor/angebote" style={{ ...card, display: 'block', textDecoration: 'none', color: 'inherit' }}>
+          <Link href="/vendor/angebote" style={{ ...card, display: 'block', textDecoration: 'none', color: 'inherit', transition: 'box-shadow .15s, border-color .15s' }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
+          >
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>Angebote versendet</p>
             <p style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-1px', lineHeight: 1, color: 'var(--text-primary)', marginBottom: 8 }}>
               {s.releasedOffers}
@@ -142,7 +148,10 @@ export default function UbersichtClient() {
           </Link>
 
           {/* Anstehende Events */}
-          <Link href="/vendor/dashboard" style={{ ...card, display: 'block', textDecoration: 'none', color: 'inherit' }}>
+          <Link href="/vendor/dashboard" style={{ ...card, display: 'block', textDecoration: 'none', color: 'inherit', transition: 'box-shadow .15s, border-color .15s' }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
+          >
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>Anstehende Events</p>
             <p style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-1px', lineHeight: 1, color: 'var(--text-primary)', marginBottom: 8 }}>
               {s.upcomingEvents}
