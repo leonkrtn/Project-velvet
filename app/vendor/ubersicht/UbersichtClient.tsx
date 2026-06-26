@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Inbox, Loader2 } from 'lucide-react'
+import VendorCalendar from '@/components/vendor/VendorCalendar'
 
 interface Stats {
   pendingAnfragen: number
@@ -287,6 +288,10 @@ export default function UbersichtClient() {
             )}
           </div>
         </div>
+
+        {/* ── Calendar ── */}
+        <VendorCalendar />
+
       </div>
     </div>
   )
