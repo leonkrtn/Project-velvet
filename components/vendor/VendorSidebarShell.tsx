@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
-  Calendar, BarChart2, User, LogOut, HelpCircle, Users,
+  Calendar, BarChart2, User, LogOut, HelpCircle, Users, Menu, X,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
@@ -48,6 +48,8 @@ function activeKey(pathname: string): NavKey {
 export default function VendorSidebarShell({ companyName, companyInitials, category, logoUrl, children }: Props) {
   const pathname = usePathname()
   const [badges, setBadges] = useState<BadgeData>({ pendingAnfragen: 0 })
+  const [pageSubtitle, setPageSubtitle] = useState('')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const active = activeKey(pathname)
   const isKommunikation = pathname.includes('/kommunikation')
 
@@ -59,6 +61,14 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
       // eslint-disable-next-line react-hooks/exhaustive-deps
       .then(d => { if (d) setBadges({ pendingAnfragen: d.pendingAnfragen ?? 0 }) })
   }, [])
+
+  useEffect(() => {
+    const handler = (e: Event) => setPageSubtitle((e as CustomEvent<string>).detail || '')
+    window.addEventListener('vendor-page-subtitle', handler)
+    return () => window.removeEventListener('vendor-page-subtitle', handler)
+  }, [])
+
+  useEffect(() => { setMobileMenuOpen(false) }, [pathname])
 
   if (noShell) return <>{children}</>
 
@@ -73,10 +83,49 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
     }
   }
 
+  function renderNavItems(forDrawer = false) {
+    return NAV.map(item => {
+      const Icon = item.icon
+      const badge = 'badgeKey' in item ? (badges[item.badgeKey] ?? 0) : 0
+      const on = active === item.key
+      const subtitle = on && item.key === 'angebote' && pageSubtitle ? pageSubtitle : ''
+      const linkStyle: React.CSSProperties = subtitle
+        ? { ...navStyle(item.key), flexDirection: 'column', alignItems: 'flex-start', paddingBottom: 8, gap: 2 }
+        : navStyle(item.key)
+      return (
+        <Link key={item.key} href={item.href} className={forDrawer ? 'vdr-drawer-link' : 'vdr-nav-link'}
+          data-active={on ? 'true' : undefined} style={linkStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+            <Icon size={16} style={{ flexShrink: 0, opacity: on ? 1 : 0.45 }} />
+            <span style={{ flex: 1 }}>{item.label}</span>
+            {badge > 0 && (
+              <span className="vdr-badge" style={{
+                fontSize: 11, fontWeight: 700, minWidth: 20, textAlign: 'center',
+                padding: '2px 5px', borderRadius: 100,
+                background: on ? 'rgba(255,255,255,0.3)' : 'var(--accent)', color: '#fff',
+              }}>
+                {badge > 99 ? '99+' : badge}
+              </span>
+            )}
+          </div>
+          {subtitle && (
+            <span style={{
+              fontSize: 11, color: 'rgba(255,255,255,0.70)', fontWeight: 400,
+              paddingLeft: 26, overflow: 'hidden', textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap', maxWidth: '100%',
+            }}>
+              {subtitle}
+            </span>
+          )}
+        </Link>
+      )
+    })
+  }
+
   return (
     <div className="vdr-shell" style={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
 
-      {/* ── Sidebar ── */}
+      {/* ── Sidebar (desktop + tablet) ── */}
       <aside className="vdr-sidebar" style={{
         width: 240, flexShrink: 0, height: '100dvh',
         background: 'var(--sidebar-bg)',
@@ -86,15 +135,13 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         boxShadow: '2px 0 12px rgba(35,82,200,0.06)',
         display: 'flex', flexDirection: 'column',
       }}>
-
         {/* Company header */}
         <div className="vdr-company-header" style={{ padding: '18px 14px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10, flexShrink: 0,
             background: logoUrl ? 'transparent' : 'var(--accent)', color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13, fontWeight: 700, letterSpacing: '-0.3px',
-            overflow: 'hidden',
+            fontSize: 13, fontWeight: 700, letterSpacing: '-0.3px', overflow: 'hidden',
           }}>
             {logoUrl
               // eslint-disable-next-line @next/next/no-img-element
@@ -114,28 +161,8 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
           </div>
         </div>
 
-        {/* Nav */}
         <nav className="vdr-nav" style={{ flex: 1, overflowY: 'auto', padding: '2px 8px' }}>
-          {NAV.map(item => {
-            const Icon = item.icon
-            const badge = 'badgeKey' in item ? (badges[item.badgeKey] ?? 0) : 0
-            const on = active === item.key
-            return (
-              <Link key={item.key} href={item.href} className="vdr-nav-link" data-active={on ? 'true' : undefined} style={navStyle(item.key)}>
-                <Icon size={16} style={{ flexShrink: 0, opacity: on ? 1 : 0.45 }} />
-                <span className="vdr-nav-text" style={{ flex: 1 }}>{item.label}</span>
-                {badge > 0 && (
-                  <span className="vdr-badge" style={{
-                    fontSize: 11, fontWeight: 700, minWidth: 20, textAlign: 'center',
-                    padding: '2px 5px', borderRadius: 100,
-                    background: 'var(--accent)', color: '#fff',
-                  }}>
-                    {badge > 99 ? '99+' : badge}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
+          {renderNavItems(false)}
         </nav>
 
         {/* Bottom */}
@@ -176,6 +203,140 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         </div>
       </aside>
 
+      {/* ── Mobile header (hidden on desktop/tablet) ── */}
+      <div className="vdr-mobile-header" style={{
+        display: 'none', // shown via CSS on mobile
+        alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 16px',
+        height: 56, flexShrink: 0,
+        background: 'var(--sidebar-bg)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(35,82,200,0.22)',
+        boxShadow: '0 2px 8px rgba(35,82,200,0.06)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+            background: logoUrl ? 'transparent' : 'var(--accent)', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 12, fontWeight: 700, overflow: 'hidden',
+          }}>
+            {logoUrl
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : companyInitials
+            }
+          </div>
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {companyName || 'Mein Unternehmen'}
+          </span>
+        </div>
+        <button
+          onClick={() => setMobileMenuOpen(o => !o)}
+          style={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 40, height: 40, borderRadius: 8, border: 'none',
+            background: 'none', cursor: 'pointer', color: 'var(--text-primary)',
+          }}
+        >
+          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+      </div>
+
+      {/* ── Mobile drawer overlay ── */}
+      {mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          style={{
+            display: 'none', // shown via CSS on mobile
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.35)',
+            zIndex: 190,
+          }}
+          className="vdr-mobile-overlay"
+        />
+      )}
+
+      {/* ── Mobile drawer ── */}
+      <div
+        className="vdr-mobile-drawer"
+        data-open={mobileMenuOpen ? 'true' : 'false'}
+        style={{
+          display: 'none', // shown via CSS on mobile
+          position: 'fixed', top: 0, left: 0, bottom: 0,
+          width: 280, zIndex: 200,
+          background: 'rgba(255,255,255,0.97)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderRight: '1px solid rgba(35,82,200,0.22)',
+          boxShadow: '4px 0 20px rgba(35,82,200,0.12)',
+          flexDirection: 'column',
+          transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      >
+        {/* Drawer header */}
+        <div style={{ padding: '18px 14px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+              background: logoUrl ? 'transparent' : 'var(--accent)', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, fontWeight: 700, overflow: 'hidden',
+            }}>
+              {logoUrl
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={logoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : companyInitials
+              }
+            </div>
+            <div style={{ overflow: 'hidden' }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {companyName || 'Mein Unternehmen'}
+              </p>
+              {category && (
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '2px 0 0', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>
+                  {category.replace(/-/g, ' ')}
+                </p>
+              )}
+            </div>
+          </div>
+          <button onClick={() => setMobileMenuOpen(false)} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Drawer nav */}
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 10px' }}>
+          {renderNavItems(true)}
+        </nav>
+
+        {/* Drawer bottom */}
+        <div style={{ padding: '8px 10px 24px', borderTop: '1px solid var(--border)' }}>
+          <Link href="/vendor/listing" className="vdr-drawer-link" data-active={active === 'listing' ? 'true' : undefined} style={navStyle('listing')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+              <User size={16} style={{ flexShrink: 0, opacity: active === 'listing' ? 1 : 0.45 }} />
+              <span>Anbieter-Profil</span>
+            </div>
+          </Link>
+          <button
+            onClick={() => { setMobileMenuOpen(false); window.dispatchEvent(new Event(VENDOR_TOUR_START_EVENT)) }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 450, color: 'var(--text-secondary)', marginTop: 1 }}
+          >
+            <HelpCircle size={16} style={{ flexShrink: 0, opacity: 0.5 }} />
+            <span>Hilfe</span>
+          </button>
+          <button
+            onClick={() => performLogout()}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 450, color: 'var(--text-secondary)', marginTop: 1 }}
+          >
+            <LogOut size={16} style={{ flexShrink: 0, opacity: 0.5 }} />
+            <span>Abmelden</span>
+          </button>
+        </div>
+      </div>
+
       {/* ── Main ── */}
       <div className="vdr-main" style={{
         flex: 1, minWidth: 0,
@@ -204,19 +365,17 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
           --shadow-md:    0 4px 20px rgba(35,82,200,0.10), 0 1px 6px rgba(0,0,0,0.04);
         }
 
-        /* Globale Hover-Regeln (opacity/filter) im Vendor-Portal deaktivieren —
-           alle Hover-Effekte laufen hier über explizite onMouseEnter-Handler */
+        /* Globale Hover-Regeln im Vendor-Portal */
         .vdr-shell a:hover { opacity: 1 !important; }
         .vdr-shell button:hover:not(:disabled) { filter: none !important; opacity: 1 !important; }
 
-        /* Sidebar-Bottom-Buttons: eigener subtiler Hover-Hintergrund */
         .vdr-logout-btn:hover,
         .vdr-help-btn:hover { background: rgba(35,82,200,0.06) !important; }
 
-        /* Hover: blasser Tint für inaktive Nav-Links */
-        .vdr-nav-link:hover { background: rgba(35,82,200,0.08) !important; }
-        /* Aktiver Link bleibt Royal Blue beim Hovern */
-        .vdr-nav-link[data-active="true"]:hover { background: var(--accent) !important; }
+        .vdr-nav-link:hover,
+        .vdr-drawer-link:hover { background: rgba(35,82,200,0.08) !important; }
+        .vdr-nav-link[data-active="true"]:hover,
+        .vdr-drawer-link[data-active="true"]:hover { background: var(--accent) !important; }
 
         /* Tablet: icon-only sidebar */
         @media (max-width: 768px) {
@@ -225,57 +384,24 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
           .vdr-company-header { justify-content: center !important; padding: 14px 10px !important; gap: 0 !important; }
           .vdr-nav { padding: 2px 6px !important; }
           .vdr-nav-link { justify-content: center !important; padding: 10px !important; gap: 0 !important; }
-          .vdr-nav-text { display: none !important; }
+          .vdr-nav-link > div { justify-content: center !important; }
+          .vdr-nav-link span { display: none !important; }
           .vdr-badge { display: none !important; }
           .vdr-sidebar-bottom { padding: 6px 6px 12px !important; }
           .vdr-logout-btn { justify-content: center !important; padding: 10px !important; gap: 0 !important; }
           .vdr-help-btn { justify-content: center !important; padding: 10px !important; gap: 0 !important; }
+          .vdr-logout-btn span,
+          .vdr-help-btn span { display: none !important; }
         }
-        /* Mobile: bottom tab bar */
+
+        /* Mobile: burger menu */
         @media (max-width: 480px) {
           .vdr-shell { flex-direction: column !important; }
-          .vdr-sidebar {
-            order: 2 !important;
-            width: 100% !important;
-            height: 56px !important;
-            flex-direction: row !important;
-            border-right: none !important;
-            border-top: 1px solid var(--border) !important;
-            overflow: hidden;
-          }
-          .vdr-main { order: 1 !important; height: auto !important; flex: 1 !important; min-height: 0 !important; }
-          .vdr-company-header { display: none !important; }
-          .vdr-nav {
-            flex: 1 !important;
-            overflow: visible !important;
-            display: flex !important;
-            flex-direction: row !important;
-            padding: 0 !important;
-            align-items: stretch !important;
-            height: 100% !important;
-          }
-          .vdr-nav-link {
-            flex: 1 !important;
-            flex-direction: column !important;
-            gap: 3px !important;
-            padding: 6px 2px !important;
-            border-radius: 0 !important;
-            margin-bottom: 0 !important;
-            align-items: center !important;
-            justify-content: center !important;
-          }
-          .vdr-sidebar-bottom {
-            border-top: none !important;
-            border-left: 1px solid var(--border) !important;
-            padding: 0 !important;
-            display: flex !important;
-            flex-direction: row !important;
-            align-items: stretch !important;
-            height: 100% !important;
-          }
-          .vdr-logout-btn { display: none !important; }
-          .vdr-help-btn { display: none !important; }
-          .vdr-nav-text { display: block !important; font-size: 9px !important; font-weight: 500 !important; line-height: 1.2 !important; text-align: center !important; }
+          .vdr-sidebar { display: none !important; }
+          .vdr-mobile-header { display: flex !important; }
+          .vdr-mobile-overlay { display: block !important; }
+          .vdr-mobile-drawer { display: flex !important; }
+          .vdr-main { height: auto !important; flex: 1 !important; min-height: 0 !important; overflow: auto !important; }
         }
       `}</style>
 
