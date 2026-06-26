@@ -12,6 +12,7 @@ export interface CalendarEntry {
   color: string
   entry_type: 'event' | 'reminder' | 'payment' | 'custom'
   editable: boolean
+  href?: string
 }
 
 // GET — returns merged calendar entries for the logged-in vendor
@@ -63,6 +64,7 @@ export async function GET() {
         color: '#2352C8',
         entry_type: 'event',
         editable: false,
+        href: `/vendor/dashboard/${m.event_id}/kommunikation`,
       }
     })
     .filter((e): e is CalendarEntry => e !== null)
@@ -98,6 +100,7 @@ export async function GET() {
           color: '#D97706',
           entry_type: 'reminder',
           editable: false,
+          href: `/vendor/dashboard/${o.event_id}/angebote/${o.id}`,
         })
       }
 
@@ -115,6 +118,7 @@ export async function GET() {
           color: '#1E7E34',
           entry_type: 'payment',
           editable: false,
+          href: `/vendor/dashboard/${o.event_id}/angebote/${o.id}`,
         })
       }
     }
