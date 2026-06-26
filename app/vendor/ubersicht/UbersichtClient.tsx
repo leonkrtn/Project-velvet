@@ -84,12 +84,7 @@ export default function UbersichtClient() {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
         <Loader2 size={20} className="ub-spin" style={{ color: 'var(--text-tertiary)' }} />
-        <style>{`
-          .ub-spin{animation:ubspin 1s linear infinite}@keyframes ubspin{to{transform:rotate(360deg)}}
-          @media(max-width:860px){.ub-stat-grid{grid-template-columns:repeat(2,1fr)!important}}
-          @media(max-width:480px){.ub-stat-grid{grid-template-columns:1fr!important}}
-          @media(max-width:660px){.ub-bottom-grid{grid-template-columns:1fr!important}}
-        `}</style>
+        <style>{`.ub-spin{animation:ubspin 1s linear infinite}@keyframes ubspin{to{transform:rotate(360deg)}}`}</style>
       </div>
     )
   }
@@ -100,8 +95,8 @@ export default function UbersichtClient() {
   const pipelineTotal = s.pipelineValue || 1
 
   return (
-    <div style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1 }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
+    <div className="ub-page-outer" style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1 }}>
+      <div className="ub-page-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
 
         {/* ── Greeting ── */}
         <div style={{ marginBottom: 28 }}>
