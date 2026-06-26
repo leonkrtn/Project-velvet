@@ -22,8 +22,8 @@ export default async function VendorOverviewPage() {
     .filter((e): e is EventRow => !!e)
 
   return (
-    <div style={{ flex: 1, background: 'var(--bg)', padding: '28px 24px 48px', overflow: 'auto' }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
+    <div className="vnd-page-outer" style={{ flex: 1, background: 'var(--bg)', padding: '28px 24px 48px', overflow: 'auto' }}>
+      <div className="vnd-page-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.4px', marginBottom: 4 }}>Meine Events</h1>
           <p style={{ fontSize: 14, color: 'var(--text-dim)' }}>Alle Events, bei denen du als Dienstleister eingetragen bist.</p>

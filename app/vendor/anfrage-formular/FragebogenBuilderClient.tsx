@@ -277,7 +277,7 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
   if (embedded) return content
 
   return (
-    <div style={{ minHeight: '100dvh', background: C.bg, padding: '28px 24px 80px' }}>
+    <div className="vnd-page-outer" style={{ minHeight: '100dvh', background: C.bg, padding: '28px 24px 80px' }}>
       <div>
         {content}
       </div>

@@ -1114,7 +1114,7 @@ export default function CrmClient() {
   const activeFilters = [stageFilter, sourceFilter, priorityFilter, homeCityFilter, eventCityFilter].filter(Boolean).length
 
   return (
-    <div style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1, overflow: 'auto' }}>
+    <div className="vnd-page-outer" style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1, overflow: 'auto' }}>
 
       {/* Anniversary alerts */}
       {anniversaryAlerts.length > 0 && (
@@ -1150,12 +1150,12 @@ export default function CrmClient() {
         </div>
       )}
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
+      <div className="vnd-page-card-nopad" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, overflow: 'hidden' }}>
 
         {/* ── Header ── */}
         <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14, flexWrap: 'wrap' }}>
-            <div style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="vnd-hdr-icon" style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Users size={18} style={{ color: '#fff' }} />
             </div>
             <div style={{ flex: 1 }}>
