@@ -175,11 +175,22 @@ export default function VendorAnfragenClient() {
 function RequestTile({ r, onOpen }: { r: Req; onOpen: () => void }) {
   const m = statusMeta[r.status]
   const loc = locationOf(r.events)
+
+  // Build a single metadata string — no wrapping, always one line
+  const metaParts: string[] = []
+  if (r.events?.date) metaParts.push(new Date(r.events.date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }))
+  if (loc) metaParts.push(loc)
+  if (r.budget != null) metaParts.push(`${r.budget.toLocaleString('de-DE')} €`)
+  if (r.guest_count && r.guest_count.confirmed > 0) metaParts.push(`${r.guest_count.confirmed} Gäste`)
+  metaParts.push(`von ${r.requester?.name ?? 'Brautpaar'}`)
+  const metaStr = metaParts.join(' · ')
+
   return (
     <button onClick={onOpen} style={{
       textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', width: '100%',
       background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md, 14px)',
       padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 16,
+      minHeight: 88,
       transition: 'box-shadow .15s, border-color .15s',
     }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
@@ -191,19 +202,12 @@ function RequestTile({ r, onOpen }: { r: Req; onOpen: () => void }) {
       </div>
 
       {/* Main */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{titleOf(r)}</span>
+      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+          <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1, minWidth: 0 }}>{titleOf(r)}</span>
           <span style={{ fontSize: 10.5, fontWeight: 700, padding: '4px 9px', borderRadius: 100, background: m.bg, color: m.fg, flexShrink: 0, whiteSpace: 'nowrap' }}>{m.label}</span>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: 6 }}>
-          {r.events?.date && <TileLine icon={<Calendar size={13} />} text={new Date(r.events.date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })} />}
-          {loc && <TileLine icon={<MapPin size={13} />} text={loc} />}
-          {r.guest_count && r.guest_count.confirmed > 0 && <TileLine icon={<Users size={13} />} text={`${r.guest_count.confirmed} Gäste`} />}
-          {r.budget != null && <TileLine icon={<Euro size={13} />} text={`${r.budget.toLocaleString('de-DE')} €`} />}
-          <TileLine icon={<Heart size={13} />} text={`von ${r.requester?.name ?? 'Brautpaar'}`} />
-        </div>
-        {r.message && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.message}</p>}
+        <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '6px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{metaStr}</p>
       </div>
 
       {/* Action */}
@@ -328,14 +332,6 @@ function ContactLink({ icon, href, text }: { icon: React.ReactNode; href: string
     <a href={href} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5, color: 'var(--text-secondary, #555)', textDecoration: 'none', marginBottom: 4 }}>
       <span style={{ color: 'var(--text-dim)', flexShrink: 0, display: 'flex' }}>{icon}</span>{text}
     </a>
-  )
-}
-function TileLine({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: 'var(--text-dim)' }}>
-      <span style={{ flexShrink: 0, display: 'flex' }}>{icon}</span>
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{text}</span>
-    </span>
   )
 }
 function EmptyState({ title, text }: { title: string; text: string }) {

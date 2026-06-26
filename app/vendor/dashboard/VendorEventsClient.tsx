@@ -101,29 +101,29 @@ export default function VendorEventsClient({ events }: { events: EventRow[] }) {
             <div key={event.id} style={{ position: 'relative' }}>
               <Link
                 href={`/vendor/dashboard/${event.id}/kommunikation`}
-                style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '20px 56px 20px 24px', textDecoration: 'none', color: 'inherit', transition: 'box-shadow .15s, border-color .15s' }}
+                style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '16px 56px 16px 24px', textDecoration: 'none', color: 'inherit', transition: 'box-shadow .15s, border-color .15s', minHeight: 84 }}
                 onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                  <p style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>{event.title}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', marginBottom: 5 }}>
+                  <p style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.title}</p>
                   {event.event_code && (
                     <span style={{
-                      fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+                      fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', flexShrink: 0,
                       color: 'var(--text-dim)', background: 'rgba(0,0,0,0.05)',
                       padding: '1px 7px', borderRadius: 4, fontFamily: 'monospace',
                     }}>#{event.event_code}</span>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 12, overflow: 'hidden' }}>
                   {event.date && (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-dim)' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-dim)', flexShrink: 0 }}>
                       <CalendarDays size={13} />
                       {new Date(event.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </span>
                   )}
                   {event.venue && (
-                    <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>{event.venue}</span>
+                    <span style={{ fontSize: 13, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.venue}</span>
                   )}
                 </div>
               </Link>
