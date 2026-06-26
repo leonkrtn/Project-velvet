@@ -281,7 +281,7 @@ export default function VendorCalendar() {
       ) : view === 'month' ? (
         <MonthView cursor={cursor} entries={entries} onDayClick={openCreate} onEntryClick={openEdit} isMobile={isMobile} onDayDetail={setSelectedDay} />
       ) : view === 'week' ? (
-        <WeekView cursor={cursor} entries={entries} onDayClick={openCreate} onEntryClick={openEdit} />
+        <WeekView cursor={cursor} entries={entries} onDayClick={openCreate} onEntryClick={openEdit} isMobile={isMobile} onDayDetail={setSelectedDay} />
       ) : (
         <AgendaView cursor={cursor} entries={entries} onEntryClick={openEdit} onAdd={openCreate} />
       )}
@@ -429,11 +429,13 @@ function MonthView({ cursor, entries, onDayClick, onEntryClick, isMobile, onDayD
 
 // ── Week View ─────────────────────────────────────────────────────────────────
 
-function WeekView({ cursor, entries, onDayClick, onEntryClick }: {
+function WeekView({ cursor, entries, onDayClick, onEntryClick, isMobile, onDayDetail }: {
   cursor: Date
   entries: CalendarEntry[]
   onDayClick: (d: Date) => void
   onEntryClick: (e: CalendarEntry) => void
+  isMobile?: boolean
+  onDayDetail?: (d: Date) => void
 }) {
   const today = new Date()
   const ws = weekStart(cursor)
@@ -446,6 +448,14 @@ function WeekView({ cursor, entries, onDayClick, onEntryClick }: {
           const isToday = sameDay(day, today)
           const dayEntries = entriesOnDay(entries, day)
 
+          function handleDayClick() {
+            if (isMobile && onDayDetail && dayEntries.length > 0) {
+              onDayDetail(day)
+            } else {
+              onDayClick(day)
+            }
+          }
+
           return (
             <div
               key={i}
@@ -456,7 +466,7 @@ function WeekView({ cursor, entries, onDayClick, onEntryClick }: {
             >
               {/* Day header */}
               <div
-                onClick={() => onDayClick(day)}
+                onClick={handleDayClick}
                 style={{ padding: '10px 8px', borderBottom: `1px solid ${C.border}`, cursor: 'pointer', textAlign: 'center' }}
               >
                 <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -472,20 +482,28 @@ function WeekView({ cursor, entries, onDayClick, onEntryClick }: {
                 </div>
               </div>
 
-              {/* Events */}
-              <div style={{ padding: '6px 4px', display: 'flex', flexDirection: 'column', gap: 3, minHeight: 120 }}>
-                {dayEntries.length === 0 ? null : dayEntries.map(e => (
-                  <div
-                    key={e.id}
-                    onClick={() => onEntryClick(e)}
-                    className="vc-chip"
-                    style={{ background: e.color + '22', color: e.color, border: `1px solid ${e.color}33`, cursor: (e.editable || e.href) ? 'pointer' : 'default' }}
-                    title={e.title}
-                  >
-                    {e.title}
-                  </div>
-                ))}
-              </div>
+              {/* Events: dots on mobile, chips on desktop */}
+              {isMobile ? (
+                <div style={{ padding: '6px 4px', display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 3, minHeight: 40 }}>
+                  {dayEntries.slice(0, 3).map((e, di) => (
+                    <div key={di} style={{ width: 6, height: 6, borderRadius: '50%', background: e.color, flexShrink: 0 }} />
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '6px 4px', display: 'flex', flexDirection: 'column', gap: 3, minHeight: 120 }}>
+                  {dayEntries.length === 0 ? null : dayEntries.map(e => (
+                    <div
+                      key={e.id}
+                      onClick={() => onEntryClick(e)}
+                      className="vc-chip"
+                      style={{ background: e.color + '22', color: e.color, border: `1px solid ${e.color}33`, cursor: (e.editable || e.href) ? 'pointer' : 'default' }}
+                      title={e.title}
+                    >
+                      {e.title}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}
