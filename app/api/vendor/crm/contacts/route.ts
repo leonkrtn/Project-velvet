@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
     .from('crm_contacts')
     .select('*, crm_contact_persons(id, name, email, phone, role), crm_tasks(id, title, done, due_at)')
     .eq('dienstleister_id', dlId)
+    .order('lifecycle_stage', { ascending: true })
     .order('updated_at', { ascending: false })
 
   if (stage) q = q.eq('lifecycle_stage', stage)
@@ -60,7 +61,8 @@ export async function POST(req: NextRequest) {
     name, email, phone, address_line1, address_line2,
     lifecycle_stage, source, event_type, wedding_date,
     deal_value, notes, priority, custom_tags,
-    offer_id, event_id, anniversary_remind,
+    offer_id, event_id, request_id, anniversary_remind,
+    guest_count, location, event_title, request_message,
     additional_persons,
   } = body
 
@@ -86,7 +88,12 @@ export async function POST(req: NextRequest) {
       custom_tags: custom_tags ?? [],
       offer_id: offer_id || null,
       event_id: event_id || null,
+      request_id: request_id || null,
       anniversary_remind: anniversary_remind ?? false,
+      guest_count: guest_count ?? null,
+      location: location?.trim() ?? '',
+      event_title: event_title?.trim() ?? '',
+      request_message: request_message?.trim() ?? '',
     })
     .select()
     .single()
