@@ -40,8 +40,11 @@ export async function GET() {
 
   const headers = [
     'Name', 'E-Mail', 'Telefon', 'Adresse', 'Adresszusatz',
-    'Status', 'Quelle', 'Veranstaltungstyp', 'Hochzeitsdatum',
-    'Umsatz', 'Priorität', 'Notizen', 'Erstellt am',
+    'Wohnstraße', 'Wohn-PLZ', 'Wohnort',
+    'Status', 'Quelle', 'Veranstaltungstyp', 'Hochzeitsdatum', 'Geburtstag',
+    'Veranstaltungsort', 'Gästeanzahl',
+    'Umsatz', 'Offenes Angebot', 'Paar-Gesamtbudget',
+    'Priorität', 'Notizen', 'Erstellt am',
   ]
 
   const rows = (contacts ?? []).map(c => [
@@ -50,11 +53,19 @@ export async function GET() {
     esc(c.phone),
     esc(c.address_line1),
     esc(c.address_line2),
+    esc(c.home_street),
+    esc(c.home_postal_code),
+    esc(c.home_city),
     esc(STAGE_LABELS[c.lifecycle_stage] ?? c.lifecycle_stage),
     esc(SOURCE_LABELS[c.source] ?? c.source),
     esc(c.event_type),
     esc(c.wedding_date),
+    esc(c.birthday),
+    esc(c.location),
+    esc(c.guest_count != null ? String(c.guest_count) : ''),
     esc(c.deal_value != null ? String(c.deal_value) : ''),
+    esc(c.pending_offer_value != null ? String(c.pending_offer_value) : ''),
+    esc(c.couple_budget != null ? String(c.couple_budget) : ''),
     esc(c.priority),
     esc(c.notes),
     esc(new Date(c.created_at).toLocaleDateString('de-DE')),

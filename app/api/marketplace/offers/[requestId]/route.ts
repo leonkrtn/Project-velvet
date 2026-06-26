@@ -65,6 +65,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ re
       })
       await admin.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', reqRow.conversation_id)
     }
+
+    // Sync CRM: mark contact as gebucht and set final deal_value
+    if (res.offer.dienstleister_id) {
+      await admin.from('crm_contacts')
+        .update({
+          deal_value: res.offer.total ?? null,
+          pending_offer_value: null,
+          lifecycle_stage: 'gebucht',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('request_id', requestId)
+        .eq('dienstleister_id', res.offer.dienstleister_id)
+    }
+
     return NextResponse.json({ success: true })
   }
 

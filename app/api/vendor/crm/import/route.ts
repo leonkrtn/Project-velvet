@@ -61,16 +61,23 @@ export async function POST(req: NextRequest) {
     return -1
   }
 
-  const nameIdx  = idx(['name'])
-  const emailIdx = idx(['e-mail', 'email', 'mail'])
-  const phoneIdx = idx(['telefon', 'phone', 'tel'])
-  const addr1Idx = idx(['adresse', 'address', 'straße'])
-  const addr2Idx = idx(['adresszusatz', 'plz & stadt', 'city'])
-  const stageIdx = idx(['status', 'lifecycle_stage', 'stage'])
-  const sourceIdx = idx(['quelle', 'source'])
-  const dateIdx  = idx(['hochzeitsdatum', 'wedding_date', 'datum'])
-  const valueIdx = idx(['umsatz', 'deal_value', 'wert', 'budget'])
-  const notesIdx = idx(['notizen', 'notes', 'anmerkungen'])
+  const nameIdx       = idx(['name'])
+  const emailIdx      = idx(['e-mail', 'email', 'mail'])
+  const phoneIdx      = idx(['telefon', 'phone', 'tel'])
+  const addr1Idx      = idx(['straße & hausnummer', 'adresse', 'address'])
+  const addr2Idx      = idx(['plz & ort', 'adresszusatz', 'plz & stadt', 'city'])
+  const homeStrIdx    = idx(['wohnstraße', 'home_street'])
+  const homePlzIdx    = idx(['wohn-plz', 'home_postal_code'])
+  const homeCityIdx   = idx(['wohnort', 'home_city'])
+  const stageIdx      = idx(['status', 'lifecycle_stage', 'stage'])
+  const sourceIdx     = idx(['quelle', 'source'])
+  const dateIdx       = idx(['hochzeitsdatum', 'wedding_date', 'datum'])
+  const birthdayIdx   = idx(['geburtstag', 'birthday'])
+  const locationIdx   = idx(['veranstaltungsort', 'location'])
+  const guestCntIdx   = idx(['gästeanzahl', 'guest_count', 'gäste'])
+  const valueIdx      = idx(['umsatz', 'deal_value', 'wert'])
+  const priorityIdx   = idx(['priorität', 'priority'])
+  const notesIdx      = idx(['notizen', 'notes', 'anmerkungen'])
 
   const inserted: { contact_id: string; dlId: string; name: string }[] = []
 
@@ -83,6 +90,9 @@ export async function POST(req: NextRequest) {
     const stageRaw = get(stageIdx).toLowerCase()
     const sourceRaw = get(sourceIdx).toLowerCase()
 
+    const PRIORITY_MAP: Record<string, string> = { standard: 'standard', vip: 'vip', grosskunde: 'grosskunde' }
+    const priorityRaw = get(priorityIdx).toLowerCase()
+
     const { data: contact } = await admin
       .from('crm_contacts')
       .insert({
@@ -92,10 +102,17 @@ export async function POST(req: NextRequest) {
         phone: get(phoneIdx),
         address_line1: get(addr1Idx),
         address_line2: get(addr2Idx),
+        home_street: get(homeStrIdx),
+        home_postal_code: get(homePlzIdx),
+        home_city: get(homeCityIdx),
         lifecycle_stage: STAGE_MAP[stageRaw] ?? 'lead',
         source: SOURCE_MAP[sourceRaw] ?? 'sonstige',
         wedding_date: get(dateIdx) || null,
+        birthday: get(birthdayIdx) || null,
+        location: get(locationIdx),
+        guest_count: get(guestCntIdx) ? Number(get(guestCntIdx)) || null : null,
         deal_value: get(valueIdx) ? Number(get(valueIdx).replace(/[^0-9.,]/g, '').replace(',', '.')) || null : null,
+        priority: PRIORITY_MAP[priorityRaw] ?? 'standard',
         notes: get(notesIdx),
       })
       .select('id')
