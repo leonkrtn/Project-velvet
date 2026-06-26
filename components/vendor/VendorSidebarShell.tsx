@@ -181,6 +181,20 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
       </div>
 
       <style>{`
+        /* ── Vendor-Portal Farbpalette (Scope: .vdr-shell) ── */
+        .vdr-shell {
+          --bg:           #EDF2FB;
+          --sidebar-bg:   #E2EAF7;
+          --surface:      #FFFFFF;
+          --accent:       #2352C8;
+          --accent-light: rgba(35,82,200,0.09);
+          --text-primary:   #111827;
+          --text-secondary: #4B5768;
+          --text-tertiary:  #8FA0B8;
+          --border:       rgba(35,82,200,0.11);
+          --border2:      rgba(35,82,200,0.18);
+        }
+
         /* Hover-Highlight für alle Navigationslinks — sieht aus wie aktiver Zustand.
            Wenn ein Link bereits aktiv ist, hat er inline background: var(--accent-light);
            das CSS setzt denselben Wert → kein sichtbarer Unterschied beim Hovern. */
