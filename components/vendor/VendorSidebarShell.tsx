@@ -186,7 +186,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
       <style>{`
         /* ── Vendor-Portal Farbpalette ── */
         .vdr-shell {
-          --bg:           #EEF2FF;
+          --bg:           #F5F8FF;
           --sidebar-bg:   rgba(255,255,255,0.88);
           --surface:      #FFFFFF;
           --accent:       #2352C8;
@@ -200,10 +200,16 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
           --shadow-md:    0 4px 20px rgba(35,82,200,0.10), 0 1px 6px rgba(0,0,0,0.04);
         }
 
-        /* Hover: blasser Tint für inaktive Links */
-        .vdr-nav-link:hover { background: rgba(35,82,200,0.08) !important; }
+        /* Hover: blasser Tint + blauer Rahmen (via box-shadow, kein Layout-Shift) */
+        .vdr-nav-link:hover {
+          background: rgba(35,82,200,0.08) !important;
+          box-shadow: 0 0 0 1.5px rgba(35,82,200,0.28) !important;
+        }
         /* Aktiver Link bleibt Royal Blue beim Hovern */
-        .vdr-nav-link[data-active="true"]:hover { background: var(--accent) !important; }
+        .vdr-nav-link[data-active="true"]:hover {
+          background: var(--accent) !important;
+          box-shadow: 0 0 0 1.5px rgba(35,82,200,0.55) !important;
+        }
 
         /* Tablet: icon-only sidebar */
         @media (max-width: 768px) {
