@@ -717,7 +717,7 @@ function SkeletonList() {
           <div className="ang-skel" style={{ height: 11, width: 90, borderRadius: 4, margin: '0 0 10px' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {Array.from({ length: count }).map((_, i) => (
-              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 13, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 13, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, minHeight: 76 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                     <div className="ang-skel" style={{ height: 15, width: `${120 + (i * 41) % 80}px`, borderRadius: 6 }} />
@@ -763,20 +763,21 @@ function GlobalOfferTile({ o }: { o: OfferRow }) {
         textAlign: 'left', textDecoration: 'none', fontFamily: 'inherit', width: '100%',
         background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 13,
         padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14,
+        minHeight: 76,
         transition: 'box-shadow .15s, border-color .15s', color: 'inherit',
       }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 15, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayTitle}</span>
-          {o.version > 1 && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>v{o.version}</span>}
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: m.bg, color: m.fg }}>
+      <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, overflow: 'hidden' }}>
+          <span style={{ fontSize: 15, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1, minWidth: 0 }}>{displayTitle}</span>
+          {o.version > 1 && <span style={{ fontSize: 11, color: 'var(--text-dim)', flexShrink: 0 }}>v{o.version}</span>}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: m.bg, color: m.fg, flexShrink: 0, whiteSpace: 'nowrap' }}>
             {m.icon} {m.label}
           </span>
         </div>
-        <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 4 }}>
+        <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {o.title} · #{o.id.slice(0, 8).toUpperCase()} · Aktualisiert {new Date(o.updated_at).toLocaleDateString('de-DE')}
         </div>
       </div>
