@@ -21,11 +21,13 @@ export async function GET(req: NextRequest) {
   if (!dlId) return NextResponse.json({ contacts: [] })
 
   const { searchParams } = new URL(req.url)
-  const search = searchParams.get('search') ?? ''
-  const stage = searchParams.get('stage') ?? ''
-  const source = searchParams.get('source') ?? ''
-  const priority = searchParams.get('priority') ?? ''
+  const search    = searchParams.get('search')    ?? ''
+  const stage     = searchParams.get('stage')     ?? ''
+  const source    = searchParams.get('source')    ?? ''
+  const priority  = searchParams.get('priority')  ?? ''
   const eventType = searchParams.get('event_type') ?? ''
+  const homeCity  = searchParams.get('home_city') ?? ''
+  const eventCity = searchParams.get('event_city') ?? ''
 
   const admin = createAdminClient()
   let q = admin
@@ -35,10 +37,12 @@ export async function GET(req: NextRequest) {
     .order('lifecycle_stage', { ascending: true })
     .order('updated_at', { ascending: false })
 
-  if (stage) q = q.eq('lifecycle_stage', stage)
-  if (source) q = q.eq('source', source)
-  if (priority) q = q.eq('priority', priority)
+  if (stage)     q = q.eq('lifecycle_stage', stage)
+  if (source)    q = q.eq('source', source)
+  if (priority)  q = q.eq('priority', priority)
   if (eventType) q = q.eq('event_type', eventType)
+  if (homeCity)  q = q.ilike('home_city', `%${homeCity}%`)
+  if (eventCity) q = q.ilike('location', `%${eventCity}%`)
   if (search) {
     q = q.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`)
   }

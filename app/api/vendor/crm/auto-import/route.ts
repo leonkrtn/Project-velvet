@@ -19,16 +19,18 @@ export async function POST() {
 
   const dlId = link.dienstleister_id
 
-  // ── Collect already-linked IDs so we don't duplicate ──────────
+  // ── Collect already-linked IDs for deduplication ─────────────────
   const { data: existing } = await admin
     .from('crm_contacts')
-    .select('offer_id, event_id, request_id, email')
+    .select('id, offer_id, event_id, request_id, email')
     .eq('dienstleister_id', dlId)
 
   const usedOfferIds   = new Set((existing ?? []).map(r => r.offer_id).filter(Boolean) as string[])
   const usedEventIds   = new Set((existing ?? []).map(r => r.event_id).filter(Boolean) as string[])
   const usedRequestIds = new Set((existing ?? []).map(r => r.request_id).filter(Boolean) as string[])
-  const usedEmails     = new Set((existing ?? []).map(r => r.email).filter(Boolean) as string[])
+  const emailToContactId = new Map<string, string>(
+    (existing ?? []).filter(r => r.email).map(r => [r.email as string, r.id as string])
+  )
 
   let imported = 0
 
@@ -45,98 +47,138 @@ export async function POST() {
     .in('dienstleister_id', [dlId])
     .neq('status', 'cancelled')
 
-  // Gather brautpaar contacts for all request events
+  // Fetch vendor offers for these requests (to get pending offer amounts)
+  const reqIds = (requests ?? []).map((r: any) => r.id).filter(Boolean)
+  const offerByRequest: Record<string, { total: number | null; status: string }> = {}
+  if (reqIds.length) {
+    const { data: reqOffers } = await admin
+      .from('vendor_offers')
+      .select('request_id, total, status')
+      .eq('dienstleister_id', dlId)
+      .in('request_id', reqIds)
+    for (const o of (reqOffers ?? []) as any[]) {
+      if (!offerByRequest[o.request_id] || o.status === 'accepted') {
+        offerByRequest[o.request_id] = { total: o.total, status: o.status }
+      }
+    }
+  }
+
+  // Fetch brautpaar contacts + extended profiles for all request events
   const reqEventIds = Array.from(new Set(
     (requests ?? []).map((r: any) => r.event_id).filter(Boolean)
   ))
 
-  const coupleByEvent: Record<string, { name: string; email: string; phone: string }[]> = {}
+  const coupleByEvent: Record<string, {
+    name: string; email: string; phone: string
+    first_name?: string; last_name?: string
+    street?: string; postal_code?: string; city?: string
+  }[]> = {}
+
   if (reqEventIds.length) {
     const { data: mem } = await admin
       .from('event_members')
-      .select('event_id, profiles!user_id ( name, email, phone )')
+      .select('event_id, profiles!user_id ( name, first_name, last_name, email, phone, street, postal_code, city )')
       .in('event_id', reqEventIds)
       .in('role', ['brautpaar', 'brautpaar_solo'])
     for (const m of (mem ?? []) as any[]) {
       const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
       if (!p) continue
-      ;(coupleByEvent[m.event_id] ??= []).push({ name: p.name ?? '', email: p.email ?? '', phone: p.phone ?? '' })
+      ;(coupleByEvent[m.event_id] ??= []).push({
+        name: p.name ?? '',
+        email: p.email ?? '',
+        phone: p.phone ?? '',
+        first_name: p.first_name ?? '',
+        last_name: p.last_name ?? '',
+        street: p.street ?? '',
+        postal_code: p.postal_code ?? '',
+        city: p.city ?? '',
+      })
     }
   }
 
   for (const req of (requests ?? []) as any[]) {
-    if (usedRequestIds.has(req.id)) continue
-
     const ev = (Array.isArray(req.events) ? req.events[0] : req.events) ?? {}
     const requester = (Array.isArray(req.requester) ? req.requester[0] : req.requester) ?? {}
     const coupleContacts = coupleByEvent[req.event_id] ?? []
-
-    // Primary contact: prefer couple contacts, fallback to requester
     const primary = coupleContacts[0] ?? requester
     const email = primary?.email ?? ''
 
-    // Skip if we already have a contact with this email (from another source)
-    if (email && usedEmails.has(email)) {
-      // Mark as already handled
-      usedRequestIds.add(req.id)
-      continue
-    }
+    const offer = offerByRequest[req.id]
+    const dealValue = offer?.status === 'accepted' ? (offer?.total ?? null) : null
+    const pendingOfferValue = offer && offer.status !== 'accepted' ? (offer?.total ?? null) : null
 
     const name = ev.couple_name || primary?.name || 'Unbekannt'
     const location = ev.venue
       ? [ev.venue, ev.venue_address].filter(Boolean).join(', ')
       : [ev.location_name, ev.location_city].filter(Boolean).join(', ')
-
     const stage = req.status === 'accepted' ? 'gebucht' : 'anfrage'
+
+    const contactData = {
+      dienstleister_id:    dlId,
+      name,
+      email,
+      phone:               primary?.phone ?? '',
+      home_street:         primary?.street ?? '',
+      home_postal_code:    primary?.postal_code ?? '',
+      home_city:           primary?.city ?? '',
+      lifecycle_stage:     stage,
+      source:              'marktplatz',
+      event_type:          ev.event_type ?? 'hochzeit',
+      wedding_date:        ev.date ? ev.date.slice(0, 10) : null,
+      deal_value:          dealValue,
+      pending_offer_value: pendingOfferValue,
+      couple_budget:       req.budget ?? null,
+      request_id:          req.id,
+      event_id:            req.event_id ?? null,
+      event_title:         ev.title ?? '',
+      location:            location ?? '',
+      guest_count:         null,
+      request_message:     req.message ?? '',
+      anniversary_remind:  !!ev.date,
+      updated_at:          new Date().toISOString(),
+    }
+
+    // Update if email already exists, otherwise insert
+    const existingId = email ? emailToContactId.get(email) : null
+    if (existingId || usedRequestIds.has(req.id)) {
+      const updateId = existingId ?? (existing ?? []).find(r => r.request_id === req.id)?.id
+      if (updateId) {
+        await admin.from('crm_contacts').update(contactData).eq('id', updateId)
+        usedRequestIds.add(req.id)
+        continue
+      }
+    }
 
     const { data: contact } = await admin
       .from('crm_contacts')
-      .insert({
-        dienstleister_id: dlId,
-        name,
-        email,
-        phone: primary?.phone ?? '',
-        lifecycle_stage: stage,
-        source: 'marktplatz',
-        event_type: ev.event_type ?? 'hochzeit',
-        wedding_date: ev.date ? ev.date.slice(0, 10) : null,
-        deal_value: req.budget ?? null,
-        request_id: req.id,
-        event_id: req.event_id ?? null,
-        event_title: ev.title ?? '',
-        location: location ?? '',
-        guest_count: null,
-        request_message: req.message ?? '',
-        anniversary_remind: !!ev.date,
-      })
+      .insert(contactData)
       .select('id')
       .single()
 
     if (contact) {
-      // Add additional couple contacts as extra persons
       const additional = coupleContacts.slice(1)
       if (additional.length) {
-        await admin.from('crm_contact_persons').insert(
+        await admin.from('crm_contact_persons').upsert(
           additional.map((p: any) => ({
             contact_id: contact.id,
-            name: p.name ?? '',
+            name: `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || p.name,
             email: p.email ?? '',
             phone: p.phone ?? '',
             role: 'partner',
-          }))
+          })),
+          { onConflict: 'contact_id,email', ignoreDuplicates: true }
         )
       }
-
       await admin.from('crm_activities').insert({
-        contact_id: contact.id,
+        contact_id:     contact.id,
         dienstleister_id: dlId,
-        activity_type: 'imported',
-        title: `Via Marktplatz-Anfrage importiert (${req.status === 'accepted' ? 'angenommen' : 'offen'})`,
-        body: req.message ? req.message.slice(0, 200) : '',
+        activity_type:  'imported',
+        title:          `Via Marktplatz-Anfrage importiert (${req.status === 'accepted' ? 'angenommen' : 'offen'})`,
+        body:           req.message ? req.message.slice(0, 200) : '',
         auto_generated: true,
       })
-
-      if (email) usedEmails.add(email)
+      if (email) emailToContactId.set(email, contact.id)
+      usedRequestIds.add(req.id)
       imported++
     }
   }
@@ -146,14 +188,20 @@ export async function POST() {
   // ════════════════════════════════════════════════════════════════
   const { data: acceptedOffers } = await admin
     .from('vendor_offers')
-    .select('id, title, total, event_id, standard_info, request_id, events(title, date, couple_name, venue, venue_address, location_name, location_city)')
+    .select('id, title, total, event_id, standard_info, request_id, events(title, date, couple_name, venue, venue_address, location_name, location_city, event_type)')
     .eq('dienstleister_id', dlId)
     .eq('status', 'accepted')
 
   for (const offer of (acceptedOffers ?? []) as any[]) {
     if (usedOfferIds.has(offer.id)) continue
-    // Skip if already covered by the request import
     if (offer.request_id && usedRequestIds.has(offer.request_id)) {
+      // Update deal_value on existing contact
+      const existingContact = (existing ?? []).find(r => r.request_id === offer.request_id)
+      if (existingContact) {
+        await admin.from('crm_contacts')
+          .update({ deal_value: offer.total ?? null, pending_offer_value: null, updated_at: new Date().toISOString() })
+          .eq('id', existingContact.id)
+      }
       usedOfferIds.add(offer.id)
       continue
     }
@@ -164,9 +212,11 @@ export async function POST() {
 
     const name = info.client_name || ev?.couple_name || ev?.title || offer.title || 'Unbekannt'
     const email = info.client_email || ''
-    const phone = info.client_phone || ''
 
-    if (email && usedEmails.has(email)) {
+    if (email && emailToContactId.has(email)) {
+      await admin.from('crm_contacts')
+        .update({ deal_value: offer.total ?? null, pending_offer_value: null, offer_id: offer.id, lifecycle_stage: 'gebucht', updated_at: new Date().toISOString() })
+        .eq('id', emailToContactId.get(email)!)
       usedOfferIds.add(offer.id)
       continue
     }
@@ -183,17 +233,17 @@ export async function POST() {
         dienstleister_id: dlId,
         name,
         email,
-        phone,
-        address_line1: info.client_address_line1 ?? '',
-        address_line2: info.client_address_line2 ?? '',
-        lifecycle_stage: 'gebucht',
-        source: offer.event_id ? 'marktplatz' : 'sonstige',
-        event_type: ev?.event_type ?? info.eventType ?? 'hochzeit',
-        wedding_date: ev?.date ? ev.date.slice(0, 10) : (info.date ? info.date.slice(0, 10) : null),
-        deal_value: offer.total ?? null,
-        offer_id: offer.id,
-        event_id: offer.event_id ?? null,
-        event_title: ev?.title ?? offer.title ?? '',
+        phone:            info.client_phone || '',
+        address_line1:    info.client_address_line1 ?? '',
+        address_line2:    info.client_address_line2 ?? '',
+        lifecycle_stage:  'gebucht',
+        source:           offer.event_id ? 'marktplatz' : 'sonstige',
+        event_type:       ev?.event_type ?? info.eventType ?? 'hochzeit',
+        wedding_date:     ev?.date ? ev.date.slice(0, 10) : (info.date ? info.date.slice(0, 10) : null),
+        deal_value:       offer.total ?? null,
+        offer_id:         offer.id,
+        event_id:         offer.event_id ?? null,
+        event_title:      ev?.title ?? offer.title ?? '',
         location,
         anniversary_remind: !!(ev?.date || info.date),
       })
@@ -202,14 +252,14 @@ export async function POST() {
 
     if (contact) {
       await admin.from('crm_activities').insert({
-        contact_id: contact.id,
+        contact_id:     contact.id,
         dienstleister_id: dlId,
-        activity_type: 'offer_accepted',
-        title: `Angebot angenommen: ${offer.title || 'Angebot'}`,
-        body: '',
+        activity_type:  'offer_accepted',
+        title:          `Angebot angenommen: ${offer.title || 'Angebot'}`,
+        body:           '',
         auto_generated: true,
       })
-      if (email) usedEmails.add(email)
+      if (email) emailToContactId.set(email, contact.id)
       usedOfferIds.add(offer.id)
       imported++
     }
@@ -228,21 +278,29 @@ export async function POST() {
     .map((m: any) => m.event_id as string)
     .filter(Boolean)
 
-  // For each event, fetch couple contact info
   const coupleForEvent: Record<string, any[]> = {}
+  const partnerForEvent: Record<string, any> = {}
+
   if (memberEventIds.length) {
     const { data: coupleMembers } = await admin
       .from('event_members')
-      .select('event_id, profiles!user_id ( name, email, phone )')
+      .select('event_id, profiles!user_id ( name, first_name, last_name, email, phone, street, postal_code, city )')
       .in('event_id', memberEventIds)
       .in('role', ['brautpaar', 'brautpaar_solo'])
-
     for (const m of (coupleMembers ?? []) as any[]) {
       const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles
       if (p) (coupleForEvent[m.event_id] ??= []).push(p)
     }
 
-    // Also get guest counts
+    // Fetch partner profiles captured at signup
+    const { data: partnerRows } = await admin
+      .from('event_partner_profiles')
+      .select('event_id, first_name, last_name, email, phone')
+      .in('event_id', memberEventIds)
+    for (const p of (partnerRows ?? []) as any[]) {
+      partnerForEvent[p.event_id] = p
+    }
+
     const { data: gcRows } = await admin
       .from('v_event_guest_counts')
       .select('event_id, confirmed_guests, confirmed_plus_ones')
@@ -254,7 +312,22 @@ export async function POST() {
 
     for (const membership of (eventMemberships ?? []) as any[]) {
       const eventId = membership.event_id
-      if (usedEventIds.has(eventId)) continue
+      if (usedEventIds.has(eventId)) {
+        // Update existing contact with latest profile data
+        const contacts = coupleForEvent[eventId] ?? []
+        const primary = contacts[0]
+        if (primary?.email && emailToContactId.has(primary.email)) {
+          await admin.from('crm_contacts').update({
+            phone:            primary.phone ?? '',
+            home_street:      primary.street ?? '',
+            home_postal_code: primary.postal_code ?? '',
+            home_city:        primary.city ?? '',
+            guest_count:      gcByEvent[eventId] ?? null,
+            updated_at:       new Date().toISOString(),
+          }).eq('id', emailToContactId.get(primary.email)!)
+        }
+        continue
+      }
 
       const evRaw = membership.events
       const ev = (Array.isArray(evRaw) ? evRaw[0] : evRaw) as any
@@ -264,7 +337,7 @@ export async function POST() {
       const primary = contacts[0]
       const email = primary?.email ?? ''
 
-      if (email && usedEmails.has(email)) {
+      if (email && emailToContactId.has(email)) {
         usedEventIds.add(eventId)
         continue
       }
@@ -277,29 +350,75 @@ export async function POST() {
         .from('crm_contacts')
         .insert({
           dienstleister_id: dlId,
-          name: ev.couple_name || primary?.name || ev.title || 'Unbekannt',
+          name:             ev.couple_name || `${primary?.first_name ?? ''} ${primary?.last_name ?? ''}`.trim() || primary?.name || ev.title || 'Unbekannt',
           email,
-          phone: primary?.phone ?? '',
-          lifecycle_stage: 'gebucht',
-          source: 'sonstige',
-          event_type: ev.event_type ?? 'hochzeit',
-          wedding_date: ev.date ? ev.date.slice(0, 10) : null,
-          event_id: eventId,
-          event_title: ev.title ?? '',
+          phone:            primary?.phone ?? '',
+          home_street:      primary?.street ?? '',
+          home_postal_code: primary?.postal_code ?? '',
+          home_city:        primary?.city ?? '',
+          lifecycle_stage:  'gebucht',
+          source:           'sonstige',
+          event_type:       ev.event_type ?? 'hochzeit',
+          wedding_date:     ev.date ? ev.date.slice(0, 10) : null,
+          event_id:         eventId,
+          event_title:      ev.title ?? '',
           location,
-          guest_count: gcByEvent[eventId] ?? null,
+          guest_count:      gcByEvent[eventId] ?? null,
           anniversary_remind: !!ev.date,
         })
         .select('id')
         .single()
 
       if (contact) {
-        // Additional couple members as extra persons
-        if (contacts.length > 1) {
+        if (email) emailToContactId.set(email, contact.id)
+
+        // Import partner as separate CRM contact and cross-link
+        const partner = partnerForEvent[eventId] ?? (contacts.length > 1 ? contacts[1] : null)
+        if (partner && (partner.email || partner.first_name)) {
+          const partnerEmail = partner.email ?? ''
+          const partnerExistingId = partnerEmail ? emailToContactId.get(partnerEmail) : null
+
+          let partnerContactId: string | null = partnerExistingId ?? null
+
+          if (!partnerExistingId) {
+            const { data: partnerContact } = await admin
+              .from('crm_contacts')
+              .insert({
+                dienstleister_id:  dlId,
+                name:              `${partner.first_name ?? ''} ${partner.last_name ?? ''}`.trim() || partner.name || 'Partner',
+                email:             partnerEmail,
+                phone:             partner.phone ?? '',
+                lifecycle_stage:   'gebucht',
+                source:            'sonstige',
+                event_type:        ev.event_type ?? 'hochzeit',
+                wedding_date:      ev.date ? ev.date.slice(0, 10) : null,
+                event_id:          eventId,
+                event_title:       ev.title ?? '',
+                location,
+                partner_contact_id: contact.id,
+                anniversary_remind: !!ev.date,
+              })
+              .select('id')
+              .single()
+
+            if (partnerContact) {
+              partnerContactId = partnerContact.id
+              if (partnerEmail) emailToContactId.set(partnerEmail, partnerContact.id)
+              imported++
+            }
+          }
+
+          // Cross-link the primary contact to the partner
+          if (partnerContactId) {
+            await admin.from('crm_contacts')
+              .update({ partner_contact_id: partnerContactId })
+              .eq('id', contact.id)
+          }
+        } else if (contacts.length > 1) {
           await admin.from('crm_contact_persons').insert(
             contacts.slice(1).map((p: any) => ({
               contact_id: contact.id,
-              name: p.name ?? '',
+              name: (`${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || p.name) ?? '',
               email: p.email ?? '',
               phone: p.phone ?? '',
               role: 'partner',
@@ -308,15 +427,14 @@ export async function POST() {
         }
 
         await admin.from('crm_activities').insert({
-          contact_id: contact.id,
+          contact_id:     contact.id,
           dienstleister_id: dlId,
-          activity_type: 'imported',
-          title: `Via Event importiert: ${ev.title || ev.couple_name || 'Veranstaltung'}`,
-          body: '',
+          activity_type:  'imported',
+          title:          `Via Event importiert: ${ev.title || ev.couple_name || 'Veranstaltung'}`,
+          body:           '',
           auto_generated: true,
         })
 
-        if (email) usedEmails.add(email)
         usedEventIds.add(eventId)
         imported++
       }
