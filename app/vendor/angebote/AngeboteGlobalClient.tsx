@@ -278,7 +278,7 @@ export default function AngeboteGlobalClient() {
                 onClick={openPanel}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 7,
-                  padding: '0 16px', height: 42, flexShrink: 0,
+                  padding: '10px 16px', flexShrink: 0,
                   border: `1px solid ${hasActiveFilter ? 'var(--accent)' : 'var(--border)'}`,
                   background: hasActiveFilter ? 'rgba(35,82,200,0.07)' : 'var(--bg)',
                   borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',

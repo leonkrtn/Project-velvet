@@ -43,16 +43,14 @@ export async function GET(req: NextRequest) {
 
   let query = admin
     .from('dienstleister_profiles')
-    .select('id, company_name, category, city, price_range, description, logo_r2_key, verified, tier')
+    .select('id, company_name, category, city, price_range, description, logo_r2_key, verified, tier, service_cities, service_radius_km')
     .eq('is_marketplace', true)
     .eq('published', true)
     .eq('moderation_status', 'approved')
 
   const category = sp.get('category')
-  const city = sp.get('city')
   const q = sp.get('q')
   if (category) query = query.eq('category', category)
-  if (city) query = query.ilike('city', `%${city}%`)
   if (q) query = query.or(`company_name.ilike.%${q}%,description.ilike.%${q}%`)
 
   const { data, error } = await query.order('company_name', { nullsFirst: false })
@@ -88,6 +86,8 @@ export async function GET(req: NextRequest) {
       cover_url: coverUrl ?? logoUrl,
       verified: !!v.verified,
       tier: v.tier ?? 'free',
+      service_cities: (v.service_cities as string[]) ?? [],
+      service_radius_km: v.service_radius_km ?? null,
     }
   }))
 
