@@ -261,3 +261,25 @@ button[style*="background: none"]:hover:not([data-sel]) {
   .chat-load-list { width: 100% !important; min-width: 0 !important; border-right: none !important; }
   .chat-load-main { display: none !important; }
 }
+
+/* ── Vendor Event Tab Bar — Mobile ─────────────────────────────────────── */
+@media (max-width: 767px) {
+  .vet-header { padding: 10px 16px 0 !important; }
+  .vet-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .vet-tabs::-webkit-scrollbar { display: none; }
+  .vet-tab { font-size: 12.5px !important; padding: 7px 10px !important; white-space: nowrap; }
+}
+
+/* ── Vendor Pages — Card-Wrapper auf Mobile entfernen ──────────────────── */
+@media (max-width: 767px) {
+  .info-page-outer,
+  .ang-page-outer  { padding: 0 !important; background: transparent !important; }
+  .info-page-card,
+  .ang-page-card   { background: none !important; border: none !important; border-radius: 0 !important; padding: 16px 16px 24px !important; }
+  .ang-header      { flex-wrap: wrap !important; }
+  .ang-header-icon { display: none !important; }
+}
+
+/* ── Informationen — Grid-Breakpoints ──────────────────────────────────── */
+@media (max-width: 900px) { .info-two-col      { grid-template-columns: 1fr !important; } }
+@media (max-width: 600px) { .info-contact-grid { grid-template-columns: 1fr !important; } }

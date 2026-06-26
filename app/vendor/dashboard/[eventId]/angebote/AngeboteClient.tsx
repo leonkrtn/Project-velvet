@@ -149,7 +149,7 @@ export default function AngeboteClient({ eventId }: { eventId: string }) {
         </div>
       )}
 
-      <style>{`.ang-spin { animation: angspin 1s linear infinite; } @keyframes angspin { to { transform: rotate(360deg); } } .ang-skel { background: linear-gradient(90deg, var(--bg) 25%, var(--border) 50%, var(--bg) 75%); background-size: 200% 100%; animation: ang-shimmer 1.4s ease infinite; } @keyframes ang-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } } @media (max-width: 767px) { .ang-page-outer { padding: 0 !important; background: transparent !important; } .ang-page-card { background: none !important; border: none !important; border-radius: 0 !important; padding: 0 !important; } .ang-header { flex-wrap: wrap; } .ang-header-icon { display: none !important; } }`}</style>
+      <style>{`.ang-spin { animation: angspin 1s linear infinite; } @keyframes angspin { to { transform: rotate(360deg); } } .ang-skel { background: linear-gradient(90deg, var(--bg) 25%, var(--border) 50%, var(--bg) 75%); background-size: 200% 100%; animation: ang-shimmer 1.4s ease infinite; } @keyframes ang-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
     </div>
     </div>
   )

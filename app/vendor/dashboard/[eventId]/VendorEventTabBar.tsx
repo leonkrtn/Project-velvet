@@ -33,7 +33,7 @@ export default function VendorEventTabBar({ eventId, eventTitle, eventDate, chil
         borderBottom: '1px solid var(--border)',
         flexShrink: 0,
         padding: '14px 24px 0',
-      }}>
+      }} className="vet-header">
         <Link href="/vendor/dashboard" style={{
           display: 'inline-flex', alignItems: 'center', gap: 3,
           fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none',
@@ -55,11 +55,11 @@ export default function VendorEventTabBar({ eventId, eventTitle, eventDate, chil
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', marginTop: 10, gap: 0 }}>
+        <div className="vet-tabs" style={{ display: 'flex', marginTop: 10, gap: 0 }}>
           {TABS.map(tab => {
             const on = tab.key === activeTab
             return (
-              <Link key={tab.key} href={`${base}/${tab.key}`} style={{
+              <Link key={tab.key} href={`${base}/${tab.key}`} className="vet-tab" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '8px 14px', textDecoration: 'none',
                 fontSize: 13.5, fontWeight: on ? 600 : 450,
