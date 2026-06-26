@@ -101,7 +101,9 @@ export default function VendorEventsClient({ events }: { events: EventRow[] }) {
             <div key={event.id} style={{ position: 'relative' }}>
               <Link
                 href={`/vendor/dashboard/${event.id}/kommunikation`}
-                style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '20px 56px 20px 24px', textDecoration: 'none', color: 'inherit', transition: 'box-shadow 0.15s' }}
+                style={{ display: 'block', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: '20px 56px 20px 24px', textDecoration: 'none', color: 'inherit', transition: 'box-shadow .15s, border-color .15s' }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                   <p style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px', margin: 0 }}>{event.title}</p>

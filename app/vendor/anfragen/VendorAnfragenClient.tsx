@@ -133,7 +133,11 @@ export default function VendorAnfragenClient() {
                 <button key={t.key} onClick={() => setFilter(t.key)} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 100, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
                   border: `1px solid ${active ? 'var(--gold)' : 'var(--border)'}`, background: active ? 'var(--gold)' : 'var(--bg)', color: active ? '#fff' : 'var(--text)',
-                }}>
+                  transition: 'box-shadow .15s, border-color .15s',
+                }}
+                  onMouseEnter={e => { if (!active) { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' } }}
+                  onMouseLeave={e => { if (!active) { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' } }}
+                >
                   {t.label}
                   <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 100, minWidth: 18, textAlign: 'center', padding: '0 5px', background: active ? 'rgba(255,255,255,0.25)' : 'var(--border)', color: active ? '#fff' : 'var(--text-dim)' }}>{t.count}</span>
                 </button>
