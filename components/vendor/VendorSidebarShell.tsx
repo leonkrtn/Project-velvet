@@ -200,7 +200,16 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
           --shadow-md:    0 4px 20px rgba(35,82,200,0.10), 0 1px 6px rgba(0,0,0,0.04);
         }
 
-        /* Hover: blasser Tint für inaktive Links */
+        /* Globale Hover-Regeln (opacity/filter) im Vendor-Portal deaktivieren —
+           alle Hover-Effekte laufen hier über explizite onMouseEnter-Handler */
+        .vdr-shell a:hover { opacity: 1 !important; }
+        .vdr-shell button:hover:not(:disabled) { filter: none !important; opacity: 1 !important; }
+
+        /* Sidebar-Bottom-Buttons: eigener subtiler Hover-Hintergrund */
+        .vdr-logout-btn:hover,
+        .vdr-help-btn:hover { background: rgba(35,82,200,0.06) !important; }
+
+        /* Hover: blasser Tint für inaktive Nav-Links */
         .vdr-nav-link:hover { background: rgba(35,82,200,0.08) !important; }
         /* Aktiver Link bleibt Royal Blue beim Hovern */
         .vdr-nav-link[data-active="true"]:hover { background: var(--accent) !important; }
