@@ -347,13 +347,15 @@ export default function VendorListingClient() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               style={{
-                padding: '7px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                padding: '7px 18px', borderRadius: 8, border: '1px solid transparent', cursor: 'pointer',
                 fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600,
                 background: activeTab === tab ? 'var(--surface)' : 'transparent',
                 color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
                 boxShadow: activeTab === tab ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
-                transition: 'all 0.15s',
+                transition: 'box-shadow .15s, border-color .15s',
               }}
+              onMouseEnter={e => { if (activeTab !== tab) { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' } }}
+              onMouseLeave={e => { if (activeTab !== tab) { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'transparent' } }}
             >
               {tab === 'anzeige' ? 'Anzeige' : 'Anfrageformular'}
             </button>
