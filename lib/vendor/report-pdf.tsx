@@ -1,6 +1,6 @@
 import React from 'react'
 import {
-  Document, Page, Text, View, StyleSheet, Font,
+  Document, Page, Text, View, StyleSheet, Font, renderToBuffer,
 } from '@react-pdf/renderer'
 import type { ReportData, ReportSection } from './monthly-report'
 
@@ -251,4 +251,8 @@ export default function ReportPDF({ data }: { data: ReportData }) {
       </Page>
     </Document>
   )
+}
+
+export async function renderReportPdf(data: ReportData): Promise<Buffer> {
+  return renderToBuffer(<ReportPDF data={data} />)
 }

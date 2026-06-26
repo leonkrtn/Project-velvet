@@ -20,14 +20,14 @@ function addSection(ws: ExcelJS.Worksheet, label: string, section: ReportSection
     ['Pipeline Anzahl',              fin.pipeline_count],
     ['Anzahlungen fällig',           fin.deposits_due],
     ['Restbetrag ausstehend',        fin.balance_outstanding],
-    [''],
+    ['', ''],
     ['Anfragen eingegangen',         req.received],
     ['Entwürfe',                     req.offers_draft],
     ['Angebote versendet',           req.offers_sent],
     ['Angenommen',                   req.offers_accepted],
     ['Abgelehnt',                    req.offers_declined],
     ['Conversion Rate',              `${req.conversion_rate}%`],
-    [''],
+    ['', ''],
     ['Events im Zeitraum',           ev.count],
   ]
 
