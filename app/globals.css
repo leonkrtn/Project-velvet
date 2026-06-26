@@ -273,11 +273,14 @@ button[style*="background: none"]:hover:not([data-sel]) {
 /* ── Vendor Pages — Card-Wrapper auf Mobile entfernen ──────────────────── */
 @media (max-width: 767px) {
   .info-page-outer,
-  .ang-page-outer  { padding: 0 !important; background: transparent !important; }
+  .ang-page-outer,
+  .anf-page-outer  { padding: 0 !important; background: transparent !important; }
   .info-page-card,
-  .ang-page-card   { background: none !important; border: none !important; border-radius: 0 !important; padding: 16px 16px 24px !important; }
+  .ang-page-card,
+  .anf-page-card   { background: none !important; border: none !important; border-radius: 0 !important; padding: 16px 16px 24px !important; }
   .ang-header      { flex-wrap: wrap !important; }
-  .ang-header-icon { display: none !important; }
+  .ang-header-icon,
+  .anf-header-icon { display: none !important; }
 }
 
 /* ── Informationen — Grid-Breakpoints ──────────────────────────────────── */
@@ -292,3 +295,11 @@ button[style*="background: none"]:hover:not([data-sel]) {
 @media (max-width: 860px) { .ub-stat-grid   { grid-template-columns: repeat(2, 1fr) !important; } }
 @media (max-width: 480px) { .ub-stat-grid   { grid-template-columns: 1fr !important; } }
 @media (max-width: 660px) { .ub-bottom-grid { grid-template-columns: 1fr !important; } }
+
+/* ── Generic vendor page wrapper — alle übrigen Seiten ─────────────────── */
+@media (max-width: 767px) {
+  .vnd-page-outer        { padding: 0 !important; background: transparent !important; }
+  .vnd-page-card         { background: none !important; border: none !important; border-radius: 0 !important; padding: 16px 16px 24px !important; }
+  .vnd-page-card-nopad   { background: none !important; border: none !important; border-radius: 0 !important; }
+  .vnd-hdr-icon          { display: none !important; }
+}

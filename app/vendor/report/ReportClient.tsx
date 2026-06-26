@@ -157,7 +157,7 @@ export default function ReportClient() {
   const compareLabel = compareMode === 'prev' ? 'Vorperiode' : 'Vorjahr'
 
   return (
-    <div style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1, overflow: 'auto' }}>
+    <div className="vnd-page-outer" style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1, overflow: 'auto' }}>
       <style>{`
         @keyframes rpt-pulse{0%,100%{opacity:1}50%{opacity:0.5}}
         @keyframes rpt-spin{to{transform:rotate(360deg)}}
@@ -173,11 +173,11 @@ export default function ReportClient() {
         }
       `}</style>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
+      <div className="vnd-page-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
 
         {/* ── Header ── */}
         <div className="rpt-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div className="vnd-hdr-icon" style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <BarChart2 size={20} style={{ color: 'var(--accent)' }} />
           </div>
           <div style={{ flex: 1 }}>
