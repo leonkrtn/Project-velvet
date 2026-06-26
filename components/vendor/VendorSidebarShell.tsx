@@ -64,8 +64,8 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
       display: 'flex', alignItems: 'center', gap: 10,
       padding: '7px 10px', borderRadius: 8, marginBottom: 1,
       textDecoration: 'none', fontSize: 14, fontWeight: on ? 600 : 450,
-      color: on ? 'var(--text-primary)' : 'var(--text-secondary)',
-      background: on ? 'var(--accent-light)' : 'transparent',
+      color: on ? '#ffffff' : 'var(--text-secondary)',
+      background: on ? 'var(--accent)' : 'transparent',
     }
   }
 
@@ -76,7 +76,10 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
       <aside className="vdr-sidebar" style={{
         width: 240, flexShrink: 0, height: '100dvh',
         background: 'var(--sidebar-bg)',
-        borderRight: '1px solid var(--border)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderRight: '1px solid rgba(35,82,200,0.22)',
+        boxShadow: '2px 0 12px rgba(35,82,200,0.06)',
         display: 'flex', flexDirection: 'column',
       }}>
 
@@ -114,8 +117,8 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             const badge = 'badgeKey' in item ? (badges[item.badgeKey] ?? 0) : 0
             const on = active === item.key
             return (
-              <Link key={item.key} href={item.href} className="vdr-nav-link" style={navStyle(item.key)}>
-                <Icon size={16} style={{ flexShrink: 0, opacity: on ? 1 : 0.5 }} />
+              <Link key={item.key} href={item.href} className="vdr-nav-link" data-active={on ? 'true' : undefined} style={navStyle(item.key)}>
+                <Icon size={16} style={{ flexShrink: 0, opacity: on ? 1 : 0.45 }} />
                 <span className="vdr-nav-text" style={{ flex: 1 }}>{item.label}</span>
                 {badge > 0 && (
                   <span className="vdr-badge" style={{
@@ -133,8 +136,8 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
 
         {/* Bottom */}
         <div className="vdr-sidebar-bottom" style={{ padding: '8px 8px 16px', borderTop: '1px solid var(--border)' }}>
-          <Link href="/vendor/listing" className="vdr-nav-link" style={navStyle('listing')}>
-            <User size={16} style={{ flexShrink: 0, opacity: active === 'listing' ? 1 : 0.5 }} />
+          <Link href="/vendor/listing" className="vdr-nav-link" data-active={active === 'listing' ? 'true' : undefined} style={navStyle('listing')}>
+            <User size={16} style={{ flexShrink: 0, opacity: active === 'listing' ? 1 : 0.45 }} />
             <span className="vdr-nav-text">Anbieter-Profil</span>
           </Link>
           <button
@@ -181,16 +184,26 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
       </div>
 
       <style>{`
-        /* ── Vendor-Portal Akzentfarbe: Royal Blue ── */
+        /* ── Vendor-Portal Farbpalette ── */
         .vdr-shell {
+          --bg:           #EEF2FF;
+          --sidebar-bg:   rgba(255,255,255,0.88);
+          --surface:      #FFFFFF;
           --accent:       #2352C8;
-          --accent-light: rgba(35,82,200,0.08);
+          --accent-light: rgba(35,82,200,0.09);
+          --text-primary:   #111827;
+          --text-secondary: #4B5768;
+          --text-tertiary:  #94A3B8;
+          --border:       rgba(35,82,200,0.10);
+          --border2:      rgba(35,82,200,0.18);
+          --shadow-sm:    0 1px 4px rgba(35,82,200,0.08), 0 1px 2px rgba(0,0,0,0.04);
+          --shadow-md:    0 4px 20px rgba(35,82,200,0.10), 0 1px 6px rgba(0,0,0,0.04);
         }
 
-        /* Hover-Highlight für alle Navigationslinks — sieht aus wie aktiver Zustand.
-           Wenn ein Link bereits aktiv ist, hat er inline background: var(--accent-light);
-           das CSS setzt denselben Wert → kein sichtbarer Unterschied beim Hovern. */
-        .vdr-nav-link:hover { background: var(--accent-light) !important; }
+        /* Hover: blasser Tint für inaktive Links */
+        .vdr-nav-link:hover { background: rgba(35,82,200,0.08) !important; }
+        /* Aktiver Link bleibt Royal Blue beim Hovern */
+        .vdr-nav-link[data-active="true"]:hover { background: var(--accent) !important; }
 
         /* Tablet: icon-only sidebar */
         @media (max-width: 768px) {
