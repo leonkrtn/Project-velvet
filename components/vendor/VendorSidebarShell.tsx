@@ -78,7 +78,8 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         background: 'var(--sidebar-bg)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
-        boxShadow: '2px 0 16px rgba(35,82,200,0.07)',
+        borderRight: '1px solid rgba(35,82,200,0.22)',
+        boxShadow: '2px 0 12px rgba(35,82,200,0.06)',
         display: 'flex', flexDirection: 'column',
       }}>
 
