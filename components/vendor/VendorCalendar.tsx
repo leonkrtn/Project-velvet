@@ -131,6 +131,10 @@ export default function VendorCalendar() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    if (window.innerWidth < 540) setView('agenda')
+  }, [])
+
   function openCreate(date: Date) { setModal({ mode: 'create', initialDate: date }) }
   function openEdit(e: CalendarEntry) {
     if (e.editable) { setModal({ mode: 'edit', entry: e }); return }
@@ -210,11 +214,11 @@ export default function VendorCalendar() {
   return (
     <div style={{ marginTop: 20, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, overflow: 'hidden' }}>
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderBottom: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
+      <div className="vc-calendar-header" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderBottom: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: C.text, flex: '0 0 auto' }}>Kalender</h2>
 
         {/* View switcher */}
-        <div style={{ display: 'flex', background: C.bg, borderRadius: 9, padding: 3, gap: 2, flex: '0 0 auto' }}>
+        <div className="vc-view-switcher" style={{ display: 'flex', background: C.bg, borderRadius: 9, padding: 3, gap: 2, flex: '0 0 auto' }}>
           <button style={viewBtnStyle('month')} onClick={() => setView('month')}><LayoutGrid size={14} />Monat</button>
           <button style={viewBtnStyle('week')} onClick={() => setView('week')}><Calendar size={14} />Woche</button>
           <button style={viewBtnStyle('agenda')} onClick={() => setView('agenda')}><AlignLeft size={14} />Agenda</button>
@@ -245,6 +249,7 @@ export default function VendorCalendar() {
           onClick={downloadIcal}
           disabled={exportBusy}
           title="iCal herunterladen"
+          className="vc-ical-btn"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, color: C.dim, fontFamily: 'inherit' }}
         >
           {exportBusy ? <Loader2 size={14} className="vc-spin" /> : <Download size={14} />} iCal
@@ -252,6 +257,7 @@ export default function VendorCalendar() {
         <button
           onClick={copyGoogleLink}
           title="In Google Calendar abonnieren"
+          className="vc-google-btn"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: `1px solid ${C.border}`, background: C.surface, color: C.dim, fontFamily: 'inherit' }}
         >
           <Link2 size={14} /> Google Calendar
@@ -288,6 +294,12 @@ export default function VendorCalendar() {
         .vc-chip:hover{filter:brightness(.9)}
         .vc-day:hover .vc-day-add{opacity:1!important}
         @media(max-width:700px){.vc-week-grid{grid-template-columns:repeat(7,1fr)!important;font-size:11px}}
+        @media(max-width:540px){
+          .vc-ical-btn,.vc-google-btn{display:none!important}
+          .vc-calendar-header{padding:10px 12px!important;gap:8px!important}
+          .vc-view-switcher button{padding:5px 8px!important;font-size:12px!important}
+          .vc-day{min-height:52px!important;padding:3px 2px!important}
+        }
       `}</style>
     </div>
   )

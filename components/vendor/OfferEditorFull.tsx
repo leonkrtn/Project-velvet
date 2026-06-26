@@ -35,6 +35,8 @@ interface Offer {
   agb_required: boolean
   accepted_by_name: string | null
   request_id: string | null
+  event_id: string | null
+  standard_info: Record<string, string> | null
 }
 interface OwnBlock { id: string; label: string; item_type: LineItemType; default_qty: number; unit_price: number }
 
@@ -93,6 +95,12 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
   const [paymentTerms, setPaymentTerms] = useState('')
   const [agbText, setAgbText] = useState('')
   const [agbRequired, setAgbRequired] = useState(true)
+  // Kundeninfo (nur für Angebote ohne Event-Verknüpfung)
+  const [clientName, setClientName] = useState('')
+  const [clientAddr1, setClientAddr1] = useState('')
+  const [clientAddr2, setClientAddr2] = useState('')
+  const [clientEmail, setClientEmail] = useState('')
+  const [clientPhone, setClientPhone] = useState('')
 
   const hydrate = useCallback((o: Offer) => {
     setOffer(o)
@@ -107,6 +115,12 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
     setPaymentTerms(o.payment_terms ?? '')
     setAgbText(o.agb_text ?? '')
     setAgbRequired(o.agb_required ?? true)
+    const si = (o.standard_info ?? {}) as Record<string, string>
+    setClientName(si.client_name ?? '')
+    setClientAddr1(si.client_address_line1 ?? '')
+    setClientAddr2(si.client_address_line2 ?? '')
+    setClientEmail(si.client_email ?? '')
+    setClientPhone(si.client_phone ?? '')
   }, [])
 
   const load = useCallback(async () => {
@@ -158,10 +172,14 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
   }
 
   function editFieldsBody() {
-    return {
+    const base = {
       title, lineItems: items, vendorNotes: notes, validUntil,
       depositType, depositValue, depositDueDays, balanceDueNote, paymentTerms, agbText, agbRequired,
     }
+    if (eventId === null) {
+      return { ...base, clientInfo: { client_name: clientName, client_address_line1: clientAddr1, client_address_line2: clientAddr2, client_email: clientEmail, client_phone: clientPhone } }
+    }
+    return base
   }
 
   async function patch(action: 'save' | 'release') {
@@ -205,7 +223,23 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
     router.push(eventId ? `/vendor/dashboard/${eventId}/angebote` : '/vendor/angebote')
   }
 
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: C.dim, fontSize: 14, padding: '40px 0', justifyContent: 'center' }}><Loader2 size={16} className="ofe-spin" /> Lädt…</div>
+  if (loading) return (
+    <div style={{ paddingBottom: 40 }}>
+      <div className="skeleton" style={{ height: 14, width: 110, borderRadius: 6, marginBottom: 16 }} />
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '26px 30px' }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 22, alignItems: 'center' }}>
+          <div className="skeleton" style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div className="skeleton" style={{ height: 20, width: '55%', marginBottom: 8 }} />
+            <div className="skeleton" style={{ height: 18, width: 80, borderRadius: 100 }} />
+          </div>
+        </div>
+        {[100, 80, 120, 90].map((h, i) => (
+          <div key={i} className="skeleton" style={{ height: h, marginBottom: 14, borderRadius: 10 }} />
+        ))}
+      </div>
+    </div>
+  )
   if (!offer) return <div style={{ padding: 40, textAlign: 'center', color: C.dim }}>Angebot nicht gefunden.</div>
 
   const gewerkBlocks = blocksForCategory(category)
@@ -247,6 +281,42 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
       </div>
 
       {err && <p style={{ color: C.red, fontSize: 13, margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={14} /> {err}</p>}
+
+      {/* Kundeninfo — nur für Angebote ohne Event-Verknüpfung */}
+      {eventId === null && (
+        <Section title="Kundeninfo">
+          {editable ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <Field label="Name / Firma">
+                  <input style={{ ...inp, width: '100%' }} value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Max Mustermann" />
+                </Field>
+                <Field label="E-Mail">
+                  <input style={{ ...inp, width: '100%' }} type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="max@beispiel.de" />
+                </Field>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <Field label="Straße & Hausnummer">
+                  <input style={{ ...inp, width: '100%' }} value={clientAddr1} onChange={e => setClientAddr1(e.target.value)} placeholder="Musterstraße 1" />
+                </Field>
+                <Field label="PLZ & Stadt">
+                  <input style={{ ...inp, width: '100%' }} value={clientAddr2} onChange={e => setClientAddr2(e.target.value)} placeholder="12345 Musterstadt" />
+                </Field>
+              </div>
+              <Field label="Telefon">
+                <input style={{ ...inp, width: '100%' }} type="tel" value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="+49 123 456789" />
+              </Field>
+            </div>
+          ) : (
+            <ReadList rows={[
+              clientName ? ['Name / Firma', clientName] : null,
+              clientAddr1 || clientAddr2 ? ['Adresse', [clientAddr1, clientAddr2].filter(Boolean).join(', ')] : null,
+              clientEmail ? ['E-Mail', clientEmail] : null,
+              clientPhone ? ['Telefon', clientPhone] : null,
+            ]} empty="Keine Kundendaten hinterlegt." />
+          )}
+        </Section>
+      )}
 
       {!editable && (
         <div style={{ background: 'rgba(184,153,104,0.10)', border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 18, fontSize: 13, color: C.text }}>
@@ -390,7 +460,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
       <Section title="Anmerkungen & Gültigkeit">
         {editable ? (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 170px', gap: 12 }}>
-            <Field label="Anmerkungen ans Brautpaar">
+            <Field label={eventId === null ? 'Anmerkungen an den Kunden' : 'Anmerkungen ans Brautpaar'}>
               <textarea style={{ ...inp, width: '100%', minHeight: 56, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} />
             </Field>
             <Field label="Gültig bis">

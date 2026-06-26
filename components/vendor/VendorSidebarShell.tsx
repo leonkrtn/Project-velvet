@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
-  Calendar, BarChart2, User, LogOut, HelpCircle,
+  Calendar, BarChart2, User, LogOut, HelpCircle, Users,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
@@ -29,6 +29,7 @@ const NAV = [
   { key: 'angebote',   label: 'Angebote',     href: '/vendor/angebote',    icon: ReceiptText },
   { key: 'events',     label: 'Events',       href: '/vendor/dashboard',   icon: Calendar },
   { key: 'report',     label: 'Berichte',     href: '/vendor/report',      icon: BarChart2 },
+  { key: 'crm',        label: 'CRM',          href: '/vendor/crm',         icon: Users },
 ] as const
 
 type NavKey = (typeof NAV)[number]['key'] | 'listing'
@@ -39,6 +40,7 @@ function activeKey(pathname: string): NavKey {
   if (pathname.startsWith('/vendor/angebote'))   return 'angebote'
   if (pathname.startsWith('/vendor/listing'))    return 'listing'
   if (pathname.startsWith('/vendor/report'))     return 'report'
+  if (pathname.startsWith('/vendor/crm'))        return 'crm'
   if (pathname.startsWith('/vendor/dashboard'))  return 'events'
   return 'ubersicht'
 }
@@ -273,6 +275,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
           }
           .vdr-logout-btn { display: none !important; }
           .vdr-help-btn { display: none !important; }
+          .vdr-nav-text { display: block !important; font-size: 9px !important; font-weight: 500 !important; line-height: 1.2 !important; text-align: center !important; }
         }
       `}</style>
 

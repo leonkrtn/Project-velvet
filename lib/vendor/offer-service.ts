@@ -31,6 +31,14 @@ export function sanitizeLineItems(raw: unknown): LineItem[] {
   })
 }
 
+export interface ClientInfo {
+  client_name?: string
+  client_address_line1?: string
+  client_address_line2?: string
+  client_email?: string
+  client_phone?: string
+}
+
 export interface OfferEditFields {
   title?: string
   lineItems?: unknown
@@ -43,6 +51,7 @@ export interface OfferEditFields {
   paymentTerms?: string
   agbText?: string
   agbRequired?: boolean
+  clientInfo?: ClientInfo
 }
 
 /** Baut den DB-Patch fuer save/release aus den editierbaren Feldern. */
@@ -72,6 +81,9 @@ export function buildOfferPatch(body: OfferEditFields, offer: {
   if ('paymentTerms' in body) patch.payment_terms = String(body.paymentTerms ?? '')
   if ('agbText' in body) patch.agb_text = String(body.agbText ?? '')
   if (typeof body.agbRequired === 'boolean') patch.agb_required = body.agbRequired
+  if ('clientInfo' in body && body.clientInfo && typeof body.clientInfo === 'object') {
+    patch.standard_info = body.clientInfo
+  }
 
   return patch
 }

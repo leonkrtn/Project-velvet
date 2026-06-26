@@ -591,8 +591,8 @@ export default function AngeboteGlobalClient() {
                   <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '10px 0 8px' }}>Oder Event wählen</p>
 
                   {eventsLoading ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-dim)', padding: '12px 0', justifyContent: 'center' }}>
-                      <Loader2 size={15} className="ang-spin" /> Lädt…
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {[1,2,3].map(i => <div key={i} className="ang-skel" style={{ height: 52, borderRadius: 10 }} />)}
                     </div>
                   ) : events.length === 0 ? (
                     <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: '8px 0' }}>Noch kein Event verknüpft.</p>
