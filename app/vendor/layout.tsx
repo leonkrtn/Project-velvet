@@ -1,5 +1,8 @@
+import type { Metadata } from 'next'
 import React from 'react'
 import { createClient } from '@/lib/supabase/server'
+
+export const metadata: Metadata = { title: 'FOREVR | Dienstleister' }
 import { createAdminClient } from '@/lib/supabase/admin'
 import VendorSidebarShell from '@/components/vendor/VendorSidebarShell'
 import { requestDownloadUrl } from '@/lib/files/worker-client'
