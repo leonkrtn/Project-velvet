@@ -47,7 +47,7 @@ function normParts(conv: { conversation_participants?: { user_id: string; profil
 }
 function previewText(m: LastMsg | undefined): string {
   if (!m) return 'Noch keine Nachrichten'
-  if (m.type === 'file') return '📎 Datei'
+  if (m.type === 'file') return 'Datei'
   if (m.type === 'data_share') return 'Daten geteilt'
   if (m.type === 'offer') return 'Angebot'
   return m.content
@@ -70,6 +70,7 @@ export default function KommunikationClient({ eventId, userId }: { eventId: stri
   const [openShare, setOpenShare] = useState<{ label: string; snapshot: ModuleSnapshot | null; loading: boolean } | null>(null)
   const [search, setSearch] = useState('')
   const [isMobile, setIsMobile] = useState(false)
+  const isMobileRef = useRef(false)
   const [mobileShowChat, setMobileShowChat] = useState(false)
   const [showNewChat, setShowNewChat] = useState(false)
   const [startingChat, setStartingChat] = useState(false)
@@ -80,7 +81,7 @@ export default function KommunikationClient({ eventId, userId }: { eventId: stri
   const activeConvIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= 768)
+    const check = () => { const m = window.innerWidth < 768; isMobileRef.current = m; setIsMobile(m) }
     check(); window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
@@ -103,9 +104,9 @@ export default function KommunikationClient({ eventId, userId }: { eventId: stri
     const normalized = (data ?? []).map(c => ({ ...c, conversation_participants: normParts(c) }))
     setConversations(normalized)
     setLoadingConvs(false)
-    if (!isMobile) setActiveConv(prev => prev ?? normalized[0] ?? null)
+    if (!isMobileRef.current) setActiveConv(prev => prev ?? normalized[0] ?? null)
     return normalized
-  }, [supabase, eventId, isMobile])
+  }, [supabase, eventId])
 
   useEffect(() => { loadConversations() }, [loadConversations])
 
@@ -529,15 +530,14 @@ function PillButton({ active, onClick, icon, label, count }: { active: boolean; 
 function SidePanel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <>
-      <div onClick={onClose} className="vk-scrim" style={{ display: 'none' }} />
-      <div className="vk-panel" style={{ width: 320, minWidth: 320, borderLeft: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', flexShrink: 0, zIndex: 60 }}>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 59 }} />
+      <div style={{ position: 'fixed', top: 0, right: 0, height: '100dvh', width: '86%', maxWidth: 360, borderLeft: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', zIndex: 60 }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0, flex: 1, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-secondary)' }}>{title}</h3>
           <button onClick={onClose} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex' }}><X size={18} /></button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>{children}</div>
       </div>
-      <style>{`@media (max-width: 900px) { .vk-scrim { display: block !important; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 59; } .vk-panel { position: fixed !important; top: 0; right: 0; height: 100dvh; width: 86% !important; max-width: 360px; min-width: 0 !important; } }`}</style>
     </>
   )
 }
