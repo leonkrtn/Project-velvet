@@ -80,12 +80,13 @@ function KpiCard({ label, value, sub, highlight }: { label: string; value: strin
 
 // ── Comparison Row ────────────────────────────────────────────────────────────
 
-function CompRow({ label, cur, base, baseLabel }: { label: string; cur: number; base: number; baseLabel: string }) {
+function CompRow({ label, cur, base, format = 'money' }: { label: string; cur: number; base: number; baseLabel: string; format?: 'money' | 'number' | 'percent' }) {
+  const fmt = format === 'money' ? eur : format === 'percent' ? (n: number) => `${n}%` : (n: number) => String(Math.round(n))
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
       <span style={{ flex: 1, fontSize: 13, color: 'var(--text-secondary)' }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', minWidth: 80, textAlign: 'right' }}>{eur(cur)}</span>
-      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', minWidth: 70, textAlign: 'right' }}>{eur(base)}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', minWidth: 80, textAlign: 'right' }}>{fmt(cur)}</span>
+      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', minWidth: 70, textAlign: 'right' }}>{fmt(base)}</span>
       <div style={{ minWidth: 80, textAlign: 'right' }}><DeltaBadge cur={cur} base={base} /></div>
     </div>
   )
@@ -310,12 +311,12 @@ export default function ReportClient() {
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 80, textAlign: 'right' }}>Δ</span>
                 </div>
                 {[
-                  { label: 'Anfragen eingegangen', cur: data.current.requests.received,       base: compareData.requests.received },
-                  { label: 'Versendet',            cur: data.current.requests.offers_sent,     base: compareData.requests.offers_sent },
-                  { label: 'Angenommen',           cur: data.current.requests.offers_accepted, base: compareData.requests.offers_accepted },
-                  { label: 'Abgelehnt',            cur: data.current.requests.offers_declined, base: compareData.requests.offers_declined },
-                  { label: 'Conversion Rate (%)',  cur: data.current.requests.conversion_rate, base: compareData.requests.conversion_rate },
-                ].map(r => <CompRow key={r.label} label={r.label} cur={r.cur} base={r.base} baseLabel={compareLabel} />)}
+                  { label: 'Anfragen eingegangen', cur: data.current.requests.received,       base: compareData.requests.received,       format: 'number' as const },
+                  { label: 'Versendet',            cur: data.current.requests.offers_sent,     base: compareData.requests.offers_sent,     format: 'number' as const },
+                  { label: 'Angenommen',           cur: data.current.requests.offers_accepted, base: compareData.requests.offers_accepted, format: 'number' as const },
+                  { label: 'Abgelehnt',            cur: data.current.requests.offers_declined, base: compareData.requests.offers_declined, format: 'number' as const },
+                  { label: 'Conversion Rate',      cur: data.current.requests.conversion_rate, base: compareData.requests.conversion_rate, format: 'percent' as const },
+                ].map(r => <CompRow key={r.label} label={r.label} cur={r.cur} base={r.base} baseLabel={compareLabel} format={r.format} />)}
               </div>
             )}
 
