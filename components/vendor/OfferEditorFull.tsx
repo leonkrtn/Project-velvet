@@ -54,7 +54,7 @@ const STATUS_META: Record<Offer['status'], { label: string; bg: string; fg: stri
   superseded: { label: 'Ersetzt',    bg: 'rgba(0,0,0,0.05)',       fg: '#999' },
 }
 
-export default function OfferEditorFull({ eventId, offerId }: { eventId: string; offerId: string }) {
+export default function OfferEditorFull({ eventId, offerId }: { eventId: string | null; offerId: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [offer, setOffer] = useState<Offer | null>(null)
@@ -158,7 +158,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
     const d = await res.json().catch(() => ({}))
     setBusy(null)
     if (!res.ok) { setErr(d.error ?? 'Fehler'); return }
-    if (action === 'release') { router.push(`/vendor/dashboard/${eventId}/angebote`); return }
+    if (action === 'release') { router.push(eventId ? `/vendor/dashboard/${eventId}/angebote` : '/vendor/angebote'); return }
     setPdfKey(k => k + 1)
     await load()
   }
@@ -180,14 +180,14 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
     })
     const d = await res.json().catch(() => ({}))
     setBusy(null)
-    if (d.id) router.push(`/vendor/dashboard/${eventId}/angebote/${d.id}`)
+    if (d.id) router.push(eventId ? `/vendor/dashboard/${eventId}/angebote/${d.id}` : `/vendor/angebote/${d.id}`)
   }
 
   async function remove() {
     if (!confirm('Diesen Entwurf löschen?')) return
     setBusy('delete')
     await fetch(`/api/vendor/event-offers/${offerId}`, { method: 'DELETE' })
-    router.push(`/vendor/dashboard/${eventId}/angebote`)
+    router.push(eventId ? `/vendor/dashboard/${eventId}/angebote` : '/vendor/angebote')
   }
 
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: C.dim, fontSize: 14, padding: '40px 0', justifyContent: 'center' }}><Loader2 size={16} className="ofe-spin" /> Lädt…</div>
@@ -199,7 +199,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
 
   return (
     <div style={{ paddingBottom: 40 }}>
-      <Link href={`/vendor/dashboard/${eventId}/angebote`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: C.dim, textDecoration: 'none', marginBottom: 16 }}>
+      <Link href={eventId ? `/vendor/dashboard/${eventId}/angebote` : '/vendor/angebote'} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: C.dim, textDecoration: 'none', marginBottom: 16 }}>
         <ChevronLeft size={15} /> Alle Angebote
       </Link>
 
@@ -398,7 +398,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
           </>
         ) : (
           <>
-            <Link href={`/vendor/dashboard/${eventId}/kommunikation`} style={{ ...btnGhost, textDecoration: 'none' }}><MessageSquare size={15} /> Zur Kommunikation</Link>
+            {eventId && <Link href={`/vendor/dashboard/${eventId}/kommunikation`} style={{ ...btnGhost, textDecoration: 'none' }}><MessageSquare size={15} /> Zur Kommunikation</Link>}
             {offer.status !== 'superseded' && (
               <button onClick={supersede} disabled={!!busy} style={{ ...btn, background: C.gold, color: '#fff' }}>
                 {busy === 'supersede' ? <Loader2 size={15} className="ofe-spin" /> : <Copy size={15} />} Neue Version

@@ -44,16 +44,18 @@ export async function GET(req: NextRequest) {
 }
 
 // POST — neues Angebot anlegen.
-// body: { eventId, source: 'questionnaire'|'blank'|'duplicate', fromOfferId?, requestId?, title? }
+// body: { eventId?: string|null, source: 'questionnaire'|'blank'|'duplicate', fromOfferId?, requestId?, title? }
+// eventId may be null/omitted for standalone offers (not linked to an event).
 export async function POST(req: NextRequest) {
   const auth = await requireVendorOwner()
   if (!auth.ok) return auth.res
   const { admin, vendorId, userId } = auth.ctx
   const body = await req.json().catch(() => ({})) as Record<string, unknown>
-  const eventId = body.eventId as string
+  const eventId: string | null = (body.eventId as string) || null
   const source = (body.source as string) || 'blank'
-  if (!eventId) return NextResponse.json({ error: 'eventId fehlt' }, { status: 400 })
-  if (!(await assertEventVendor(admin, eventId, userId))) {
+
+  // If eventId provided, verify membership
+  if (eventId && !(await assertEventVendor(admin, eventId, userId))) {
     return NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 })
   }
 
@@ -69,7 +71,7 @@ export async function POST(req: NextRequest) {
   if (source === 'duplicate') {
     const fromId = body.fromOfferId as string
     const { data: src } = await admin.from('vendor_offers').select('*').eq('id', fromId).maybeSingle()
-    if (!src || src.dienstleister_id !== vendorId || src.event_id !== eventId) {
+    if (!src || src.dienstleister_id !== vendorId || (eventId && src.event_id !== eventId)) {
       return NextResponse.json({ error: 'Vorlage nicht gefunden' }, { status: 404 })
     }
     row = {
@@ -86,7 +88,7 @@ export async function POST(req: NextRequest) {
     }
   } else if (source === 'questionnaire') {
     const q = await loadFullQuestionnaire(admin, vendorId)
-    const info = await buildStandardInfo(admin, eventId)
+    const info = eventId ? await buildStandardInfo(admin, eventId) : {}
     if (q) {
       const totals = computeOffer(q, [], info)
       row = {
@@ -101,7 +103,7 @@ export async function POST(req: NextRequest) {
     }
   } else {
     // blank
-    const info = await buildStandardInfo(admin, eventId).catch(() => ({}))
+    const info = eventId ? await buildStandardInfo(admin, eventId).catch(() => ({})) : {}
     const q = await loadFullQuestionnaire(admin, vendorId).catch(() => null)
     row = {
       ...row, standard_info: info, line_items: [],
@@ -114,5 +116,5 @@ export async function POST(req: NextRequest) {
 
   const { data: created, error } = await admin.from('vendor_offers').insert(row).select('id').single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ id: created.id })
+  return NextResponse.json({ id: created.id, eventId })
 }
