@@ -278,7 +278,7 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
 
   return (
     <div style={{ minHeight: '100dvh', background: C.bg, padding: '28px 24px 80px' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+      <div>
         {content}
       </div>
     </div>

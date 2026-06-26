@@ -320,7 +320,7 @@ export default function VendorListingClient() {
 
   return (
     <div style={{ flex: 1, background: 'var(--bg)', padding: '28px 24px 48px', overflow: 'auto' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+      <div>
 
         {/* ── Header ── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>

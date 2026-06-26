@@ -64,6 +64,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
   const [err, setErr] = useState('')
   const [blockMenu, setBlockMenu] = useState(false)
   const [pdfPreview, setPdfPreview] = useState(false)
+  const [pdfKey, setPdfKey] = useState(0)
 
   // Editierbare Felder
   const [title, setTitle] = useState('')
@@ -158,6 +159,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
     setBusy(null)
     if (!res.ok) { setErr(d.error ?? 'Fehler'); return }
     if (action === 'release') { router.push(`/vendor/dashboard/${eventId}/angebote`); return }
+    setPdfKey(k => k + 1)
     await load()
   }
 
@@ -193,11 +195,15 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
 
   const gewerkBlocks = blocksForCategory(category)
 
+  const pdfUrl = `/api/vendor/event-offers/${offerId}/pdf`
+
   return (
-    <div style={{ maxWidth: 760, margin: '0 auto', paddingBottom: 40 }}>
+    <div style={{ paddingBottom: 40 }}>
       <Link href={`/vendor/dashboard/${eventId}/angebote`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: C.dim, textDecoration: 'none', marginBottom: 16 }}>
         <ChevronLeft size={15} /> Alle Angebote
       </Link>
+
+      <div className="ofe-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 20, alignItems: 'start' }}>
 
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '26px 30px' }}>
       {/* Kopf */}
@@ -403,17 +409,37 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string;
       </div>
       </div>
 
-      {pdfPreview && (
-        <PdfPreviewModal
-          url={`/api/vendor/event-offers/${offerId}/pdf`}
-          title={`${title} – Vorschau`}
-          fileName={`${title || 'Angebot'}.pdf`}
-          onClose={() => setPdfPreview(false)}
-        />
-      )}
+      {/* ── Right column: PDF preview ── */}
+      <div className="ofe-preview" style={{ position: 'sticky', top: 20 }}>
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, overflow: 'hidden', height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: C.dim, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Vorschau</span>
+            <button onClick={() => setPdfKey(k => k + 1)} title="Aktualisieren" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.dim, display: 'flex', padding: 4 }}>
+              <RefreshCw size={14} />
+            </button>
+          </div>
+          <iframe
+            key={pdfKey}
+            src={pdfUrl}
+            style={{ flex: 1, border: 'none', background: '#f8f8f6' }}
+            title="PDF-Vorschau"
+          />
+        </div>
+      </div>
 
-      <style>{`.ofe-spin { animation: ofespin 1s linear infinite; } @keyframes ofespin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+    </div>{/* end grid */}
+
+    {pdfPreview && (
+      <PdfPreviewModal
+        url={pdfUrl}
+        title={`${title} – Vorschau`}
+        fileName={`${title || 'Angebot'}.pdf`}
+        onClose={() => setPdfPreview(false)}
+      />
+    )}
+
+    <style>{`.ofe-spin { animation: ofespin 1s linear infinite; } @keyframes ofespin { to { transform: rotate(360deg); } } @media(max-width:900px){.ofe-grid{grid-template-columns:1fr!important}.ofe-preview{display:none!important}}`}</style>
+  </div>
   )
 }
 

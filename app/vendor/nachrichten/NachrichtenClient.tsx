@@ -53,7 +53,7 @@ export default function NachrichtenClient() {
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '32px 24px 48px' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
+      <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
           <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <MessageSquare size={20} style={{ color: 'var(--gold)' }} />

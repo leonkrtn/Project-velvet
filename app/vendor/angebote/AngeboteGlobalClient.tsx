@@ -2,9 +2,10 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   ReceiptText, FileText, Check, X, Clock, Copy, ChevronRight,
-  Loader2, Search, SlidersHorizontal, ArrowUp, ArrowDown, RotateCcw,
+  Loader2, Search, SlidersHorizontal, ArrowUp, ArrowDown, RotateCcw, Plus,
 } from 'lucide-react'
 import { formatMoney } from '@/lib/vendor/questionnaire'
 
@@ -122,13 +123,23 @@ function matchesDate(eventDate: string | null, range: string): boolean {
   return true
 }
 
+interface EventOption { id: string; title: string | null; date: string | null; couple_name: string | null }
+
 export default function AngeboteGlobalClient() {
+  const router = useRouter()
   const [offers, setOffers] = useState<OfferRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [panelOpen, setPanelOpen] = useState(false)
   const [applied, setApplied] = useState<FilterState>(DEFAULT_FILTER)
   const [pending, setPending] = useState<FilterState>(DEFAULT_FILTER)
+
+  // New offer creation
+  const [createOpen, setCreateOpen] = useState(false)
+  const [events, setEvents] = useState<EventOption[]>([])
+  const [eventsLoading, setEventsLoading] = useState(false)
+  const [pickedEvent, setPickedEvent] = useState<EventOption | null>(null)
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     const saved = loadFilter()
@@ -146,11 +157,35 @@ export default function AngeboteGlobalClient() {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    if (!panelOpen) return
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setPanelOpen(false) }
+    if (!panelOpen && !createOpen) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') { setPanelOpen(false); setCreateOpen(false); setPickedEvent(null) } }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [panelOpen])
+  }, [panelOpen, createOpen])
+
+  async function openCreate() {
+    setCreateOpen(true)
+    setPickedEvent(null)
+    if (events.length === 0) {
+      setEventsLoading(true)
+      const res = await fetch('/api/vendor/my-events')
+      const d = await res.json().catch(() => ({}))
+      setEvents(d.events ?? [])
+      setEventsLoading(false)
+    }
+  }
+
+  async function createOffer(source: 'questionnaire' | 'blank') {
+    if (!pickedEvent) return
+    setCreating(true)
+    const res = await fetch('/api/vendor/event-offers', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId: pickedEvent.id, source }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setCreating(false)
+    if (d.id) router.push(`/vendor/dashboard/${pickedEvent.id}/angebote/${d.id}`)
+  }
 
   function openPanel() { setPending(applied); setPanelOpen(true) }
 
@@ -247,7 +282,7 @@ export default function AngeboteGlobalClient() {
   return (
     <>
       <div style={{ background: 'var(--bg)', flex: 1, padding: '28px 24px 48px', overflow: 'auto' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
 
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -257,6 +292,18 @@ export default function AngeboteGlobalClient() {
             <div style={{ flex: 1 }}>
               <h1 style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>Angebote</h1>
               <p style={{ fontSize: 13.5, color: 'var(--text-dim)', marginTop: 2 }}>Alle Angebote über alle Events hinweg.</p>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={openCreate}
+                disabled={creating}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 9,
+                  background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600,
+                }}
+              >
+                {creating ? <Loader2 size={15} className="ang-spin" /> : <Plus size={16} />} Neues Angebot
+              </button>
             </div>
           </div>
 
@@ -508,9 +555,71 @@ export default function AngeboteGlobalClient() {
         </div>
       </aside>
 
+      {/* Create offer modal */}
+      {createOpen && (
+        <>
+          <div onClick={() => { setCreateOpen(false); setPickedEvent(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.40)', backdropFilter: 'blur(4px)', zIndex: 300 }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 301, width: 460, maxWidth: 'calc(100vw - 32px)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.22)', overflow: 'hidden' }}>
+            <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 16, fontWeight: 700 }}>Neues Angebot erstellen</span>
+              <button onClick={() => { setCreateOpen(false); setPickedEvent(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', padding: 4 }}><X size={18} /></button>
+            </div>
+            <div style={{ padding: '16px 20px 20px', maxHeight: '70vh', overflowY: 'auto' }}>
+              {!pickedEvent ? (
+                <>
+                  <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px' }}>Für welches Event soll das Angebot erstellt werden?</p>
+                  {eventsLoading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-dim)', padding: '20px 0', justifyContent: 'center' }}>
+                      <Loader2 size={15} className="ang-spin" /> Lädt…
+                    </div>
+                  ) : events.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '20px 0' }}>Noch kein Event verknüpft.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {events.map(ev => (
+                        <button key={ev.id} onClick={() => setPickedEvent(ev)} style={{ textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', border: '1px solid var(--border)', borderRadius: 10, padding: '11px 14px', background: 'var(--bg)', width: '100%' }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'rgba(35,82,200,0.04)' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg)' }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{ev.couple_name || ev.title || 'Event'}</div>
+                          {ev.title && ev.couple_name && <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 2 }}>{ev.title}</div>}
+                          {ev.date && <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 1 }}>{new Date(ev.date).toLocaleDateString('de-DE')}</div>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 14px' }}>
+                    Event: <strong style={{ color: 'var(--text)' }}>{pickedEvent.couple_name || pickedEvent.title || 'Event'}</strong>
+                    <button onClick={() => setPickedEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--accent)', marginLeft: 8, padding: 0 }}>ändern</button>
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <button onClick={() => createOffer('questionnaire')} disabled={creating} style={{ textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', border: '1px solid var(--border)', borderRadius: 10, padding: '13px 14px', background: 'var(--bg)', width: '100%' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'rgba(35,82,200,0.04)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg)' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Aus Preislogik</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3 }}>Vorbefüllt aus deinem Fragebogen (Grundpreis, pro Gast …)</div>
+                    </button>
+                    <button onClick={() => createOffer('blank')} disabled={creating} style={{ textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', border: '1px solid var(--border)', borderRadius: 10, padding: '13px 14px', background: 'var(--bg)', width: '100%' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.background = 'rgba(35,82,200,0.04)' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'var(--bg)' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Leeres Angebot</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3 }}>Positionen selbst zusammenstellen</div>
+                    </button>
+                  </div>
+                  {creating && <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-dim)', marginTop: 12, justifyContent: 'center' }}><Loader2 size={14} className="ang-spin" /> Wird erstellt…</div>}
+                </>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
       <style>{`
         .ang-skel{background:linear-gradient(90deg,var(--bg) 25%,var(--border) 50%,var(--bg) 75%);background-size:200% 100%;animation:ang-shimmer 1.4s ease infinite}
         @keyframes ang-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        .ang-spin{animation:angspin 1s linear infinite}@keyframes angspin{to{transform:rotate(360deg)}}
         @media(max-width:480px){aside[style*="width: 340"]{width:100%!important}}
       `}</style>
     </>
