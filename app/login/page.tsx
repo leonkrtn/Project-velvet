@@ -77,6 +77,12 @@ function LoginForm() {
           // Bestätigung) — Event jetzt anhand der Signup-Metadaten erstellen.
           try {
             const eventId = await ensureSoloEvent(supabase, session!.user.user_metadata)
+            // Sync profile + partner data captured during signup (email-confirmation flow)
+            await fetch('/api/brautpaar/sync-profile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ eventId, meta: session!.user.user_metadata }),
+            }).catch(() => {})
             dest = `/brautpaar/${eventId}/uebersicht`
           } catch {
             dest = '/signup/brautpaar'

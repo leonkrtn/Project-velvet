@@ -7,8 +7,8 @@ import {
   Star, Building2,
   Pencil, Trash2, CheckSquare, Square, Clock,
   Heart, Briefcase, PartyPopper, HelpCircle,
-  MapPin, MessageSquare, User, Circle, ChevronDown,
-  LayoutGrid, List,
+  MapPin, MessageSquare, User, Circle, ChevronDown, ChevronUp, ArrowUpDown,
+  LayoutGrid, List, ListChecks,
 } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────
@@ -51,6 +51,7 @@ interface Contact {
   home_street: string
   home_postal_code: string
   home_city: string
+  birthday: string | null
   created_at: string
   updated_at: string
   crm_contact_persons?: ContactPerson[]
@@ -135,6 +136,14 @@ function daysUntilAnniversary(weddingDate: string): number | null {
   return Math.ceil((thisYear.getTime() - now.getTime()) / 86400000)
 }
 
+function daysUntilBirthday(birthday: string): number | null {
+  const now = new Date()
+  const bd = new Date(birthday)
+  const thisYear = new Date(now.getFullYear(), bd.getMonth(), bd.getDate())
+  if (thisYear < now) thisYear.setFullYear(now.getFullYear() + 1)
+  return Math.ceil((thisYear.getTime() - now.getTime()) / 86400000)
+}
+
 function emptyContact(): Omit<Contact, 'id' | 'created_at' | 'updated_at' | 'crm_contact_persons' | 'crm_tasks'> {
   return {
     name: '', email: '', phone: '', address_line1: '', address_line2: '',
@@ -143,7 +152,7 @@ function emptyContact(): Omit<Contact, 'id' | 'created_at' | 'updated_at' | 'crm
     notes: '', priority: 'standard', custom_tags: [],
     offer_id: null, event_id: null, request_id: null, partner_contact_id: null,
     anniversary_remind: false, guest_count: null, location: '', event_title: '', request_message: '',
-    home_street: '', home_postal_code: '', home_city: '',
+    home_street: '', home_postal_code: '', home_city: '', birthday: null,
   }
 }
 
@@ -299,10 +308,12 @@ function KanbanCard({ contact, onClick }: { contact: Contact; onClick: () => voi
 
   return (
     <div
+      draggable
+      onDragStart={e => { e.dataTransfer.setData('crm-contact-id', contact.id); e.dataTransfer.effectAllowed = 'move' }}
       onClick={onClick}
       style={{
         background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
-        padding: '14px', marginBottom: 8, cursor: 'pointer',
+        padding: '14px', marginBottom: 8, cursor: 'grab',
         transition: 'box-shadow .15s, border-color .15s',
       }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'rgba(35,82,200,0.3)' }}
@@ -352,12 +363,13 @@ function KanbanCard({ contact, onClick }: { contact: Contact; onClick: () => voi
 
 // ── Contact Detail Panel ───────────────────────────────────────
 function ContactPanel({
-  contact, onClose, onUpdated, onDeleted,
+  contact, onClose, onUpdated, onDeleted, onOpenById,
 }: {
   contact: Contact
   onClose: () => void
   onUpdated: (c: Contact) => void
   onDeleted: (id: string) => void
+  onOpenById?: (id: string) => void
 }) {
   const [tab, setTab] = useState<'info' | 'aktivitaeten' | 'aufgaben'>('info')
   const [activities, setActivities] = useState<Activity[]>([])
@@ -563,6 +575,11 @@ function ContactPanel({
                 </div>
                 {SI('Straße & Hausnummer', 'address_line1')}
                 {SI('PLZ & Ort', 'address_line2')}
+                {SI('Wohnstraße', 'home_street')}
+                <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 10 }}>
+                  {SI('Wohn-PLZ', 'home_postal_code')}
+                  {SI('Wohnort', 'home_city')}
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div style={{ marginBottom: 12 }}>
                     <FieldLabel>Status</FieldLabel>
@@ -583,12 +600,13 @@ function ContactPanel({
                   {SI('Hochzeitsdatum', 'wedding_date', 'date')}
                   {SI('Umsatz (€)', 'deal_value', 'number')}
                 </div>
+                {SI('Geburtstag', 'birthday', 'date')}
                 <div style={{ marginBottom: 12 }}>
                   <FieldLabel>Notizen</FieldLabel>
                   <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
                 </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 20, fontSize: 13, color: 'var(--text-secondary)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
                   <input type="checkbox" checked={form.anniversary_remind} onChange={e => setForm(f => ({ ...f, anniversary_remind: e.target.checked }))} />
                   Jahrestags-Erinnerung
                 </label>
@@ -626,6 +644,17 @@ function ContactPanel({
                       </div>
                     )}
                   </div>
+
+                  {/* Birthday */}
+                  {contact.birthday && (
+                    <div style={{ gridColumn: '1/-1' }}>
+                      <FieldLabel>Geburtstag</FieldLabel>
+                      <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>
+                        {formatDate(contact.birthday)}
+                        {(() => { const d = daysUntilBirthday(contact.birthday); return d != null && d <= 14 ? <span style={{ marginLeft: 8, fontSize: 11, color: '#D97706', fontWeight: 600 }}> — in {d} Tagen</span> : null })()}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Weitere Personen */}
                   {(contact.crm_contact_persons?.length ?? 0) > 0 && (
@@ -704,10 +733,7 @@ function ContactPanel({
                   <section style={{ marginBottom: 22, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
                     <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Verknüpfte Person</p>
                     <button
-                      onClick={() => {
-                        const partner = document.querySelector(`[data-contact-id="${contact.partner_contact_id}"]`) as HTMLElement | null
-                        if (!partner) window.dispatchEvent(new CustomEvent('crm-open-contact', { detail: contact.partner_contact_id }))
-                      }}
+                      onClick={() => onOpenById?.(contact.partner_contact_id!)}
                       style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left', color: 'var(--text-secondary)', fontSize: 13 }}
                     >
                       <User size={13} style={{ color: 'var(--accent)' }} />
@@ -945,6 +971,12 @@ export default function CrmClient() {
   const [importing, setImporting] = useState(false)
   const [autoImporting, setAutoImporting] = useState(false)
   const [autoImportResult, setAutoImportResult] = useState<number | null>(null)
+  const [sortCol, setSortCol] = useState<'name' | 'deal_value' | 'wedding_date' | 'updated_at'>('updated_at')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [showGlobalTasks, setShowGlobalTasks] = useState(false)
+  const [globalTasks, setGlobalTasks] = useState<(Task & { crm_contacts?: { id: string; name: string } | null })[]>([])
+  const [loadingGlobalTasks, setLoadingGlobalTasks] = useState(false)
+  const [dragOverStage, setDragOverStage] = useState<LifecycleStage | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -988,6 +1020,22 @@ export default function CrmClient() {
     }
   }
 
+  const sortedContacts = useMemo(() => {
+    return [...contacts].sort((a, b) => {
+      let va: string | number | null, vb: string | number | null
+      if (sortCol === 'name') { va = a.name.toLowerCase(); vb = b.name.toLowerCase() }
+      else if (sortCol === 'deal_value') { va = a.deal_value; vb = b.deal_value }
+      else if (sortCol === 'wedding_date') { va = a.wedding_date; vb = b.wedding_date }
+      else { va = a.updated_at; vb = b.updated_at }
+      if (va == null && vb == null) return 0
+      if (va == null) return sortDir === 'asc' ? -1 : 1
+      if (vb == null) return sortDir === 'asc' ? 1 : -1
+      if (va < vb) return sortDir === 'asc' ? -1 : 1
+      if (va > vb) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [contacts, sortCol, sortDir])
+
   const byStage = useMemo(() => {
     const map: Record<LifecycleStage, Contact[]> = { lead: [], anfrage: [], gebucht: [], ehemalig: [] }
     for (const c of contacts) map[c.lifecycle_stage].push(c)
@@ -1002,15 +1050,38 @@ export default function CrmClient() {
     return d != null && d <= 30
   }).sort((a, b) => (daysUntilAnniversary(a.wedding_date!)??999) - (daysUntilAnniversary(b.wedding_date!)??999)), [contacts])
 
-  useEffect(() => {
-    function onOpenContact(e: Event) {
-      const id = (e as CustomEvent).detail as string
-      const found = contacts.find(c => c.id === id)
-      if (found) setSelectedContact(found)
-    }
-    window.addEventListener('crm-open-contact', onOpenContact)
-    return () => window.removeEventListener('crm-open-contact', onOpenContact)
-  }, [contacts])
+  const birthdayAlerts = useMemo(() => contacts.filter(c => {
+    if (!c.birthday) return false
+    const d = daysUntilBirthday(c.birthday)
+    return d != null && d <= 14
+  }).sort((a, b) => (daysUntilBirthday(a.birthday!)??999) - (daysUntilBirthday(b.birthday!)??999)), [contacts])
+
+
+  async function openContactById(id: string) {
+    const found = contacts.find(c => c.id === id)
+    if (found) { setSelectedContact(found); return }
+    const res = await fetch(`/api/vendor/crm/contacts/${id}`)
+    const json = await res.json()
+    if (json.contact) setSelectedContact(json.contact)
+  }
+
+  async function fetchGlobalTasks() {
+    setLoadingGlobalTasks(true)
+    const res = await fetch('/api/vendor/crm/tasks?done=false')
+    const json = await res.json()
+    setGlobalTasks(json.tasks ?? [])
+    setLoadingGlobalTasks(false)
+  }
+
+  async function toggleGlobalTask(task: Task) {
+    const res = await fetch(`/api/vendor/crm/tasks/${task.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done: !task.done }),
+    })
+    const json = await res.json()
+    if (json.task) setGlobalTasks(prev => prev.filter(t => t.id !== task.id))
+  }
 
   function handleCreated(c: Contact) { setContacts(prev => [c, ...prev]); setShowNew(false); setSelectedContact(c) }
   function handleUpdated(c: Contact) {
@@ -1047,7 +1118,7 @@ export default function CrmClient() {
 
       {/* Anniversary alerts */}
       {anniversaryAlerts.length > 0 && (
-        <div style={{ background: 'rgba(232,67,147,0.08)', border: '1px solid rgba(232,67,147,0.2)', borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ background: 'rgba(232,67,147,0.08)', border: '1px solid rgba(232,67,147,0.2)', borderRadius: 12, padding: '12px 16px', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <Heart size={15} style={{ color: '#E84393', flexShrink: 0, marginTop: 1 }} />
           <div>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#C2355D', margin: '0 0 4px' }}>Bevorstehende Jahrestage</p>
@@ -1055,6 +1126,23 @@ export default function CrmClient() {
               {anniversaryAlerts.slice(0, 5).map(c => (
                 <span key={c.id} onClick={() => setSelectedContact(c)} style={{ fontSize: 12, color: '#C2355D', cursor: 'pointer', textDecoration: 'underline' }}>
                   {c.name} (in {daysUntilAnniversary(c.wedding_date!)}d)
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Birthday alerts */}
+      {birthdayAlerts.length > 0 && (
+        <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <Calendar size={15} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#B45309', margin: '0 0 4px' }}>Bevorstehende Geburtstage</p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {birthdayAlerts.slice(0, 5).map(c => (
+                <span key={c.id} onClick={() => setSelectedContact(c)} style={{ fontSize: 12, color: '#B45309', cursor: 'pointer', textDecoration: 'underline' }}>
+                  {c.name} (in {daysUntilBirthday(c.birthday!)}d)
                 </span>
               ))}
             </div>
@@ -1078,6 +1166,11 @@ export default function CrmClient() {
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button onClick={() => { setShowGlobalTasks(true); fetchGlobalTasks() }} title="Alle offenen Aufgaben"
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, cursor: 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+                <ListChecks size={13} />
+                <span className="crm-btn-text">Aufgaben</span>
+              </button>
               <button onClick={handleAutoImport} disabled={autoImporting} title="Aus Anfragen, Angeboten und Events importieren"
                 style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, cursor: autoImporting ? 'wait' : 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
                 <RefreshCw size={13} style={{ animation: autoImporting ? 'crm-spin 1s linear infinite' : 'none' }} />
@@ -1086,6 +1179,9 @@ export default function CrmClient() {
               <button onClick={() => fileRef.current?.click()} disabled={importing} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, cursor: importing ? 'wait' : 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
                 <Upload size={13} /><span className="crm-btn-text">CSV Import</span>
               </button>
+              <a href="/api/vendor/crm/import-template" title="Leer-Vorlage für den CSV-Import herunterladen" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
+                <Download size={13} /><span className="crm-btn-text">Vorlage</span>
+              </a>
               <a href="/api/vendor/crm/export" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
                 <Download size={13} /><span className="crm-btn-text">Export</span>
               </a>
@@ -1170,9 +1266,30 @@ export default function CrmClient() {
 
         {/* ── Content ── */}
         {loading ? (
-          <div style={{ padding: '20px 24px' }}>
-            {[0,1,2,3,4].map(i => <div key={i} className="skeleton" style={{ height: 58, borderRadius: 10, marginBottom: 8 }} />)}
-          </div>
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 160px 120px 100px 90px', gap: 12, padding: '10px 16px', background: 'var(--bg)', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
+              <div />
+              {[120, 100, 80, 60, 60].map((w, i) => (
+                <div key={i} className="skeleton" style={{ height: 12, width: w, borderRadius: 4 }} />
+              ))}
+            </div>
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 160px 120px 100px 90px', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
+                <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 9 }} />
+                <div>
+                  <div className="skeleton" style={{ height: 14, width: 160, marginBottom: 7, borderRadius: 5 }} />
+                  <div className="skeleton" style={{ height: 12, width: 120, borderRadius: 4 }} />
+                </div>
+                <div>
+                  <div className="skeleton" style={{ height: 13, width: 100, marginBottom: 6, borderRadius: 4 }} />
+                  <div className="skeleton" style={{ height: 11, width: 70, borderRadius: 4 }} />
+                </div>
+                <div className="skeleton" style={{ height: 14, width: 70, borderRadius: 4, marginLeft: 'auto' }} />
+                <div className="skeleton" style={{ height: 12, width: 55, borderRadius: 4, margin: '0 auto' }} />
+                <div className="skeleton" style={{ height: 20, width: 62, borderRadius: 100, marginLeft: 'auto' }} />
+              </div>
+            ))}
+          </>
         ) : contacts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '56px 24px' }}>
             <div style={{ opacity: 0.2, marginBottom: 14 }}><Users size={40} /></div>
@@ -1198,15 +1315,29 @@ export default function CrmClient() {
         ) : view === 'list' ? (
           <>
             {/* List header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 160px 120px 100px 90px', gap: 12, padding: '8px 16px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-              <div />
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Kontakt</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Veranstaltung</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'right' }}>Wert</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>Quelle</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'right' }}>Status</span>
-            </div>
-            {contacts.map(c => (
+            {(() => {
+              function SortHeader({ col, label, align }: { col: typeof sortCol; label: string; align?: string }) {
+                const active = sortCol === col
+                return (
+                  <button onClick={() => { if (active) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortCol(col); setSortDir('asc') } }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 3, justifyContent: align === 'right' ? 'flex-end' : align === 'center' ? 'center' : 'flex-start', border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, color: active ? 'var(--accent)' : 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {label}
+                    {active ? (sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />) : <ArrowUpDown size={9} style={{ opacity: 0.4 }} />}
+                  </button>
+                )
+              }
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 160px 120px 100px 90px', gap: 12, padding: '8px 16px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                  <div />
+                  <SortHeader col="name" label="Kontakt" />
+                  <SortHeader col="wedding_date" label="Veranstaltung" />
+                  <SortHeader col="deal_value" label="Wert" align="right" />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>Quelle</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'right' }}>Status</span>
+                </div>
+              )
+            })()}
+            {sortedContacts.map(c => (
               <ContactRow key={c.id} contact={c} selected={selectedContact?.id === c.id} onClick={() => setSelectedContact(selectedContact?.id === c.id ? null : c)} />
             ))}
           </>
@@ -1216,8 +1347,28 @@ export default function CrmClient() {
             <div className="crm-kanban" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
               {STAGES.map(stage => {
                 const cols = byStage[stage.key]
+                const isDragOver = dragOverStage === stage.key
                 return (
-                  <div key={stage.key}>
+                  <div
+                    key={stage.key}
+                    onDragOver={e => { e.preventDefault(); setDragOverStage(stage.key) }}
+                    onDragLeave={() => setDragOverStage(null)}
+                    onDrop={async e => {
+                      e.preventDefault()
+                      setDragOverStage(null)
+                      const id = e.dataTransfer.getData('crm-contact-id')
+                      if (!id) return
+                      const contact = contacts.find(c => c.id === id)
+                      if (!contact || contact.lifecycle_stage === stage.key) return
+                      setContacts(prev => prev.map(c => c.id === id ? { ...c, lifecycle_stage: stage.key } : c))
+                      await fetch(`/api/vendor/crm/contacts/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ lifecycle_stage: stage.key }),
+                      })
+                    }}
+                    style={{ borderRadius: 10, transition: 'background .15s', background: isDragOver ? stage.bg : 'transparent', minHeight: 80 }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10, padding: '6px 8px', borderRadius: 8, background: stage.bg }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: stage.color }}>{stage.label}</span>
                       <span style={{ fontSize: 11, color: stage.color, opacity: 0.7, marginLeft: 'auto' }}>{cols.length}</span>
@@ -1233,13 +1384,74 @@ export default function CrmClient() {
       </div>
 
       {selectedContact && (
-        <ContactPanel contact={selectedContact} onClose={() => setSelectedContact(null)} onUpdated={handleUpdated} onDeleted={handleDeleted} />
+        <ContactPanel contact={selectedContact} onClose={() => setSelectedContact(null)} onUpdated={handleUpdated} onDeleted={handleDeleted} onOpenById={openContactById} />
       )}
       {showNew && <NewContactModal onClose={() => setShowNew(false)} onCreated={handleCreated} />}
       <input ref={fileRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleImport} />
 
+      {/* ── Global Tasks Panel ── */}
+      {showGlobalTasks && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end' }}>
+          <div onClick={() => setShowGlobalTasks(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.22)' }} />
+          <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 420, height: '100dvh', overflowY: 'auto', background: 'var(--surface)', boxShadow: '-4px 0 32px rgba(35,82,200,0.14)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <ListChecks size={18} style={{ color: 'var(--accent)' }} />
+              <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, flex: 1 }}>Offene Aufgaben</h2>
+              <button onClick={() => setShowGlobalTasks(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={16} /></button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 30px' }}>
+              {loadingGlobalTasks ? (
+                [1,2,3,4].map(i => <div key={i} style={{ height: 54, borderRadius: 9, background: 'var(--bg)', marginBottom: 8, animation: 'crm-pulse 1.4s ease-in-out infinite' }} />)
+              ) : globalTasks.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                  <Check size={32} style={{ color: '#1E7E34', opacity: 0.5, marginBottom: 12 }} />
+                  <p style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>Keine offenen Aufgaben</p>
+                </div>
+              ) : (() => {
+                const now = new Date()
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                const inWeek = new Date(today.getTime() + 7 * 86400000)
+                const groups: [string, typeof globalTasks][] = [
+                  ['Überfällig', globalTasks.filter(t => t.due_at && new Date(t.due_at) < today)],
+                  ['Heute', globalTasks.filter(t => t.due_at && new Date(t.due_at) >= today && new Date(t.due_at) < new Date(today.getTime() + 86400000))],
+                  ['Diese Woche', globalTasks.filter(t => t.due_at && new Date(t.due_at) >= new Date(today.getTime() + 86400000) && new Date(t.due_at) < inWeek)],
+                  ['Später', globalTasks.filter(t => !t.due_at || new Date(t.due_at) >= inWeek)],
+                ]
+                return groups.filter(([, ts]) => ts.length > 0).map(([label, ts]) => (
+                  <div key={label} style={{ marginBottom: 20 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: label === 'Überfällig' ? '#C5221F' : 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{label}</p>
+                    {ts.map(task => (
+                      <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 9, background: 'var(--bg)', border: `1px solid ${label === 'Überfällig' ? 'rgba(197,34,31,0.2)' : 'var(--border)'}`, marginBottom: 6 }}>
+                        <button onClick={() => toggleGlobalTask(task)} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-tertiary)', flexShrink: 0, marginTop: 1 }}>
+                          <Square size={15} />
+                        </button>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>{task.title}</p>
+                          {task.crm_contacts?.name && (
+                            <button onClick={() => { openContactById(task.crm_contacts!.id); setShowGlobalTasks(false) }}
+                              style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 11, color: 'var(--accent)', fontFamily: 'inherit', marginTop: 2 }}>
+                              {task.crm_contacts.name}
+                            </button>
+                          )}
+                        </div>
+                        {task.due_at && (
+                          <span style={{ fontSize: 11, color: label === 'Überfällig' ? '#C5221F' : 'var(--text-tertiary)', flexShrink: 0 }}>
+                            {formatDateShort(task.due_at)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @keyframes crm-spin { to { transform: rotate(360deg); } }
+        @keyframes crm-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         @media(max-width:900px) { .crm-kanban { grid-template-columns: repeat(2,1fr) !important; } }
         @media(max-width:540px) { .crm-kanban { grid-template-columns: 1fr !important; } .crm-btn-text { display: none !important; } }
       `}</style>
