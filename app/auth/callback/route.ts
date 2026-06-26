@@ -58,7 +58,7 @@ export async function GET(request: Request) {
       }
     }
     if (memberships.some(m => m.role === 'dienstleister')) {
-      return NextResponse.redirect(`${origin}/vendor/dashboard`)
+      return NextResponse.redirect(`${origin}/vendor/ubersicht`)
     }
   }
 
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
     .eq('used_by', user.id)
     .limit(1)
   if (vsc && vsc.length > 0) {
-    return NextResponse.redirect(`${origin}/vendor/dashboard`)
+    return NextResponse.redirect(`${origin}/vendor/ubersicht`)
   }
 
   // Marketplace vendor (signed up via /signup/dienstleister, not yet added to any event)
