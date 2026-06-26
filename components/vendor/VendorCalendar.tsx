@@ -118,6 +118,8 @@ export default function VendorCalendar() {
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState<ModalState | null>(null)
   const [exportBusy, setExportBusy] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -130,6 +132,13 @@ export default function VendorCalendar() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   useEffect(() => {
     if (window.innerWidth < 540) setView('agenda')
@@ -270,7 +279,7 @@ export default function VendorCalendar() {
           <Loader2 size={20} className="vc-spin" />
         </div>
       ) : view === 'month' ? (
-        <MonthView cursor={cursor} entries={entries} onDayClick={openCreate} onEntryClick={openEdit} />
+        <MonthView cursor={cursor} entries={entries} onDayClick={openCreate} onEntryClick={openEdit} isMobile={isMobile} onDayDetail={setSelectedDay} />
       ) : view === 'week' ? (
         <WeekView cursor={cursor} entries={entries} onDayClick={openCreate} onEntryClick={openEdit} />
       ) : (
@@ -284,6 +293,16 @@ export default function VendorCalendar() {
           onClose={closeModal}
           onSaved={async () => { closeModal(); await load() }}
           onDeleted={async () => { closeModal(); await load() }}
+        />
+      )}
+
+      {selectedDay && (
+        <DayDetailPanel
+          day={selectedDay}
+          entries={entriesOnDay(entries, selectedDay)}
+          onClose={() => setSelectedDay(null)}
+          onEntryClick={e => { setSelectedDay(null); openEdit(e) }}
+          onAdd={d => { setSelectedDay(null); openCreate(d) }}
         />
       )}
 
@@ -307,11 +326,13 @@ export default function VendorCalendar() {
 
 // ── Month View ────────────────────────────────────────────────────────────────
 
-function MonthView({ cursor, entries, onDayClick, onEntryClick }: {
+function MonthView({ cursor, entries, onDayClick, onEntryClick, isMobile, onDayDetail }: {
   cursor: Date
   entries: CalendarEntry[]
   onDayClick: (d: Date) => void
   onEntryClick: (e: CalendarEntry) => void
+  isMobile?: boolean
+  onDayDetail?: (d: Date) => void
 }) {
   const today = new Date()
   const cells = useMemo(() => monthGrid(cursor.getFullYear(), cursor.getMonth()), [cursor])
@@ -333,13 +354,23 @@ function MonthView({ cursor, entries, onDayClick, onEntryClick }: {
           const isCurrentMonth = day.getMonth() === currentMonth
           const dayEntries = entriesOnDay(entries, day)
 
+          function handleDayClick() {
+            if (isMobile && onDayDetail && dayEntries.length > 0) {
+              onDayDetail(day)
+            } else {
+              onDayClick(day)
+            }
+          }
+
           return (
             <div
               key={i}
               className="vc-day"
-              onClick={() => onDayClick(day)}
+              onClick={handleDayClick}
               style={{
-                minHeight: 90, padding: '5px 4px', cursor: 'pointer',
+                minHeight: isMobile ? 48 : 90,
+                padding: isMobile ? '4px 2px' : '5px 4px',
+                cursor: 'pointer',
                 borderRight: i % 7 !== 6 ? `1px solid ${C.border}` : 'none',
                 borderBottom: i < 35 ? `1px solid ${C.border}` : 'none',
                 background: isToday ? 'rgba(35,82,200,0.04)' : 'transparent',
@@ -347,7 +378,7 @@ function MonthView({ cursor, entries, onDayClick, onEntryClick }: {
               }}
             >
               {/* Date number */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between', marginBottom: 2 }}>
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   width: 22, height: 22, borderRadius: '50%', fontSize: 12, fontWeight: isToday ? 700 : 400,
@@ -356,26 +387,38 @@ function MonthView({ cursor, entries, onDayClick, onEntryClick }: {
                 }}>
                   {day.getDate()}
                 </span>
-                <span className="vc-day-add" style={{ opacity: 0, color: C.dim, lineHeight: 1, transition: 'opacity .15s', fontSize: 14 }}>+</span>
-              </div>
-
-              {/* Events chips (max 3, then "+N more") */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {dayEntries.slice(0, 3).map(e => (
-                  <div
-                    key={e.id}
-                    className="vc-chip"
-                    onClick={ev => { ev.stopPropagation(); onEntryClick(e) }}
-                    style={{ background: e.color + '22', color: e.color, border: `1px solid ${e.color}33`, cursor: (e.editable || e.href) ? 'pointer' : 'default' }}
-                    title={e.title}
-                  >
-                    {e.title}
-                  </div>
-                ))}
-                {dayEntries.length > 3 && (
-                  <span style={{ fontSize: 10, color: C.dim, paddingLeft: 4 }}>+{dayEntries.length - 3} weitere</span>
+                {!isMobile && (
+                  <span className="vc-day-add" style={{ opacity: 0, color: C.dim, lineHeight: 1, transition: 'opacity .15s', fontSize: 14 }}>+</span>
                 )}
               </div>
+
+              {/* Mobile: colored dots. Desktop: text chips */}
+              {isMobile ? (
+                dayEntries.length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 3, marginTop: 2 }}>
+                    {dayEntries.slice(0, 3).map((e, di) => (
+                      <div key={di} style={{ width: 5, height: 5, borderRadius: '50%', background: e.color, flexShrink: 0 }} />
+                    ))}
+                  </div>
+                )
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {dayEntries.slice(0, 3).map(e => (
+                    <div
+                      key={e.id}
+                      className="vc-chip"
+                      onClick={ev => { ev.stopPropagation(); onEntryClick(e) }}
+                      style={{ background: e.color + '22', color: e.color, border: `1px solid ${e.color}33`, cursor: (e.editable || e.href) ? 'pointer' : 'default' }}
+                      title={e.title}
+                    >
+                      {e.title}
+                    </div>
+                  ))}
+                  {dayEntries.length > 3 && (
+                    <span style={{ fontSize: 10, color: C.dim, paddingLeft: 4 }}>+{dayEntries.length - 3} weitere</span>
+                  )}
+                </div>
+              )}
             </div>
           )
         })}
@@ -552,6 +595,79 @@ function AgendaView({ cursor, entries, onEntryClick, onAdd }: {
         )
       })}
     </div>
+  )
+}
+
+// ── Day Detail Panel (mobile bottom sheet) ───────────────────────────────────
+
+function DayDetailPanel({ day, entries, onClose, onEntryClick, onAdd }: {
+  day: Date
+  entries: CalendarEntry[]
+  onClose: () => void
+  onEntryClick: (e: CalendarEntry) => void
+  onAdd: (d: Date) => void
+}) {
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.32)', zIndex: 59 }} />
+      <div style={{
+        position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 60,
+        background: C.surface, borderRadius: '20px 20px 0 0',
+        boxShadow: '0 -4px 40px rgba(0,0,0,0.18)',
+        maxHeight: '72dvh', display: 'flex', flexDirection: 'column',
+      }}>
+        {/* Drag handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(0,0,0,0.15)' }} />
+        </div>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', padding: '10px 20px 12px', borderBottom: `1px solid ${C.border}`, gap: 10 }}>
+          <h3 style={{ flex: 1, fontSize: 16, fontWeight: 700, margin: 0, color: C.text }}>
+            {day.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </h3>
+          <button
+            onClick={() => onAdd(day)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', background: C.accent, color: '#fff', fontFamily: 'inherit' }}
+          >
+            <Plus size={14} /> Termin
+          </button>
+        </div>
+
+        {/* Events list */}
+        <div style={{ overflowY: 'auto', padding: '8px 16px 24px' }}>
+          {entries.length === 0 ? (
+            <p style={{ fontSize: 14, color: C.dim, textAlign: 'center', padding: '24px 0' }}>Keine Termine an diesem Tag.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+              {entries.map(e => (
+                <button
+                  key={e.id}
+                  onClick={() => onEntryClick(e)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                    borderRadius: 12, background: e.color + '14', border: `1px solid ${e.color}30`,
+                    cursor: (e.editable || e.href) ? 'pointer' : 'default',
+                    width: '100%', textAlign: 'left', fontFamily: 'inherit',
+                  }}
+                >
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: e.color, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
+                    {e.description && (
+                      <div style={{ fontSize: 12, color: C.dim, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.description}</div>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: e.color, background: e.color + '22', padding: '2px 7px', borderRadius: 100, flexShrink: 0 }}>
+                    {TYPE_LABELS[e.entry_type]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   )
 }
 
