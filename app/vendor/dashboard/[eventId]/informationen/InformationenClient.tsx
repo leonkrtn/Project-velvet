@@ -122,15 +122,7 @@ export default function InformationenClient({ eventId, event, confirmed, pending
         </div>
       </div>
 
-      <style>{`
-        @media (max-width: 900px) { .info-two-col { grid-template-columns: 1fr !important; } }
-        @media (max-width: 600px) { .info-contact-grid { grid-template-columns: 1fr !important; } }
-        @media (max-width: 767px) {
-          .info-page-outer { padding: 0 !important; background: transparent !important; }
-          .info-page-card { background: none !important; border: none !important; border-radius: 0 !important; padding: 0 !important; }
-        }
-        .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
+      <style>{`.spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
     </div>
   )
