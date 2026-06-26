@@ -54,8 +54,8 @@ export default function InformationenClient({ eventId, event, confirmed, pending
   }
 
   return (
-    <div style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1 }}>
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
+    <div className="info-page-outer" style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1 }}>
+    <div className="info-page-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
 
       {/* ── Title ── */}
       <div style={{ marginBottom: 24 }}>
@@ -124,7 +124,11 @@ export default function InformationenClient({ eventId, event, confirmed, pending
 
       <style>{`
         @media (max-width: 900px) { .info-two-col { grid-template-columns: 1fr !important; } }
-        @media (max-width: 540px) { .info-contact-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 600px) { .info-contact-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 767px) {
+          .info-page-outer { padding: 0 !important; background: transparent !important; }
+          .info-page-card { background: none !important; border: none !important; border-radius: 0 !important; padding: 0 !important; }
+        }
         .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>

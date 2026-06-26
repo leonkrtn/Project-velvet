@@ -71,10 +71,10 @@ export default function AngeboteClient({ eventId }: { eventId: string }) {
   }
 
   return (
-    <div style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1 }}>
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <div style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+    <div className="ang-page-outer" style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1 }}>
+    <div className="ang-page-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 28px' }}>
+      <div className="ang-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <div className="ang-header-icon" style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <ReceiptText size={20} style={{ color: 'var(--gold)' }} />
         </div>
         <div style={{ flex: 1 }}>
@@ -91,7 +91,7 @@ export default function AngeboteClient({ eventId }: { eventId: string }) {
           {pickerOpen && (
             <>
               <div onClick={() => setPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-              <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 50, width: 270, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-md, 0 12px 40px rgba(0,0,0,0.16))', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 50, width: 270, maxWidth: 'calc(100vw - 32px)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow-md, 0 12px 40px rgba(0,0,0,0.16))', overflow: 'hidden' }}>
                 <SourceOption title="Aus Preislogik" desc="Vorbefüllt aus deinem Fragebogen (Grundpreis, pro Gast …)" onClick={() => create('questionnaire')} />
                 <SourceOption title="Leeres Angebot" desc="Positionen selbst zusammenstellen" onClick={() => create('blank')} border />
               </div>
@@ -149,7 +149,7 @@ export default function AngeboteClient({ eventId }: { eventId: string }) {
         </div>
       )}
 
-      <style>{`.ang-spin { animation: angspin 1s linear infinite; } @keyframes angspin { to { transform: rotate(360deg); } } .ang-skel { background: linear-gradient(90deg, var(--bg) 25%, var(--border) 50%, var(--bg) 75%); background-size: 200% 100%; animation: ang-shimmer 1.4s ease infinite; } @keyframes ang-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+      <style>{`.ang-spin { animation: angspin 1s linear infinite; } @keyframes angspin { to { transform: rotate(360deg); } } .ang-skel { background: linear-gradient(90deg, var(--bg) 25%, var(--border) 50%, var(--bg) 75%); background-size: 200% 100%; animation: ang-shimmer 1.4s ease infinite; } @keyframes ang-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } } @media (max-width: 767px) { .ang-page-outer { padding: 0 !important; background: transparent !important; } .ang-page-card { background: none !important; border: none !important; border-radius: 0 !important; padding: 0 !important; } .ang-header { flex-wrap: wrap; } .ang-header-icon { display: none !important; } }`}</style>
     </div>
     </div>
   )

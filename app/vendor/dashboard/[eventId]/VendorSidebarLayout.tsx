@@ -108,7 +108,7 @@ export default function VendorSidebarLayout({ eventId, eventTitle, eventDate, ch
       </div>
 
       {/* Main content */}
-      <div style={{ flex: 1, overflow: isFullHeight ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Mobile topbar */}
         <div className="vendor-mobile-topbar" style={{
           display: 'none', alignItems: 'center', gap: 12,
@@ -126,7 +126,7 @@ export default function VendorSidebarLayout({ eventId, eventTitle, eventDate, ch
             {children}
           </div>
         ) : (
-          <main className="vendor-main" style={{ flex: 1, padding: '36px 40px 96px', width: '100%', boxSizing: 'border-box' }}>
+          <main className="vendor-main" style={{ flex: 1, padding: '36px 40px 96px', width: '100%', boxSizing: 'border-box', overflowY: 'auto' }}>
             {children}
           </main>
         )}
