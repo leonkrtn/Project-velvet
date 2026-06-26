@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Loader2, Plus, Trash2, RefreshCw, Save, Check, X, FileDown, ChevronLeft,
+  Loader2, Plus, Trash2, RefreshCw, Save, Check, X, ChevronLeft,
   ReceiptText, Layers, BookmarkPlus, MessageSquare, Copy, AlertTriangle,
 } from 'lucide-react'
 import {
@@ -13,7 +13,6 @@ import {
 } from '@/lib/vendor/pricing'
 import { formatMoney, type TaxMode } from '@/lib/vendor/questionnaire'
 import { blocksForCategory, blockToLineItem } from '@/lib/vendor/offer-blocks'
-import PdfPreviewModal from '@/components/pdf/PdfPreviewModal'
 
 interface Offer {
   id: string
@@ -63,8 +62,24 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState('')
   const [blockMenu, setBlockMenu] = useState(false)
-  const [pdfPreview, setPdfPreview] = useState(false)
   const [pdfKey, setPdfKey] = useState(0)
+  // Split pane: leftPct is the % width of the form column (30–80)
+  const [leftPct, setLeftPct] = useState(55)
+  const splitRef = useRef<HTMLDivElement>(null)
+  const dragging = useRef(false)
+
+  function onDividerPointerDown(e: React.PointerEvent) {
+    e.preventDefault()
+    dragging.current = true
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+  function onDividerPointerMove(e: React.PointerEvent) {
+    if (!dragging.current || !splitRef.current) return
+    const rect = splitRef.current.getBoundingClientRect()
+    const pct = ((e.clientX - rect.left) / rect.width) * 100
+    setLeftPct(Math.min(80, Math.max(20, pct)))
+  }
+  function onDividerPointerUp() { dragging.current = false }
 
   // Editierbare Felder
   const [title, setTitle] = useState('')
@@ -203,8 +218,15 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
         <ChevronLeft size={15} /> Alle Angebote
       </Link>
 
-      <div className="ofe-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 20, alignItems: 'start' }}>
+      <div
+        ref={splitRef}
+        className="ofe-grid"
+        onPointerMove={onDividerPointerMove}
+        onPointerUp={onDividerPointerUp}
+        style={{ display: 'flex', gap: 0, alignItems: 'start', userSelect: dragging.current ? 'none' : undefined }}
+      >
 
+      <div style={{ width: `${leftPct}%`, flexShrink: 0, minWidth: 0 }}>
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '26px 30px' }}>
       {/* Kopf */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
@@ -385,7 +407,6 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
 
       {/* Aktionen */}
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 22, borderTop: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
-        <button onClick={() => setPdfPreview(true)} style={btnGhost}><FileDown size={15} /> PDF-Vorschau</button>
         {editable ? (
           <>
             <button onClick={remove} disabled={!!busy} style={{ ...btnGhost, color: C.red, borderColor: 'rgba(197,34,31,0.3)' }}><Trash2 size={15} /> Löschen</button>
@@ -408,9 +429,23 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
         )}
       </div>
       </div>
+      </div>{/* end left wrapper */}
+
+      {/* ── Drag divider ── */}
+      <div
+        className="ofe-divider"
+        onPointerDown={onDividerPointerDown}
+        style={{
+          width: 16, flexShrink: 0, cursor: 'col-resize',
+          display: 'flex', alignItems: 'stretch', justifyContent: 'center',
+          alignSelf: 'stretch', position: 'relative',
+        }}
+      >
+        <div style={{ width: 4, borderRadius: 4, background: 'var(--border2, rgba(35,82,200,0.18))', transition: 'background 0.15s' }} className="ofe-divider-bar" />
+      </div>
 
       {/* ── Right column: PDF preview ── */}
-      <div className="ofe-preview" style={{ position: 'sticky', top: 20 }}>
+      <div className="ofe-preview" style={{ flex: 1, minWidth: 0, position: 'sticky', top: 20 }}>
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, overflow: 'hidden', height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: C.dim, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Vorschau</span>
@@ -429,16 +464,14 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
 
     </div>{/* end grid */}
 
-    {pdfPreview && (
-      <PdfPreviewModal
-        url={pdfUrl}
-        title={`${title} – Vorschau`}
-        fileName={`${title || 'Angebot'}.pdf`}
-        onClose={() => setPdfPreview(false)}
-      />
-    )}
 
-    <style>{`.ofe-spin { animation: ofespin 1s linear infinite; } @keyframes ofespin { to { transform: rotate(360deg); } } @media(max-width:900px){.ofe-grid{grid-template-columns:1fr!important}.ofe-preview{display:none!important}}`}</style>
+
+    <style>{`
+      .ofe-spin{animation:ofespin 1s linear infinite}@keyframes ofespin{to{transform:rotate(360deg)}}
+      .ofe-divider-bar{background:var(--border2,rgba(35,82,200,0.18))}
+      .ofe-divider:hover .ofe-divider-bar,.ofe-divider:active .ofe-divider-bar{background:var(--accent,#2352C8)!important}
+      @media(max-width:900px){.ofe-preview{display:none!important}.ofe-divider{display:none!important}}
+    `}</style>
   </div>
   )
 }
