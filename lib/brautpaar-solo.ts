@@ -11,6 +11,17 @@ export interface SoloSignupMetadata {
   partner_name?: string
   wedding_date?: string // ISO date (YYYY-MM-DD)
   signup_role?: 'brautpaar_solo'
+  // Extended contact details (added migration 0118)
+  first_name?: string
+  last_name?: string
+  phone?: string
+  street?: string
+  postal_code?: string
+  city?: string
+  partner_first_name?: string
+  partner_last_name?: string
+  partner_email?: string
+  partner_phone?: string
 }
 
 export function isSoloSignup(user: Pick<User, 'user_metadata'> | null | undefined): boolean {

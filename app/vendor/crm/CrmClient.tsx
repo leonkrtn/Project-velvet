@@ -34,17 +34,23 @@ interface Contact {
   event_type: EventType
   wedding_date: string | null
   deal_value: number | null
+  pending_offer_value: number | null
+  couple_budget: number | null
   notes: string
   priority: Priority
   custom_tags: string[]
   offer_id: string | null
   event_id: string | null
   request_id: string | null
+  partner_contact_id: string | null
   anniversary_remind: boolean
   guest_count: number | null
   location: string
   event_title: string
   request_message: string
+  home_street: string
+  home_postal_code: string
+  home_city: string
   created_at: string
   updated_at: string
   crm_contact_persons?: ContactPerson[]
@@ -133,9 +139,11 @@ function emptyContact(): Omit<Contact, 'id' | 'created_at' | 'updated_at' | 'crm
   return {
     name: '', email: '', phone: '', address_line1: '', address_line2: '',
     lifecycle_stage: 'lead', source: 'sonstige', event_type: 'hochzeit',
-    wedding_date: null, deal_value: null, notes: '', priority: 'standard',
-    custom_tags: [], offer_id: null, event_id: null, request_id: null,
+    wedding_date: null, deal_value: null, pending_offer_value: null, couple_budget: null,
+    notes: '', priority: 'standard', custom_tags: [],
+    offer_id: null, event_id: null, request_id: null, partner_contact_id: null,
     anniversary_remind: false, guest_count: null, location: '', event_title: '', request_message: '',
+    home_street: '', home_postal_code: '', home_city: '',
   }
 }
 
@@ -259,13 +267,15 @@ function ContactRow({ contact, selected, onClick }: {
         )}
       </div>
 
-      {/* Value */}
+      {/* Value — only final revenue, or pending offer hint */}
       <div style={{ textAlign: 'right' }}>
         {contact.deal_value != null ? (
           <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{formatEur(contact.deal_value)}</span>
-        ) : contact.guest_count != null ? (
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{contact.guest_count} Gäste</span>
-        ) : null}
+        ) : contact.pending_offer_value != null ? (
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Angebot: {formatEur(contact.pending_offer_value)}</span>
+        ) : (
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>—</span>
+        )}
       </div>
 
       {/* Source */}
@@ -599,7 +609,15 @@ function ContactPanel({
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                     <InfoCell label="E-Mail" value={contact.email} href={contact.email ? `mailto:${contact.email}` : undefined} />
                     <InfoCell label="Telefon" value={contact.phone} href={contact.phone ? `tel:${contact.phone}` : undefined} />
-                    {(contact.address_line1 || contact.address_line2) && (
+                    {contact.home_city && (
+                      <div style={{ gridColumn: '1/-1' }}>
+                        <FieldLabel>Wohnadresse</FieldLabel>
+                        <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>
+                          {[contact.home_street, [contact.home_postal_code, contact.home_city].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
+                        </p>
+                      </div>
+                    )}
+                    {!contact.home_city && (contact.address_line1 || contact.address_line2) && (
                       <div style={{ gridColumn: '1/-1' }}>
                         <FieldLabel>Adresse</FieldLabel>
                         <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>
@@ -631,14 +649,26 @@ function ContactPanel({
                 </section>
 
                 {/* ── Veranstaltungsinfo ── */}
-                {(contact.wedding_date || contact.location || contact.event_title || contact.guest_count != null) && (
+                {(contact.wedding_date || contact.location || contact.event_title || contact.guest_count != null || contact.deal_value != null || contact.pending_offer_value != null || contact.couple_budget != null) && (
                   <section style={{ marginBottom: 22, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
                     <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Veranstaltung</p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                       <InfoCell label="Datum" value={formatDate(contact.wedding_date)} />
                       {contact.guest_count != null && <InfoCell label="Gästeanzahl" value={`${contact.guest_count} Personen`} />}
                       <InfoCell label="Typ" value={EVENT_TYPE_LABELS[contact.event_type]} />
-                      {contact.deal_value != null && <InfoCell label="Budget / Umsatz" value={formatEur(contact.deal_value)} />}
+                      {contact.deal_value != null && <InfoCell label="Umsatz" value={formatEur(contact.deal_value)} />}
+                      {contact.pending_offer_value != null && contact.deal_value == null && (
+                        <div>
+                          <FieldLabel>Angebotsvolumen</FieldLabel>
+                          <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, fontStyle: 'italic' }}>{formatEur(contact.pending_offer_value)} (noch offen)</p>
+                        </div>
+                      )}
+                      {contact.couple_budget != null && (
+                        <div>
+                          <FieldLabel>Paar-Gesamtbudget</FieldLabel>
+                          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>{formatEur(contact.couple_budget)}</p>
+                        </div>
+                      )}
                       {contact.location && <div style={{ gridColumn: '1/-1' }}><InfoCell label="Veranstaltungsort" value={contact.location} /></div>}
                     </div>
                   </section>
@@ -666,6 +696,23 @@ function ContactPanel({
                     <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                       {contact.notes}
                     </p>
+                  </section>
+                )}
+
+                {/* ── Partner-Verlinkung ── */}
+                {contact.partner_contact_id && (
+                  <section style={{ marginBottom: 22, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Verknüpfte Person</p>
+                    <button
+                      onClick={() => {
+                        const partner = document.querySelector(`[data-contact-id="${contact.partner_contact_id}"]`) as HTMLElement | null
+                        if (!partner) window.dispatchEvent(new CustomEvent('crm-open-contact', { detail: contact.partner_contact_id }))
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer', fontFamily: 'inherit', width: '100%', textAlign: 'left', color: 'var(--text-secondary)', fontSize: 13 }}
+                    >
+                      <User size={13} style={{ color: 'var(--accent)' }} />
+                      <span>Partner-Kontakt öffnen</span>
+                    </button>
                   </section>
                 )}
 
@@ -890,6 +937,8 @@ export default function CrmClient() {
   const [stageFilter, setStageFilter] = useState<LifecycleStage | ''>('')
   const [sourceFilter, setSourceFilter] = useState<Source | ''>('')
   const [priorityFilter, setPriorityFilter] = useState<Priority | ''>('')
+  const [homeCityFilter, setHomeCityFilter] = useState('')
+  const [eventCityFilter, setEventCityFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [showNew, setShowNew] = useState(false)
@@ -899,12 +948,14 @@ export default function CrmClient() {
   const fileRef = useRef<HTMLInputElement>(null)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const fetchContacts = useCallback(async (q?: string, stage?: string, source?: string, priority?: string) => {
+  const fetchContacts = useCallback(async (q?: string, stage?: string, source?: string, priority?: string, homeCity?: string, eventCity?: string) => {
     const params = new URLSearchParams()
     if (q) params.set('search', q)
     if (stage) params.set('stage', stage)
     if (source) params.set('source', source)
     if (priority) params.set('priority', priority)
+    if (homeCity) params.set('home_city', homeCity)
+    if (eventCity) params.set('event_city', eventCity)
     const res = await fetch(`/api/vendor/crm/contacts?${params}`)
     const json = await res.json()
     setContacts(json.contacts ?? [])
@@ -918,12 +969,23 @@ export default function CrmClient() {
     setSearch(val)
     if (searchTimer.current) clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(() => {
-      fetchContacts(val, stageFilter, sourceFilter, priorityFilter)
+      fetchContacts(val, stageFilter, sourceFilter, priorityFilter, homeCityFilter, eventCityFilter)
     }, 320)
   }
 
-  function applyFilters(stage = stageFilter, source = sourceFilter, priority = priorityFilter) {
-    fetchContacts(search, stage, source, priority)
+  function applyFilters(stage = stageFilter, source = sourceFilter, priority = priorityFilter, homeCity = homeCityFilter, eventCity = eventCityFilter) {
+    fetchContacts(search, stage, source, priority, homeCity, eventCity)
+  }
+
+  function handleCityFilter(type: 'home' | 'event', val: string) {
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    if (type === 'home') {
+      setHomeCityFilter(val)
+      searchTimer.current = setTimeout(() => applyFilters(stageFilter, sourceFilter, priorityFilter, val, eventCityFilter), 320)
+    } else {
+      setEventCityFilter(val)
+      searchTimer.current = setTimeout(() => applyFilters(stageFilter, sourceFilter, priorityFilter, homeCityFilter, val), 320)
+    }
   }
 
   const byStage = useMemo(() => {
@@ -939,6 +1001,16 @@ export default function CrmClient() {
     const d = daysUntilAnniversary(c.wedding_date)
     return d != null && d <= 30
   }).sort((a, b) => (daysUntilAnniversary(a.wedding_date!)??999) - (daysUntilAnniversary(b.wedding_date!)??999)), [contacts])
+
+  useEffect(() => {
+    function onOpenContact(e: Event) {
+      const id = (e as CustomEvent).detail as string
+      const found = contacts.find(c => c.id === id)
+      if (found) setSelectedContact(found)
+    }
+    window.addEventListener('crm-open-contact', onOpenContact)
+    return () => window.removeEventListener('crm-open-contact', onOpenContact)
+  }, [contacts])
 
   function handleCreated(c: Contact) { setContacts(prev => [c, ...prev]); setShowNew(false); setSelectedContact(c) }
   function handleUpdated(c: Contact) {
@@ -968,7 +1040,7 @@ export default function CrmClient() {
     setAutoImporting(false)
   }
 
-  const activeFilters = [stageFilter, sourceFilter, priorityFilter].filter(Boolean).length
+  const activeFilters = [stageFilter, sourceFilter, priorityFilter, homeCityFilter, eventCityFilter].filter(Boolean).length
 
   return (
     <div style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1, overflow: 'auto' }}>
@@ -1076,8 +1148,18 @@ export default function CrmClient() {
                 <option value="standard">Standard</option>
                 <option value="grosskunde">Großkunde</option>
               </select>
+              <div style={{ position: 'relative' }}>
+                <MapPin size={11} style={{ position: 'absolute', left: 7, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                <input placeholder="Wohnort" value={homeCityFilter} onChange={e => handleCityFilter('home', e.target.value)}
+                  style={{ padding: '5px 8px 5px 22px', borderRadius: 8, border: `1px solid ${homeCityFilter ? 'var(--accent)' : 'var(--border2)'}`, background: 'var(--bg)', fontSize: 12, fontFamily: 'inherit', width: 130 }} />
+              </div>
+              <div style={{ position: 'relative' }}>
+                <MapPin size={11} style={{ position: 'absolute', left: 7, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                <input placeholder="Veranstaltungsort" value={eventCityFilter} onChange={e => handleCityFilter('event', e.target.value)}
+                  style={{ padding: '5px 8px 5px 22px', borderRadius: 8, border: `1px solid ${eventCityFilter ? 'var(--accent)' : 'var(--border2)'}`, background: 'var(--bg)', fontSize: 12, fontFamily: 'inherit', width: 160 }} />
+              </div>
               {activeFilters > 0 && (
-                <button onClick={() => { setStageFilter(''); setSourceFilter(''); setPriorityFilter(''); fetchContacts(search) }}
+                <button onClick={() => { setStageFilter(''); setSourceFilter(''); setPriorityFilter(''); setHomeCityFilter(''); setEventCityFilter(''); fetchContacts(search) }}
                   style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'none', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
                   <X size={11} /> Zurücksetzen
                 </button>

@@ -10,20 +10,28 @@ import { createClient } from '@/lib/supabase/client'
 import { ensureSoloEvent } from '@/lib/brautpaar-solo'
 import '@/app/brautpaar/brautpaar.css'
 
-// Signup für Solo-Brautpaare: kein Einladungscode nötig.
-// Beim Registrieren wird automatisch genau ein Event erstellt
-// (create_event_as_brautpaar_solo ist idempotent). Falls die Supabase-Instanz
-// E-Mail-Bestätigung verlangt (keine Session direkt nach signUp), übernimmt
-// der Login-Fallback die Event-Erstellung anhand der Signup-Metadaten.
 export default function BrautpaarSignupPage() {
   const router = useRouter()
 
-  const [name, setName]               = useState('')
-  const [partnerName, setPartnerName] = useState('')
-  const [weddingDate, setWeddingDate] = useState('')
-  const [email, setEmail]             = useState('')
-  const [password, setPassword]       = useState('')
+  // Person 1
+  const [firstName, setFirstName]   = useState('')
+  const [lastName, setLastName]     = useState('')
+  const [email, setEmail]           = useState('')
+  const [password, setPassword]     = useState('')
+  const [phone, setPhone]           = useState('')
+  const [street, setStreet]         = useState('')
+  const [postalCode, setPostalCode] = useState('')
+  const [city, setCity]             = useState('')
   const [showPassword, setShowPassword] = useState(false)
+
+  // Person 2
+  const [p2FirstName, setP2FirstName] = useState('')
+  const [p2LastName, setP2LastName]   = useState('')
+  const [p2Email, setP2Email]         = useState('')
+  const [p2Phone, setP2Phone]         = useState('')
+
+  // Shared
+  const [weddingDate, setWeddingDate] = useState('')
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState('')
   const [confirmEmail, setConfirmEmail] = useState(false)
@@ -31,16 +39,30 @@ export default function BrautpaarSignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (password.length < 8) { setError('Passwort muss mindestens 8 Zeichen haben.'); return }
+    if (!firstName.trim() || !lastName.trim()) { setError('Vor- und Nachname sind erforderlich.'); return }
+    if (!p2FirstName.trim() || !p2LastName.trim()) { setError('Name der zweiten Person ist erforderlich.'); return }
     setLoading(true); setError('')
 
     try {
-      // Client erst hier erzeugen — beim Build-Prerender fehlen die Env-Vars
       const supabase = createClient()
+      const fullName = `${firstName.trim()} ${lastName.trim()}`
+      const partnerFullName = `${p2FirstName.trim()} ${p2LastName.trim()}`
+
       const meta = {
-        name: name.trim(),
-        partner_name: partnerName.trim() || undefined,
+        name: fullName,
+        partner_name: partnerFullName,
         wedding_date: weddingDate || undefined,
         signup_role: 'brautpaar_solo' as const,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        phone: phone.trim(),
+        street: street.trim(),
+        postal_code: postalCode.trim(),
+        city: city.trim(),
+        partner_first_name: p2FirstName.trim(),
+        partner_last_name: p2LastName.trim(),
+        partner_email: p2Email.trim(),
+        partner_phone: p2Phone.trim(),
       }
 
       const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
@@ -50,14 +72,20 @@ export default function BrautpaarSignupPage() {
       })
       if (signUpErr) throw signUpErr
 
-      // Ohne Session (E-Mail-Bestätigung aktiv) kann das Event noch nicht
-      // erstellt werden — das erledigt der Login-Fallback nach Bestätigung.
       if (!signUpData.session) {
         setConfirmEmail(true)
         return
       }
 
       const eventId = await ensureSoloEvent(supabase, meta)
+
+      // Sync extended profile + partner info to DB
+      await fetch('/api/brautpaar/sync-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, meta }),
+      })
+
       router.push(`/brautpaar/${eventId}/uebersicht`)
       router.refresh()
     } catch (err: unknown) {
@@ -86,6 +114,28 @@ export default function BrautpaarSignupPage() {
     )
   }
 
+  const field = (
+    label: string,
+    value: string,
+    onChange: (v: string) => void,
+    opts?: { required?: boolean; type?: string; placeholder?: string; autoComplete?: string }
+  ) => (
+    <div>
+      <label className="bp-label-text">
+        {label}{opts?.required !== false && <span className="bp-text-gold-deep"> *</span>}
+      </label>
+      <input
+        type={opts?.type ?? 'text'}
+        required={opts?.required !== false}
+        autoComplete={opts?.autoComplete}
+        className="bp-input"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={opts?.placeholder ?? ''}
+      />
+    </div>
+  )
+
   return (
     <div className="bp-auth">
       <div className="bp-auth-inner bp-auth-inner-wide">
@@ -97,46 +147,19 @@ export default function BrautpaarSignupPage() {
         </div>
 
         <div className="bp-auth-card">
-
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            <div>
-              <label className="bp-label-text">Dein Name <span className="bp-text-gold-deep">*</span></label>
-              <input
-                required autoComplete="name"
-                className="bp-input"
-                value={name} onChange={e => setName(e.target.value)}
-                placeholder="Anna Beispiel"
-              />
+            {/* ── Person 1 ── */}
+            <p className="bp-label-text" style={{ fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', marginBottom: -4 }}>
+              Deine Angaben
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {field('Vorname', firstName, setFirstName, { placeholder: 'Anna', autoComplete: 'given-name' })}
+              {field('Nachname', lastName, setLastName, { placeholder: 'Beispiel', autoComplete: 'family-name' })}
             </div>
 
-            <div>
-              <label className="bp-label-text">Name deines Partners / deiner Partnerin</label>
-              <input
-                className="bp-input"
-                value={partnerName} onChange={e => setPartnerName(e.target.value)}
-                placeholder="Max Beispiel"
-              />
-            </div>
-
-            <div>
-              <label className="bp-label-text">Hochzeitsdatum (falls schon bekannt)</label>
-              <input
-                type="date"
-                className="bp-input"
-                value={weddingDate} onChange={e => setWeddingDate(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="bp-label-text">E-Mail-Adresse <span className="bp-text-gold-deep">*</span></label>
-              <input
-                type="email" required autoComplete="email"
-                className="bp-input"
-                value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="eure@email.de"
-              />
-            </div>
+            {field('E-Mail-Adresse', email, setEmail, { type: 'email', placeholder: 'deine@email.de', autoComplete: 'email' })}
 
             <div>
               <label className="bp-label-text">Passwort (mind. 8 Zeichen) <span className="bp-text-gold-deep">*</span></label>
@@ -147,15 +170,42 @@ export default function BrautpaarSignupPage() {
                   value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
                 />
-                <button
-                  type="button"
-                  className="bp-input-eye"
-                  onClick={() => setShowPassword(v => !v)}
-                  aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
-                >
+                <button type="button" className="bp-input-eye" onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}>
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+            </div>
+
+            {field('Telefonnummer', phone, setPhone, { placeholder: '+49 151 00000000', autoComplete: 'tel' })}
+
+            {field('Straße und Hausnummer', street, setStreet, { placeholder: 'Musterstraße 1', autoComplete: 'street-address' })}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12 }}>
+              {field('PLZ', postalCode, setPostalCode, { placeholder: '10115', autoComplete: 'postal-code' })}
+              {field('Stadt', city, setCity, { placeholder: 'Berlin', autoComplete: 'address-level2' })}
+            </div>
+
+            {/* ── Person 2 ── */}
+            <div style={{ borderTop: '1px solid var(--border, #e5e5e5)', paddingTop: 12, marginTop: 4 }}>
+              <p className="bp-label-text" style={{ fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', marginBottom: 12 }}>
+                Angaben zu deiner Partnerin / deinem Partner
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  {field('Vorname', p2FirstName, setP2FirstName, { placeholder: 'Max' })}
+                  {field('Nachname', p2LastName, setP2LastName, { placeholder: 'Beispiel' })}
+                </div>
+                {field('E-Mail (optional)', p2Email, setP2Email, { required: false, type: 'email', placeholder: 'partner@email.de' })}
+                {field('Telefon (optional)', p2Phone, setP2Phone, { required: false, placeholder: '+49 151 00000000' })}
+              </div>
+            </div>
+
+            {/* ── Hochzeitsdatum ── */}
+            <div>
+              <label className="bp-label-text">Hochzeitsdatum (falls schon bekannt)</label>
+              <input type="date" className="bp-input" value={weddingDate} onChange={e => setWeddingDate(e.target.value)} />
             </div>
 
             {error && <p className="bp-auth-error">{error}</p>}
