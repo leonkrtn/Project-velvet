@@ -19,7 +19,7 @@ interface OfferRow {
   valid_until: string | null
   request_id: string | null
   updated_at: string
-  event_id: string
+  event_id: string | null
   events: { title: string; date: string | null; couple_name: string | null } | null
 }
 
@@ -138,7 +138,8 @@ export default function AngeboteGlobalClient() {
   const [createOpen, setCreateOpen] = useState(false)
   const [events, setEvents] = useState<EventOption[]>([])
   const [eventsLoading, setEventsLoading] = useState(false)
-  const [pickedEvent, setPickedEvent] = useState<EventOption | null>(null)
+  // null = standalone (no event), EventOption = event-linked
+  const [pickedEvent, setPickedEvent] = useState<EventOption | 'standalone' | null>(null)
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -176,15 +177,22 @@ export default function AngeboteGlobalClient() {
   }
 
   async function createOffer(source: 'questionnaire' | 'blank') {
-    if (!pickedEvent) return
+    if (pickedEvent === null) return
     setCreating(true)
+    const isStandalone = pickedEvent === 'standalone'
     const res = await fetch('/api/vendor/event-offers', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId: pickedEvent.id, source }),
+      body: JSON.stringify({ eventId: isStandalone ? null : pickedEvent.id, source }),
     })
     const d = await res.json().catch(() => ({}))
     setCreating(false)
-    if (d.id) router.push(`/vendor/dashboard/${pickedEvent.id}/angebote/${d.id}`)
+    if (d.id) {
+      if (isStandalone) {
+        router.push(`/vendor/angebote/${d.id}`)
+      } else {
+        router.push(`/vendor/dashboard/${(pickedEvent as EventOption).id}/angebote/${d.id}`)
+      }
+    }
   }
 
   function openPanel() { setPending(applied); setPanelOpen(true) }
@@ -565,15 +573,29 @@ export default function AngeboteGlobalClient() {
               <button onClick={() => { setCreateOpen(false); setPickedEvent(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', display: 'flex', padding: 4 }}><X size={18} /></button>
             </div>
             <div style={{ padding: '16px 20px 20px', maxHeight: '70vh', overflowY: 'auto' }}>
-              {!pickedEvent ? (
+              {pickedEvent === null ? (
                 <>
-                  <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px' }}>Für welches Event soll das Angebot erstellt werden?</p>
+                  <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px' }}>Angebot mit oder ohne Event verknüpfen?</p>
+
+                  {/* Standalone option */}
+                  <button
+                    onClick={() => setPickedEvent('standalone')}
+                    style={{ textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', border: '2px solid var(--accent)', borderRadius: 10, padding: '11px 14px', background: 'rgba(35,82,200,0.04)', width: '100%', marginBottom: 10 }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(35,82,200,0.08)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(35,82,200,0.04)' }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)' }}>Ohne Event-Verknüpfung</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 3 }}>Für Interessenten, Kaltakquise oder allgemeine Angebote</div>
+                  </button>
+
+                  <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '10px 0 8px' }}>Oder Event wählen</p>
+
                   {eventsLoading ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-dim)', padding: '20px 0', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-dim)', padding: '12px 0', justifyContent: 'center' }}>
                       <Loader2 size={15} className="ang-spin" /> Lädt…
                     </div>
                   ) : events.length === 0 ? (
-                    <p style={{ fontSize: 13, color: 'var(--text-dim)', textAlign: 'center', padding: '20px 0' }}>Noch kein Event verknüpft.</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-dim)', padding: '8px 0' }}>Noch kein Event verknüpft.</p>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {events.map(ev => (
@@ -591,7 +613,10 @@ export default function AngeboteGlobalClient() {
               ) : (
                 <>
                   <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 14px' }}>
-                    Event: <strong style={{ color: 'var(--text)' }}>{pickedEvent.couple_name || pickedEvent.title || 'Event'}</strong>
+                    {pickedEvent === 'standalone'
+                      ? <><strong style={{ color: 'var(--text)' }}>Ohne Event-Verknüpfung</strong></>
+                      : <>Event: <strong style={{ color: 'var(--text)' }}>{pickedEvent.couple_name || pickedEvent.title || 'Event'}</strong></>
+                    }
                     <button onClick={() => setPickedEvent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--accent)', marginLeft: 8, padding: 0 }}>ändern</button>
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -725,12 +750,15 @@ function EmptyState() {
 function GlobalOfferTile({ o }: { o: OfferRow }) {
   const m = STATUS_META[o.status]
   const ev = o.events
-  const coupleName = ev?.couple_name ?? ev?.title ?? 'Unbekanntes Event'
+  const coupleName = ev?.couple_name ?? ev?.title ?? null
   const dateStr = ev?.date ? new Date(ev.date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null
-  const displayTitle = dateStr ? `${coupleName} | ${dateStr}` : coupleName
+  const displayTitle = o.event_id === null
+    ? 'Ohne Event-Verknüpfung'
+    : (dateStr ? `${coupleName ?? 'Event'} | ${dateStr}` : (coupleName ?? 'Event'))
+  const href = o.event_id ? `/vendor/dashboard/${o.event_id}/angebote/${o.id}` : `/vendor/angebote/${o.id}`
   return (
     <Link
-      href={`/vendor/dashboard/${o.event_id}/angebote/${o.id}`}
+      href={href}
       style={{
         textAlign: 'left', textDecoration: 'none', fontFamily: 'inherit', width: '100%',
         background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 13,

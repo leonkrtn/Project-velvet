@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
-  Calendar, User, LogOut, HelpCircle,
+  Calendar, BarChart2, User, LogOut, HelpCircle,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
@@ -28,6 +28,7 @@ const NAV = [
   { key: 'anfragen',    label: 'Anfragen',     href: '/vendor/anfragen',    icon: Inbox,         badgeKey: 'pendingAnfragen' as const },
   { key: 'angebote',   label: 'Angebote',     href: '/vendor/angebote',    icon: ReceiptText },
   { key: 'events',     label: 'Events',       href: '/vendor/dashboard',   icon: Calendar },
+  { key: 'report',     label: 'Berichte',     href: '/vendor/report',      icon: BarChart2 },
 ] as const
 
 type NavKey = (typeof NAV)[number]['key'] | 'listing'
@@ -37,6 +38,7 @@ function activeKey(pathname: string): NavKey {
   if (pathname.startsWith('/vendor/anfragen'))   return 'anfragen'
   if (pathname.startsWith('/vendor/angebote'))   return 'angebote'
   if (pathname.startsWith('/vendor/listing'))    return 'listing'
+  if (pathname.startsWith('/vendor/report'))     return 'report'
   if (pathname.startsWith('/vendor/dashboard'))  return 'events'
   return 'ubersicht'
 }

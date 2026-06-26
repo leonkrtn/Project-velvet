@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, Plus, X, Trash2, Loader2,
   Download, Link2, Calendar, AlignLeft, LayoutGrid,
@@ -16,6 +17,7 @@ export interface CalendarEntry {
   color: string
   entry_type: 'event' | 'reminder' | 'payment' | 'custom'
   editable: boolean
+  href?: string
 }
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
@@ -109,6 +111,7 @@ const inp: React.CSSProperties = {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function VendorCalendar() {
+  const router = useRouter()
   const [view, setView] = useState<View>('month')
   const [cursor, setCursor] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0, 0, 0, 0); return d })
   const [entries, setEntries] = useState<CalendarEntry[]>([])
@@ -129,7 +132,10 @@ export default function VendorCalendar() {
   useEffect(() => { load() }, [load])
 
   function openCreate(date: Date) { setModal({ mode: 'create', initialDate: date }) }
-  function openEdit(e: CalendarEntry) { if (e.editable) setModal({ mode: 'edit', entry: e }) }
+  function openEdit(e: CalendarEntry) {
+    if (e.editable) { setModal({ mode: 'edit', entry: e }); return }
+    if (e.href) router.push(e.href)
+  }
   function closeModal() { setModal(null) }
 
   function prevPeriod() {
@@ -348,7 +354,7 @@ function MonthView({ cursor, entries, onDayClick, onEntryClick }: {
                     key={e.id}
                     className="vc-chip"
                     onClick={ev => { ev.stopPropagation(); onEntryClick(e) }}
-                    style={{ background: e.color + '22', color: e.color, border: `1px solid ${e.color}33` }}
+                    style={{ background: e.color + '22', color: e.color, border: `1px solid ${e.color}33`, cursor: (e.editable || e.href) ? 'pointer' : 'default' }}
                     title={e.title}
                   >
                     {e.title}
@@ -418,7 +424,7 @@ function WeekView({ cursor, entries, onDayClick, onEntryClick }: {
                     key={e.id}
                     onClick={() => onEntryClick(e)}
                     className="vc-chip"
-                    style={{ background: e.color + '22', color: e.color, border: `1px solid ${e.color}33`, cursor: e.editable ? 'pointer' : 'default' }}
+                    style={{ background: e.color + '22', color: e.color, border: `1px solid ${e.color}33`, cursor: (e.editable || e.href) ? 'pointer' : 'default' }}
                     title={e.title}
                   >
                     {e.title}
@@ -509,7 +515,7 @@ function AgendaView({ cursor, entries, onEntryClick, onAdd }: {
                   onClick={() => onEntryClick(e)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
-                    cursor: e.editable ? 'pointer' : 'default',
+                    cursor: (e.editable || e.href) ? 'pointer' : 'default',
                     padding: '8px 12px', borderRadius: 10,
                     background: e.color + '14', border: `1px solid ${e.color}30`,
                     transition: 'filter .12s',
