@@ -409,6 +409,23 @@ supabase/migrations/
 # PDF beidseitig via @react-pdf/renderer (lib/vendor/offer-pdf.tsx, Dienstleister-Branding).
 # Templates: lib/vendor/questionnaire-templates.ts. Nur Marktplatz-Anfragen, keine Versionierung.
 
+  0120_vendor_pricing_engine.sql       Preis-Engine am Fragebogen (vendor_questionnaires):
+                                       guest_tiers JSONB (Mengenstaffeln Pro-Gast-Preis),
+                                       season_rules JSONB (Saison-/Datumsaufschlaege % oder Pauschale,
+                                       zusaetzlich zum Wochenend-Aufschlag), travel_mode none|zones|km|both +
+                                       travel_zones JSONB (PLZ-Praefix-Pauschalen) + travel_km_price/
+                                       travel_free_radius_km/travel_base_postal_code, consult_mode BOOLEAN.
+                                       Pro-Frage-Staffeln liegen in questions.pricing.tiers (JSONB, keine Migration).
+# ── Preis-Engine (Migration 0120) ────────────────────────────────────────────
+# computeOffer (lib/vendor/pricing.ts) wendet an: guest_tiers (ersetzt per_guest_price in der
+# passenden Stufe), pro-Frage tiers fuer number/per_unit, season_rules (inSeason() unterstuetzt
+# YYYY-MM-DD und jaehrlich MM-DD inkl. Jahreswechsel), Anfahrt als optionale Position bei PLZ-Match
+# (standardInfo.postalCode aus buildStandardInfo, best effort aus venue_address). consult_mode:
+# POST /api/marketplace/requests erzeugt KEIN Auto-Angebot, sondern oeffnet via ensureVendorConversation
+# einen Chat + Hinweis-Nachricht (Terminvorschlag durch den Vendor). UI: FragebogenBuilderClient
+# (TiersEditor/SeasonEditor/TravelEditor + Beratungs-Modus-Schalter). Alle Preisfelder sind durch
+# stripPricing vor dem Brautpaar geschuetzt.
+
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)
   ProfilClient.tsx                     Edit form: name, email, password, profile picture (Supabase Storage "avatars" bucket)

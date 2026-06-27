@@ -5,6 +5,36 @@
 
 export type QuestionType = 'text' | 'single' | 'multi' | 'number' | 'boolean' | 'date'
 export type TaxMode = 'regular' | 'kleinunternehmer' | 'none'
+export type TravelMode = 'none' | 'zones' | 'km' | 'both'
+
+/** Mengenstaffel fuer den Pro-Gast-Preis (global) bzw. eine Mengen-Frage. */
+export interface PriceTier {
+  /** Untergrenze (inklusive). */
+  min: number
+  /** Obergrenze (inklusive). null = offen nach oben. */
+  max: number | null
+  /** Preis je Einheit (Gast bzw. Mengeneinheit) in dieser Stufe. */
+  unitPrice: number
+}
+
+/** Saison-/Datumsregel: Auf-/Abschlag in einem Datumsbereich. */
+export interface SeasonRule {
+  id: string
+  label: string
+  /** 'YYYY-MM-DD' (festes Datum) oder 'MM-DD' (jaehrlich wiederkehrend). */
+  from: string
+  to: string
+  mode: 'percent' | 'flat'
+  /** percent: Prozent auf die bisherige Summe · flat: Pauschalbetrag. */
+  value: number
+}
+
+/** Anfahrts-Zone nach PLZ-Praefix. */
+export interface TravelZone {
+  plzPrefix: string
+  label: string
+  price: number
+}
 
 export interface QOption {
   id: string
@@ -31,6 +61,11 @@ export interface QuestionPricing {
   step?: number
   /** Erzeugte Angebotsposition(en) sind optional (Brautpaar kann ab-/zuwaehlen). */
   optional?: boolean
+  /**
+   * number, mode=per_unit: Mengenstaffeln. Greift statt unitPrice, wenn die
+   * eingegebene Menge in eine Stufe faellt. Leer = fester unitPrice.
+   */
+  tiers?: PriceTier[]
 }
 
 export interface QQuestion {
@@ -66,6 +101,18 @@ export interface QuestionnaireSettings {
   currency: string
   valid_days: number
   footer_note: string
+  // ── Preis-Engine (Migration 0120) ──
+  /** Mengenstaffeln auf die Gaestezahl. Greift statt per_guest_price. */
+  guest_tiers: PriceTier[]
+  /** Saison-/Datumsregeln (Auf-/Abschlag). Zusaetzlich zum Wochenend-Aufschlag. */
+  season_rules: SeasonRule[]
+  travel_mode: TravelMode
+  travel_zones: TravelZone[]
+  travel_km_price: number
+  travel_free_radius_km: number
+  travel_base_postal_code: string
+  /** Beratungs-Modus: kein Auto-Angebot; Anfrage oeffnet Chat + Terminvorschlag. */
+  consult_mode: boolean
 }
 
 export interface Questionnaire extends QuestionnaireSettings {
@@ -87,6 +134,14 @@ export const DEFAULT_SETTINGS: QuestionnaireSettings = {
   currency: 'EUR',
   valid_days: 14,
   footer_note: 'Dieses Angebot ist freibleibend und unverbindlich.',
+  guest_tiers: [],
+  season_rules: [],
+  travel_mode: 'none',
+  travel_zones: [],
+  travel_km_price: 0,
+  travel_free_radius_km: 0,
+  travel_base_postal_code: '',
+  consult_mode: false,
 }
 
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {

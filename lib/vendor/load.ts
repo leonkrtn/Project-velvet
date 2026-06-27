@@ -5,9 +5,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   DEFAULT_SETTINGS,
   type Answer, type QQuestion, type QSection, type Questionnaire, type TaxMode,
+  type TravelMode, type PriceTier, type SeasonRule, type TravelZone,
 } from './questionnaire'
 
 const TAX_MODES: TaxMode[] = ['regular', 'kleinunternehmer', 'none']
+const TRAVEL_MODES: TravelMode[] = ['none', 'zones', 'km', 'both']
+function arr<T>(v: unknown): T[] { return Array.isArray(v) ? (v as T[]) : [] }
 function num(v: unknown, fallback = 0): number {
   const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
   return Number.isFinite(n) ? n : fallback
@@ -59,6 +62,14 @@ export async function loadFullQuestionnaire(
     currency: row.currency ?? 'EUR',
     valid_days: Math.round(num(row.valid_days, 14)),
     footer_note: row.footer_note ?? '',
+    guest_tiers: arr<PriceTier>(row.guest_tiers),
+    season_rules: arr<SeasonRule>(row.season_rules),
+    travel_mode: TRAVEL_MODES.includes(row.travel_mode) ? row.travel_mode : 'none',
+    travel_zones: arr<TravelZone>(row.travel_zones),
+    travel_km_price: num(row.travel_km_price),
+    travel_free_radius_km: num(row.travel_free_radius_km),
+    travel_base_postal_code: row.travel_base_postal_code ?? '',
+    consult_mode: !!row.consult_mode,
     sections: assembled,
   }
 }

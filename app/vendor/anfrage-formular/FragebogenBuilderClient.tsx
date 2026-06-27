@@ -8,6 +8,7 @@ import {
 import {
   DEFAULT_SETTINGS, QUESTION_TYPE_LABELS, TAX_MODE_LABELS,
   type QQuestion, type QSection, type QuestionType, type QuestionnaireSettings, type TaxMode,
+  type PriceTier, type SeasonRule, type TravelZone, type TravelMode,
 } from '@/lib/vendor/questionnaire'
 import { MARKETPLACE_CATEGORIES } from '@/lib/marketplace/types'
 import { templateForCategory } from '@/lib/vendor/questionnaire-templates'
@@ -201,10 +202,19 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
             <label style={lbl}>Titel</label>
             <input style={inp} value={settings.title} onChange={e => setSetting('title', e.target.value)} placeholder="Angebotsanfrage" />
           </div>
-          <div>
+          <div style={{ marginBottom: 14 }}>
             <label style={lbl}>Einleitungstext (optional)</label>
             <textarea style={{ ...inp, minHeight: 64, resize: 'vertical' }} value={settings.intro_text} onChange={e => setSetting('intro_text', e.target.value)} placeholder="Kurze Begrüßung für das Brautpaar…" />
           </div>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '12px 14px', borderRadius: 10, border: `1px solid ${settings.consult_mode ? C.gold : C.border}`, background: settings.consult_mode ? 'rgba(184,153,104,0.07)' : C.bg, cursor: 'pointer' }}>
+            <input type="checkbox" checked={settings.consult_mode} onChange={e => setSetting('consult_mode', e.target.checked)} style={{ marginTop: 2 }} />
+            <span>
+              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.text }}>Beratungs-Modus (kein Auto-Angebot)</span>
+              <span style={{ display: 'block', fontSize: 12, color: C.dim, marginTop: 2, lineHeight: 1.5 }}>
+                Für beratungsintensive Leistungen: Eine Anfrage erzeugt kein automatisches Angebot, sondern öffnet direkt einen Chat. Der Fragebogen dient nur als Briefing — du schlägst dem Brautpaar anschließend einen Termin für ein Erstgespräch vor.
+              </span>
+            </span>
+          </label>
         </div>
 
         {/* Abschnitte */}
@@ -243,10 +253,37 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <NumField label="Grundpreis (€)" value={settings.base_price} onChange={v => setSetting('base_price', v)} />
-            <NumField label="Preis pro Gast (€)" value={settings.per_guest_price} onChange={v => setSetting('per_guest_price', v)} hint="× bestätigte Gästezahl" />
+            <NumField label="Preis pro Gast (€)" value={settings.per_guest_price} onChange={v => setSetting('per_guest_price', v)} hint="× bestätigte Gästezahl (entfällt, wenn Staffeln gesetzt sind)" />
             <NumField label="Mindestbestellwert (€)" value={settings.min_total} onChange={v => setSetting('min_total', v)} hint="wird ggf. aufgefüllt" />
             <NumField label="Wochenend-Aufschlag (%)" value={settings.weekend_surcharge_pct} onChange={v => setSetting('weekend_surcharge_pct', v)} hint="bei Sa/So" />
           </div>
+
+          {/* Mengenstaffeln auf die Gästezahl */}
+          <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            <label style={{ ...lbl, marginBottom: 3 }}>Mengenstaffeln (Pro-Gast-Preis)</label>
+            <p style={{ fontSize: 11.5, color: C.dim, margin: '0 0 10px', lineHeight: 1.5 }}>
+              Optional: Pro-Gast-Preis je nach Gästezahl. Greift die passende Stufe, ersetzt sie den festen Pro-Gast-Preis oben.
+            </p>
+            <TiersEditor tiers={settings.guest_tiers} unitWord="Gäste" onChange={t => setSetting('guest_tiers', t)} />
+          </div>
+        </div>
+
+        {/* Saison- / Datumsaufschläge */}
+        <div style={card}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px' }}>Saison- &amp; Datumsaufschläge</h2>
+          <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 14px', lineHeight: 1.5 }}>
+            Auf- oder Abschläge für bestimmte Zeiträume (z. B. Hochsaison, Feiertage). Gilt zusätzlich zum Wochenend-Aufschlag. Datum als <code>JJJJ-MM-TT</code> (festes Datum) oder <code>MM-TT</code> (jährlich wiederkehrend).
+          </p>
+          <SeasonEditor rules={settings.season_rules} onChange={r => setSetting('season_rules', r)} />
+        </div>
+
+        {/* Anfahrt / Reisekosten */}
+        <div style={card}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px' }}>Anfahrt &amp; Reisekosten</h2>
+          <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 14px', lineHeight: 1.5 }}>
+            PLZ-Zonen werden automatisch als (abwählbare) Angebotsposition gesetzt, sobald die PLZ des Veranstaltungsorts passt. Der km-Satz dient dir als Richtwert zum manuellen Eintragen im Angebot.
+          </p>
+          <TravelEditor settings={settings} setSetting={setSetting} />
         </div>
 
         {/* Steuer & Konditionen */}
@@ -374,6 +411,10 @@ function QuestionEditor({ q, index, total, onChange, onRemove, onMove }: {
               onChange={e => onChange({ pricing: { ...q.pricing, step: e.target.value === '' ? undefined : parseFloat(e.target.value) } })} />
           </div>
           <OptionalToggle q={q} onChange={onChange} />
+          <div style={{ width: '100%' }}>
+            <p style={{ fontSize: 11, color: C.dim, margin: '4px 0 6px' }}>Mengenstaffeln (optional — ersetzen den Einheitspreis in der passenden Stufe):</p>
+            <TiersEditor tiers={q.pricing.tiers ?? []} unitWord="Einheiten" onChange={t => onChange({ pricing: { ...q.pricing, mode: 'per_unit', tiers: t } })} />
+          </div>
         </div>
       )}
       {q.type === 'boolean' && (
@@ -392,6 +433,115 @@ function QuestionEditor({ q, index, total, onChange, onRemove, onMove }: {
       )}
       {hasOptions && (
         <div style={{ marginTop: 10 }}><OptionalToggle q={q} onChange={onChange} /></div>
+      )}
+    </div>
+  )
+}
+
+// ── Mengenstaffeln (geteilt: Pro-Gast + Pro-Frage) ───────────────────────────
+function TiersEditor({ tiers, unitWord, onChange }: { tiers: PriceTier[]; unitWord: string; onChange: (t: PriceTier[]) => void }) {
+  const numOrEmpty = (v: unknown) => (v === null || v === undefined ? '' : String(v))
+  function set(i: number, patch: Partial<PriceTier>) { onChange(tiers.map((t, idx) => idx === i ? { ...t, ...patch } : t)) }
+  function add() { onChange([...tiers, { min: tiers.length ? ((tiers[tiers.length - 1].max ?? 0) + 1) : 0, max: null, unitPrice: 0 }]) }
+  return (
+    <div>
+      {tiers.map((t, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11.5, color: C.dim }}>ab</span>
+          <input style={{ ...inp, fontSize: 12.5, textAlign: 'right', width: 70 }} type="number" value={numOrEmpty(t.min)}
+            onChange={e => set(i, { min: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
+          <span style={{ fontSize: 11.5, color: C.dim }}>bis</span>
+          <input style={{ ...inp, fontSize: 12.5, textAlign: 'right', width: 70 }} type="number" placeholder="∞" value={numOrEmpty(t.max)}
+            onChange={e => set(i, { max: e.target.value === '' ? null : parseFloat(e.target.value) })} />
+          <span style={{ fontSize: 11.5, color: C.dim }}>{unitWord} →</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 110 }}>
+            <input style={{ ...inp, fontSize: 12.5, textAlign: 'right' }} type="number" value={numOrEmpty(t.unitPrice)}
+              onChange={e => set(i, { unitPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
+            <span style={{ fontSize: 12, color: C.dim }}>€/Einh.</span>
+          </div>
+          <button style={{ ...iconBtn, color: C.red }} onClick={() => onChange(tiers.filter((_, idx) => idx !== i))}><Trash2 size={14} /></button>
+        </div>
+      ))}
+      <button style={{ ...btnGhost, padding: '5px 10px', fontSize: 12 }} onClick={add}><Plus size={13} /> Stufe</button>
+    </div>
+  )
+}
+
+// ── Saison-/Datumsregeln ─────────────────────────────────────────────────────
+function SeasonEditor({ rules, onChange }: { rules: SeasonRule[]; onChange: (r: SeasonRule[]) => void }) {
+  function set(i: number, patch: Partial<SeasonRule>) { onChange(rules.map((r, idx) => idx === i ? { ...r, ...patch } : r)) }
+  function add() { onChange([...rules, { id: uid(), label: '', from: '', to: '', mode: 'percent', value: 0 }]) }
+  return (
+    <div>
+      {rules.map((r, i) => (
+        <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+          <input style={{ ...inp, fontSize: 12.5, flex: '1 1 140px', minWidth: 120 }} value={r.label} placeholder="Bezeichnung (z. B. Hochsaison)" onChange={e => set(i, { label: e.target.value })} />
+          <input style={{ ...inp, fontSize: 12.5, width: 120 }} value={r.from} placeholder="von" onChange={e => set(i, { from: e.target.value.trim() })} />
+          <input style={{ ...inp, fontSize: 12.5, width: 120 }} value={r.to} placeholder="bis" onChange={e => set(i, { to: e.target.value.trim() })} />
+          <select style={{ ...inp, fontSize: 12.5, width: 110 }} value={r.mode} onChange={e => set(i, { mode: e.target.value as 'percent' | 'flat' })}>
+            <option value="percent">Prozent</option>
+            <option value="flat">Pauschale</option>
+          </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 100 }}>
+            <input style={{ ...inp, fontSize: 12.5, textAlign: 'right' }} type="number" value={Number.isFinite(r.value) ? r.value : 0} onChange={e => set(i, { value: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
+            <span style={{ fontSize: 12, color: C.dim }}>{r.mode === 'percent' ? '%' : '€'}</span>
+          </div>
+          <button style={{ ...iconBtn, color: C.red }} onClick={() => onChange(rules.filter((_, idx) => idx !== i))}><Trash2 size={14} /></button>
+        </div>
+      ))}
+      <button style={{ ...btnGhost, padding: '5px 10px', fontSize: 12 }} onClick={add}><Plus size={13} /> Regel</button>
+    </div>
+  )
+}
+
+// ── Anfahrt / Reisekosten ────────────────────────────────────────────────────
+function TravelEditor({ settings, setSetting }: {
+  settings: QuestionnaireSettings
+  setSetting: <K extends keyof QuestionnaireSettings>(k: K, v: QuestionnaireSettings[K]) => void
+}) {
+  const zones = settings.travel_zones
+  function setZone(i: number, patch: Partial<TravelZone>) { setSetting('travel_zones', zones.map((z, idx) => idx === i ? { ...z, ...patch } : z)) }
+  const showZones = settings.travel_mode === 'zones' || settings.travel_mode === 'both'
+  const showKm = settings.travel_mode === 'km' || settings.travel_mode === 'both'
+  return (
+    <div>
+      <div style={{ marginBottom: 14, maxWidth: 280 }}>
+        <label style={lbl}>Modus</label>
+        <select style={inp} value={settings.travel_mode} onChange={e => setSetting('travel_mode', e.target.value as TravelMode)}>
+          <option value="none">Keine Anfahrtskosten</option>
+          <option value="zones">PLZ-Zonen</option>
+          <option value="km">km-Pauschale</option>
+          <option value="both">PLZ-Zonen + km</option>
+        </select>
+      </div>
+
+      {showKm && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: showZones ? 16 : 0 }}>
+          <NumField label="Preis pro km (€)" value={settings.travel_km_price} onChange={v => setSetting('travel_km_price', v)} />
+          <NumField label="Frei-Radius (km)" value={settings.travel_free_radius_km} onChange={v => setSetting('travel_free_radius_km', v)} hint="bis hier kostenlos" />
+          <div>
+            <label style={lbl}>Start-PLZ (Firmensitz)</label>
+            <input style={inp} value={settings.travel_base_postal_code} onChange={e => setSetting('travel_base_postal_code', e.target.value)} placeholder="z. B. 10115" />
+          </div>
+        </div>
+      )}
+
+      {showZones && (
+        <div>
+          <label style={{ ...lbl, marginBottom: 8 }}>PLZ-Zonen</label>
+          {zones.map((z, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+              <input style={{ ...inp, fontSize: 12.5, width: 110 }} value={z.plzPrefix} placeholder="PLZ-Präfix (z. B. 10)" onChange={e => setZone(i, { plzPrefix: e.target.value })} />
+              <input style={{ ...inp, fontSize: 12.5, flex: '1 1 140px' }} value={z.label} placeholder="Bezeichnung (z. B. Berlin)" onChange={e => setZone(i, { label: e.target.value })} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: 110 }}>
+                <input style={{ ...inp, fontSize: 12.5, textAlign: 'right' }} type="number" value={Number.isFinite(z.price) ? z.price : 0} onChange={e => setZone(i, { price: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
+                <span style={{ fontSize: 12, color: C.dim }}>€</span>
+              </div>
+              <button style={{ ...iconBtn, color: C.red }} onClick={() => setSetting('travel_zones', zones.filter((_, idx) => idx !== i))}><Trash2 size={14} /></button>
+            </div>
+          ))}
+          <button style={{ ...btnGhost, padding: '5px 10px', fontSize: 12 }} onClick={() => setSetting('travel_zones', [...zones, { plzPrefix: '', label: '', price: 0 }])}><Plus size={13} /> Zone</button>
+        </div>
       )}
     </div>
   )

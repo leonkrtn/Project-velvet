@@ -4,14 +4,28 @@ import { requireVendorOwner } from '@/lib/marketplace/owner'
 import {
   DEFAULT_SETTINGS,
   type QQuestion, type QSection, type Questionnaire, type QuestionType, type TaxMode,
+  type TravelMode, type PriceTier, type SeasonRule, type TravelZone,
 } from '@/lib/vendor/questionnaire'
 
 const QUESTION_TYPES: QuestionType[] = ['text', 'single', 'multi', 'number', 'boolean', 'date']
 const TAX_MODES: TaxMode[] = ['regular', 'kleinunternehmer', 'none']
+const TRAVEL_MODES: TravelMode[] = ['none', 'zones', 'km', 'both']
 
 function num(v: unknown, fallback = 0): number {
   const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
   return Number.isFinite(n) ? n : fallback
+}
+function arr<T>(v: unknown): T[] { return Array.isArray(v) ? (v as T[]) : [] }
+
+/** Bereinigt eingehende Mengenstaffeln. */
+function cleanTiers(v: unknown): PriceTier[] {
+  return arr<Record<string, unknown>>(v)
+    .map(t => ({
+      min: Math.max(0, num(t.min)),
+      max: t.max === '' || t.max === null || t.max === undefined ? null : Math.max(0, num(t.max)),
+      unitPrice: num(t.unitPrice),
+    }))
+    .filter(t => t.max === null || t.max >= t.min)
 }
 
 // GET — kompletter eigener Fragebogen inkl. Preisfelder.
@@ -65,6 +79,14 @@ export async function GET() {
     currency: row.currency ?? 'EUR',
     valid_days: Math.round(num(row.valid_days, 14)),
     footer_note: row.footer_note ?? '',
+    guest_tiers: arr<PriceTier>(row.guest_tiers),
+    season_rules: arr<SeasonRule>(row.season_rules),
+    travel_mode: TRAVEL_MODES.includes(row.travel_mode) ? row.travel_mode : 'none',
+    travel_zones: arr<TravelZone>(row.travel_zones),
+    travel_km_price: num(row.travel_km_price),
+    travel_free_radius_km: num(row.travel_free_radius_km),
+    travel_base_postal_code: row.travel_base_postal_code ?? '',
+    consult_mode: !!row.consult_mode,
     sections: assembled,
   }
   return NextResponse.json({ questionnaire })
@@ -96,6 +118,26 @@ export async function PUT(req: NextRequest) {
     currency: (s.currency as string)?.trim() || 'EUR',
     valid_days: Math.max(1, Math.round(num(s.valid_days, 14))),
     footer_note: (s.footer_note as string) ?? '',
+    // ── Preis-Engine (0120) ──
+    guest_tiers: cleanTiers(s.guest_tiers),
+    season_rules: arr<Record<string, unknown>>(s.season_rules).map(r => ({
+      id: (r.id as string) || randomUUID(),
+      label: (r.label as string)?.trim() || '',
+      from: (r.from as string) || '',
+      to: (r.to as string) || '',
+      mode: r.mode === 'flat' ? 'flat' : 'percent',
+      value: num(r.value),
+    })).filter(r => r.from && r.to),
+    travel_mode: TRAVEL_MODES.includes(s.travel_mode as TravelMode) ? (s.travel_mode as TravelMode) : 'none',
+    travel_zones: arr<Record<string, unknown>>(s.travel_zones).map(z => ({
+      plzPrefix: String(z.plzPrefix ?? '').trim(),
+      label: (z.label as string)?.trim() || '',
+      price: num(z.price),
+    })).filter(z => z.plzPrefix),
+    travel_km_price: Math.max(0, num(s.travel_km_price)),
+    travel_free_radius_km: Math.max(0, num(s.travel_free_radius_km)),
+    travel_base_postal_code: String(s.travel_base_postal_code ?? '').trim(),
+    consult_mode: !!s.consult_mode,
     updated_at: new Date().toISOString(),
   }
 
@@ -148,6 +190,7 @@ export async function PUT(req: NextRequest) {
             mode: 'per_unit', unitPrice: num(rawPricing.unitPrice),
             unitLabel: (rawPricing.unitLabel as string)?.trim() || undefined,
             min: optNum(rawPricing.min), max: optNum(rawPricing.max), step: optNum(rawPricing.step),
+            tiers: cleanTiers(rawPricing.tiers),
             optional,
           }
         : type === 'boolean'
