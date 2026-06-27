@@ -447,6 +447,24 @@ supabase/migrations/
                                        offer-notify.ts nutzt es). Profil-UI: Farbwaehler in VendorListingClient,
                                        Sofort-Feld in /api/vendor/marketplace/profile (Hex-validiert). Leer = Standard.
 
+  0123_vendor_automations.sql          Konfigurierbare Vendor-Automatisierungen: vendor_automations
+                                       (kind reminder|review_request|followup_offer|followup_lead, event_type,
+                                       offset_days, label, enabled), vendor_automation_log (Idempotenz),
+                                       review_invites (Token-Bewertung ohne Login). marketplace_reviews:
+                                       author_user_id nullable + via_token.
+  0124_cron_schedule.sql               pg_cron (taeglich 06:00 UTC) -> net.http_post auf /api/cron/tick.
+                                       Betreiber setzt app.cron_url + app.cron_secret per ALTER DATABASE.
+# ── Automatisierungen / Scheduler (Migration 0123/0124) ──────────────────────
+# lib/vendor/automation-tick.ts (runAutomationTick) verarbeitet taeglich + idempotent:
+#  - reminder: Kalender-Eintrag fuer den Vendor X Tage VOR gebuchtem Event (accepted offer)
+#  - review_request: review_invites-Token + vendor-branded Mail X Tage NACH Event
+#  - followup_offer: released, nicht angenommene Angebote X Tage nach Freigabe -> Mail + Vendor-To-do
+#  - followup_lead: Leads ohne Aktivitaet X Tage -> crm_task
+# Aufruf: POST/GET /api/cron/tick (Header x-cron-secret == CRON_SECRET env). Config-UI:
+# /vendor/automatisierungen (AutomationsClient) ueber /api/vendor/automations (GET seedet Defaults).
+# Manuelle Bewertungsanfrage: /api/vendor/reviews/request. Token-Review oeffentlich:
+# /review/[token] + /api/reviews/[token] (kein Login). Nav-Eintrag "Automatik" in VendorSidebarShell.
+
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)
   ProfilClient.tsx                     Edit form: name, email, password, profile picture (Supabase Storage "avatars" bucket)
