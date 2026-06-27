@@ -3,7 +3,7 @@ import { requireVendorOwner } from '@/lib/marketplace/owner'
 import { requestDownloadUrl } from '@/lib/files/worker-client'
 import { SENSITIVE_FIELDS, MARKETPLACE_CATEGORIES, PRICE_RANGES } from '@/lib/marketplace/types'
 
-const INSTANT = ['description', 'email', 'phone', 'website', 'price_range', 'social_links', 'service_cities', 'service_radius_km'] as const
+const INSTANT = ['description', 'email', 'phone', 'website', 'price_range', 'social_links', 'service_cities', 'service_radius_km', 'brand_color'] as const
 
 // GET — komplettes eigenes Profil inkl. Fotos, Pakete, FAQ, Verfügbarkeit.
 export async function GET() {
@@ -28,6 +28,10 @@ export async function GET() {
 }
 
 function sanitize(key: string, value: unknown): unknown {
+  if (key === 'brand_color') {
+    const v = String(value ?? '').trim()
+    return /^#[0-9a-fA-F]{6}$/.test(v) ? v.toUpperCase() : ''
+  }
   if (key === 'category') {
     return MARKETPLACE_CATEGORIES.some(c => c.key === value) ? value : 'sonstiges'
   }

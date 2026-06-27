@@ -25,11 +25,15 @@ interface OfferLike {
 async function vendorMeta(admin: SupabaseClient, vendorId: string) {
   const { data } = await admin
     .from('dienstleister_profiles')
-    .select('name, company_name, email')
+    .select('name, company_name, email, brand_color')
     .eq('id', vendorId)
     .maybeSingle()
   const v = (data ?? {}) as any
-  return { name: v.company_name || v.name || 'Dienstleister', email: (v.email as string) || null }
+  return {
+    name: v.company_name || v.name || 'Dienstleister',
+    email: (v.email as string) || null,
+    brandColor: (v.brand_color as string) || null,
+  }
 }
 
 async function coupleContacts(admin: SupabaseClient, eventId: string) {
@@ -71,6 +75,7 @@ export async function notifyOfferReleased(admin: SupabaseClient, offer: OfferLik
       replyTo: vendor.email ?? undefined,
       subject: `Neues Angebot von ${vendor.name}`,
       html: emailLayout({
+        brand: { color: vendor.brandColor, name: vendor.name },
         heading: 'Ihr habt ein neues Angebot erhalten',
         bodyHtml: `
           <tr><td style="padding:4px 0">${vendor.name} hat euch das Angebot <strong>„${offer.title}"</strong> über <strong>${formatMoney(offer.total, offer.currency)}</strong> bereitgestellt.</td></tr>

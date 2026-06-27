@@ -440,6 +440,13 @@ supabase/migrations/
 # Angebot Varianten, ist die Auswahl Pflicht. Manuell dupliziert ("Aus Angebot
 # uebernehmen"), keine Auto-Generierung.
 
+  0122_vendor_brand_color.sql          dienstleister_profiles.brand_color TEXT (Hex). Einheitliches
+                                       Vendor-Branding: Akzentfarbe im Angebots-PDF (lib/vendor/offer-pdf.tsx:
+                                       Cover-Balken/Tabellenkopf/Summenzeile) und in Vendor-Mails ans Brautpaar
+                                       (lib/email/notify.ts emailLayout({brand}) -> Wortmarke+Akzent statt FOREVR;
+                                       offer-notify.ts nutzt es). Profil-UI: Farbwaehler in VendorListingClient,
+                                       Sofort-Feld in /api/vendor/marketplace/profile (Hex-validiert). Leer = Standard.
+
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)
   ProfilClient.tsx                     Edit form: name, email, password, profile picture (Supabase Storage "avatars" bucket)

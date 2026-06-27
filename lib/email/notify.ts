@@ -26,23 +26,44 @@ export async function sendEmail(admin: SupabaseClient, input: MailInput): Promis
 
 const BRAND = '#B89968'
 
-/** Schlankes, markenkonformes HTML-Geruest fuer Forevr-Mails. */
-export function emailLayout(opts: { heading: string; bodyHtml: string; ctaLabel?: string; ctaUrl?: string }): string {
+/** Optionales Vendor-Branding fuer an das Brautpaar gerichtete Vendor-Mails. */
+export interface EmailBrand {
+  /** Akzentfarbe (Hex). Leer/ungueltig -> Forevr-Gold. */
+  color?: string | null
+  /** Wortmarke im Kopf. Leer -> 'FOREVR'. */
+  name?: string | null
+}
+
+function safeColor(c?: string | null): string {
+  return c && /^#[0-9a-fA-F]{6}$/.test(c) ? c : BRAND
+}
+
+/** Schlankes HTML-Geruest fuer Forevr-Mails; optional mit Vendor-Branding. */
+export function emailLayout(opts: { heading: string; bodyHtml: string; ctaLabel?: string; ctaUrl?: string; brand?: EmailBrand }): string {
+  const accent = safeColor(opts.brand?.color)
+  const wordmark = (opts.brand?.name && opts.brand.name.trim()) || 'FOREVR'
+  const isVendor = wordmark !== 'FOREVR'
+  const footer = isVendor
+    ? `${wordmark} · gesendet über Forevr`
+    : 'Forevr · Diese E-Mail wurde automatisch versendet.'
   const cta = opts.ctaLabel && opts.ctaUrl
-    ? `<tr><td style="padding:8px 0 4px"><a href="${opts.ctaUrl}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 22px;border-radius:8px">${opts.ctaLabel}</a></td></tr>`
+    ? `<tr><td style="padding:8px 0 4px"><a href="${opts.ctaUrl}" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 22px;border-radius:8px">${opts.ctaLabel}</a></td></tr>`
     : ''
+  const wordmarkStyle = isVendor
+    ? `font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:20px;letter-spacing:0.02em;color:${accent};font-weight:700`
+    : `font-family:Georgia,serif;font-size:22px;letter-spacing:0.16em;color:${accent};font-weight:500`
   return `<!DOCTYPE html><html><body style="margin:0;background:#f7f5f1;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c1c1c">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f5f1;padding:28px 0">
 <tr><td align="center">
 <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #ece7df">
 <tr><td style="padding:22px 28px 8px">
-<div style="font-family:Georgia,serif;font-size:22px;letter-spacing:0.16em;color:${BRAND};font-weight:500">FOREVR</div>
+<div style="${wordmarkStyle}">${wordmark}</div>
 </td></tr>
 <tr><td style="padding:8px 28px 4px"><h1 style="font-size:18px;margin:0 0 6px;font-weight:700">${opts.heading}</h1></td></tr>
 <tr><td style="padding:6px 28px 22px;font-size:14px;line-height:1.6;color:#333">
 <table role="presentation" cellpadding="0" cellspacing="0">${opts.bodyHtml}${cta}</table>
 </td></tr>
 </table>
-<p style="font-size:11px;color:#9a958c;margin:16px 0 0">Forevr · Diese E-Mail wurde automatisch versendet.</p>
+<p style="font-size:11px;color:#9a958c;margin:16px 0 0">${footer}</p>
 </td></tr></table></body></html>`
 }

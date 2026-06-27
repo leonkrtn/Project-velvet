@@ -27,12 +27,13 @@ async function logoDataUri(key: string | null): Promise<string | null> {
 export async function buildOfferPdfData(admin: SupabaseClient, offer: any): Promise<OfferPdfData> {
   const { data: v } = await admin
     .from('dienstleister_profiles')
-    .select('name, company_name, street, zip, city, email, phone, website, logo_r2_key')
+    .select('name, company_name, street, zip, city, email, phone, website, logo_r2_key, brand_color')
     .eq('id', offer.dienstleister_id)
     .maybeSingle()
 
   const vendor = (v ?? {}) as any
   const address = [vendor.street, [vendor.zip, vendor.city].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null
+  const brandColor = /^#[0-9a-fA-F]{6}$/.test(String(vendor.brand_color ?? '')) ? String(vendor.brand_color) : null
 
   const si = (offer.standard_info ?? {}) as any
 
@@ -45,6 +46,7 @@ export async function buildOfferPdfData(admin: SupabaseClient, offer: any): Prom
       website: vendor.website ?? null,
     },
     logoDataUri: await logoDataUri(vendor.logo_r2_key ?? null),
+    brandColor,
     offer: {
       lineItems: Array.isArray(offer.line_items) ? offer.line_items : [],
       subtotal: Number(offer.subtotal ?? 0),
