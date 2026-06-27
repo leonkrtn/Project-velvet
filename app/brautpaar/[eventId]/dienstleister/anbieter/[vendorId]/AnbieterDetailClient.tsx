@@ -7,6 +7,7 @@ import { categoryLabel, PRICE_UNITS, SOCIAL_PLATFORMS } from '@/lib/marketplace/
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 import RequestFlow from '@/components/marketplace/RequestFlow'
 import CoupleOfferPanel from '@/components/marketplace/CoupleOfferPanel'
+import CoupleDataRequests from '@/components/marketplace/CoupleDataRequests'
 
 interface Vendor {
   id: string; company_name: string | null; category: string
@@ -278,6 +279,8 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
           </div>
 
           {sent && <CoupleOfferPanel requestId={sent.id} />}
+
+          <CoupleDataRequests eventId={eventId} />
 
           {/* Kontakt — Website offen, Kontaktdaten erst nach Annahme */}
           <div className="bp-card" style={{ padding: 18 }}>

@@ -465,6 +465,16 @@ supabase/migrations/
 # Manuelle Bewertungsanfrage: /api/vendor/reviews/request. Token-Review oeffentlich:
 # /review/[token] + /api/reviews/[token] (kein Login). Nav-Eintrag "Automatik" in VendorSidebarShell.
 
+  0125_vendor_data_requests.sql        Strukturierte Daten-Anfrage (A3): vendor_data_requests
+                                       (event_id, dienstleister_id, conversation_id, fields JSONB [{key,label,value}],
+                                       status open|answered). RLS aktiv ohne User-Policy (nur Service-Role-APIs).
+# ── Strukturierte Daten-Anfrage (Migration 0125) ─────────────────────────────
+# Vendor fordert im Chat (KommunikationClient -> DataRequestDialog, "Daten anfordern")
+# gezielt Felder an: POST /api/vendor/data-requests legt Zeile an + postet eine Chat-
+# Nachricht. Brautpaar beantwortet im Anbieter-Detail (CoupleDataRequests) via
+# GET /api/marketplace/data-requests + PATCH /api/marketplace/data-requests/[id];
+# die Antwort wird strukturiert gespeichert UND als Chat-Nachricht gepostet.
+
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)
   ProfilClient.tsx                     Edit form: name, email, password, profile picture (Supabase Storage "avatars" bucket)
