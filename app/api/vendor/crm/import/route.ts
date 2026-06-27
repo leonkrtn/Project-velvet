@@ -28,6 +28,57 @@ const SOURCE_MAP: Record<string, string> = {
   empfehlung: 'empfehlung', marktplatz: 'marktplatz', website: 'website',
   messe: 'messe', sonstige: 'sonstige',
 }
+const PRIORITY_MAP: Record<string, string> = { standard: 'standard', vip: 'vip', grosskunde: 'grosskunde' }
+
+// Erlaubte Zielfelder fuer das freie Spalten-Mapping (Allowlist).
+const IMPORT_FIELDS = [
+  'name', 'email', 'phone', 'address_line1', 'address_line2',
+  'home_street', 'home_postal_code', 'home_city',
+  'lifecycle_stage', 'source', 'priority',
+  'wedding_date', 'birthday', 'location', 'guest_count', 'deal_value', 'notes',
+] as const
+type ImportField = typeof IMPORT_FIELDS[number]
+
+/** Akzeptiert YYYY-MM-DD und DD.MM.YYYY -> ISO; sonst null. */
+function normalizeDate(v: string): string | null {
+  const t = v.trim()
+  if (!t) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t
+  const m = t.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+  if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`
+  return null
+}
+
+function num(v: string): number | null {
+  const n = parseFloat(v.replace(/[^0-9.,-]/g, '').replace(',', '.'))
+  return Number.isFinite(n) ? n : null
+}
+
+/** Baut eine crm_contacts-Insert-Zeile aus einem Feld-Getter. Gibt null bei leerem Namen. */
+function buildContactRow(dlId: string, get: (f: ImportField) => string): Record<string, unknown> | null {
+  const name = get('name').trim()
+  if (!name) return null
+  return {
+    dienstleister_id: dlId,
+    name,
+    email: get('email'),
+    phone: get('phone'),
+    address_line1: get('address_line1'),
+    address_line2: get('address_line2'),
+    home_street: get('home_street'),
+    home_postal_code: get('home_postal_code'),
+    home_city: get('home_city'),
+    lifecycle_stage: STAGE_MAP[get('lifecycle_stage').toLowerCase()] ?? 'lead',
+    source: SOURCE_MAP[get('source').toLowerCase()] ?? 'sonstige',
+    priority: PRIORITY_MAP[get('priority').toLowerCase()] ?? 'standard',
+    wedding_date: normalizeDate(get('wedding_date')),
+    birthday: normalizeDate(get('birthday')),
+    location: get('location'),
+    guest_count: get('guest_count') ? (num(get('guest_count')) ?? null) : null,
+    deal_value: get('deal_value') ? num(get('deal_value')) : null,
+    notes: get('notes'),
+  }
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -41,6 +92,35 @@ export async function POST(req: NextRequest) {
     .eq('user_id', user.id)
     .maybeSingle()
   if (!link) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  // ── Freies Spalten-Mapping (JSON) ──
+  // Body: { rows: string[][], mapping: { <ImportField>: number(colIndex) } }
+  if ((req.headers.get('content-type') || '').includes('application/json')) {
+    const body = await req.json().catch(() => ({})) as { rows?: string[][]; mapping?: Record<string, number> }
+    const rows = Array.isArray(body.rows) ? body.rows : []
+    const mapping = body.mapping ?? {}
+    if (rows.length === 0) return NextResponse.json({ imported: 0 })
+
+    const get = (row: string[]) => (f: ImportField): string => {
+      const ci = mapping[f]
+      return typeof ci === 'number' && ci >= 0 ? (row[ci] ?? '').trim() : ''
+    }
+
+    const toInsert = rows
+      .map(row => buildContactRow(link.dienstleister_id, get(row)))
+      .filter((r): r is Record<string, unknown> => r !== null)
+    if (toInsert.length === 0) return NextResponse.json({ imported: 0 })
+
+    const { data: created } = await admin.from('crm_contacts').insert(toInsert).select('id')
+    const ids = (created ?? []).map(c => c.id as string)
+    if (ids.length) {
+      await admin.from('crm_activities').insert(ids.map(id => ({
+        contact_id: id, dienstleister_id: link.dienstleister_id,
+        activity_type: 'imported', title: 'Via CSV importiert', body: '', auto_generated: true,
+      })))
+    }
+    return NextResponse.json({ imported: ids.length })
+  }
 
   const formData = await req.formData()
   const file = formData.get('file') as File | null
