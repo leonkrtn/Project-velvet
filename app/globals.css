@@ -303,3 +303,32 @@ button[style*="background: none"]:hover:not([data-sel]) {
   .vnd-page-card-nopad   { background: none !important; border: none !important; border-radius: 0 !important; }
   .vnd-hdr-icon          { display: none !important; }
 }
+
+/* ── OfferEditorFull — responsive ──────────────────────────────────────── */
+@media (max-width: 900px) {
+  .ofe-left { width: 100% !important; }
+}
+@media (max-width: 767px) {
+  .ofe-outer { padding-left: 0 !important; padding-right: 0 !important; }
+  .ofe-card-inner { padding: 16px 16px 20px !important; border-radius: 0 !important; border-left: none !important; border-right: none !important; }
+  .ofe-2col, .ofe-3col { grid-template-columns: 1fr !important; }
+}
+
+/* ── Berichte — Export-Buttons auf Mobile ausblenden ────────────────────── */
+@media (max-width: 767px) {
+  .rpt-export-btns { display: none !important; }
+}
+
+/* ── CRM — Desktop-only Buttons ─────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .crm-mob-hide { display: none !important; }
+}
+
+/* ── Anbieter-Profil / Listing — Mobile ─────────────────────────────────── */
+@media (max-width: 767px) {
+  .listing-header  { flex-wrap: wrap !important; gap: 12px !important; }
+  .listing-two-col { grid-template-columns: 1fr !important; }
+  .listing-pkg-row { flex-wrap: wrap !important; }
+  .listing-pkg-row > input[type="number"],
+  .listing-pkg-row > select { width: 100% !important; }
+}

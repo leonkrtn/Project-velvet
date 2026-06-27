@@ -1172,17 +1172,18 @@ export default function CrmClient() {
                 <span className="crm-btn-text">Aufgaben</span>
               </button>
               <button onClick={handleAutoImport} disabled={autoImporting} title="Aus Anfragen, Angeboten und Events importieren"
+                className="crm-mob-hide"
                 style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, cursor: autoImporting ? 'wait' : 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
                 <RefreshCw size={13} style={{ animation: autoImporting ? 'crm-spin 1s linear infinite' : 'none' }} />
                 <span className="crm-btn-text">Auto-Import</span>
               </button>
-              <button onClick={() => fileRef.current?.click()} disabled={importing} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, cursor: importing ? 'wait' : 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+              <button onClick={() => fileRef.current?.click()} disabled={importing} className="crm-mob-hide" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, cursor: importing ? 'wait' : 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
                 <Upload size={13} /><span className="crm-btn-text">CSV Import</span>
               </button>
-              <a href="/api/vendor/crm/import-template" title="Leer-Vorlage für den CSV-Import herunterladen" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
+              <a href="/api/vendor/crm/import-template" title="Leer-Vorlage für den CSV-Import herunterladen" className="crm-mob-hide" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
                 <Download size={13} /><span className="crm-btn-text">Vorlage</span>
               </a>
-              <a href="/api/vendor/crm/export" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
+              <a href="/api/vendor/crm/export" className="crm-mob-hide" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
                 <Download size={13} /><span className="crm-btn-text">Export</span>
               </a>
               <button onClick={() => setShowNew(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>

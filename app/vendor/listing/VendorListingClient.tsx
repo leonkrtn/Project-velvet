@@ -323,7 +323,7 @@ export default function VendorListingClient() {
       <div>
 
         {/* ── Header ── */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div className="listing-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
             <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px', margin: 0 }}>Anbieter-Profil</h1>
             <p style={{ fontSize: 13.5, color: 'var(--text-dim)', marginTop: 6, marginBottom: 0 }}>
@@ -563,8 +563,8 @@ export default function VendorListingClient() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {packages.map((p, idx) => (
                   <div key={p.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
-                    <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
-                      <input style={{ ...inp, flex: 1 }} value={p.title} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, title: e.target.value } : x))} placeholder="Titel" />
+                    <div className="listing-pkg-row" style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+                      <input style={{ ...inp, flex: 1, minWidth: 0 }} value={p.title} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, title: e.target.value } : x))} placeholder="Titel" />
                       <input style={{ ...inp, width: 120 }} type="number" value={p.price_from ?? ''} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, price_from: e.target.value === '' ? null : Number(e.target.value) } : x))} placeholder="Preis €" />
                       <select style={{ ...inp, width: 140 }} value={p.price_unit} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, price_unit: e.target.value } : x))}>
                         {PRICE_UNITS.map(u => <option key={u.key} value={u.key}>{u.label}</option>)}

@@ -186,7 +186,7 @@ export default function ReportClient() {
           </div>
 
           {/* Export Buttons */}
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div className="rpt-export-btns" style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => exportFile('excel')}
               disabled={!data || exporting !== null}
