@@ -255,7 +255,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
   const pdfUrl = `/api/vendor/event-offers/${offerId}/pdf`
 
   return (
-    <div style={{ paddingBottom: 40 }}>
+    <div className="ofe-outer" style={{ paddingBottom: 40 }}>
       <Link href={eventId ? `/vendor/dashboard/${eventId}/angebote` : '/vendor/angebote'} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: C.dim, textDecoration: 'none', marginBottom: 16 }}>
         <ChevronLeft size={15} /> Alle Angebote
       </Link>
@@ -268,8 +268,8 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
         style={{ display: 'flex', gap: 0, alignItems: 'start', userSelect: dragging.current ? 'none' : undefined }}
       >
 
-      <div style={{ width: `${leftPct}%`, flexShrink: 0, minWidth: 0 }}>
-      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '26px 30px' }}>
+      <div className="ofe-left" style={{ width: `${leftPct}%`, flexShrink: 0, minWidth: 0 }}>
+      <div className="ofe-card-inner" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '26px 30px' }}>
       {/* Kopf */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
         <div style={{ width: 42, height: 42, borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -295,7 +295,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
         <Section title="Kundeninfo">
           {editable ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="ofe-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <Field label="Name / Firma">
                   <input style={{ ...inp, width: '100%' }} value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Max Mustermann" />
                 </Field>
@@ -303,7 +303,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
                   <input style={{ ...inp, width: '100%' }} type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} placeholder="max@beispiel.de" />
                 </Field>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="ofe-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <Field label="Straße & Hausnummer">
                   <input style={{ ...inp, width: '100%' }} value={clientAddr1} onChange={e => setClientAddr1(e.target.value)} placeholder="Musterstraße 1" />
                 </Field>
@@ -416,7 +416,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
       <Section title="Anzahlung & Zahlung">
         {editable ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 130px 150px', gap: 10 }}>
+            <div className="ofe-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 130px 150px', gap: 10 }}>
               <Field label="Anzahlung">
                 <select value={depositType} onChange={e => setDepositType(e.target.value as DepositType)} style={{ ...inp, width: '100%' }}>
                   {(Object.keys(DEPOSIT_LABELS) as DepositType[]).map(t => <option key={t} value={t}>{DEPOSIT_LABELS[t]}</option>)}
@@ -467,7 +467,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
       {/* Anmerkungen + Gültigkeit */}
       <Section title="Anmerkungen & Gültigkeit">
         {editable ? (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 170px', gap: 12 }}>
+          <div className="ofe-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 170px', gap: 12 }}>
             <Field label={eventId === null ? 'Anmerkungen an den Kunden' : 'Anmerkungen ans Brautpaar'}>
               <textarea style={{ ...inp, width: '100%', minHeight: 56, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} />
             </Field>
