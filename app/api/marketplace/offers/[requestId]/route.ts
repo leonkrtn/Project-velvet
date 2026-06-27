@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { listVariants } from '@/lib/vendor/variants'
 
 const REQUESTER_ROLES = ['veranstalter', 'brautpaar', 'brautpaar_solo']
 
@@ -29,7 +30,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ req
   const res = await loadVisibleOffer(admin, requestId, user.id)
   if ('forbidden' in res) return NextResponse.json({ error: 'Kein Zugriff' }, { status: 403 })
   if (!res.offer || res.offer.status === 'draft') return NextResponse.json({ offer: null })
-  return NextResponse.json({ offer: res.offer })
+  const variants = await listVariants(admin, res.offer.id)
+  return NextResponse.json({ offer: res.offer, variants })
 }
 
 // PATCH — { action: 'accept' | 'decline' }
@@ -38,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ re
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })
   const { requestId } = await params
-  const { action } = await req.json().catch(() => ({})) as { action?: string }
+  const { action, variantId } = await req.json().catch(() => ({})) as { action?: string; variantId?: string }
 
   const admin = createAdminClient()
   const res = await loadVisibleOffer(admin, requestId, user.id)
@@ -47,9 +49,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ re
 
   if (action === 'accept') {
     if (res.offer.status !== 'released') return NextResponse.json({ error: 'Angebot ist nicht offen' }, { status: 409 })
-    const { error } = await admin.from('vendor_offers')
-      .update({ status: 'accepted', accepted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('id', res.offer.id)
+
+    // Varianten: hat das Angebot welche, muss genau eine gewaehlt werden. Die
+    // gewaehlte Variante wird ins Angebot kopiert (Summen/Positionen) + markiert.
+    const variants = await listVariants(admin, res.offer.id)
+    const acceptPatch: Record<string, unknown> = {
+      status: 'accepted', accepted_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    }
+    let acceptedTotal = res.offer.total
+    if (variants.length > 0) {
+      const chosen = variants.find(v => v.id === variantId)
+      if (!chosen) return NextResponse.json({ error: 'Bitte wähle eine Variante aus' }, { status: 400 })
+      acceptPatch.line_items = chosen.line_items
+      acceptPatch.subtotal = chosen.subtotal
+      acceptPatch.tax_amount = chosen.tax_amount
+      acceptPatch.total = chosen.total
+      acceptedTotal = chosen.total
+      await admin.from('vendor_offer_variants').update({ is_selected: false }).eq('offer_id', res.offer.id)
+      await admin.from('vendor_offer_variants').update({ is_selected: true, updated_at: new Date().toISOString() }).eq('id', chosen.id)
+    }
+
+    const { error } = await admin.from('vendor_offers').update(acceptPatch).eq('id', res.offer.id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     // Bestaetigung in den Chat posten, damit der Dienstleister es sieht.
@@ -70,7 +90,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ re
     if (res.offer.dienstleister_id) {
       await admin.from('crm_contacts')
         .update({
-          deal_value: res.offer.total ?? null,
+          deal_value: acceptedTotal ?? null,
           pending_offer_value: null,
           lifecycle_stage: 'gebucht',
           updated_at: new Date().toISOString(),

@@ -426,6 +426,20 @@ supabase/migrations/
 # (TiersEditor/SeasonEditor/TravelEditor + Beratungs-Modus-Schalter). Alle Preisfelder sind durch
 # stripPricing vor dem Brautpaar geschuetzt.
 
+  0121_vendor_offer_variants.sql       OPTIONALE Angebots-Varianten (vendor_offer_variants):
+                                       1 vendor_offers -> n Varianten (name, line_items/subtotal/tax_amount/
+                                       total, sort_order, is_selected). Standard bleibt EIN Angebot ohne Varianten.
+                                       RLS: Lesen wie Eltern-Angebot (Vendor immer, Brautpaar ab status<>'draft'),
+                                       Schreiben via Service-Role.
+# ── Angebots-Varianten (Migration 0121) ──────────────────────────────────────
+# Vendor verwaltet Varianten in VendorOfferEditor (VariantsManager) ueber
+# /api/vendor/offers/[requestId]/variants (+ /[variantId]). Pro Variante eigenes PDF
+# via ?variantId= an beiden PDF-Routen (applyVariantToOffer in lib/vendor/variants.ts).
+# Brautpaar (CoupleOfferPanel) sieht alle Varianten, waehlt eine; PATCH accept mit
+# variantId kopiert die gewaehlte Variante ins Angebot + setzt is_selected. Hat ein
+# Angebot Varianten, ist die Auswahl Pflicht. Manuell dupliziert ("Aus Angebot
+# uebernehmen"), keine Auto-Generierung.
+
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)
   ProfilClient.tsx                     Edit form: name, email, password, profile picture (Supabase Storage "avatars" bucket)
