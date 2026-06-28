@@ -12,6 +12,7 @@ import {
 } from '@/lib/vendor/questionnaire'
 import { MARKETPLACE_CATEGORIES } from '@/lib/marketplace/types'
 import { templateForCategory } from '@/lib/vendor/questionnaire-templates'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 const C = {
   bg: 'var(--bg)', surface: 'var(--surface)', border: 'var(--border)',
@@ -206,15 +207,15 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
             <label style={lbl}>Einleitungstext (optional)</label>
             <textarea style={{ ...inp, minHeight: 64, resize: 'vertical' }} value={settings.intro_text} onChange={e => setSetting('intro_text', e.target.value)} placeholder="Kurze Begrüßung für das Brautpaar…" />
           </div>
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '12px 14px', borderRadius: 10, border: `1px solid ${settings.consult_mode ? C.gold : C.border}`, background: settings.consult_mode ? 'rgba(184,153,104,0.07)' : C.bg, cursor: 'pointer' }}>
-            <input type="checkbox" checked={settings.consult_mode} onChange={e => setSetting('consult_mode', e.target.checked)} style={{ marginTop: 2 }} />
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '12px 14px', borderRadius: 10, border: `1px solid ${settings.consult_mode ? C.gold : C.border}`, background: settings.consult_mode ? 'rgba(184,153,104,0.07)' : C.bg }}>
+            <div style={{ marginTop: 1 }}><ToggleSwitch checked={settings.consult_mode} onChange={v => setSetting('consult_mode', v)} onColor={C.gold} aria-label="Beratungs-Modus" /></div>
             <span>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.text }}>Beratungs-Modus (kein Auto-Angebot)</span>
               <span style={{ display: 'block', fontSize: 12, color: C.dim, marginTop: 2, lineHeight: 1.5 }}>
                 Für beratungsintensive Leistungen: Eine Anfrage erzeugt kein automatisches Angebot, sondern öffnet direkt einen Chat. Der Fragebogen dient nur als Briefing — du schlägst dem Brautpaar anschließend einen Termin für ein Erstgespräch vor.
               </span>
             </span>
-          </label>
+          </div>
         </div>
 
         {/* Abschnitte */}
@@ -356,9 +357,9 @@ function QuestionEditor({ q, index, total, onChange, onRemove, onMove }: {
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', margin: '10px 0 0' }}>
         <input style={{ ...inp, fontSize: 12, flex: 1 }} value={q.help_text} onChange={e => onChange({ help_text: e.target.value })} placeholder="Hilfetext (optional)" />
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.dim, whiteSpace: 'nowrap', cursor: 'pointer' }}>
-          <input type="checkbox" checked={q.required} onChange={e => onChange({ required: e.target.checked })} /> Pflicht
-        </label>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.dim, whiteSpace: 'nowrap' }}>
+          <ToggleSwitch checked={q.required} onChange={v => onChange({ required: v })} size="sm" aria-label="Pflichtfrage" /> Pflicht
+        </span>
       </div>
 
       {/* Optionen mit Preis */}
@@ -374,11 +375,11 @@ function QuestionEditor({ q, index, total, onChange, onRemove, onMove }: {
                   const opts = [...q.options]; opts[oi] = { ...o, price: e.target.value === '' ? 0 : parseFloat(e.target.value) }; onChange({ options: opts })
                 }} /><span style={{ fontSize: 12, color: C.dim }}>€</span>
               </div>
-              <label title="Preis gilt pro Gast" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: C.dim, whiteSpace: 'nowrap', cursor: 'pointer', flexShrink: 0 }}>
-                <input type="checkbox" checked={!!o.perGuest} onChange={e => {
-                  const opts = [...q.options]; opts[oi] = { ...o, perGuest: e.target.checked }; onChange({ options: opts })
+              <span title="Preis gilt pro Gast" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: C.dim, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <ToggleSwitch checked={!!o.perGuest} size="sm" aria-label="Preis pro Gast" onChange={v => {
+                  const opts = [...q.options]; opts[oi] = { ...o, perGuest: v }; onChange({ options: opts })
                 }} />/Gast
-              </label>
+              </span>
               <button style={{ ...iconBtn, color: C.red }} onClick={() => onChange({ options: q.options.filter(x => x.id !== o.id) })}><Trash2 size={14} /></button>
             </div>
           ))}
@@ -425,9 +426,9 @@ function QuestionEditor({ q, index, total, onChange, onRemove, onMove }: {
               onChange={e => onChange({ pricing: { ...q.pricing, mode: 'fixed', price: e.target.value === '' ? 0 : parseFloat(e.target.value) } })} />
             <span style={{ fontSize: 12, color: C.dim }}>€</span>
           </div>
-          <label title="Aufschlag gilt pro Gast" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.dim, cursor: 'pointer' }}>
-            <input type="checkbox" checked={!!q.pricing.perGuest} onChange={e => onChange({ pricing: { ...q.pricing, perGuest: e.target.checked } })} /> pro Gast
-          </label>
+          <span title="Aufschlag gilt pro Gast" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.dim }}>
+            <ToggleSwitch checked={!!q.pricing.perGuest} size="sm" aria-label="Aufschlag pro Gast" onChange={v => onChange({ pricing: { ...q.pricing, perGuest: v } })} /> pro Gast
+          </span>
           <OptionalToggle q={q} onChange={onChange} />
         </div>
       )}
@@ -550,8 +551,8 @@ function TravelEditor({ settings, setSetting }: {
 // Schalter: erzeugte Angebotsposition optional (Brautpaar kann ab-/zuwaehlen).
 function OptionalToggle({ q, onChange }: { q: QQuestion; onChange: (patch: Partial<QQuestion>) => void }) {
   return (
-    <label title="Position im Angebot ist optional — das Brautpaar kann sie ab- oder zuwählen" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.dim, cursor: 'pointer' }}>
-      <input type="checkbox" checked={!!q.pricing.optional} onChange={e => onChange({ pricing: { ...q.pricing, optional: e.target.checked } })} /> optional
-    </label>
+    <span title="Position im Angebot ist optional — das Brautpaar kann sie ab- oder zuwählen" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.dim }}>
+      <ToggleSwitch checked={!!q.pricing.optional} size="sm" aria-label="Optionale Position" onChange={v => onChange({ pricing: { ...q.pricing, optional: v } })} /> optional
+    </span>
   )
 }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Edit2, X, Check, Gift, ExternalLink, DollarSign } from 'lucide-react'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 interface WishItem {
   id: string
@@ -316,14 +317,10 @@ function WishModal({ form, onChange, onSave, onClose, saving, isEdit }: {
             padding: '1rem',
             border: '1px solid var(--bp-rule)',
           }}>
-            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={form.is_money_wish}
-                onChange={e => set({ is_money_wish: e.target.checked })}
-                className="bp-checkbox"
-                style={{ marginTop: 2 }}
-              />
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <div style={{ marginTop: 1 }}>
+                <ToggleSwitch checked={form.is_money_wish} onChange={v => set({ is_money_wish: v })} aria-label="Geldwunsch" />
+              </div>
               <div>
                 <div style={{ fontWeight: 500, color: 'var(--bp-ink)', fontSize: '0.9375rem', marginBottom: 2 }}>
                   Geldwunsch
@@ -332,7 +329,7 @@ function WishModal({ form, onChange, onSave, onClose, saving, isEdit }: {
                   Gäste können einen beliebigen Betrag beisteuern — der Fortschritt wird als Balken angezeigt.
                 </p>
               </div>
-            </label>
+            </div>
 
             {form.is_money_wish && (
               <div style={{ marginTop: '0.875rem' }}>

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import TimeInput from '@/components/ui/TimeInput'
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { SaveStatus } from '@/components/ui/SaveStatus'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 interface EventData {
   id: string
@@ -193,14 +194,14 @@ export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
         <div className="bp-divider" />
 
         <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9375rem', color: 'var(--bp-ink-2)' }}>
-            <input type="checkbox" className="bp-checkbox" checked={data.children_allowed} onChange={e => set('children_allowed', e.target.checked)} />
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', color: 'var(--bp-ink-2)' }}>
+            <ToggleSwitch checked={data.children_allowed} onChange={v => set('children_allowed', v)} aria-label="Kinder erlaubt" />
             Kinder erlaubt
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9375rem', color: 'var(--bp-ink-2)' }}>
-            <input type="checkbox" className="bp-checkbox" checked={data.collect_allergies ?? false} onChange={e => set('collect_allergies', e.target.checked)} />
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', color: 'var(--bp-ink-2)' }}>
+            <ToggleSwitch checked={data.collect_allergies ?? false} onChange={v => set('collect_allergies', v)} aria-label="Allergien abfragen" />
             Allergien abfragen
-          </label>
+          </span>
         </div>
 
         {data.children_allowed && (

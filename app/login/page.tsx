@@ -8,6 +8,7 @@ import ForevrHeart from '@/components/ForevrHeart'
 import { createClient } from '@/lib/supabase/client'
 import { ensureSoloEvent, isSoloSignup } from '@/lib/brautpaar-solo'
 import { setLoginPersistence, REMEMBER_DAYS } from '@/lib/auth-persistence'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 import '@/app/brautpaar/brautpaar.css'
 
 function LoginForm() {
@@ -171,15 +172,10 @@ function LoginForm() {
               </div>
             </div>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.875rem', color: 'var(--bp-ink-2)' }}>
-              <input
-                type="checkbox"
-                className="bp-checkbox"
-                checked={rememberMe}
-                onChange={e => setRememberMe(e.target.checked)}
-              />
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--bp-ink-2)' }}>
+              <ToggleSwitch checked={rememberMe} onChange={setRememberMe} size="sm" aria-label="Angemeldet bleiben" />
               {REMEMBER_DAYS} Tage angemeldet bleiben
-            </label>
+            </span>
 
             {error && <p className="bp-auth-error">{error}</p>}
 

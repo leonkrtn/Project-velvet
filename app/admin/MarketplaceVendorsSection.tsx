@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Plus, Trash2, Eye, EyeOff, KeyRound, ImagePlus, X, Pencil, Check } from 'lucide-react'
 import { MARKETPLACE_CATEGORIES, PRICE_RANGES, categoryLabel } from '@/lib/marketplace/types'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 interface Vendor {
   id: string
@@ -217,9 +218,9 @@ function VendorForm({ vendor, onDone, onCancel }: { vendor?: Vendor; onDone: () 
         <div><label style={lbl}>Stadt</label><input style={inp} value={f.city} onChange={e => set('city', e.target.value)} /></div>
       </div>
       <div><label style={lbl}>Beschreibung</label><textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={f.description} onChange={e => set('description', e.target.value)} /></div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-        <input type="checkbox" checked={f.published} onChange={e => set('published', e.target.checked)} /> Veröffentlicht (für Brautpaare sichtbar)
-      </label>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+        <ToggleSwitch checked={f.published} onChange={v => set('published', v)} size="sm" aria-label="Veröffentlicht" /> Veröffentlicht (für Brautpaare sichtbar)
+      </span>
 
       {editing && <VendorImages vendor={vendor!} uploadImage={uploadImage} />}
 
