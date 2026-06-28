@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Search, Check, Star, BadgeCheck, SlidersHorizontal, X, MapPin } from 'lucide-react'
+import { Search, Check, Star, BadgeCheck, SlidersHorizontal, X, MapPin, Info } from 'lucide-react'
 import { MARKETPLACE_CATEGORIES, categoryLabel } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
+import { haversineKm } from '@/lib/geo'
 
 interface VendorCard {
   id: string
@@ -25,22 +26,46 @@ interface Req { id: string; dienstleister_id: string; status: string }
 type SortField = 'name' | 'city' | 'price'
 const PRICE_ORDER: Record<string, number> = { '€': 1, '€€': 2, '€€€': 3 }
 
+const RADIUS_DEFAULT = 50
+const RADIUS_MAX = 300
+
 interface FilterState {
   category: string
   sortKey: string
+  radiusKm: number
 }
-const DEFAULT_FILTER: FilterState = { category: '', sortKey: 'name_asc' }
+const DEFAULT_FILTER: FilterState = { category: '', sortKey: 'name_asc', radiusKm: RADIUS_DEFAULT }
 const STORAGE_KEY = 'mk_filter'
 
 const SORT_OPTIONS: { key: string; label: string; field: SortField; dir: 'asc' | 'desc' }[] = [
-  { key: 'name_asc',   label: 'Name (A–Z)',             field: 'name',  dir: 'asc' },
-  { key: 'name_desc',  label: 'Name (Z–A)',             field: 'name',  dir: 'desc' },
-  { key: 'city_asc',   label: 'Ort (A–Z)',              field: 'city',  dir: 'asc' },
-  { key: 'price_asc',  label: 'Preis (aufsteigend)',    field: 'price', dir: 'asc' },
-  { key: 'price_desc', label: 'Preis (absteigend)',     field: 'price', dir: 'desc' },
+  { key: 'name_asc',   label: 'Name (A–Z)',          field: 'name',  dir: 'asc' },
+  { key: 'name_desc',  label: 'Name (Z–A)',          field: 'name',  dir: 'desc' },
+  { key: 'city_asc',   label: 'Ort (A–Z)',           field: 'city',  dir: 'asc' },
+  { key: 'price_asc',  label: 'Preis (aufsteigend)', field: 'price', dir: 'asc' },
+  { key: 'price_desc', label: 'Preis (absteigend)',  field: 'price', dir: 'desc' },
 ]
 
 const SORTED_CATEGORIES = [...MARKETPLACE_CATEGORIES].sort((a, b) => a.label.localeCompare(b.label, 'de'))
+
+interface Coords { lat: number; lng: number }
+
+// Session-level geocoding cache (city → coords or null)
+const geoCache = new Map<string, Coords | null>()
+
+async function geocode(city: string): Promise<Coords | null> {
+  const key = city.trim().toLowerCase()
+  if (geoCache.has(key)) return geoCache.get(key)!
+  try {
+    const res = await fetch(`/api/geo/geocode?q=${encodeURIComponent(city)}`)
+    if (!res.ok) { geoCache.set(key, null); return null }
+    const data: Coords = await res.json()
+    geoCache.set(key, data)
+    return data
+  } catch {
+    geoCache.set(key, null)
+    return null
+  }
+}
 
 function loadStored(): FilterState {
   try { return { ...DEFAULT_FILTER, ...JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') } }
@@ -53,10 +78,15 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   const [q, setQ] = useState('')
   const [requests, setRequests] = useState<Req[]>([])
   const [eventCity, setEventCity] = useState<string | null>(null)
+  const [eventCoords, setEventCoords] = useState<Coords | null>(null)
+  const [vendorCoords, setVendorCoords] = useState<Map<string, Coords | null>>(new Map())
 
   const [panelOpen, setPanelOpen] = useState(false)
   const [applied, setApplied] = useState<FilterState>(DEFAULT_FILTER)
   const [pending, setPending] = useState<FilterState>(DEFAULT_FILTER)
+
+  // Track geocoding in-progress to avoid double-firing
+  const geocodingRef = useRef(false)
 
   useEffect(() => {
     setApplied(loadStored())
@@ -91,7 +121,12 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     const res = await fetch(`/api/events/${eventId}`)
     if (res.ok) {
       const d = await res.json()
-      setEventCity(d.location_city ?? null)
+      const city: string | null = d.location_city ?? null
+      setEventCity(city)
+      if (city) {
+        const coords = await geocode(city)
+        setEventCoords(coords)
+      }
     }
   }, [eventId])
 
@@ -106,12 +141,35 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   useEffect(() => { loadRequests(); loadEvent() }, [loadRequests, loadEvent])
   useEffect(() => { load() }, [load])
 
+  // Geocode all unique vendor cities once vendors are loaded
+  useEffect(() => {
+    if (!vendors.length || geocodingRef.current) return
+    geocodingRef.current = true
+
+    const cities = new Set<string>()
+    for (const v of vendors) {
+      if (v.city) cities.add(v.city)
+      for (const c of v.service_cities) cities.add(c)
+    }
+
+    // Sequential calls to respect Nominatim rate limit (1 req/s)
+    const citiesArr = Array.from(cities)
+    let i = 0
+    const next = async () => {
+      if (i >= citiesArr.length) return
+      const city = citiesArr[i++]
+      await geocode(city)
+      setVendorCoords(new Map(geoCache))
+      setTimeout(next, 1100)
+    }
+    next()
+  }, [vendors])
+
   function requestFor(vendorId: string): Req | undefined {
     return requests.find(r => r.dienstleister_id === vendorId && (r.status === 'pending' || r.status === 'accepted'))
   }
 
-  const hasActiveFilter = applied.category !== '' || applied.sortKey !== 'name_asc'
-
+  const hasActiveFilter = applied.category !== '' || applied.sortKey !== 'name_asc' || applied.radiusKm !== RADIUS_DEFAULT
   const sortOpt = useMemo(() => SORT_OPTIONS.find(s => s.key === applied.sortKey) ?? SORT_OPTIONS[0], [applied.sortKey])
 
   const filtered = useMemo(() => {
@@ -129,14 +187,23 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
       list = list.filter(v => v.category === applied.category)
     }
 
-    // Automatic location filter: vendors with service_cities must include event city
-    if (eventCity) {
-      const ecLow = eventCity.toLowerCase().trim()
+    // Radius filter — only when we have event coordinates
+    if (eventCoords && applied.radiusKm < RADIUS_MAX) {
       list = list.filter(v => {
-        if (!v.service_cities || v.service_cities.length === 0) return true
-        return v.service_cities.some(c =>
-          c.toLowerCase().includes(ecLow) || ecLow.includes(c.toLowerCase())
-        )
+        // Collect all cities the vendor is associated with
+        const cities: string[] = []
+        if (v.city) cities.push(v.city)
+        for (const c of v.service_cities) cities.push(c)
+
+        // If no location data at all, always show
+        if (!cities.length) return true
+
+        // Check if any of the vendor's cities is within the selected radius
+        return cities.some(city => {
+          const coords = vendorCoords.get(city) ?? geoCache.get(city.trim().toLowerCase()) ?? null
+          if (!coords) return false
+          return haversineKm(eventCoords.lat, eventCoords.lng, coords.lat, coords.lng) <= applied.radiusKm
+        })
       })
     }
 
@@ -159,7 +226,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     }
 
     return sorted
-  }, [vendors, q, applied, eventCity, sortOpt])
+  }, [vendors, q, applied, eventCoords, vendorCoords, sortOpt])
 
   return (
     <div>
@@ -178,7 +245,23 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         .mp-radio-dot-inner { width:6px; height:6px; border-radius:50%; background:#fff; }
         .mp-panel-section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--bp-ink-3,#8C8076); margin:0 0 6px; padding:0 12px; }
         .mp-divider { height:1px; background:var(--bp-rule,#E8E8E6); margin:16px 0; }
+        .mp-slider { -webkit-appearance:none; appearance:none; width:100%; height:4px; border-radius:2px; background:var(--bp-rule,#E8E8E6); outline:none; cursor:pointer; }
+        .mp-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:18px; height:18px; border-radius:50%; background:var(--bp-gold,#B89968); cursor:pointer; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.18); }
+        .mp-slider::-moz-range-thumb { width:18px; height:18px; border-radius:50%; background:var(--bp-gold,#B89968); cursor:pointer; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.18); }
       `}</style>
+
+      {/* No-location banner */}
+      {!loading && !eventCity && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'var(--bp-ivory-2,#F5F2EC)', border: '1px solid var(--bp-rule-gold,#D4BC9A)', marginBottom: 16, fontSize: 13 }}>
+          <Info size={15} style={{ color: 'var(--bp-gold-deep,#9C7F4F)', flexShrink: 0 }} />
+          <span style={{ color: 'var(--bp-ink-2,#5C534A)' }}>
+            Kein Veranstaltungsort hinterlegt — Standortfilter inaktiv.{' '}
+            <Link href={`/brautpaar/${eventId}/allgemein`} style={{ color: 'var(--bp-gold-deep,#9C7F4F)', fontWeight: 600, textDecoration: 'underline' }}>
+              Ort eintragen
+            </Link>
+          </span>
+        </div>
+      )}
 
       {/* Search + Filter bar */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'center' }}>
@@ -215,7 +298,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
 
       {/* Result counter */}
       <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3,#8C8076)', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-        {loading ? ' ' : (
+        {loading ? ' ' : (
           <>
             <span>{filtered.length} {filtered.length === 1 ? 'Dienstleister' : 'Dienstleister'} gefunden</span>
             {hasActiveFilter && (
@@ -249,7 +332,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
       ) : filtered.length === 0 ? (
         <div className="bp-card" style={{ padding: '2.5rem', textAlign: 'center' }}>
           <p style={{ fontWeight: 600, margin: '0 0 4px' }}>Keine Dienstleister gefunden</p>
-          <p className="bp-caption" style={{ margin: 0 }}>Passe Kategorie oder Suchbegriff an.</p>
+          <p className="bp-caption" style={{ margin: 0 }}>Passe Radius, Kategorie oder Suchbegriff an.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
@@ -331,6 +414,43 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
 
         {/* Scrollable content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 8px' }}>
+
+          {/* Umkreis */}
+          <p className="mp-panel-section-title" style={{ paddingLeft: 12 }}>Umkreis (Hochzeitsort)</p>
+          <div style={{ padding: '8px 12px 4px' }}>
+            {!eventCity ? (
+              <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3,#8C8076)', margin: 0 }}>
+                Kein Veranstaltungsort hinterlegt — Umkreis inaktiv.
+              </p>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                  <span style={{ fontSize: 13, color: 'var(--bp-ink-2,#5C534A)' }}>
+                    <MapPin size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                    {eventCity}
+                  </span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: pending.radiusKm >= RADIUS_MAX ? 'var(--bp-ink-3,#8C8076)' : 'var(--bp-gold-deep,#9C7F4F)' }}>
+                    {pending.radiusKm >= RADIUS_MAX ? 'Unbegrenzt' : `${pending.radiusKm} km`}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  className="mp-slider"
+                  min={10}
+                  max={RADIUS_MAX}
+                  step={10}
+                  value={pending.radiusKm}
+                  onChange={e => setPending(p => ({ ...p, radiusKm: Number(e.target.value) }))}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--bp-ink-3,#8C8076)', marginTop: 6 }}>
+                  <span>10 km</span>
+                  <span>Unbegrenzt</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="mp-divider" />
 
           {/* Kategorie */}
           <p className="mp-panel-section-title">Kategorie</p>
