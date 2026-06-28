@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
-import { Loader2, Save, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check } from 'lucide-react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check, CloudOff } from 'lucide-react'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 type Kind = 'reminder' | 'review_request' | 'followup_offer' | 'followup_lead'
@@ -31,51 +31,56 @@ const EVENT_TYPES = [
   { v: 'sonstige', l: 'Sonstige' },
 ]
 
+type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+
 export default function AutomationsClient() {
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [rules, setRules] = useState<Rule[]>([])
-  const [msg, setMsg] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const loadedRef = useRef(false)
 
   const load = useCallback(async () => {
     const r = await fetch('/api/vendor/automations')
     const d = await r.json().catch(() => ({}))
     setRules((d.automations ?? []).map((a: Rule) => ({ ...a })))
     setLoading(false)
+    loadedRef.current = true
   }, [])
   useEffect(() => { load() }, [load])
+
+  // Autosave: bei jeder Änderung debounced speichern (kein Speichern-Button).
+  useEffect(() => {
+    if (!loadedRef.current) return
+    setSaveState('saving')
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch('/api/vendor/automations', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ automations: rules }),
+        })
+        setSaveState(r.ok ? 'saved' : 'error')
+      } catch {
+        setSaveState('error')
+      }
+    }, 700)
+    return () => clearTimeout(t)
+  }, [rules])
 
   function setRule(i: number, patch: Partial<Rule>) { setRules(rs => rs.map((r, idx) => idx === i ? { ...r, ...patch } : r)) }
   function addRule(kind: Kind) { setRules(rs => [...rs, { kind, event_type: 'all', offset_days: 7, label: '', enabled: true }]) }
   function removeRule(i: number) { setRules(rs => rs.filter((_, idx) => idx !== i)) }
 
-  async function save() {
-    setSaving(true)
-    const r = await fetch('/api/vendor/automations', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ automations: rules }),
-    })
-    setSaving(false)
-    setMsg(r.ok ? 'Gespeichert.' : 'Speichern fehlgeschlagen')
-    setTimeout(() => setMsg(null), 3500)
-    if (r.ok) load()
-  }
-
   if (loading) return <div style={{ minHeight: '60dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="bp-spin" /></div>
 
   return (
-    <div className="vnd-page-outer" style={{ minHeight: '100dvh', background: C.bg, padding: '28px 24px 80px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 6 }}>
+    <div className="vnd-page-outer auto-page" style={{ minHeight: '100dvh', background: C.bg, padding: '28px 24px 80px', maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
         <Zap size={20} style={{ color: C.gold }} />
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text }}>Automatisierungen</h1>
+        <span style={{ marginLeft: 'auto' }}><SaveIndicator state={saveState} /></span>
       </div>
       <p style={{ fontSize: 13, color: C.dim, margin: '0 0 18px', maxWidth: 620, lineHeight: 1.5 }}>
-        Lege Regeln fest, die Forevr automatisch ausführt — Erinnerungen, Bewertungsanfragen und Nachfass-Aktionen. Sie laufen täglich im Hintergrund.
+        Lege Regeln fest, die Forevr automatisch ausführt — Erinnerungen, Bewertungsanfragen und Nachfass-Aktionen. Sie laufen täglich im Hintergrund und werden automatisch gespeichert.
       </p>
-
-      <div style={{ ...card, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={save} disabled={saving} style={btnGold}>{saving ? <Loader2 size={15} className="bp-spin" /> : <Save size={15} />} Speichern</button>
-        {msg && <span style={{ fontSize: 13, fontWeight: 600, color: msg === 'Gespeichert.' ? '#15803D' : C.red }}>{msg}</span>}
-      </div>
 
       {KINDS.map(group => {
         const groupRules = rules.map((r, i) => ({ r, i })).filter(x => x.r.kind === group.kind)
@@ -89,18 +94,20 @@ export default function AutomationsClient() {
 
             {groupRules.length === 0 && <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 10px' }}>Keine Regel aktiv.</p>}
             {groupRules.map(({ r, i }) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: r.enabled ? C.text : C.dim, minWidth: 64 }}>
+              <div key={i} className="auto-rule" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                <span className="auto-toggle" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: r.enabled ? C.text : C.dim, minWidth: 64 }}>
                   <ToggleSwitch checked={r.enabled} onChange={v => setRule(i, { enabled: v })} size="sm" aria-label="Regel aktiv" />
                   {r.enabled ? 'an' : 'aus'}
                 </span>
-                <input style={{ ...inp, width: 64, textAlign: 'right' }} type="number" value={r.offset_days} onChange={e => setRule(i, { offset_days: e.target.value === '' ? 0 : parseInt(e.target.value, 10) })} />
-                <span style={{ fontSize: 12.5, color: C.dim }}>{group.unit}</span>
-                <select style={{ ...inp, width: 160 }} value={r.event_type} onChange={e => setRule(i, { event_type: e.target.value })}>
+                <span className="auto-offset" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <input style={{ ...inp, width: 64, textAlign: 'right' }} type="number" value={r.offset_days} onChange={e => setRule(i, { offset_days: e.target.value === '' ? 0 : parseInt(e.target.value, 10) })} />
+                  <span style={{ fontSize: 12.5, color: C.dim, whiteSpace: 'nowrap' }}>{group.unit}</span>
+                </span>
+                <select className="auto-select" style={{ ...inp, width: 160 }} value={r.event_type} onChange={e => setRule(i, { event_type: e.target.value })}>
                   {EVENT_TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
                 </select>
-                <input style={{ ...inp, flex: '1 1 180px', minWidth: 140 }} value={r.label} placeholder="Bezeichnung (optional)" onChange={e => setRule(i, { label: e.target.value })} />
-                <button onClick={() => removeRule(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex' }}><Trash2 size={15} /></button>
+                <input className="auto-label" style={{ ...inp, flex: '1 1 180px', minWidth: 120 }} value={r.label} placeholder="Bezeichnung (optional)" onChange={e => setRule(i, { label: e.target.value })} />
+                <button onClick={() => removeRule(i)} aria-label="Regel entfernen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex', flexShrink: 0 }}><Trash2 size={15} /></button>
               </div>
             ))}
             <button onClick={() => addRule(group.kind)} style={{ ...btnGhost, padding: '6px 11px', fontSize: 12 }}><Plus size={13} /> Regel</button>
@@ -109,7 +116,32 @@ export default function AutomationsClient() {
       })}
 
       <ManualReviewSection />
+
+      <style>{`
+        @media (max-width: 640px) {
+          .auto-page { padding-left: 14px !important; padding-right: 14px !important; }
+          .auto-rule { flex-direction: column; align-items: stretch !important; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid ${C.border}; }
+          .auto-rule .auto-select, .auto-rule .auto-label { width: 100% !important; flex: 1 1 auto !important; min-width: 0 !important; }
+          .auto-rule .auto-offset { justify-content: space-between; }
+          .auto-rule .auto-offset input { flex: 1 1 auto; }
+        }
+      `}</style>
     </div>
+  )
+}
+
+function SaveIndicator({ state }: { state: SaveState }) {
+  if (state === 'idle') return null
+  const map: Record<Exclude<SaveState, 'idle'>, { text: string; color: string; icon: React.ReactNode }> = {
+    saving: { text: 'Speichert…', color: C.dim, icon: <Loader2 size={13} className="bp-spin" /> },
+    saved: { text: 'Gespeichert', color: '#15803D', icon: <Check size={13} /> },
+    error: { text: 'Nicht gespeichert', color: C.red, icon: <CloudOff size={13} /> },
+  }
+  const m = map[state]
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, color: m.color }}>
+      {m.icon} {m.text}
+    </span>
   )
 }
 
@@ -150,7 +182,7 @@ function ManualReviewSection() {
           {events.map(e => (
             <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', border: `1px solid ${C.border}`, borderRadius: 9 }}>
               <Calendar size={14} style={{ color: C.dim, flexShrink: 0 }} />
-              <span style={{ flex: 1, fontSize: 13 }}>{e.name}{e.date ? ` · ${e.date}` : ''}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}{e.date ? ` · ${e.date}` : ''}</span>
               {e.invited ? (
                 <span style={{ fontSize: 12, color: '#15803D', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Check size={14} /> Angefragt</span>
               ) : (
