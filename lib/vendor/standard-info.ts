@@ -19,6 +19,10 @@ export async function buildStandardInfo(admin: SupabaseClient, eventId: string):
     ? [e.venue, e.venue_address].filter(Boolean).join(', ')
     : [e.location_name, e.location_city].filter(Boolean).join(', ')
 
+  // PLZ best effort aus Adresse/Ort fuer Anfahrts-Zonen (erste 5-stellige Zahl).
+  const postalSrc = [e.venue_address, e.location_city, location].filter(Boolean).join(' ')
+  const postalCode = (postalSrc.match(/\b(\d{5})\b/)?.[1]) ?? null
+
   let guestCount: number | null = null
   const { data: gc } = await admin
     .from('v_event_guest_counts')
@@ -32,6 +36,7 @@ export async function buildStandardInfo(admin: SupabaseClient, eventId: string):
     date: e.date ?? null,
     guestCount,
     location: location || null,
+    postalCode,
     eventType: e.event_type ?? null,
   }
 }

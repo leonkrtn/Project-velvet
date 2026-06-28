@@ -10,6 +10,7 @@ import {
   MapPin, MessageSquare, User, Circle, ChevronDown, ChevronUp, ArrowUpDown,
   LayoutGrid, List, ListChecks,
 } from 'lucide-react'
+import CrmImportDialog from '@/components/vendor/CrmImportDialog'
 
 // ── Types ──────────────────────────────────────────────────────
 type LifecycleStage = 'lead' | 'anfrage' | 'gebucht' | 'ehemalig'
@@ -968,7 +969,7 @@ export default function CrmClient() {
   const [showFilters, setShowFilters] = useState(false)
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
   const [showNew, setShowNew] = useState(false)
-  const [importing, setImporting] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
   const [autoImporting, setAutoImporting] = useState(false)
   const [autoImportResult, setAutoImportResult] = useState<number | null>(null)
   const [sortCol, setSortCol] = useState<'name' | 'deal_value' | 'wedding_date' | 'updated_at'>('updated_at')
@@ -1090,15 +1091,10 @@ export default function CrmClient() {
   }
   function handleDeleted(id: string) { setContacts(prev => prev.filter(c => c.id !== id)); setSelectedContact(null) }
 
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setImporting(true)
-    const fd = new FormData(); fd.append('file', file)
-    const res = await fetch('/api/vendor/crm/import', { method: 'POST', body: fd })
-    const json = await res.json()
-    if (json.imported > 0) { setAutoImportResult(json.imported); await fetchContacts(search, stageFilter, sourceFilter, priorityFilter) }
-    setImporting(false)
+    setImportFile(file)        // oeffnet die Mapping-Lightbox
     e.target.value = ''
   }
 
@@ -1177,7 +1173,7 @@ export default function CrmClient() {
                 <RefreshCw size={13} style={{ animation: autoImporting ? 'crm-spin 1s linear infinite' : 'none' }} />
                 <span className="crm-btn-text">Auto-Import</span>
               </button>
-              <button onClick={() => fileRef.current?.click()} disabled={importing} className="crm-mob-hide" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, cursor: importing ? 'wait' : 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+              <button onClick={() => fileRef.current?.click()} disabled={!!importFile} className="crm-mob-hide" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, cursor: importFile ? 'wait' : 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
                 <Upload size={13} /><span className="crm-btn-text">CSV Import</span>
               </button>
               <a href="/api/vendor/crm/import-template" title="Leer-Vorlage für den CSV-Import herunterladen" className="crm-mob-hide" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
@@ -1389,6 +1385,18 @@ export default function CrmClient() {
       )}
       {showNew && <NewContactModal onClose={() => setShowNew(false)} onCreated={handleCreated} />}
       <input ref={fileRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleImport} />
+
+      {importFile && (
+        <CrmImportDialog
+          file={importFile}
+          onClose={() => setImportFile(null)}
+          onImported={async (count) => {
+            setImportFile(null)
+            setAutoImportResult(count)
+            if (count > 0) await fetchContacts(search, stageFilter, sourceFilter, priorityFilter)
+          }}
+        />
+      )}
 
       {/* ── Global Tasks Panel ── */}
       {showGlobalTasks && (

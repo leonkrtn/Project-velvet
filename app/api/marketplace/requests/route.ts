@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadFullQuestionnaire, normalizeAnswers } from '@/lib/vendor/load'
 import { buildStandardInfo } from '@/lib/vendor/standard-info'
 import { computeOffer } from '@/lib/vendor/pricing'
+import { ensureVendorConversation } from '@/lib/vendor/ensureChat'
 
 const REQUESTER_ROLES = ['veranstalter', 'brautpaar', 'brautpaar_solo']
 
@@ -81,6 +82,8 @@ export async function POST(req: NextRequest) {
   // Ohne Fragebogen bleibt es bei der klassischen Freitext-Anfrage (Fallback).
   const questionnaire = await loadFullQuestionnaire(admin, dienstleisterId)
   const hasQuestionnaire = !!questionnaire && questionnaire.is_active && questionnaire.sections.length > 0
+  // Beratungs-Modus: Fragebogen dient nur als Briefing, KEIN Auto-Angebot.
+  const consultMode = hasQuestionnaire && questionnaire!.consult_mode === true
 
   const rawAnswers = (body.answers && typeof body.answers === 'object') ? body.answers as Record<string, unknown> : {}
   let normalized: ReturnType<typeof normalizeAnswers> | null = null
@@ -109,7 +112,9 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   // Auto-Angebot (draft) erzeugen — nur Dienstleister sieht es, bis er freigibt.
-  if (hasQuestionnaire && normalized) {
+  // Im Beratungs-Modus entfaellt das; stattdessen wird direkt ein Chat eroeffnet,
+  // damit der Dienstleister ein Erstgespraech / einen Termin vorschlagen kann.
+  if (hasQuestionnaire && normalized && !consultMode) {
     const standardInfo = await buildStandardInfo(admin, eventId)
     if (budget != null && Number.isFinite(budget as number)) standardInfo.budget = budget as number
     const totals = computeOffer(questionnaire!, normalized.answers, standardInfo)
@@ -134,5 +139,29 @@ export async function POST(req: NextRequest) {
     if (offerErr) console.error('vendor_offers insert failed', offerErr.message)
   }
 
-  return NextResponse.json({ success: true, id: data.id, hasOffer: hasQuestionnaire })
+  if (consultMode) {
+    // Vendor-Auth-User ermitteln und Chat oeffnen (best effort).
+    const { data: link } = await admin
+      .from('user_dienstleister')
+      .select('user_id')
+      .eq('dienstleister_id', dienstleisterId)
+      .limit(1)
+      .maybeSingle()
+    if (link?.user_id) {
+      const convId = await ensureVendorConversation(admin, eventId, link.user_id)
+      if (convId) {
+        await admin.from('marketplace_requests').update({ conversation_id: convId }).eq('id', data.id)
+        await admin.from('messages').insert({
+          conversation_id: convId,
+          event_id: eventId,
+          sender_id: link.user_id,
+          content: 'Vielen Dank für eure Anfrage! Für dieses Angebot vereinbaren wir am liebsten ein persönliches Erstgespräch — wir schlagen euch in Kürze einen Termin vor.',
+          message_type: 'text',
+        })
+        await admin.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', convId)
+      }
+    }
+  }
+
+  return NextResponse.json({ success: true, id: data.id, hasOffer: hasQuestionnaire && !consultMode, consult: consultMode })
 }

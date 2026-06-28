@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Plus, Trash2, RefreshCw, Save, Check, X, FileDown, MessageSquare, ClipboardList, ReceiptText, Calendar, MapPin, Users } from 'lucide-react'
+import { Loader2, Plus, Trash2, RefreshCw, Save, Check, X, FileDown, MessageSquare, ClipboardList, ReceiptText, Calendar, MapPin, Users, Layers, Copy } from 'lucide-react'
 import Link from 'next/link'
 import { formatMoney, type Answer } from '@/lib/vendor/questionnaire'
 import PdfPreviewModal from '@/components/pdf/PdfPreviewModal'
@@ -176,12 +176,151 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
         )}
       </div>
 
+      {/* Varianten (optional) — Standard bleibt EIN Angebot. */}
+      <VariantsManager requestId={requestId} editable={offer.status !== 'accepted'} currency={offer.currency || 'EUR'} />
+
       {pdfPreview && (
         <PdfPreviewModal
           url={`/api/vendor/offers/${requestId}/pdf`}
           title="Angebot – Vorschau"
           fileName="Angebot.pdf"
           onClose={() => setPdfPreview(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+interface Variant { id: string; name: string; line_items: LineItem[]; subtotal: number; tax_amount: number; total: number }
+
+function VariantsManager({ requestId, editable, currency }: { requestId: string; editable: boolean; currency: string }) {
+  const [variants, setVariants] = useState<Variant[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [pdf, setPdf] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+
+  const load = useCallback(async () => {
+    const r = await fetch(`/api/vendor/offers/${requestId}/variants`)
+    const d = await r.json().catch(() => ({}))
+    const list: Variant[] = d.variants ?? []
+    setVariants(list)
+    if (list.length > 0) setOpen(true)
+    setLoading(false)
+  }, [requestId])
+  useEffect(() => { load() }, [load])
+
+  async function addVariant(fromCurrent: boolean) {
+    setBusy('add')
+    await fetch(`/api/vendor/offers/${requestId}/variants`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fromCurrent }),
+    })
+    setBusy(null); await load()
+  }
+  async function saveVariant(v: Variant) {
+    setBusy(v.id)
+    await fetch(`/api/vendor/offers/${requestId}/variants/${v.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: v.name, lineItems: v.line_items }),
+    })
+    setBusy(null); await load()
+  }
+  async function removeVariant(id: string) {
+    if (!confirm('Variante löschen?')) return
+    setBusy(id)
+    await fetch(`/api/vendor/offers/${requestId}/variants/${id}`, { method: 'DELETE' })
+    setBusy(null); await load()
+  }
+  function patchLocal(id: string, patch: Partial<Variant>) {
+    setVariants(prev => prev.map(v => v.id === id ? { ...v, ...patch } : v))
+  }
+  function setItem(vid: string, i: number, p: Partial<LineItem>) {
+    setVariants(prev => prev.map(v => {
+      if (v.id !== vid) return v
+      const items = v.line_items.map((li, idx) => {
+        if (idx !== i) return li
+        const next = { ...li, ...p }
+        next.total = Math.round((Number(next.qty) || 0) * (Number(next.unitPrice) || 0) * 100) / 100
+        return next
+      })
+      return { ...v, line_items: items }
+    }))
+  }
+
+  if (loading) return null
+
+  return (
+    <div style={{ marginTop: 20, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', background: C.bg, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, color: C.text }}>
+        <Layers size={16} style={{ color: C.gold }} />
+        Varianten (optional){variants.length > 0 ? ` · ${variants.length}` : ''}
+        <span style={{ marginLeft: 'auto', fontSize: 12, color: C.dim, fontWeight: 400 }}>{open ? 'Einklappen' : 'Ausklappen'}</span>
+      </button>
+
+      {open && (
+        <div style={{ padding: 14 }}>
+          <p style={{ fontSize: 12, color: C.dim, margin: '0 0 12px', lineHeight: 1.5 }}>
+            Lege optional mehrere Varianten an (z. B. Gut / Besser / Premium). Das Brautpaar erhält pro Variante ein eigenes PDF und nimmt genau eine an. Ohne Varianten bleibt es bei deinem Standard-Angebot oben.
+          </p>
+
+          {variants.map(v => (
+            <div key={v.id} style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, marginBottom: 10 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                <input style={{ ...inp, fontWeight: 600, flex: 1 }} value={v.name} disabled={!editable}
+                  onChange={e => patchLocal(v.id, { name: e.target.value })} placeholder="Variantenname" />
+                <button onClick={() => setPdf(v.id)} style={{ ...btnGhost, padding: '6px 10px', fontSize: 12 }}><FileDown size={13} /> PDF</button>
+                {editable && <button onClick={() => removeVariant(v.id)} disabled={busy === v.id} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex' }}><Trash2 size={15} /></button>}
+              </div>
+
+              {v.line_items.map((li, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                  {editable ? (
+                    <>
+                      <input style={{ ...inp, flex: 1, minWidth: 0 }} value={li.label} onChange={e => setItem(v.id, i, { label: e.target.value })} placeholder="Bezeichnung" />
+                      <input style={{ ...inp, width: 50, textAlign: 'right' }} type="number" value={li.qty} onChange={e => setItem(v.id, i, { qty: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
+                      <input style={{ ...inp, width: 80, textAlign: 'right' }} type="number" value={li.unitPrice} onChange={e => setItem(v.id, i, { unitPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
+                      <span style={{ width: 80, textAlign: 'right', fontSize: 12.5 }}>{formatMoney(li.total, currency)}</span>
+                      <button onClick={() => patchLocal(v.id, { line_items: v.line_items.filter((_, idx) => idx !== i) })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex' }}><Trash2 size={13} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ flex: 1, fontSize: 12.5 }}>{li.label}</span>
+                      <span style={{ width: 80, textAlign: 'right', fontSize: 12.5 }}>{formatMoney(li.total, currency)}</span>
+                    </>
+                  )}
+                </div>
+              ))}
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                {editable ? (
+                  <button onClick={() => patchLocal(v.id, { line_items: [...v.line_items, { label: '', qty: 1, unitPrice: 0, total: 0 }] })} style={{ ...btnGhost, padding: '5px 10px', fontSize: 12 }}><Plus size={13} /> Position</button>
+                ) : <span />}
+                <strong style={{ fontSize: 14, color: C.gold }}>{formatMoney(v.line_items.reduce((s, li) => s + (Number(li.total) || 0), 0), currency)}</strong>
+              </div>
+
+              {editable && (
+                <button onClick={() => saveVariant(v)} disabled={busy === v.id} style={{ ...btnGhost, marginTop: 8, padding: '6px 12px', fontSize: 12.5 }}>
+                  {busy === v.id ? <Loader2 size={13} className="anf-spin" /> : <Save size={13} />} Variante speichern
+                </button>
+              )}
+            </div>
+          ))}
+
+          {editable && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={() => addVariant(false)} disabled={!!busy} style={{ ...btnGhost, padding: '7px 12px', fontSize: 12.5 }}><Plus size={14} /> Leere Variante</button>
+              <button onClick={() => addVariant(true)} disabled={!!busy} style={{ ...btnGhost, padding: '7px 12px', fontSize: 12.5 }}><Copy size={14} /> Aus Angebot übernehmen</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {pdf && (
+        <PdfPreviewModal
+          url={`/api/vendor/offers/${requestId}/pdf?variantId=${pdf}`}
+          title="Variante – Vorschau"
+          fileName="Variante.pdf"
+          onClose={() => setPdf(null)}
         />
       )}
     </div>

@@ -409,6 +409,72 @@ supabase/migrations/
 # PDF beidseitig via @react-pdf/renderer (lib/vendor/offer-pdf.tsx, Dienstleister-Branding).
 # Templates: lib/vendor/questionnaire-templates.ts. Nur Marktplatz-Anfragen, keine Versionierung.
 
+  0120_vendor_pricing_engine.sql       Preis-Engine am Fragebogen (vendor_questionnaires):
+                                       guest_tiers JSONB (Mengenstaffeln Pro-Gast-Preis),
+                                       season_rules JSONB (Saison-/Datumsaufschlaege % oder Pauschale,
+                                       zusaetzlich zum Wochenend-Aufschlag), travel_mode none|zones|km|both +
+                                       travel_zones JSONB (PLZ-Praefix-Pauschalen) + travel_km_price/
+                                       travel_free_radius_km/travel_base_postal_code, consult_mode BOOLEAN.
+                                       Pro-Frage-Staffeln liegen in questions.pricing.tiers (JSONB, keine Migration).
+# ── Preis-Engine (Migration 0120) ────────────────────────────────────────────
+# computeOffer (lib/vendor/pricing.ts) wendet an: guest_tiers (ersetzt per_guest_price in der
+# passenden Stufe), pro-Frage tiers fuer number/per_unit, season_rules (inSeason() unterstuetzt
+# YYYY-MM-DD und jaehrlich MM-DD inkl. Jahreswechsel), Anfahrt als optionale Position bei PLZ-Match
+# (standardInfo.postalCode aus buildStandardInfo, best effort aus venue_address). consult_mode:
+# POST /api/marketplace/requests erzeugt KEIN Auto-Angebot, sondern oeffnet via ensureVendorConversation
+# einen Chat + Hinweis-Nachricht (Terminvorschlag durch den Vendor). UI: FragebogenBuilderClient
+# (TiersEditor/SeasonEditor/TravelEditor + Beratungs-Modus-Schalter). Alle Preisfelder sind durch
+# stripPricing vor dem Brautpaar geschuetzt.
+
+  0121_vendor_offer_variants.sql       OPTIONALE Angebots-Varianten (vendor_offer_variants):
+                                       1 vendor_offers -> n Varianten (name, line_items/subtotal/tax_amount/
+                                       total, sort_order, is_selected). Standard bleibt EIN Angebot ohne Varianten.
+                                       RLS: Lesen wie Eltern-Angebot (Vendor immer, Brautpaar ab status<>'draft'),
+                                       Schreiben via Service-Role.
+# ── Angebots-Varianten (Migration 0121) ──────────────────────────────────────
+# Vendor verwaltet Varianten in VendorOfferEditor (VariantsManager) ueber
+# /api/vendor/offers/[requestId]/variants (+ /[variantId]). Pro Variante eigenes PDF
+# via ?variantId= an beiden PDF-Routen (applyVariantToOffer in lib/vendor/variants.ts).
+# Brautpaar (CoupleOfferPanel) sieht alle Varianten, waehlt eine; PATCH accept mit
+# variantId kopiert die gewaehlte Variante ins Angebot + setzt is_selected. Hat ein
+# Angebot Varianten, ist die Auswahl Pflicht. Manuell dupliziert ("Aus Angebot
+# uebernehmen"), keine Auto-Generierung.
+
+  0122_vendor_brand_color.sql          dienstleister_profiles.brand_color TEXT (Hex). Einheitliches
+                                       Vendor-Branding: Akzentfarbe im Angebots-PDF (lib/vendor/offer-pdf.tsx:
+                                       Cover-Balken/Tabellenkopf/Summenzeile) und in Vendor-Mails ans Brautpaar
+                                       (lib/email/notify.ts emailLayout({brand}) -> Wortmarke+Akzent statt FOREVR;
+                                       offer-notify.ts nutzt es). Profil-UI: Farbwaehler in VendorListingClient,
+                                       Sofort-Feld in /api/vendor/marketplace/profile (Hex-validiert). Leer = Standard.
+
+  0123_vendor_automations.sql          Konfigurierbare Vendor-Automatisierungen: vendor_automations
+                                       (kind reminder|review_request|followup_offer|followup_lead, event_type,
+                                       offset_days, label, enabled), vendor_automation_log (Idempotenz),
+                                       review_invites (Token-Bewertung ohne Login). marketplace_reviews:
+                                       author_user_id nullable + via_token.
+  0124_cron_schedule.sql               pg_cron (taeglich 06:00 UTC) -> net.http_post auf /api/cron/tick.
+                                       Betreiber setzt app.cron_url + app.cron_secret per ALTER DATABASE.
+# ── Automatisierungen / Scheduler (Migration 0123/0124) ──────────────────────
+# lib/vendor/automation-tick.ts (runAutomationTick) verarbeitet taeglich + idempotent:
+#  - reminder: Kalender-Eintrag fuer den Vendor X Tage VOR gebuchtem Event (accepted offer)
+#  - review_request: review_invites-Token + vendor-branded Mail X Tage NACH Event
+#  - followup_offer: released, nicht angenommene Angebote X Tage nach Freigabe -> Mail + Vendor-To-do
+#  - followup_lead: Leads ohne Aktivitaet X Tage -> crm_task
+# Aufruf: POST/GET /api/cron/tick (Header x-cron-secret == CRON_SECRET env). Config-UI:
+# /vendor/automatisierungen (AutomationsClient) ueber /api/vendor/automations (GET seedet Defaults).
+# Manuelle Bewertungsanfrage: /api/vendor/reviews/request. Token-Review oeffentlich:
+# /review/[token] + /api/reviews/[token] (kein Login). Nav-Eintrag "Automatik" in VendorSidebarShell.
+
+  0125_vendor_data_requests.sql        Strukturierte Daten-Anfrage (A3): vendor_data_requests
+                                       (event_id, dienstleister_id, conversation_id, fields JSONB [{key,label,value}],
+                                       status open|answered). RLS aktiv ohne User-Policy (nur Service-Role-APIs).
+# ── Strukturierte Daten-Anfrage (Migration 0125) ─────────────────────────────
+# Vendor fordert im Chat (KommunikationClient -> DataRequestDialog, "Daten anfordern")
+# gezielt Felder an: POST /api/vendor/data-requests legt Zeile an + postet eine Chat-
+# Nachricht. Brautpaar beantwortet im Anbieter-Detail (CoupleDataRequests) via
+# GET /api/marketplace/data-requests + PATCH /api/marketplace/data-requests/[id];
+# die Antwort wird strukturiert gespeichert UND als Chat-Nachricht gepostet.
+
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)
   ProfilClient.tsx                     Edit form: name, email, password, profile picture (Supabase Storage "avatars" bucket)

@@ -23,6 +23,8 @@ export interface OfferPdfData {
     website: string | null
   }
   logoDataUri: string | null
+  /** Markenfarbe (Hex) fuer Akzente; null = Forevr-Standard (Schwarz). */
+  brandColor?: string | null
   offer: {
     lineItems: LineItem[]
     subtotal: number
@@ -162,6 +164,7 @@ function RunningHeader({ title }: { title: string }) {
 function CoverPage({ data }: { data: OfferPdfData }) {
   const { vendor, offer, standardInfo, logoDataUri, offerNumber } = data
   const coupleName = standardInfo.coupleName || '—'
+  const accent = data.brandColor || BLACK
 
   return (
     <Page size="A4" orientation="portrait" style={cover.page}>
@@ -177,7 +180,7 @@ function CoverPage({ data }: { data: OfferPdfData }) {
 
       {/* Hauptinhalt — vertikal zentriert */}
       <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 16 }}>
-        <View style={cover.accent} />
+        <View style={[cover.accent, { backgroundColor: accent }]} />
         <Text style={cover.title}>{vendor.companyName}</Text>
         <Text style={cover.subtitle}>{`Angebot für ${coupleName}`}</Text>
 
@@ -228,6 +231,7 @@ function CoverPage({ data }: { data: OfferPdfData }) {
 function OfferDocument(data: OfferPdfData) {
   const { vendor, offer, standardInfo, answers, offerNumber, logoDataUri } = data
   const cur = offer.currency || 'EUR'
+  const accent = data.brandColor || BLACK
   const headerTitle = `${vendor.companyName} – Angebot ${offerNumber}`
 
   return (
@@ -258,7 +262,7 @@ function OfferDocument(data: OfferPdfData) {
         {/* Positionen */}
         <Text style={s.sectionLabel}>Positionen</Text>
         <View style={s.table}>
-          <View style={s.tHeadRow}>
+          <View style={[s.tHeadRow, { backgroundColor: accent }]}>
             <Text style={[s.th, s.cDesc]}>Position</Text>
             <Text style={[s.th, s.cQty]}>Menge</Text>
             <Text style={[s.th, s.cUnit]}>Einzel</Text>
@@ -282,9 +286,9 @@ function OfferDocument(data: OfferPdfData) {
           {offer.taxMode === 'regular' ? (
             <View style={s.totalsRow}><Text>{`zzgl. USt. (${offer.taxRate}%)`}</Text><Text>{formatMoney(offer.taxAmount, cur)}</Text></View>
           ) : null}
-          <View style={s.grandRow}>
+          <View style={[s.grandRow, { borderTopColor: accent }]}>
             <Text style={s.grandLabel}>Gesamt</Text>
-            <Text style={s.grandValue}>{formatMoney(offer.total, cur)}</Text>
+            <Text style={[s.grandValue, { color: accent }]}>{formatMoney(offer.total, cur)}</Text>
           </View>
           {offer.taxMode === 'kleinunternehmer' ? (
             <Text style={[s.vendorMeta, { marginTop: 6 }]}>Gemäß §19 UStG wird keine Umsatzsteuer berechnet.</Text>

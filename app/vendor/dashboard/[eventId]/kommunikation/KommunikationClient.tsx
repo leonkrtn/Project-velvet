@@ -7,7 +7,7 @@ import ChatOfferMessage from '@/components/chat/ChatOfferMessage'
 import {
   Send, MessageSquare, Paperclip, X, Database, FolderOpen,
   FileText, Download, Layers, Loader2, Search, ArrowLeft,
-  Plus, Users, Check,
+  Plus, Users, Check, ClipboardList, Trash2,
 } from 'lucide-react'
 import { SHARE_MODULE_LABELS, type ModuleSnapshot, type ShareModule } from '@/lib/vendor/shares'
 
@@ -56,6 +56,7 @@ function previewText(m: LastMsg | undefined): string {
 export default function KommunikationClient({ eventId, userId }: { eventId: string; userId: string }) {
   const supabase = useMemo(() => createClient(), [])
   const fileUpload = useFileUpload()
+  const [dataReqOpen, setDataReqOpen] = useState(false)
 
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeConv, setActiveConv] = useState<Conversation | null>(null)
@@ -399,10 +400,14 @@ export default function KommunikationClient({ eventId, userId }: { eventId: stri
             <button onClick={() => fileInputRef.current?.click()} disabled={fileUpload.uploading} aria-label="Datei anhängen" style={iconRound}>
               {fileUpload.uploading ? <Loader2 size={16} className="vk-spin" /> : <Paperclip size={16} />}
             </button>
+            <button onClick={() => setDataReqOpen(true)} aria-label="Daten anfordern" title="Daten anfordern" style={iconRound}>
+              <ClipboardList size={16} />
+            </button>
             <input value={newMsg} onChange={e => setNewMsg(e.target.value)} onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()} placeholder={fileUpload.uploading ? 'Datei wird hochgeladen…' : 'Nachricht schreiben…'} style={{ flex: 1, minWidth: 0, padding: '10px 16px', border: 'none', borderRadius: 22, fontSize: isMobile ? 16 : 14, outline: 'none', fontFamily: 'inherit', background: '#F0F0F2' }} />
             <button onClick={sendMessage} disabled={!newMsg.trim() || sending} aria-label="Senden" style={{ width: 40, height: 40, borderRadius: '50%', background: newMsg.trim() ? 'var(--accent)' : '#E5E5EA', border: 'none', cursor: newMsg.trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', color: newMsg.trim() ? '#fff' : '#8E8E93', flexShrink: 0 }}><Send size={16} /></button>
           </div>
           {fileUpload.error && <div style={{ padding: '6px 16px', fontSize: 12, color: '#FF3B30' }}>{fileUpload.error}</div>}
+          {dataReqOpen && <DataRequestDialog eventId={eventId} onClose={() => setDataReqOpen(false)} />}
         </>
       ) : (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)', flexDirection: 'column', gap: 12 }}>
@@ -578,4 +583,79 @@ function MessageBubble({ msg, isMe, onDownload, onViewShare }: { msg: Message; i
     )
   }
   return <div style={{ ...base, background: isMe ? 'var(--accent)' : '#E5E5EA', color: isMe ? '#fff' : 'var(--text-primary)' }}>{msg.content}</div>
+}
+
+const PRESET_FIELDS = [
+  'Finale Gästezahl', 'Anfahrtsadresse', 'Ansprechpartner vor Ort',
+  'Aufbau-/Startzeit', 'Stromanschluss / Technik vor Ort',
+]
+
+// Dialog: Dienstleister fordert strukturiert Daten an (-> Chat + vendor_data_requests).
+function DataRequestDialog({ eventId, onClose }: { eventId: string; onClose: () => void }) {
+  const [selected, setSelected] = useState<string[]>(['Finale Gästezahl'])
+  const [custom, setCustom] = useState<string[]>([])
+  const [newField, setNewField] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+
+  function toggle(f: string) { setSelected(s => s.includes(f) ? s.filter(x => x !== f) : [...s, f]) }
+  function addCustom() { const v = newField.trim(); if (v) { setCustom(c => [...c, v]); setNewField('') } }
+
+  async function submit() {
+    const labels = [...selected, ...custom]
+    if (labels.length === 0) { setErr('Bitte mindestens ein Feld wählen.'); return }
+    setBusy(true); setErr('')
+    const res = await fetch('/api/vendor/data-requests', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId, fields: labels.map(label => ({ label })) }),
+    })
+    setBusy(false)
+    if (!res.ok) { const d = await res.json().catch(() => ({})); setErr(d.error ?? 'Fehler'); return }
+    onClose()
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 16, width: 440, maxWidth: '100%', maxHeight: '88dvh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+          <ClipboardList size={18} style={{ color: 'var(--accent)' }} />
+          <h3 style={{ flex: 1, margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Daten anfordern</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex' }}><X size={18} /></button>
+        </div>
+        <div style={{ padding: 20 }}>
+          <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', margin: '0 0 14px', lineHeight: 1.5 }}>
+            Wähle die Angaben, die du vom Brautpaar brauchst. Sie erhalten ein Formular im Portal; die Anfrage erscheint zusätzlich im Chat.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+            {PRESET_FIELDS.map(f => (
+              <label key={f} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={selected.includes(f)} onChange={() => toggle(f)} /> {f}
+              </label>
+            ))}
+          </div>
+          {custom.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+              {custom.map((c, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
+                  <Check size={14} style={{ color: 'var(--accent)' }} /> <span style={{ flex: 1 }}>{c}</span>
+                  <button onClick={() => setCustom(arr => arr.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red, #C5221F)', display: 'flex' }}><Trash2 size={14} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input value={newField} onChange={e => setNewField(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustom()} placeholder="Eigenes Feld…" style={{ flex: 1, padding: '8px 10px', fontSize: 13, border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'inherit', background: '#fff', color: 'var(--text-primary)' }} />
+            <button onClick={addCustom} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', color: 'var(--text-primary)' }}><Plus size={14} /></button>
+          </div>
+          {err && <p style={{ color: 'var(--red, #C5221F)', fontSize: 12.5, margin: '12px 0 0' }}>{err}</p>}
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
+          <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>Abbrechen</button>
+          <button onClick={submit} disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', cursor: busy ? 'default' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
+            {busy ? <Loader2 size={15} className="vk-spin" /> : <Send size={15} />} Anfordern
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }

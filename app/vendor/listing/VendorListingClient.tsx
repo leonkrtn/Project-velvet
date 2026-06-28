@@ -94,7 +94,7 @@ export default function VendorListingClient() {
   const [f, setF] = useState({
     name: '', company_name: '', category: 'sonstiges', street: '', zip: '', city: '',
     description: '', email: '', phone: '', website: '', price_range: '',
-    service_cities: '', service_radius_km: '',
+    service_cities: '', service_radius_km: '', brand_color: '',
   })
   const [social, setSocial] = useState<Record<string, string>>({})
 
@@ -127,6 +127,7 @@ export default function VendorListingClient() {
       price_range: v.price_range ?? '',
       service_cities: (v.service_cities ?? []).join(', '),
       service_radius_km: v.service_radius_km != null ? String(v.service_radius_km) : '',
+      brand_color: (v as { brand_color?: string }).brand_color ?? '',
     })
     setSocial(v.social_links ?? {})
     setLoading(false)
@@ -147,6 +148,7 @@ export default function VendorListingClient() {
       service_cities: f.service_cities.split(',').map(s => s.trim()).filter(Boolean),
       service_radius_km: f.service_radius_km,
       social_links: social,
+      brand_color: f.brand_color,
     }
     flash('ok', 'Gespeichert.')
     fetch('/api/vendor/marketplace/profile', {
@@ -423,6 +425,32 @@ export default function VendorListingClient() {
                   placeholder="Beschreibe deine Leistung kurz und prägnant…"
                   style={{ ...inp, minHeight: 90, resize: 'vertical', lineHeight: 1.55 }}
                 />
+              </div>
+
+              {/* Markenfarbe */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={lbl}>Markenfarbe</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input
+                    type="color"
+                    value={/^#[0-9a-fA-F]{6}$/.test(f.brand_color) ? f.brand_color : '#B89968'}
+                    onChange={set('brand_color')}
+                    style={{ width: 44, height: 38, padding: 2, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }}
+                    aria-label="Markenfarbe wählen"
+                  />
+                  <input
+                    value={f.brand_color}
+                    onChange={set('brand_color')}
+                    placeholder="#B89968 (leer = Forevr-Standard)"
+                    style={{ ...inp, maxWidth: 240 }}
+                  />
+                  {f.brand_color && (
+                    <button onClick={() => setF(s => ({ ...s, brand_color: '' }))} style={{ ...btnGhost, padding: '8px 12px' }}>Zurücksetzen</button>
+                  )}
+                </div>
+                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '6px 0 0' }}>
+                  Akzentfarbe für deine Angebots-PDFs und die Mails an das Brautpaar.
+                </p>
               </div>
 
               {/* Kategorie + Ab-Preis */}
