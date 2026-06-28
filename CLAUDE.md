@@ -475,6 +475,16 @@ supabase/migrations/
 # GET /api/marketplace/data-requests + PATCH /api/marketplace/data-requests/[id];
 # die Antwort wird strukturiert gespeichert UND als Chat-Nachricht gepostet.
 
+# ── Standalone-Angebot -> Event (event-offers action:accept) ──────────────────
+# Eigenständige Angebote (vendor_offers.event_id IS NULL, erstellt in OfferEditorFull,
+# Kundeninfo in standard_info.client_*) koennen vom Dienstleister angenommen werden:
+# PATCH /api/vendor/event-offers/[offerId] action:'accept' (nur event_id NULL, Status
+# draft|released) erzeugt ein events-Row (Titel/Kunde/Datum/Ort/Typ aus Angebot +
+# optionalen Body-Feldern), verknuepft den Vendor via event_members(role dienstleister)
+# + event_dienstleister(status akzeptiert), setzt vendor_offers.event_id + status accepted
+# und reichert standard_info an. UI: AcceptDialog ("Annehmen & Event anlegen") in
+# OfferEditorFull, danach Redirect ins event-gebundene Angebot.
+
 app/veranstalter/profil/
   page.tsx                             Server component — loads user profile (name, email, avatar_url)
   ProfilClient.tsx                     Edit form: name, email, password, profile picture (Supabase Storage "avatars" bucket)

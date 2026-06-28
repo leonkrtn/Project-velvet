@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Loader2, Plus, Trash2, RefreshCw, Save, Check, X, ChevronLeft,
-  ReceiptText, Layers, BookmarkPlus, MessageSquare, Copy, AlertTriangle,
+  ReceiptText, Layers, BookmarkPlus, MessageSquare, Copy, AlertTriangle, CalendarPlus,
 } from 'lucide-react'
 import {
   recomputeTotals, effectiveLineTotal, computeDeposit,
@@ -65,6 +65,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState('')
   const [blockMenu, setBlockMenu] = useState(false)
+  const [acceptOpen, setAcceptOpen] = useState(false)
   const [pdfKey, setPdfKey] = useState(0)
   // Split pane: leftPct is the % width of the form column (30–80)
   const [leftPct, setLeftPct] = useState(55)
@@ -203,6 +204,19 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
     if (action === 'release') { router.push(eventId ? `/vendor/dashboard/${eventId}/angebote` : '/vendor/angebote'); return }
     setPdfKey(k => k + 1)
     await load()
+  }
+
+  async function acceptStandalone(fields: Record<string, string>) {
+    setBusy('accept'); setErr('')
+    const res = await fetch(`/api/vendor/event-offers/${offerId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'accept', ...fields }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setBusy(null)
+    if (!res.ok) { setErr(d.error ?? 'Fehler'); return }
+    setAcceptOpen(false)
+    if (d.eventId) router.push(`/vendor/dashboard/${d.eventId}/angebote/${offerId}`)
   }
 
   async function recompute() {
@@ -492,6 +506,11 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
             <button onClick={() => patch('save')} disabled={!!busy} style={btnGhost}>
               {busy === 'save' ? <Loader2 size={15} className="ofe-spin" /> : <Save size={15} />} Entwurf speichern
             </button>
+            {eventId === null && (
+              <button onClick={() => setAcceptOpen(true)} disabled={!!busy} style={btnGhost} title="Als angenommen markieren und ein Event daraus anlegen">
+                <CalendarPlus size={15} /> Annehmen & Event anlegen
+              </button>
+            )}
             <button onClick={() => patch('release')} disabled={!!busy} style={{ ...btn, background: '#1E7E34', color: '#fff' }}>
               {busy === 'release' ? <Loader2 size={15} className="ofe-spin" /> : <Check size={15} />} Freigeben & senden
             </button>
@@ -499,6 +518,11 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
         ) : (
           <>
             {eventId && <Link href={`/vendor/dashboard/${eventId}/kommunikation`} style={{ ...btnGhost, textDecoration: 'none' }}><MessageSquare size={15} /> Zur Kommunikation</Link>}
+            {eventId === null && offer.status === 'released' && (
+              <button onClick={() => setAcceptOpen(true)} disabled={!!busy} style={{ ...btn, background: '#1E7E34', color: '#fff' }} title="Als angenommen markieren und ein Event daraus anlegen">
+                <CalendarPlus size={15} /> Annehmen & Event anlegen
+              </button>
+            )}
             {offer.status !== 'superseded' && (
               <button onClick={supersede} disabled={!!busy} style={{ ...btn, background: C.gold, color: '#fff' }}>
                 {busy === 'supersede' ? <Loader2 size={15} className="ofe-spin" /> : <Copy size={15} />} Neue Version
@@ -507,6 +531,15 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
           </>
         )}
       </div>
+
+      {acceptOpen && (
+        <AcceptDialog
+          defaults={{ eventTitle: title, coupleName: clientName }}
+          busy={busy === 'accept'}
+          onClose={() => setAcceptOpen(false)}
+          onConfirm={acceptStandalone}
+        />
+      )}
       </div>
       </div>{/* end left wrapper */}
 
@@ -595,5 +628,89 @@ function BlockRow({ label, type, sub, onClick }: { label: string; type: LineItem
         <span style={{ display: 'block', fontSize: 11, color: C.dim }}>{TYPE_LABELS[type]} · {sub}</span>
       </span>
     </button>
+  )
+}
+
+// Dialog: eigenständiges Angebot annehmen -> Event anlegen. Vorbefüllt aus dem
+// Angebot, restliche Felder optional.
+function AcceptDialog({ defaults, busy, onClose, onConfirm }: {
+  defaults: { eventTitle: string; coupleName: string }
+  busy: boolean
+  onClose: () => void
+  onConfirm: (fields: Record<string, string>) => void
+}) {
+  const [eventTitle, setEventTitle] = useState(defaults.eventTitle || '')
+  const [coupleName, setCoupleName] = useState(defaults.coupleName || '')
+  const [eventDate, setEventDate] = useState('')
+  const [venue, setVenue] = useState('')
+  const [venueAddress, setVenueAddress] = useState('')
+  const [guestCount, setGuestCount] = useState('')
+  const [eventType, setEventType] = useState('hochzeit')
+
+  const lblS: React.CSSProperties = { display: 'block', fontSize: 11.5, fontWeight: 600, color: C.dim, marginBottom: 5 }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 600, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: C.surface, borderRadius: 16, width: 520, maxWidth: '100%', maxHeight: '90dvh', overflow: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.28)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '16px 20px', borderBottom: `1px solid ${C.border}` }}>
+          <CalendarPlus size={18} style={{ color: C.gold }} />
+          <h3 style={{ flex: 1, margin: 0, fontSize: 16, fontWeight: 700, color: C.text }}>Angebot annehmen &amp; Event anlegen</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.dim, display: 'flex' }}><X size={18} /></button>
+        </div>
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ fontSize: 12.5, color: C.dim, margin: 0, lineHeight: 1.5 }}>
+            Aus diesem Angebot wird ein Event erstellt. Die Daten sind aus dem Angebot vorausgefüllt — du kannst sie ergänzen. Alle Felder außer dem Titel sind optional und später im Event anpassbar.
+          </p>
+          <div>
+            <label style={lblS}>Event-Titel *</label>
+            <input style={{ ...inp, width: '100%' }} value={eventTitle} onChange={e => setEventTitle(e.target.value)} placeholder="z. B. Hochzeit Müller" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={lblS}>Kunde / Brautpaar</label>
+              <input style={{ ...inp, width: '100%' }} value={coupleName} onChange={e => setCoupleName(e.target.value)} placeholder="Name" />
+            </div>
+            <div>
+              <label style={lblS}>Datum</label>
+              <input style={{ ...inp, width: '100%' }} type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={lblS}>Location</label>
+              <input style={{ ...inp, width: '100%' }} value={venue} onChange={e => setVenue(e.target.value)} placeholder="z. B. Schloss Eichberg" />
+            </div>
+            <div>
+              <label style={lblS}>Adresse</label>
+              <input style={{ ...inp, width: '100%' }} value={venueAddress} onChange={e => setVenueAddress(e.target.value)} placeholder="Straße, PLZ Ort" />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={lblS}>Gästezahl</label>
+              <input style={{ ...inp, width: '100%' }} type="number" min={0} value={guestCount} onChange={e => setGuestCount(e.target.value)} placeholder="z. B. 80" />
+            </div>
+            <div>
+              <label style={lblS}>Event-Typ</label>
+              <select style={{ ...inp, width: '100%' }} value={eventType} onChange={e => setEventType(e.target.value)}>
+                <option value="hochzeit">Hochzeit</option>
+                <option value="firmenevent">Firmenevent</option>
+                <option value="intern">Sonstiges</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 20px', borderTop: `1px solid ${C.border}` }}>
+          <button onClick={onClose} style={btnGhost}>Abbrechen</button>
+          <button
+            onClick={() => onConfirm({ eventTitle, coupleName, eventDate, venue, venueAddress, guestCount, eventType })}
+            disabled={busy || !eventTitle.trim()}
+            style={{ ...btn, background: '#1E7E34', color: '#fff', opacity: busy || !eventTitle.trim() ? 0.6 : 1 }}
+          >
+            {busy ? <Loader2 size={15} className="ofe-spin" /> : <Check size={15} />} Event anlegen
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
