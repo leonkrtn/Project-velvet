@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Loader2, Plus, Trash2, RefreshCw, Save, Check, X, ChevronLeft,
-  ReceiptText, Layers, BookmarkPlus, MessageSquare, Copy, AlertTriangle, CalendarPlus,
+  ReceiptText, Layers, BookmarkPlus, MessageSquare, Copy, AlertTriangle, CalendarPlus, Download,
 } from 'lucide-react'
 import {
   recomputeTotals, effectiveLineTotal, computeDeposit,
@@ -561,9 +561,19 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, overflow: 'hidden', height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: C.dim, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Vorschau</span>
-            <button onClick={() => setPdfKey(k => k + 1)} title="Aktualisieren" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.dim, display: 'flex', padding: 4 }}>
-              <RefreshCw size={14} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <button onClick={() => setPdfKey(k => k + 1)} title="Aktualisieren" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.dim, display: 'flex', padding: 4 }}>
+                <RefreshCw size={14} />
+              </button>
+              <a
+                href={pdfUrl}
+                download={`${(title || 'Angebot').replace(/[^\w-]+/g, '_')}.pdf`}
+                title="PDF herunterladen"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.dim, display: 'flex', padding: 4, textDecoration: 'none' }}
+              >
+                <Download size={14} />
+              </a>
+            </div>
           </div>
           <iframe
             key={pdfKey}
