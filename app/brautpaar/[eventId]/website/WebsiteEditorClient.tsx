@@ -14,6 +14,7 @@ import {
   STORY_ALIGNS, STORY_LINES, STORY_MARKERS,
 } from '@/lib/wedding/style'
 import { TEMPLATES } from '@/lib/wedding/templates'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 import {
   WEDDING_LIMITS, MIN_STATIONS, MAX_STATIONS, MAX_SCHEDULE_ITEMS, STATION_ICONS,
   type WeddingContent, type WeddingImage, type WeddingStation,
@@ -695,13 +696,13 @@ function StoryPanel({ content, update, imgUrls, pickImage }: {
 
 function Toggle({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="we-field" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer' }}>
-      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} style={{ marginTop: 3 }} />
+    <div className="we-field" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+      <div style={{ marginTop: 1 }}><ToggleSwitch checked={checked} onChange={onChange} aria-label={label} /></div>
       <span>
         <span style={{ fontSize: '0.9rem', color: 'var(--bp-ink)' }}>{label}</span>
         {hint && <span className="we-hint" style={{ display: 'block' }}>{hint}</span>}
       </span>
-    </label>
+    </div>
   )
 }
 
@@ -800,10 +801,10 @@ function PublishPanel({ status, slug, isOnline, setOnline, onPublish, publishMsg
           : <div className="we-error" style={{ marginBottom: '0.75rem' }}>Bitte zuerst im Tab &quot;Teilen&quot; einen Link festlegen.</div>}
 
         {status === 'published' && (
-          <label className="we-switch" style={{ marginBottom: '0.75rem' }}>
-            <input type="checkbox" checked={isOnline} onChange={e => setOnline(e.target.checked)} />
+          <div className="we-switch" style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <ToggleSwitch checked={isOnline} onChange={v => setOnline(v)} aria-label="Seite öffentlich erreichbar" />
             <span>Seite öffentlich erreichbar ({isOnline ? 'online' : 'offline'})</span>
-          </label>
+          </div>
         )}
 
         <button className="we-btn we-btn-primary we-btn-block" onClick={onPublish} disabled={!slug}>

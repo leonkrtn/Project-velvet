@@ -11,6 +11,7 @@ import {
   LayoutGrid, List, ListChecks,
 } from 'lucide-react'
 import CrmImportDialog from '@/components/vendor/CrmImportDialog'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 // ── Types ──────────────────────────────────────────────────────
 type LifecycleStage = 'lead' | 'anfrage' | 'gebucht' | 'ehemalig'
@@ -607,10 +608,10 @@ function ContactPanel({
                   <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }} />
                 </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={form.anniversary_remind} onChange={e => setForm(f => ({ ...f, anniversary_remind: e.target.checked }))} />
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
+                  <ToggleSwitch checked={form.anniversary_remind} onChange={v => setForm(f => ({ ...f, anniversary_remind: v }))} size="sm" aria-label="Jahrestags-Erinnerung" />
                   Jahrestags-Erinnerung
-                </label>
+                </span>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={save} disabled={saving} style={{ flex: 1, padding: '10px', borderRadius: 9, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
                     {saving ? 'Speichern…' : 'Speichern'}

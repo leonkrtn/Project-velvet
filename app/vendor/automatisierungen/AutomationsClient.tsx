@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import { Loader2, Save, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check } from 'lucide-react'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 type Kind = 'reminder' | 'review_request' | 'followup_offer' | 'followup_lead'
 interface Rule { id?: string; kind: Kind; event_type: string; offset_days: number; label: string; enabled: boolean }
@@ -89,9 +90,10 @@ export default function AutomationsClient() {
             {groupRules.length === 0 && <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 10px' }}>Keine Regel aktiv.</p>}
             {groupRules.map(({ r, i }) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.dim, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={r.enabled} onChange={e => setRule(i, { enabled: e.target.checked })} /> aktiv
-                </label>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: r.enabled ? C.text : C.dim, minWidth: 64 }}>
+                  <ToggleSwitch checked={r.enabled} onChange={v => setRule(i, { enabled: v })} size="sm" aria-label="Regel aktiv" />
+                  {r.enabled ? 'an' : 'aus'}
+                </span>
                 <input style={{ ...inp, width: 64, textAlign: 'right' }} type="number" value={r.offset_days} onChange={e => setRule(i, { offset_days: e.target.value === '' ? 0 : parseInt(e.target.value, 10) })} />
                 <span style={{ fontSize: 12.5, color: C.dim }}>{group.unit}</span>
                 <select style={{ ...inp, width: 160 }} value={r.event_type} onChange={e => setRule(i, { event_type: e.target.value })}>

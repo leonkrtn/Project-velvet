@@ -5,6 +5,7 @@ import { Plus, Trash2, Edit2, Check, X, Heart, Ban, ListMusic, Lightbulb, Music2
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -200,13 +201,13 @@ function RequirementsForm({ reqs, eventId, canEdit, onSaved }: { reqs: Requireme
         />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-        <input
-          type="checkbox"
-          id="streaming"
+        <ToggleSwitch
           checked={draft?.streaming_needed ?? false}
-          onChange={e => setDraft(prev => prev ? { ...prev, streaming_needed: e.target.checked } : null)}
+          onChange={v => setDraft(prev => prev ? { ...prev, streaming_needed: v } : null)}
+          size="sm"
+          aria-label="Streaming erforderlich"
         />
-        <label htmlFor="streaming" style={{ fontSize: 13 }}>Streaming erforderlich</label>
+        <span style={{ fontSize: 13 }}>Streaming erforderlich</span>
         {draft?.streaming_needed && (
           <input
             value={draft.streaming_notes}

@@ -13,6 +13,7 @@ import {
 } from '@/lib/vendor/pricing'
 import { formatMoney, type TaxMode } from '@/lib/vendor/questionnaire'
 import { blocksForCategory, blockToLineItem } from '@/lib/vendor/offer-blocks'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 interface Offer {
   id: string
@@ -454,10 +455,10 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
         {editable ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <textarea style={{ ...inp, width: '100%', minHeight: 90, resize: 'vertical' }} value={agbText} onChange={e => setAgbText(e.target.value)} placeholder="AGB, Stornobedingungen, Leistungsumfang … Das Brautpaar bestätigt diese bei der Annahme." />
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.text, cursor: 'pointer' }}>
-              <input type="checkbox" checked={agbRequired} onChange={e => setAgbRequired(e.target.checked)} />
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.text }}>
+              <ToggleSwitch checked={agbRequired} onChange={v => setAgbRequired(v)} size="sm" aria-label="AGB-Bestätigung verpflichtend" />
               Bestätigung der AGB ist für die Annahme verpflichtend
-            </label>
+            </span>
           </div>
         ) : (
           agbText ? <p style={{ fontSize: 13, color: C.text, margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{agbText}</p> : <p style={{ fontSize: 13, color: C.dim, margin: 0 }}>Keine AGB hinterlegt.</p>

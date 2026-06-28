@@ -5,6 +5,7 @@ import { runOptimistic, runOptimisticInsert, tempId, isTempId } from '@/lib/opti
 import {
   Plus, Trash2, X, GlassWater, Wine, Calculator, Users, RotateCcw, ChevronDown, ChevronUp,
 } from 'lucide-react'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -763,8 +764,8 @@ function CocktailCard({ cocktail, canEdit, isVera, onChange, onDelete }: {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input type="checkbox" id={`alc-${cocktail.id}`} checked={draft.is_alcoholic} onChange={e => setDraft(p => ({ ...p, is_alcoholic: e.target.checked }))} />
-                <label htmlFor={`alc-${cocktail.id}`} style={{ fontSize: 13 }}>Enthält Alkohol</label>
+                <ToggleSwitch checked={draft.is_alcoholic} onChange={v => setDraft(p => ({ ...p, is_alcoholic: v }))} size="sm" aria-label="Enthält Alkohol" />
+                <span style={{ fontSize: 13 }}>Enthält Alkohol</span>
               </div>
 
               <div>
@@ -1288,8 +1289,8 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0, emb
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <input type="checkbox" id="new-kat-alcoholic" checked={newKatAlcoholic} onChange={e => setNewKatAlcoholic(e.target.checked)} />
-            <label htmlFor="new-kat-alcoholic" style={{ fontSize: 13, color: 'var(--text-secondary, #666)' }}>Enthält Alkohol</label>
+            <ToggleSwitch checked={newKatAlcoholic} onChange={setNewKatAlcoholic} size="sm" aria-label="Enthält Alkohol" />
+            <span style={{ fontSize: 13, color: 'var(--text-secondary, #666)' }}>Enthält Alkohol</span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={addKategorie} disabled={addingKat || !newKatName.trim()} style={{ padding: '7px 16px', background: '#fff', color: newKatName.trim() ? 'var(--gold, #B89968)' : '#bbb', border: `1px solid ${newKatName.trim() ? 'var(--gold, #B89968)' : 'var(--border, #ddd)'}`, borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: newKatName.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}>
@@ -1369,10 +1370,10 @@ export default function GetraenkeTabContent({ eventId, mode, guestCount = 0, emb
           {canEdit && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12, padding: '10px 14px', background: 'var(--surface, #fff)', borderRadius: 8, border: '1px solid var(--border, #eee)' }}>
               <FieldInput value={newCocktailName} onChange={setNewCocktailName} placeholder="Cocktail-Name…" />
-              <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-secondary, #666)', whiteSpace: 'nowrap' }}>
-                <input type="checkbox" checked={newCocktailAlcoholic} onChange={e => setNewCocktailAlcoholic(e.target.checked)} />
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-secondary, #666)', whiteSpace: 'nowrap' }}>
+                <ToggleSwitch checked={newCocktailAlcoholic} onChange={setNewCocktailAlcoholic} size="sm" aria-label="mit Alkohol" />
                 mit Alkohol
-              </label>
+              </span>
               <button onClick={addCocktail} disabled={addingCocktail || !newCocktailName.trim()} style={{
                 padding: '6px 14px', background: newCocktailName.trim() ? 'var(--accent, #1a1a1a)' : '#eee',
                 color: newCocktailName.trim() ? '#fff' : '#aaa', border: 'none', borderRadius: 6, fontSize: 13,

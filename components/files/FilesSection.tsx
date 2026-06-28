@@ -6,6 +6,7 @@ import {
   Trash2, Upload, X, Loader2, File, AlertCircle, Eye, EyeOff,
 } from 'lucide-react'
 import { useFileUpload } from '@/hooks/useFileUpload'
+import ToggleSwitch from '@/components/ui/ToggleSwitch'
 import {
   type FileMetadata,
   type LegacyEventFile,
@@ -415,15 +416,10 @@ function UploadPanel({
                 { key: 'bp', label: 'Brautpaar', checked: visibleBp, toggle: () => setVisibleBp(v => !v) },
                 { key: 'dl', label: 'Dienstleister', checked: visibleDl, toggle: () => setVisibleDl(v => !v) },
               ] as const).map(({ key, label, checked, toggle }) => (
-                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 13, color: 'var(--text-primary)', userSelect: 'none' }}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={toggle}
-                    style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--gold, #9C7F4F)' }}
-                  />
+                <span key={key} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: 'var(--text-primary)', userSelect: 'none' }}>
+                  <ToggleSwitch checked={checked} onChange={toggle} size="sm" onColor="var(--gold, #9C7F4F)" aria-label={label} />
                   {label}
-                </label>
+                </span>
               ))}
             </div>
             {!visibleBp && !visibleDl && (
