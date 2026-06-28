@@ -153,7 +153,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     }
 
     // Sequential calls to respect Nominatim rate limit (1 req/s)
-    const citiesArr = [...cities]
+    const citiesArr = Array.from(cities)
     let i = 0
     const next = async () => {
       if (i >= citiesArr.length) return
