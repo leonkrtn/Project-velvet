@@ -190,20 +190,34 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     // Radius filter — only when we have event coordinates
     if (eventCoords && applied.radiusKm < RADIUS_MAX) {
       list = list.filter(v => {
-        // Collect all cities the vendor is associated with
-        const cities: string[] = []
-        if (v.city) cities.push(v.city)
-        for (const c of v.service_cities) cities.push(c)
+        const noLocationData = !v.city && !v.service_cities.length
+        if (noLocationData) return true
 
-        // If no location data at all, always show
-        if (!cities.length) return true
+        const getCoords = (city: string) =>
+          vendorCoords.get(city) ?? geoCache.get(city.trim().toLowerCase()) ?? null
 
-        // Check if any of the vendor's cities is within the selected radius
-        return cities.some(city => {
-          const coords = vendorCoords.get(city) ?? geoCache.get(city.trim().toLowerCase()) ?? null
-          if (!coords) return false
-          return haversineKm(eventCoords.lat, eventCoords.lng, coords.lat, coords.lng) <= applied.radiusKm
-        })
+        // Base city: apply both the customer's radius slider AND the vendor's own
+        // service_radius_km (how far they're willing to travel from their location).
+        if (v.city) {
+          const coords = getCoords(v.city)
+          if (coords) {
+            const dist = haversineKm(eventCoords.lat, eventCoords.lng, coords.lat, coords.lng)
+            const withinCustomer = dist <= applied.radiusKm
+            const withinVendor = !v.service_radius_km || dist <= v.service_radius_km
+            if (withinCustomer && withinVendor) return true
+          }
+        }
+
+        // Explicitly listed service cities: vendor has declared coverage there,
+        // so only the customer radius applies.
+        for (const city of v.service_cities) {
+          const coords = getCoords(city)
+          if (!coords) continue
+          const dist = haversineKm(eventCoords.lat, eventCoords.lng, coords.lat, coords.lng)
+          if (dist <= applied.radiusKm) return true
+        }
+
+        return false
       })
     }
 
