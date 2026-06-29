@@ -414,17 +414,17 @@ supabase/migrations/
                                        season_rules JSONB (Saison-/Datumsaufschlaege % oder Pauschale,
                                        zusaetzlich zum Wochenend-Aufschlag), travel_mode none|zones|km|both +
                                        travel_zones JSONB (PLZ-Praefix-Pauschalen) + travel_km_price/
-                                       travel_free_radius_km/travel_base_postal_code, consult_mode BOOLEAN.
+                                       travel_free_radius_km/travel_base_postal_code.
                                        Pro-Frage-Staffeln liegen in questions.pricing.tiers (JSONB, keine Migration).
 # ── Preis-Engine (Migration 0120) ────────────────────────────────────────────
 # computeOffer (lib/vendor/pricing.ts) wendet an: guest_tiers (ersetzt per_guest_price in der
 # passenden Stufe), pro-Frage tiers fuer number/per_unit, season_rules (inSeason() unterstuetzt
 # YYYY-MM-DD und jaehrlich MM-DD inkl. Jahreswechsel), Anfahrt als optionale Position bei PLZ-Match
-# (standardInfo.postalCode aus buildStandardInfo, best effort aus venue_address). consult_mode:
-# POST /api/marketplace/requests erzeugt KEIN Auto-Angebot, sondern oeffnet via ensureVendorConversation
-# einen Chat + Hinweis-Nachricht (Terminvorschlag durch den Vendor). UI: FragebogenBuilderClient
-# (TiersEditor/SeasonEditor/TravelEditor + Beratungs-Modus-Schalter). Alle Preisfelder sind durch
-# stripPricing vor dem Brautpaar geschuetzt.
+# (standardInfo.postalCode aus buildStandardInfo, best effort aus venue_address). UI: FragebogenBuilderClient
+# (TiersEditor/SeasonEditor/TravelEditor). Alle Preisfelder sind durch
+# stripPricing vor dem Brautpaar geschuetzt. Ein Auto-Angebot ist immer nur ein Entwurf (draft) als
+# Input fuer den Dienstleister — er gibt es frei (release), passt es an, oder nimmt die Anfrage ohne
+# Angebot an (VendorOfferEditor: "Ohne Angebot annehmen" -> action accept, oeffnet nur den Chat).
 
   0121_vendor_offer_variants.sql       OPTIONALE Angebots-Varianten (vendor_offer_variants):
                                        1 vendor_offers -> n Varianten (name, line_items/subtotal/tax_amount/
@@ -474,6 +474,11 @@ supabase/migrations/
 # Nachricht. Brautpaar beantwortet im Anbieter-Detail (CoupleDataRequests) via
 # GET /api/marketplace/data-requests + PATCH /api/marketplace/data-requests/[id];
 # die Antwort wird strukturiert gespeichert UND als Chat-Nachricht gepostet.
+
+  0126_remove_consult_mode.sql         Entfernt vendor_questionnaires.consult_mode (Beratungs-Modus aus 0120).
+                                       Ein Auto-Angebot ist ohnehin nur ein Entwurf/Input fuer den Dienstleister;
+                                       Anfragen koennen jederzeit ohne Angebot angenommen werden (VendorOfferEditor:
+                                       "Ohne Angebot annehmen"). Der separate Modus war damit redundant.
 
 # ── Standalone-Angebot -> Event (event-offers action:accept) ──────────────────
 # Eigenständige Angebote (vendor_offers.event_id IS NULL, erstellt in OfferEditorFull,

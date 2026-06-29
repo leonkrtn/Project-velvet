@@ -164,6 +164,9 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
         {editable ? (
           <>
             <button onClick={() => requestAct('decline')} disabled={!!busy} style={btnGhost}><X size={15} /> Anfrage ablehnen</button>
+            <button onClick={() => requestAct('accept')} disabled={!!busy} style={btnGhost} title="Anfrage annehmen und Chat öffnen, ohne dieses Angebot zu senden">
+              {busy === 'accept' ? <Loader2 size={15} className="anf-spin" /> : <MessageSquare size={15} />} Ohne Angebot annehmen
+            </button>
             <button onClick={() => patch('save')} disabled={!!busy} style={btnGhost}>
               {busy === 'save' ? <Loader2 size={15} className="anf-spin" /> : <Save size={15} />} Entwurf speichern
             </button>

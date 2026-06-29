@@ -203,18 +203,9 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
             <label style={lbl}>Titel</label>
             <input style={inp} value={settings.title} onChange={e => setSetting('title', e.target.value)} placeholder="Angebotsanfrage" />
           </div>
-          <div style={{ marginBottom: 14 }}>
+          <div>
             <label style={lbl}>Einleitungstext (optional)</label>
             <textarea style={{ ...inp, minHeight: 64, resize: 'vertical' }} value={settings.intro_text} onChange={e => setSetting('intro_text', e.target.value)} placeholder="Kurze Begrüßung für das Brautpaar…" />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '12px 14px', borderRadius: 10, border: `1px solid ${settings.consult_mode ? C.gold : C.border}`, background: settings.consult_mode ? 'rgba(184,153,104,0.07)' : C.bg }}>
-            <div style={{ marginTop: 1 }}><ToggleSwitch checked={settings.consult_mode} onChange={v => setSetting('consult_mode', v)} onColor={C.gold} aria-label="Beratungs-Modus" /></div>
-            <span>
-              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: C.text }}>Beratungs-Modus (kein Auto-Angebot)</span>
-              <span style={{ display: 'block', fontSize: 12, color: C.dim, marginTop: 2, lineHeight: 1.5 }}>
-                Für beratungsintensive Leistungen: Eine Anfrage erzeugt kein automatisches Angebot, sondern öffnet direkt einen Chat. Der Fragebogen dient nur als Briefing — du schlägst dem Brautpaar anschließend einen Termin für ein Erstgespräch vor.
-              </span>
-            </span>
           </div>
         </div>
 

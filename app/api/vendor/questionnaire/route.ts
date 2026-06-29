@@ -86,7 +86,6 @@ export async function GET() {
     travel_km_price: num(row.travel_km_price),
     travel_free_radius_km: num(row.travel_free_radius_km),
     travel_base_postal_code: row.travel_base_postal_code ?? '',
-    consult_mode: !!row.consult_mode,
     sections: assembled,
   }
   return NextResponse.json({ questionnaire })
@@ -137,7 +136,6 @@ export async function PUT(req: NextRequest) {
     travel_km_price: Math.max(0, num(s.travel_km_price)),
     travel_free_radius_km: Math.max(0, num(s.travel_free_radius_km)),
     travel_base_postal_code: String(s.travel_base_postal_code ?? '').trim(),
-    consult_mode: !!s.consult_mode,
     updated_at: new Date().toISOString(),
   }
 
