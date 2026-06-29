@@ -38,10 +38,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ even
     : await admin.from('rsvp_settings').insert(rsvpPayload)
   if (rsvpRes.error) return NextResponse.json({ error: rsvpRes.error.message }, { status: 500 })
 
-  // 2. events.max_begleitpersonen
+  // 2. events fields (max_begleitpersonen, collect_allergies, children_note)
+  const eventUpdate: Record<string, unknown> = {}
   if (body.maxBegleitpersonen !== undefined) {
-    const n = Math.max(0, Math.min(20, parseInt(String(body.maxBegleitpersonen), 10) || 0))
-    await admin.from('events').update({ max_begleitpersonen: n }).eq('id', eventId)
+    eventUpdate.max_begleitpersonen = Math.max(0, Math.min(20, parseInt(String(body.maxBegleitpersonen), 10) || 0))
+  }
+  if (body.childrenNote !== undefined) {
+    eventUpdate.children_note = String(body.childrenNote ?? '').trim() || null
+  }
+  if (body.toggles !== undefined && 'allergien' in body.toggles) {
+    eventUpdate.collect_allergies = !!body.toggles.allergien
+  }
+  if (Object.keys(eventUpdate).length > 0) {
+    await admin.from('events').update(eventUpdate).eq('id', eventId)
   }
 
   // 3. feature_toggles

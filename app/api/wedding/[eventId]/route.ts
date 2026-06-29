@@ -26,7 +26,7 @@ async function authEditor(eventId: string) {
 async function loadEvent(admin: ReturnType<typeof createAdminClient>, eventId: string) {
   const { data: ev } = await admin
     .from('events')
-    .select('id, title, couple_name, date, venue, venue_address, meal_options, max_begleitpersonen')
+    .select('id, title, couple_name, date, venue, venue_address, meal_options, max_begleitpersonen, children_note, collect_allergies')
     .eq('id', eventId)
     .maybeSingle()
   return ev
@@ -48,12 +48,14 @@ async function loadRsvpSettings(admin: ReturnType<typeof createAdminClient>, eve
     showPlusOne: rs?.show_plus_one ?? true,
     maxBegleitpersonen: ev?.max_begleitpersonen ?? 2,
     mealOptions: ev?.meal_options ?? ['fleisch', 'fisch', 'vegetarisch', 'vegan'],
+    childrenNote: ev?.children_note ?? '',
     toggles: {
       menu: tmap['rsvp-menu'] ?? true,
       begleitpersonen: tmap['rsvp-begleitpersonen'] ?? true,
       musikwunsch: tmap['rsvp-musikwunsch'] ?? true,
       geschenke: tmap['rsvp-geschenke'] ?? true,
       hotel: tmap['rsvp-hotel'] ?? true,
+      allergien: ev?.collect_allergies ?? true,
     },
   }
 }
