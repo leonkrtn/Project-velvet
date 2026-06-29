@@ -109,11 +109,11 @@ function Group({ title, items, onOpen }: { title: string; items: OfferListRow[];
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 15, fontWeight: 600 }}>{o.title}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>{o.vendor_name}</span>
                   <span style={{ fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: m.bg, color: m.fg }}>{m.label}</span>
                 </div>
                 <div className="bp-caption" style={{ marginTop: 3 }}>
-                  {o.vendor_name}{o.valid_until ? ` · gültig bis ${new Date(o.valid_until).toLocaleDateString('de-DE')}` : ''}
+                  {o.title}{o.valid_until ? ` · gültig bis ${new Date(o.valid_until).toLocaleDateString('de-DE')}` : ''}
                 </div>
               </div>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--bp-gold-deep)', flexShrink: 0 }}>{formatMoney(o.total, o.currency)}</div>
@@ -202,8 +202,8 @@ function OfferModal({ offerId, onClose, onChanged }: { offerId: string; onClose:
           <>
             <div style={{ padding: '18px 22px', borderBottom: '1px solid var(--bp-border)', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 className="bp-font-heading" style={{ fontSize: '1.25rem', margin: 0 }}>{offer.title}</h2>
-                <p className="bp-caption" style={{ margin: '3px 0 0' }}>{offer.vendor_name}</p>
+                <h2 className="bp-font-heading" style={{ fontSize: '1.25rem', margin: 0 }}>{offer.vendor_name}</h2>
+                <p className="bp-caption" style={{ margin: '3px 0 0' }}>{offer.title}</p>
               </div>
               <button onClick={onClose} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--bp-ink-3)', display: 'flex' }}><X size={20} /></button>
             </div>
