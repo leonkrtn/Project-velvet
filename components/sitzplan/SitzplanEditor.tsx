@@ -501,6 +501,16 @@ export default function SitzplanEditor({
   const canvasContainerRef = useRef<HTMLDivElement>(null)
   const [canvasW, setCanvasW] = useState(CANVAS_W)
 
+  // Auf dem Handy: nur Tische anlegen (Form + Plätze) und Gäste zuordnen — keine
+  // Platzierung auf der Fläche. Raumplan/Platzierung/Drehung gibt es nur am Desktop.
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   useEffect(() => {
     const div = canvasContainerRef.current; if (!div) return
     const ro = new ResizeObserver(entries => {
@@ -890,6 +900,171 @@ export default function SitzplanEditor({
   if (loading) return (
     <div style={{ height: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>Lade Sitzplan…</div>
   )
+
+  // ── Mobile: Tische anlegen + Gäste zuordnen (ohne Fläche/Platzierung) ────────
+  if (isMobile) {
+    return (
+      <>
+        {lightboxEntry && <GuestLightbox entry={lightboxEntry} onClose={() => setLightboxEntry(null)} />}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Tisch hinzufügen */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>
+              Tisch hinzufügen
+            </div>
+            <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {(['round', 'rectangular'] as const).map(s => (
+                  <button key={s} onClick={() => setQuickShape(s)}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                      padding: '12px 4px', borderRadius: 10, fontFamily: 'inherit', cursor: 'pointer',
+                      border: `1.5px solid ${quickShape === s ? '#6366F1' : 'var(--border)'}`,
+                      background: quickShape === s ? '#EEF2FF' : 'var(--surface)',
+                    }}>
+                    <svg width="30" height="30" viewBox="0 0 28 28">
+                      {s === 'round'
+                        ? <ellipse cx="14" cy="14" rx="10" ry="10" fill="none" stroke={quickShape === s ? '#6366F1' : '#9CA3AF'} strokeWidth="1.5"/>
+                        : <rect x="4" y="9" width="20" height="11" rx="2" fill="none" stroke={quickShape === s ? '#6366F1' : '#9CA3AF'} strokeWidth="1.5"/>
+                      }
+                    </svg>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: quickShape === s ? '#6366F1' : 'var(--text-secondary)' }}>
+                      {s === 'round' ? 'Rund' : 'Eckig'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Plätze</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button onClick={() => setQuickSeats(v => Math.max(1, v - 1))}
+                    style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 18, lineHeight: 1, fontFamily: 'inherit' }}>−</button>
+                  <span style={{ fontSize: 16, fontWeight: 700, minWidth: 28, textAlign: 'center' }}>{quickSeats}</span>
+                  <button onClick={() => setQuickSeats(v => Math.min(24, v + 1))}
+                    style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 18, lineHeight: 1, fontFamily: 'inherit' }}>+</button>
+                </div>
+              </div>
+              <button onClick={() => addQuickTable(quickShape, quickSeats)}
+                style={{ padding: '12px 10px', borderRadius: 10, border: 'none', cursor: 'pointer', background: '#6366F1', color: '#fff', fontSize: 15, fontWeight: 600, fontFamily: 'inherit' }}>
+                + Tisch anlegen
+              </button>
+            </div>
+          </div>
+
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.5, margin: '0 2px' }}>
+            Tische anlegen und Gäste zuordnen geht hier am Handy. Raumplan und das Platzieren der Tische auf der Fläche macht ihr am Desktop.
+          </p>
+
+          {/* Tischliste */}
+          {tables.length === 0 ? (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '28px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+              Noch keine Tische. Lege oben deinen ersten Tisch an.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {tables.map(table => {
+                const tas = assignmentsForTable(table.id)
+                const isOpen = selectedTableId === table.id
+                const isFull = tas.length >= table.capacity
+                return (
+                  <div key={table.id} style={{ background: 'var(--surface)', border: `1px solid ${isOpen ? '#6366F1' : 'var(--border)'}`, borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                    <button onClick={() => { setSelectedTableId(isOpen ? null : table.id); setSearch('') }}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', background: isOpen ? '#F5F4FF' : 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                        {table.shape === 'round'
+                          ? <ellipse cx="12" cy="12" rx="10" ry="10" fill={isOpen ? '#EEF2FF' : '#F5F5F7'} stroke={isOpen ? '#6366F1' : '#9CA3AF'} strokeWidth="1.5"/>
+                          : <rect x="2" y="7" width="20" height="10" rx="3" fill={isOpen ? '#EEF2FF' : '#F5F5F7'} stroke={isOpen ? '#6366F1' : '#9CA3AF'} strokeWidth="1.5"/>
+                        }
+                      </svg>
+                      <span style={{ flex: 1, fontSize: 15, fontWeight: 600, color: isOpen ? '#4338CA' : 'var(--text)' }}>{table.name}</span>
+                      <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: isFull ? 'rgba(255,59,48,0.1)' : tas.length === 0 ? '#F5F5F7' : '#F0FDF4', color: isFull ? '#FF3B30' : tas.length === 0 ? 'var(--text-tertiary)' : '#15803D' }}>
+                        {tas.length}/{table.capacity}
+                      </span>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                        style={{ flexShrink: 0, opacity: 0.35, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                        <polyline points="6 9 12 15 18 9"/>
+                      </svg>
+                    </button>
+
+                    {isOpen && (
+                      <div style={{ padding: '4px 16px 16px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid var(--border)' }}>
+                        {/* Name + Plätze */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 12 }}>
+                          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Name</span>
+                            <input value={table.name}
+                              onChange={e => updateTableName(table.id, e.target.value)}
+                              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 16, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                            />
+                          </label>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Plätze</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <button onClick={() => updateTableProp(table.id, 'capacity', Math.max(1, table.capacity - 1))}
+                                style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 18, lineHeight: 1, fontFamily: 'inherit' }}>−</button>
+                              <span style={{ fontSize: 16, fontWeight: 700, minWidth: 28, textAlign: 'center' }}>{table.capacity}</span>
+                              <button onClick={() => updateTableProp(table.id, 'capacity', Math.min(50, table.capacity + 1))}
+                                style={{ width: 36, height: 36, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: 18, lineHeight: 1, fontFamily: 'inherit' }}>+</button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Zugeordnete Personen */}
+                        {tas.length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>Zugeordnet</span>
+                            {tas.map(a => (
+                              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', background: '#F5F5F7' }}>
+                                <span style={{ flex: 1, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{personName(a)}</span>
+                                <button onClick={() => removeAssignment(a.id)}
+                                  style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#FF3B30', fontSize: 18, lineHeight: 1, padding: '2px 6px' }}>✕</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Gäste zuordnen */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>Gäste zuordnen</span>
+                          {isFull ? (
+                            <p style={{ fontSize: 13, color: '#FF3B30', textAlign: 'center', padding: '8px 0', margin: 0 }}>Tisch ist voll</p>
+                          ) : (
+                            <>
+                              <input placeholder="Person suchen…" value={search} onChange={e => setSearch(e.target.value)}
+                                style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 16, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                              />
+                              <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {filteredPersons.length === 0 ? (
+                                  <p style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center', padding: '6px 0', margin: 0 }}>Keine weiteren Personen</p>
+                                ) : filteredPersons.map(p => (
+                                  <button key={`${p.type}-${p.id}`} onClick={() => assignPerson(p)}
+                                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                                    <span style={{ fontSize: 14, fontWeight: 500 }}>{p.name}</span>
+                                    {p.subtitle && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{p.subtitle}</span>}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Tisch löschen */}
+                        <button onClick={() => { if (confirm(`"${table.name}" löschen?`)) deleteTable(table.id) }}
+                          style={{ width: '100%', padding: '10px 0', borderRadius: 8, border: '1px solid rgba(255,59,48,0.3)', background: 'rgba(255,59,48,0.06)', color: '#FF3B30', cursor: 'pointer', fontSize: 14, fontWeight: 500, fontFamily: 'inherit' }}>
+                          Tisch löschen
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </>
+    )
+  }
 
   if (roomPoints.length < 3) return (
     <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
