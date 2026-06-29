@@ -42,12 +42,14 @@ interface RsvpSettingsState {
   invitationText: string; deadline: string | null; phoneContact: string
   showMealChoice: boolean; showPlusOne: boolean; maxBegleitpersonen: number
   mealOptions: string[]
-  toggles: { menu: boolean; begleitpersonen: boolean; musikwunsch: boolean; geschenke: boolean; hotel: boolean }
+  childrenNote: string
+  toggles: { menu: boolean; begleitpersonen: boolean; musikwunsch: boolean; geschenke: boolean; hotel: boolean; allergien: boolean }
 }
 const DEFAULT_RSVP_SETTINGS: RsvpSettingsState = {
   invitationText: '', deadline: null, phoneContact: '', showMealChoice: true, showPlusOne: true,
   maxBegleitpersonen: 2, mealOptions: ['fleisch', 'fisch', 'vegetarisch', 'vegan'],
-  toggles: { menu: true, begleitpersonen: true, musikwunsch: true, geschenke: true, hotel: true },
+  childrenNote: '',
+  toggles: { menu: true, begleitpersonen: true, musikwunsch: true, geschenke: true, hotel: true, allergien: true },
 }
 
 // ── Bild-Upload via R2-Pipeline ───────────────────────────────────────────────
@@ -125,7 +127,7 @@ export default function WebsiteEditorClient({ eventId }: { eventId: string }) {
         setIsOnline(d.site.isOnline)
         setStatus(d.site.status)
         setEvent(d.event)
-        if (d.rsvpSettings) setRsvpCfg({ ...DEFAULT_RSVP_SETTINGS, ...d.rsvpSettings, toggles: { ...DEFAULT_RSVP_SETTINGS.toggles, ...(d.rsvpSettings.toggles ?? {}) } })
+        if (d.rsvpSettings) setRsvpCfg({ ...DEFAULT_RSVP_SETTINGS, ...d.rsvpSettings, childrenNote: d.rsvpSettings.childrenNote ?? '', toggles: { ...DEFAULT_RSVP_SETTINGS.toggles, ...(d.rsvpSettings.toggles ?? {}) } })
         // Bestehende Bild-URLs auflösen
         const ids = Array.from(new Set(collectFileIds(d.site.content)))
         const pairs = await Promise.all(ids.map(async id => [id, await fetchImageUrl(id)] as const))
@@ -739,6 +741,7 @@ function RsvpPanel({ content, update, imgUrls, pickImage, rsvpCfg, updateRsvp }:
       </div>
 
       <Toggle label="Menüwahl abfragen" hint="Gäste wählen ein Gericht aus den Menüoptionen." checked={t.menu} onChange={v => setT({ menu: v })} />
+      <Toggle label="Allergien abfragen" hint="Gäste können im Anmeldeformular Allergien oder Unverträglichkeiten angeben." checked={t.allergien} onChange={v => setT({ allergien: v })} />
 
       <Toggle label="Begleitpersonen erlauben" checked={t.begleitpersonen} onChange={v => setT({ begleitpersonen: v })} />
       {t.begleitpersonen && (
@@ -748,6 +751,11 @@ function RsvpPanel({ content, update, imgUrls, pickImage, rsvpCfg, updateRsvp }:
             onChange={e => updateRsvp({ maxBegleitpersonen: Math.max(0, Math.min(20, parseInt(e.target.value || '0', 10) || 0)) })} />
         </div>
       )}
+
+      <Field label="Hinweis zu Kindern" value={rsvpCfg.childrenNote}
+        onChange={v => updateRsvp({ childrenNote: v })}
+        placeholder="z.B. Kinder bis 12 Jahre kostenfrei"
+        hint="Wird auf der RSVP-Seite angezeigt, wenn Kinder erlaubt sind." />
 
       <Toggle label="Übernachtung / Hotel abfragen" hint="Gäste können im RSVP ein Hotelzimmer wählen (sofern Hotels hinterlegt sind)." checked={t.hotel} onChange={v => setT({ hotel: v })} />
       <Toggle label="Musikwünsche sammeln" hint="Gäste können nach der Zusage Songs vorschlagen." checked={t.musikwunsch} onChange={v => setT({ musikwunsch: v })} />

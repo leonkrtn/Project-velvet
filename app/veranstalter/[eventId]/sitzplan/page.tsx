@@ -40,6 +40,16 @@ export default function SitzplanPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [coupleName, setCoupleName] = useState('')
 
+  // Raumkonfiguration + Tischkonzepte gibt es nur am Desktop; am Handy werden
+  // lediglich Tische angelegt und Gäste zugeordnet (siehe SitzplanEditor).
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   // Room config
   const [globalPoints,   setGlobalPoints]   = useState<RaumPoint[]>([])
   const [globalElements, setGlobalElements] = useState<RaumElement[]>([])
@@ -203,7 +213,7 @@ export default function SitzplanPage() {
             {hasEventConfig ? 'Event-spezifische Raumkonfiguration aktiv.' : 'Globale Raumkonfiguration wird angezeigt.'}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: isMobile ? 'none' : 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {concepts.length > 0 && (
             <button onClick={() => { setShowConceptDialog(true); setSelectedConceptId(concepts[0].id); setApplyMode('replace') }} style={{ padding: '8px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
               Konzept laden
@@ -228,8 +238,8 @@ export default function SitzplanPage() {
         </div>
       </div>
 
-      {/* Configurator */}
-      {showConfigurator && (
+      {/* Configurator (Desktop only) */}
+      {!isMobile && showConfigurator && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '24px', marginBottom: 24 }}>
           <div style={{ marginBottom: 20 }}>
             <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 2px' }}>Event-spezifische Raumkonfiguration</p>
@@ -248,7 +258,7 @@ export default function SitzplanPage() {
       )}
 
       {/* Seating editor */}
-      {!showConfigurator && (
+      {(isMobile || !showConfigurator) && (
         <SitzplanEditor
           eventId={eventId}
           canEditRoom={true}

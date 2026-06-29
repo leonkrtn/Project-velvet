@@ -19,8 +19,8 @@ export default async function AllgemeinPage({ params }: Props) {
       id, title, couple_name, date, ceremony_start, description,
       venue, venue_address,
       location_name, location_street, location_zip, location_city, location_website,
-      max_begleitpersonen, children_allowed, children_note,
-      meal_options, collect_allergies,
+      max_begleitpersonen, children_allowed,
+      meal_options,
       budget_total, dresscode
     `)
     .eq('id', eventId)

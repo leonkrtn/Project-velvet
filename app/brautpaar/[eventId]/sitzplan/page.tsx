@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import dynamicImport from 'next/dynamic'
-import { Monitor, LayoutGrid, Armchair, Plus, X, Search, UserPlus2 } from 'lucide-react'
+import { Monitor, LayoutGrid, Armchair, Plus, X, Search, UserPlus2, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { RaumPoint, RaumElement, RaumTablePool, RaumTableType, PlacedTablePreview, ConceptPlacedTable } from '@/components/room/RaumKonfigurator'
 
@@ -71,8 +71,43 @@ function MobileSitzplanView({ eventId, coupleName }: { eventId: string; coupleNa
   const [pickerTableId, setPickerTableId] = useState<string | null>(null)
   const [search, setSearch]           = useState('')
   const [busy, setBusy]               = useState(false)
+  // Schnell-Anlage: Tisch (Form + Plätze) anlegen — Platzierung erfolgt am Desktop.
+  const [quickShape, setQuickShape]   = useState<'round' | 'rectangular'>('round')
+  const [quickSeats, setQuickSeats]   = useState(8)
+  const [creating, setCreating]       = useState(false)
 
   const [partner1, partner2] = splitCouple(coupleName)
+
+  async function addTable() {
+    setCreating(true)
+    const shape = quickShape
+    const capacity = quickSeats
+    let len: number, wid: number
+    if (shape === 'round') {
+      len = Math.max(1.2, Math.round((capacity * 0.6) / Math.PI * 10) / 10)
+      wid = len
+    } else {
+      len = Math.max(1.2, Math.ceil(capacity / 2) * 0.6)
+      wid = 0.9
+    }
+    // Provisorische Position; das eigentliche Platzieren auf der Fläche geschieht am Desktop.
+    const num = tables.length
+    const cx = (num % 3 - 1) * (len + 1.0)
+    const cy = (Math.floor(num / 3) % 3 - 1) * (wid + 1.0)
+    const { data, error } = await supabase.from('seating_tables').insert({
+      event_id: eventId, name: `Tisch ${tables.length + 1}`, shape,
+      capacity, pos_x: cx, pos_y: cy, rotation: 0,
+      table_length: len, table_width: wid, pool_type_id: null,
+    }).select('id, name, capacity').single()
+    if (!error && data) setTables(prev => [...prev, data as MTable])
+    setCreating(false)
+  }
+
+  async function deleteTable(id: string) {
+    setTables(prev => prev.filter(t => t.id !== id))
+    setAssignments(prev => prev.filter(a => a.table_id !== id))
+    await supabase.from('seating_tables').delete().eq('id', id)
+  }
 
   useEffect(() => {
     let active = true
@@ -165,8 +200,47 @@ function MobileSitzplanView({ eventId, coupleName }: { eventId: string; coupleNa
       }}>
         <Monitor size={16} style={{ color: 'var(--bp-gold-deep)', flexShrink: 0, marginTop: 2 }} />
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--bp-gold-deep)', lineHeight: 1.5 }}>
-          Tische anlegen und anordnen geht nur am Desktop. Hier kannst du die vorhandenen Tische schon mit Gästen befüllen.
+          Hier kannst du Tische anlegen und mit Gästen befüllen. Das Platzieren der Tische auf der Fläche und der Raumplan gehen nur am Desktop.
         </p>
+      </div>
+
+      {/* Tisch anlegen */}
+      <div className="bp-card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+        <p style={{ margin: '0 0 0.75rem', fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>Tisch anlegen</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          {(['round', 'rectangular'] as const).map(s => (
+            <button key={s} type="button" onClick={() => setQuickShape(s)}
+              className="bp-card"
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.375rem',
+                padding: '0.75rem 0.25rem', cursor: 'pointer', fontFamily: 'inherit',
+                border: `1.5px solid ${quickShape === s ? 'var(--bp-gold, #B89968)' : 'var(--bp-rule)'}`,
+                background: quickShape === s ? 'var(--bp-gold-pale)' : 'var(--bp-paper)',
+              }}>
+              <svg width="30" height="30" viewBox="0 0 28 28">
+                {s === 'round'
+                  ? <ellipse cx="14" cy="14" rx="10" ry="10" fill="none" stroke={quickShape === s ? 'var(--bp-gold-deep)' : 'var(--bp-ink-3)'} strokeWidth="1.5"/>
+                  : <rect x="4" y="9" width="20" height="11" rx="2" fill="none" stroke={quickShape === s ? 'var(--bp-gold-deep)' : 'var(--bp-ink-3)'} strokeWidth="1.5"/>
+                }
+              </svg>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: quickShape === s ? 'var(--bp-gold-deep)' : 'var(--bp-ink-2)' }}>
+                {s === 'round' ? 'Rund' : 'Eckig'}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+          <span style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)' }}>Plätze</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+            <button type="button" className="bp-btn bp-btn-ghost bp-btn-icon" onClick={() => setQuickSeats(v => Math.max(1, v - 1))} aria-label="Weniger">−</button>
+            <span style={{ fontSize: '1rem', fontWeight: 700, minWidth: 28, textAlign: 'center', color: 'var(--bp-ink)' }}>{quickSeats}</span>
+            <button type="button" className="bp-btn bp-btn-ghost bp-btn-icon" onClick={() => setQuickSeats(v => Math.min(24, v + 1))} aria-label="Mehr">+</button>
+          </div>
+        </div>
+        <button type="button" className="bp-btn bp-btn-primary" onClick={addTable} disabled={creating}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', width: '100%', justifyContent: 'center' }}>
+          <Plus size={15} /> {creating ? 'Wird angelegt…' : 'Tisch anlegen'}
+        </button>
       </div>
 
       {loading ? (
@@ -174,7 +248,7 @@ function MobileSitzplanView({ eventId, coupleName }: { eventId: string; coupleNa
       ) : tables.length === 0 ? (
         <div className="bp-card" style={{ padding: '2rem', textAlign: 'center' }}>
           <Armchair size={28} style={{ color: 'var(--bp-ink-3)', marginBottom: 8 }} />
-          <p className="bp-caption" style={{ margin: 0 }}>Noch keine Tische angelegt. Lege die Tische am Desktop an — danach kannst du sie hier mit Gästen befüllen.</p>
+          <p className="bp-caption" style={{ margin: 0 }}>Noch keine Tische. Lege oben deinen ersten Tisch an — danach kannst du ihn mit Gästen befüllen.</p>
         </div>
       ) : (
         <>
@@ -189,9 +263,17 @@ function MobileSitzplanView({ eventId, coupleName }: { eventId: string; coupleNa
               const full = tas.length >= table.capacity
               return (
                 <div key={table.id} className="bp-card" style={{ padding: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>{table.name}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <span style={{ flex: 1, minWidth: 0, fontWeight: 600, color: 'var(--bp-ink)', fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{table.name}</span>
                     <span className={`bp-badge ${full ? 'bp-badge-gold' : 'bp-badge-neutral'}`}>{tas.length} / {table.capacity}</span>
+                    <button
+                      className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon"
+                      onClick={() => { if (confirm(`"${table.name}" löschen?`)) deleteTable(table.id) }}
+                      aria-label="Tisch löschen"
+                      title="Tisch löschen"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
 
                   {tas.length === 0 ? (

@@ -111,8 +111,6 @@ export interface QuestionnaireSettings {
   travel_km_price: number
   travel_free_radius_km: number
   travel_base_postal_code: string
-  /** Beratungs-Modus: kein Auto-Angebot; Anfrage oeffnet Chat + Terminvorschlag. */
-  consult_mode: boolean
 }
 
 export interface Questionnaire extends QuestionnaireSettings {
@@ -141,7 +139,6 @@ export const DEFAULT_SETTINGS: QuestionnaireSettings = {
   travel_km_price: 0,
   travel_free_radius_km: 0,
   travel_base_postal_code: '',
-  consult_mode: false,
 }
 
 export const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {

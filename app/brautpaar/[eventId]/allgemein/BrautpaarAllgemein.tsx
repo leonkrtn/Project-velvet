@@ -23,9 +23,7 @@ interface EventData {
   location_website: string | null
   max_begleitpersonen: number
   children_allowed: boolean
-  children_note: string | null
   meal_options: string[] | null
-  collect_allergies: boolean | null
   budget_total: number | null
   dresscode: string | null
 }
@@ -91,9 +89,7 @@ export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
         location_website:     d.location_website,
         max_begleitpersonen:  d.max_begleitpersonen,
         children_allowed:     d.children_allowed,
-        children_note:        d.children_note,
         meal_options:         d.meal_options,
-        collect_allergies:    d.collect_allergies,
         budget_total:         d.budget_total,
         dresscode:            d.dresscode,
       })
@@ -198,17 +194,7 @@ export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
             <ToggleSwitch checked={data.children_allowed} onChange={v => set('children_allowed', v)} aria-label="Kinder erlaubt" />
             Kinder erlaubt
           </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', color: 'var(--bp-ink-2)' }}>
-            <ToggleSwitch checked={data.collect_allergies ?? false} onChange={v => set('collect_allergies', v)} aria-label="Allergien abfragen" />
-            Allergien abfragen
-          </span>
         </div>
-
-        {data.children_allowed && (
-          <Field label="Hinweis zu Kindern">
-            <input className="bp-input" value={data.children_note ?? ''} onChange={e => set('children_note', e.target.value || null)} placeholder="z.B. Kinder bis 12 Jahre kostenfrei" />
-          </Field>
-        )}
 
       </Section>
 

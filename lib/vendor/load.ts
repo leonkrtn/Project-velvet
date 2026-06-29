@@ -69,7 +69,6 @@ export async function loadFullQuestionnaire(
     travel_km_price: num(row.travel_km_price),
     travel_free_radius_km: num(row.travel_free_radius_km),
     travel_base_postal_code: row.travel_base_postal_code ?? '',
-    consult_mode: !!row.consult_mode,
     sections: assembled,
   }
 }

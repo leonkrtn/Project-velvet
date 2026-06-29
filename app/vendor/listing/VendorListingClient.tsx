@@ -322,7 +322,7 @@ export default function VendorListingClient() {
 
   return (
     <div className="vnd-page-outer" style={{ flex: 1, background: 'var(--bg)', padding: '28px 24px 48px', overflow: 'auto' }}>
-      <div>
+      <div className="vnd-page-card">
 
         {/* ── Header ── */}
         <div className="listing-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
