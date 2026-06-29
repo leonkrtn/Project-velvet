@@ -194,8 +194,9 @@ function InfoCell({ label, value, href }: { label: string; value: string | null 
 }
 
 // ── Contact Row (list) ─────────────────────────────────────────
-function ContactRow({ contact, selected, onClick }: {
+function ContactRow({ contact, selected, onClick, onStageChange }: {
   contact: Contact; selected: boolean; onClick: () => void
+  onStageChange?: (stage: LifecycleStage) => void
 }) {
   const s = stageFor(contact.lifecycle_stage)
   const ETypeIcon = EVENT_TYPE_ICONS[contact.event_type] ?? HelpCircle
@@ -295,8 +296,27 @@ function ContactRow({ contact, selected, onClick }: {
       </div>
 
       {/* Stage */}
-      <div style={{ textAlign: 'right' }}>
-        <StageBadge stage={contact.lifecycle_stage} />
+      <div style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+        {onStageChange ? (
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <select
+              value={contact.lifecycle_stage}
+              onChange={e => onStageChange(e.target.value as LifecycleStage)}
+              style={{
+                appearance: 'none', WebkitAppearance: 'none',
+                fontSize: 11, fontWeight: 600,
+                padding: '2px 18px 2px 8px', borderRadius: 100,
+                color: s.color, background: s.bg, border: 'none',
+                cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
+              }}
+            >
+              {STAGES.map(st => <option key={st.key} value={st.key}>{st.label}</option>)}
+            </select>
+            <ChevronDown size={9} style={{ position: 'absolute', right: 5, top: '50%', transform: 'translateY(-50%)', color: s.color, pointerEvents: 'none' }} />
+          </div>
+        ) : (
+          <StageBadge stage={contact.lifecycle_stage} />
+        )}
       </div>
     </div>
   )
@@ -380,6 +400,7 @@ function ContactPanel({
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ ...contact })
   const [saving, setSaving] = useState(false)
+  const [stageChanging, setStageChanging] = useState(false)
   const [newActivity, setNewActivity] = useState<{ type: ActivityType; title: string; body: string } | null>(null)
   const [newTask, setNewTask] = useState<{ title: string; due_at: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -415,6 +436,19 @@ function ContactPanel({
     const json = await res.json()
     if (json.contact) { onUpdated({ ...contact, ...json.contact }); setEditing(false) }
     setSaving(false)
+  }
+
+  async function quickChangeStage(newStage: LifecycleStage) {
+    if (newStage === contact.lifecycle_stage || stageChanging) return
+    setStageChanging(true)
+    const res = await fetch(`/api/vendor/crm/contacts/${contact.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lifecycle_stage: newStage }),
+    })
+    const json = await res.json()
+    if (json.contact) onUpdated({ ...contact, ...json.contact })
+    setStageChanging(false)
   }
 
   async function addActivity() {
@@ -507,7 +541,31 @@ function ContactPanel({
                 {contact.priority === 'grosskunde' && <Building2 size={13} style={{ color: '#6366F1' }} />}
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                <StageBadge stage={contact.lifecycle_stage} />
+                {(() => {
+                  const st = stageFor(contact.lifecycle_stage)
+                  return (
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <select
+                        value={contact.lifecycle_stage}
+                        onChange={e => quickChangeStage(e.target.value as LifecycleStage)}
+                        disabled={stageChanging || editing}
+                        title="Status ändern"
+                        style={{
+                          appearance: 'none', WebkitAppearance: 'none',
+                          fontSize: 11, fontWeight: 600,
+                          padding: '2px 20px 2px 8px', borderRadius: 100,
+                          color: st.color, background: st.bg, border: 'none',
+                          cursor: editing ? 'default' : 'pointer',
+                          fontFamily: 'inherit', whiteSpace: 'nowrap',
+                          opacity: stageChanging ? 0.6 : 1,
+                        }}
+                      >
+                        {STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                      </select>
+                      <ChevronDown size={9} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', color: st.color, pointerEvents: 'none' }} />
+                    </div>
+                  )
+                })()}
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{SOURCE_LABELS[contact.source]}</span>
                 {contact.event_title && <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>· {contact.event_title}</span>}
               </div>
@@ -1336,7 +1394,11 @@ export default function CrmClient() {
               )
             })()}
             {sortedContacts.map(c => (
-              <ContactRow key={c.id} contact={c} selected={selectedContact?.id === c.id} onClick={() => setSelectedContact(selectedContact?.id === c.id ? null : c)} />
+              <ContactRow key={c.id} contact={c} selected={selectedContact?.id === c.id} onClick={() => setSelectedContact(selectedContact?.id === c.id ? null : c)} onStageChange={async (stage) => {
+                setContacts(prev => prev.map(x => x.id === c.id ? { ...x, lifecycle_stage: stage } : x))
+                if (selectedContact?.id === c.id) setSelectedContact(prev => prev ? { ...prev, lifecycle_stage: stage } : prev)
+                await fetch(`/api/vendor/crm/contacts/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lifecycle_stage: stage }) })
+              }} />
             ))}
           </>
         ) : (
