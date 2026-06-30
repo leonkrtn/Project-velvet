@@ -30,6 +30,8 @@ type TransportMode = 'auto' | 'bahn' | 'flugzeug' | 'andere'
 interface BegleitpersonPayload {
   id?: string
   name: string
+  vorname?: string
+  nachname?: string
   ageCategory: AltersKategorie
   trinkAlkohol?: boolean | null
   meal?: MealChoice | null
@@ -222,6 +224,8 @@ export async function GET(
       begleitpersonen: (begleit ?? []).map((b: any) => ({
         id: b.id,
         name: b.name ?? '',
+        vorname: b.vorname ?? '',
+        nachname: b.nachname ?? '',
         ageCategory: b.age_category ?? 'erwachsen',
         trinkAlkohol: b.trink_alkohol,
         meal: b.meal_choice,
@@ -287,6 +291,11 @@ export async function POST(
       if (b.meal && !validMeals.includes(b.meal)) {
         return NextResponse.json({ error: 'Ungültige Menüwahl für Begleitperson' }, { status: 400 })
       }
+      const bVorname = (b.vorname ?? '').trim()
+      const bNachname = (b.nachname ?? '').trim()
+      if (bVorname.length < 1 || bNachname.length < 1) {
+        return NextResponse.json({ error: 'Bitte gib für jede Begleitperson Vor- und Nachname an.' }, { status: 400 })
+      }
     }
   }
 
@@ -325,15 +334,22 @@ export async function POST(
 
   // 6. Begleitpersonen atomar ersetzen via RPC
   const bpRows = (attending && body.begleitpersonen && body.begleitpersonen.length > 0)
-    ? body.begleitpersonen.map(b => ({
-        id:            b.id ?? null,
-        name:          titleCaseName(b.name ?? ''),
-        age_category:  b.ageCategory ?? 'erwachsen',
-        trink_alkohol: b.ageCategory === 'erwachsen' ? (b.trinkAlkohol ?? null) : null,
-        meal_choice:   b.meal ?? null,
-        allergy_tags:  b.allergies ?? [],
-        allergy_custom: toNullIfEmpty(b.allergyCustom),
-      }))
+    ? body.begleitpersonen.map(b => {
+        const bVorname = titleCaseName((b.vorname ?? '').trim())
+        const bNachname = titleCaseName((b.nachname ?? '').trim())
+        const fullName = `${bVorname} ${bNachname}`.trim() || titleCaseName(b.name ?? '')
+        return {
+          id:            b.id ?? null,
+          name:          fullName,
+          vorname:       bVorname || null,
+          nachname:      bNachname || null,
+          age_category:  b.ageCategory ?? 'erwachsen',
+          trink_alkohol: b.ageCategory === 'erwachsen' ? (b.trinkAlkohol ?? null) : null,
+          meal_choice:   b.meal ?? null,
+          allergy_tags:  b.allergies ?? [],
+          allergy_custom: toNullIfEmpty(b.allergyCustom),
+        }
+      })
     : []
 
   const { error: bpErr } = await admin.rpc('replace_begleitpersonen', {
@@ -379,6 +395,8 @@ export async function POST(
       begleitpersonen: (begleit ?? []).map((b: any) => ({
         id:            b.id,
         name:          b.name ?? '',
+        vorname:       b.vorname ?? '',
+        nachname:      b.nachname ?? '',
         ageCategory:   b.age_category ?? 'erwachsen',
         trinkAlkohol:  b.trink_alkohol,
         meal:          b.meal_choice,

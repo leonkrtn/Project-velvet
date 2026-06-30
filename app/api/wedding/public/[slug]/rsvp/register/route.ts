@@ -15,13 +15,19 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params
-  let body: { name?: string; email?: string }
+  let body: { vorname?: string; nachname?: string; email?: string }
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Ungültiger Payload' }, { status: 400 }) }
 
-  const name = (body.name ?? '').trim()
+  const vorname = (body.vorname ?? '').trim()
+  const nachname = (body.nachname ?? '').trim()
   const email = (body.email ?? '').trim().toLowerCase()
-  if (name.length < 2) return NextResponse.json({ error: 'Bitte gib deinen Namen ein.' }, { status: 400 })
+  if (vorname.length < 1) return NextResponse.json({ error: 'Bitte gib deinen Vornamen ein.' }, { status: 400 })
+  if (nachname.length < 1) return NextResponse.json({ error: 'Bitte gib deinen Nachnamen ein.' }, { status: 400 })
   if (!isEmail(email)) return NextResponse.json({ error: 'Bitte gib eine gültige E-Mail-Adresse ein.' }, { status: 400 })
+
+  const vornameClean = titleCaseName(vorname)
+  const nachnameClean = titleCaseName(nachname)
+  const name = `${vornameClean} ${nachnameClean}`.trim()
 
   const admin = createAdminClient()
 
@@ -48,7 +54,9 @@ export async function POST(
     .from('guests')
     .insert({
       event_id: site.event_id,
-      name: titleCaseName(name),
+      name,
+      vorname: vornameClean,
+      nachname: nachnameClean,
       email,
       status: 'angelegt',
     })
