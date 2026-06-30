@@ -719,7 +719,17 @@ function WishlistItem({ token, wish, onChange }: { token: string; wish: any; onC
   return (
     <div className="wd-companion" style={{ display: 'block' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-        <div>
+        {wish.imageUrl && (
+          <img
+            src={wish.imageUrl}
+            alt={wish.title}
+            style={{
+              width: 64, height: 64, borderRadius: 10, objectFit: 'cover',
+              flexShrink: 0, border: '1px solid var(--wd-border, rgba(0,0,0,0.08))',
+            }}
+          />
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
           <strong>{wish.title}</strong>
           {wish.description && <div className="wd-hint">{wish.description}</div>}
           {!wish.is_money_wish && wish.price ? <div className="wd-hint">{wish.price} €</div> : null}

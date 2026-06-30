@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Trash2, Edit2, X, Check, Gift, ExternalLink, DollarSign } from 'lucide-react'
+import { Plus, Trash2, Edit2, X, Check, Gift, ExternalLink, DollarSign, ImagePlus, Loader2 } from 'lucide-react'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 interface WishItem {
@@ -18,6 +18,8 @@ interface WishItem {
   sort_order: number
   total_contributed: number
   contribution_count: number
+  image_r2_key: string | null
+  imageUrl?: string | null
 }
 
 interface WishFormData {
@@ -28,6 +30,8 @@ interface WishFormData {
   link: string
   is_money_wish: boolean
   money_target: string
+  image_r2_key: string | null
+  imageUrl: string | null
 }
 
 const PRIORITY_CFG = {
@@ -37,7 +41,10 @@ const PRIORITY_CFG = {
 }
 
 function emptyForm(): WishFormData {
-  return { title: '', description: '', price: '', priority: 'mittel', link: '', is_money_wish: false, money_target: '' }
+  return {
+    title: '', description: '', price: '', priority: 'mittel', link: '',
+    is_money_wish: false, money_target: '', image_r2_key: null, imageUrl: null,
+  }
 }
 
 // ── WishCard ─────────────────────────────────────────────────────────────────
@@ -60,17 +67,28 @@ function WishCard({ item, onEdit, onDelete }: { item: WishItem; onEdit: () => vo
       }}
     >
       <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
-        {/* Icon */}
-        <div style={{
-          width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-          background: item.is_money_wish ? 'var(--bp-gold-pale)' : pCfg.bg,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: `1px solid ${item.is_money_wish ? 'var(--bp-rule-gold)' : pCfg.border}`,
-        }}>
-          {item.is_money_wish
-            ? <DollarSign size={17} color="var(--bp-gold)" />
-            : <Gift size={17} color={pCfg.color} />}
-        </div>
+        {/* Image (if present) or icon fallback */}
+        {item.imageUrl ? (
+          <img
+            src={item.imageUrl}
+            alt={item.title}
+            style={{
+              width: 56, height: 56, borderRadius: 10, flexShrink: 0,
+              objectFit: 'cover', border: '1px solid var(--bp-rule)',
+            }}
+          />
+        ) : (
+          <div style={{
+            width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+            background: item.is_money_wish ? 'var(--bp-gold-pale)' : pCfg.bg,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: `1px solid ${item.is_money_wish ? 'var(--bp-rule-gold)' : pCfg.border}`,
+          }}>
+            {item.is_money_wish
+              ? <DollarSign size={17} color="var(--bp-gold)" />
+              : <Gift size={17} color={pCfg.color} />}
+          </div>
+        )}
 
         {/* Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -192,15 +210,85 @@ function WishCard({ item, onEdit, onDelete }: { item: WishItem; onEdit: () => vo
 
 // ── WishModal ────────────────────────────────────────────────────────────────
 
-function WishModal({ form, onChange, onSave, onClose, saving, isEdit }: {
+function WishModal({ form, onChange, onSave, onClose, saving, isEdit, eventId, wishId }: {
   form: WishFormData
   onChange: (f: WishFormData) => void
   onSave: () => void
   onClose: () => void
   saving: boolean
   isEdit: boolean
+  eventId: string
+  wishId: string | null
 }) {
   const set = (patch: Partial<WishFormData>) => onChange({ ...form, ...patch })
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const imageRouteId = wishId ?? 'new'
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (e.target) e.target.value = ''
+    if (!file) return
+
+    setImageError(null)
+    setImageUploading(true)
+    try {
+      // 1. Request presigned upload URL
+      const reqRes = await fetch(`/api/geschenke/${imageRouteId}/image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId,
+          filename: file.name,
+          contentType: file.type || 'application/octet-stream',
+          sizeBytes: file.size,
+        }),
+      })
+      if (!reqRes.ok) {
+        const { error } = await reqRes.json().catch(() => ({ error: 'Unbekannter Fehler' }))
+        throw new Error(error ?? `HTTP ${reqRes.status}`)
+      }
+      const { uploadUrl, r2Key } = await reqRes.json() as { uploadUrl: string; r2Key: string }
+
+      // 2. Upload directly to R2
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      })
+      if (!putRes.ok) throw new Error(`R2 Upload fehlgeschlagen (${putRes.status})`)
+
+      // 3. Clean up the previous image (if any) — best-effort, fire and forget
+      if (form.image_r2_key) {
+        fetch(`/api/geschenke/${imageRouteId}/image`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ r2Key: form.image_r2_key, eventId }),
+        }).catch(() => {})
+      }
+
+      // 4. Show local preview immediately; image_r2_key is persisted with the wish on save()
+      const localPreviewUrl = URL.createObjectURL(file)
+      set({ image_r2_key: r2Key, imageUrl: localPreviewUrl })
+    } catch (err: any) {
+      setImageError(err.message ?? 'Upload fehlgeschlagen')
+    } finally {
+      setImageUploading(false)
+    }
+  }
+
+  function removeImage() {
+    if (form.image_r2_key) {
+      fetch(`/api/geschenke/${imageRouteId}/image`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ r2Key: form.image_r2_key, eventId }),
+      }).catch(() => {})
+    }
+    set({ image_r2_key: null, imageUrl: null })
+  }
 
   return (
     <div
@@ -252,6 +340,60 @@ function WishModal({ form, onChange, onSave, onClose, saving, isEdit }: {
               placeholder="Optionale Details…"
               style={{ minHeight: 72 }}
             />
+          </div>
+
+          <div className="bp-field" style={{ marginBottom: 0 }}>
+            <label className="bp-label-text">Produktbild (optional)</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
+              onChange={handleImageSelect}
+              style={{ display: 'none' }}
+            />
+            {form.imageUrl ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <img
+                  src={form.imageUrl}
+                  alt="Vorschau"
+                  style={{ width: 72, height: 72, borderRadius: 10, objectFit: 'cover', border: '1px solid var(--bp-rule)' }}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                  <button
+                    type="button"
+                    className="bp-btn bp-btn-ghost bp-btn-sm"
+                    disabled={imageUploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Ersetzen
+                  </button>
+                  <button
+                    type="button"
+                    className="bp-btn bp-btn-ghost bp-btn-sm"
+                    disabled={imageUploading}
+                    onClick={removeImage}
+                    style={{ color: '#B91C1C' }}
+                  >
+                    Entfernen
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="bp-btn bp-btn-ghost bp-btn-sm"
+                disabled={imageUploading}
+                onClick={() => fileInputRef.current?.click()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
+              >
+                {imageUploading
+                  ? <><Loader2 size={14} className="bp-spin" /> Lädt hoch…</>
+                  : <><ImagePlus size={14} /> Bild auswählen</>}
+              </button>
+            )}
+            {imageError && (
+              <p className="bp-caption" style={{ color: '#B91C1C', marginTop: '0.375rem' }}>{imageError}</p>
+            )}
           </div>
 
           <div className="bp-grid-2" style={{ gap: '0.75rem' }}>
@@ -399,11 +541,28 @@ export default function GeschenkTab({ eventId }: { eventId: string }) {
         totals[b.wish_id].sum += Number(b.amount)
         totals[b.wish_id].count += 1
       }
-      setItems((wishes ?? []).map(w => ({
+      const mapped: WishItem[] = (wishes ?? []).map(w => ({
         ...w,
         total_contributed: totals[w.id]?.sum ?? 0,
         contribution_count: totals[w.id]?.count ?? 0,
-      })))
+        imageUrl: null,
+      }))
+      setItems(mapped)
+
+      // Resolve presigned display URLs for wishes that have a product image
+      // (best-effort, fire-and-forget per item so the list renders immediately).
+      mapped
+        .filter(w => w.image_r2_key)
+        .forEach(w => {
+          fetch(`/api/geschenke/${w.id}/image-url`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data?.imageUrl) {
+                setItems(prev => prev.map(i => i.id === w.id ? { ...i, imageUrl: data.imageUrl } : i))
+              }
+            })
+            .catch(() => {})
+        })
     } catch (e: any) {
       setLoadError(e.message ?? 'Fehler beim Laden')
     } finally {
@@ -430,6 +589,8 @@ export default function GeschenkTab({ eventId }: { eventId: string }) {
       link: item.link ?? '',
       is_money_wish: item.is_money_wish,
       money_target: item.money_target != null ? String(item.money_target) : '',
+      image_r2_key: item.image_r2_key ?? null,
+      imageUrl: item.imageUrl ?? null,
     })
     setModalOpen(true)
   }
@@ -447,20 +608,21 @@ export default function GeschenkTab({ eventId }: { eventId: string }) {
       link: form.link.trim() || null,
       is_money_wish: form.is_money_wish,
       money_target: form.is_money_wish && form.money_target ? Number(form.money_target) : null,
+      image_r2_key: form.image_r2_key,
     }
 
     if (editingId) {
       const { error } = await supabase.from('geschenk_wuensche').update(payload).eq('id', editingId)
       if (!error) {
         setItems(prev => prev.map(i => i.id === editingId
-          ? { ...i, ...payload, total_contributed: i.total_contributed, contribution_count: i.contribution_count }
+          ? { ...i, ...payload, imageUrl: form.imageUrl, total_contributed: i.total_contributed, contribution_count: i.contribution_count }
           : i,
         ))
       }
     } else {
       const { data, error } = await supabase.from('geschenk_wuensche').insert(payload).select().single()
       if (!error && data) {
-        setItems(prev => [...prev, { ...data, total_contributed: 0, contribution_count: 0 }])
+        setItems(prev => [...prev, { ...data, imageUrl: form.imageUrl, total_contributed: 0, contribution_count: 0 }])
       }
     }
 
@@ -556,6 +718,8 @@ export default function GeschenkTab({ eventId }: { eventId: string }) {
           onClose={() => setModalOpen(false)}
           saving={saving}
           isEdit={!!editingId}
+          eventId={eventId}
+          wishId={editingId}
         />
       )}
     </div>

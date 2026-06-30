@@ -93,7 +93,7 @@ export async function GET(
     admin.from('begleitpersonen').select('*').eq('guest_id', guest.id),
     admin.from('hotels').select('id, name, address, hotel_rooms(id, room_type, total_rooms, booked_rooms, price_per_night)').eq('event_id', guest.event_id),
     admin.from('geschenk_wuensche')
-      .select('id, title, description, price, priority, link, is_money_wish, money_target, status, claimed_by_token, sort_order')
+      .select('id, title, description, price, priority, link, is_money_wish, money_target, status, claimed_by_token, sort_order, image_r2_key')
       .eq('event_id', guest.event_id)
       .order('sort_order'),
     admin.from('geschenk_beitraege')
@@ -136,10 +136,11 @@ export async function GET(
     || ''
 
   const allBeitraege = beitraege ?? []
-  const wishlist = (wishes ?? []).map((w: any) => {
+  const wishlist = await Promise.all((wishes ?? []).map(async (w: any) => {
     const wishBeitraege = allBeitraege.filter((b: any) => b.wish_id === w.id)
     const totalContributed = wishBeitraege.reduce((sum: number, b: any) => sum + (b.amount ?? 0), 0)
     const myContrib = allBeitraege.find((b: any) => b.wish_id === w.id && b.guest_token === guest.token)
+    const imageUrl = w.image_r2_key ? await requestDownloadUrl(w.image_r2_key).catch(() => null) : null
     return {
       id: w.id,
       title: w.title,
@@ -153,8 +154,9 @@ export async function GET(
       is_claimed_by_me: w.claimed_by_token === guest.token,
       total_contributed: totalContributed,
       my_contribution: myContrib?.amount ?? 0,
+      imageUrl,
     }
-  })
+  }))
 
   return NextResponse.json({
     display,
