@@ -74,6 +74,10 @@ export interface MarketplaceVendor {
   street: string | null
   zip: string | null
   city: string | null
+  /** Allgemeine Firmenadresse (Migration 0127) — Fallback, falls street/zip/city leer sind. */
+  company_street?: string | null
+  company_zip?: string | null
+  company_city?: string | null
   price_range: string | null
   logo_r2_key: string | null
   is_marketplace: boolean

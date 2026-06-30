@@ -3,7 +3,10 @@ import { requireVendorOwner } from '@/lib/marketplace/owner'
 import { requestDownloadUrl } from '@/lib/files/worker-client'
 import { SENSITIVE_FIELDS, MARKETPLACE_CATEGORIES, PRICE_RANGES } from '@/lib/marketplace/types'
 
-const INSTANT = ['description', 'email', 'phone', 'website', 'price_range', 'social_links', 'service_cities', 'service_radius_km', 'brand_color'] as const
+// company_street/company_zip/company_city = allgemeine Firmenadresse (Migration 0127).
+// NICHT Teil des Marktplatz-Listings (street/zip/city bleiben in SENSITIVE_FIELDS) und
+// daher ohne erneute Moderationsprüfung sofort speicherbar.
+const INSTANT = ['description', 'email', 'phone', 'website', 'price_range', 'social_links', 'service_cities', 'service_radius_km', 'brand_color', 'company_street', 'company_zip', 'company_city'] as const
 
 // GET — komplettes eigenes Profil inkl. Fotos, Pakete, FAQ, Verfügbarkeit.
 export async function GET() {
