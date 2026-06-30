@@ -341,8 +341,14 @@ export default function AblaufplanClient({
   }, [])
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  // Use dvh (dynamic viewport height) instead of vh: on mobile browsers the
+  // address bar can show/hide, and plain `vh` is pinned to the *largest*
+  // possible viewport while the visible area is smaller whenever the browser
+  // chrome is on screen. With a fixed `calc(100vh - 120px)` + overflow:hidden,
+  // that delta pushed this whole panel (and the entries scrolled inside it)
+  // below the actually-visible viewport on mobile, making them unreachable.
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 120px)', overflow: 'hidden' }}>
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px' }}>Ablaufplan</h1>
@@ -428,7 +434,7 @@ export default function AblaufplanClient({
 
       {/* ── Calendar ── */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
-        <div style={{ paddingTop: 14, paddingBottom: 24 }}>
+        <div style={{ position: 'relative', paddingTop: 14, paddingBottom: 24 }}>
           {dayEntries.length === 0 && !readOnly && (
             <div
               style={{
