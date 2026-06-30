@@ -16,12 +16,12 @@ export default async function GaestePage({ params }: Props) {
   const [guestsRes, eventRes, hotelsRes, rsvpSettingsRes, begleitRes] = await Promise.all([
     supabase
       .from('guests')
-      .select('id, name, status, side, meal_choice, allergy_tags, allergy_custom, email, phone, hotel_room_id, notes, token, trink_alkohol, arrival_date, arrival_time, transport_mode, responded_at, message, invited_at, pending_approval')
+      .select('id, name, status, side, meal_choice, allergy_tags, allergy_custom, email, phone, hotel_room_id, notes, token, trink_alkohol, arrival_date, arrival_time, transport_mode, responded_at, message, invited_at')
       .eq('event_id', eventId)
       .order('name'),
     supabase
       .from('events')
-      .select('id, meal_options, children_allowed, open_invite_token, open_invite_enabled')
+      .select('id, meal_options, children_allowed')
       .eq('id', eventId)
       .single(),
     supabase
@@ -58,8 +58,6 @@ export default async function GaestePage({ params }: Props) {
       childrenAllowed={eventRes.data?.children_allowed ?? false}
       hotels={hotelsRes.data ?? []}
       rsvpSettings={rsvpSettingsRes.data ?? null}
-      openInviteToken={eventRes.data?.open_invite_token ?? null}
-      openInviteEnabled={eventRes.data?.open_invite_enabled ?? false}
     />
   )
 }

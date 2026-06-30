@@ -36,7 +36,7 @@ export default async function UebersichtPage({ params }: Props) {
       .single(),
     supabase
       .from('guests')
-      .select('id, status, invited_at, pending_approval')
+      .select('id, status, invited_at')
       .eq('event_id', eventId),
     supabase
       .from('begleitpersonen')
@@ -72,9 +72,7 @@ export default async function UebersichtPage({ params }: Props) {
   const event = eventRes.data
   if (!event) redirect('/login')
 
-  // pending_approval-Gäste (Sammel-Link, noch unbestätigt) zählen nicht mit
-  const allGuests = guestsRes.data ?? []
-  const guests = allGuests.filter(g => !g.pending_approval)
+  const guests = guestsRes.data ?? []
   const confirmedGuestIds = new Set(guests.filter(g => g.status === 'zugesagt').map(g => g.id))
   const confirmedBegleit = (begleitRes.data ?? []).filter(b => confirmedGuestIds.has(b.guest_id)).length
   const guestTotal = guests.length
@@ -83,7 +81,6 @@ export default async function UebersichtPage({ params }: Props) {
   // "Ausstehend" = eingeladen aber noch ohne Antwort (inkl. vielleicht)
   const guestPending = guests.filter(g => ['angelegt', 'eingeladen', 'vielleicht'].includes(g.status as string)).length
   const guestNotInvited = guests.filter(g => g.status === 'angelegt' && !g.invited_at).length
-  const guestApprovalPending = allGuests.length - guests.length
 
   const budgetItems = budgetRes.data ?? []
   // Karte zeigt: verplante Summe der Budgetpunkte vs. Gesamtbudget des Events
@@ -141,7 +138,6 @@ export default async function UebersichtPage({ params }: Props) {
       guestDeclined={guestDeclined}
       guestPending={guestPending}
       guestNotInvited={guestNotInvited}
-      guestApprovalPending={guestApprovalPending}
       budgetPlanned={budgetPlanned}
       budgetLimit={budgetLimit}
       budgetItemCount={budgetItemCount}
