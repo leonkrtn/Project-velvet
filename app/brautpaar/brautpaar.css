@@ -1588,6 +1588,7 @@
   appearance: none;
   color: var(--bp-ink);
   font-family: 'DM Sans', system-ui, sans-serif;
+  text-align: left;
 }
 
 

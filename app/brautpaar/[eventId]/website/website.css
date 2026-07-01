@@ -32,6 +32,7 @@
   font-family: inherit; font-size: 0.92rem; color: var(--bp-ink, #2c2622); background: #fff;
 }
 .we-input:focus, .we-textarea:focus, .we-select:focus { outline: 2px solid var(--bp-gold, #b9975b); outline-offset: 0; border-color: transparent; }
+.we-input[type="date"], .we-input[type="time"], .we-input[type="datetime-local"] { -webkit-appearance: none; appearance: none; text-align: left; }
 .we-textarea { resize: vertical; min-height: 80px; }
 .we-readonly { background: #f5f2ec; color: var(--bp-ink-3, #8a8178); }
 .we-hint { font-size: 0.72rem; color: var(--bp-ink-3, #8a8178); margin-top: 0.3rem; }

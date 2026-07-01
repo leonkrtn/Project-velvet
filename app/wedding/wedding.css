@@ -357,6 +357,7 @@
   color: var(--wd-ink); font-family: inherit; font-size: 1rem; transition: border-color .2s, box-shadow .2s;
 }
 .wd-input:focus, .wd-textarea:focus, .wd-select:focus { outline: none; border-color: var(--wd-accent); box-shadow: 0 0 0 3px var(--wd-accent-soft); }
+.wd-input[type="date"], .wd-input[type="time"], .wd-input[type="datetime-local"] { -webkit-appearance: none; appearance: none; text-align: left; }
 .wd-textarea { resize: vertical; min-height: 96px; }
 .wd-hint { font-size: 0.76rem; color: var(--wd-ink-soft); margin-top: 0.4rem; }
 .wd-counter { float: right; font-size: 0.7rem; color: var(--wd-ink-soft); }
