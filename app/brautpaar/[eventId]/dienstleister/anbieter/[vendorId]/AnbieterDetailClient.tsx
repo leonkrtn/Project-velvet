@@ -8,11 +8,14 @@ import CategoryIcon from '@/components/marketplace/CategoryIcon'
 import RequestFlow from '@/components/marketplace/RequestFlow'
 import CoupleOfferPanel from '@/components/marketplace/CoupleOfferPanel'
 import CoupleDataRequests from '@/components/marketplace/CoupleDataRequests'
+import { resolveVendorCity, formatVendorAddress } from '@/lib/vendor/location'
 
 interface Vendor {
   id: string; company_name: string | null; category: string
   email: string | null; phone: string | null; website: string | null; description: string | null
-  street: string | null; zip: string | null; city: string | null; price_range: string | null
+  street: string | null; zip: string | null; city: string | null
+  company_street: string | null; company_zip: string | null; company_city: string | null
+  price_range: string | null
   verified: boolean; social_links: Record<string, string>; service_cities: string[]; service_radius_km: number | null
   logo_url: string | null; photos: { id: string; url: string }[]
 }
@@ -77,8 +80,8 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
     } finally { setReportBusy(false) }
   }
 
-  const addressParts = [vendor.street, [vendor.zip, vendor.city].filter(Boolean).join(' ')].filter(Boolean)
-  const address = addressParts.join(', ')
+  const address = formatVendorAddress(vendor)
+  const resolvedCity = resolveVendorCity(vendor)
   const hero = vendor.photos[0]?.url ?? vendor.logo_url
   const rest = vendor.photos.slice(1)
   const socials = SOCIAL_PLATFORMS.filter(s => vendor.social_links?.[s.key])
@@ -148,7 +151,7 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
               </span>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-              {vendor.city && <span className="bp-badge bp-badge-neutral" style={{ gap: 4 }}><MapPin size={11} /> {vendor.city}</span>}
+              {resolvedCity && <span className="bp-badge bp-badge-neutral" style={{ gap: 4 }}><MapPin size={11} /> {resolvedCity}</span>}
               {vendor.price_range && <span className="bp-badge bp-badge-neutral">Preisklasse {vendor.price_range}</span>}
             </div>
           </div>

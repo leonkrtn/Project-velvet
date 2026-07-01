@@ -1,18 +1,20 @@
 'use client'
 // components/wedding/WeddingRsvp.tsx
 // Öffentlicher RSVP-Ablauf der Hochzeitswebsite (im Template-Look).
-// Einstieg: "Schon angemeldet?" → Code eingeben ODER neu (Name + E-Mail).
+// Einstieg: "Schon angemeldet?" → Code eingeben ODER neu (Vorname/Nachname + E-Mail).
 // Danach: themed RSVP-Formular (nutzt die bestehende /api/rsvp/[token]-API).
-// Nach dem Absenden: persönlicher Code/Link + Foto-Upload, Wunschliste, Musikwunsch.
+// Nach dem Absenden: persönlicher Code/Link, Musikwunsch, Wunschliste.
+// Nach dem Hochzeitsdatum (isAfterWedding) entfällt das gesamte Formular zugunsten
+// von WeddingEindruecke (Fotos + Erinnerung hinterlassen, siehe dort).
 import React, { useEffect, useMemo, useState } from 'react'
 import { Check, Loader, ArrowLeft, Plus, X, Music, Gift } from 'lucide-react'
-import RsvpPhotos from '@/components/rsvp/RsvpPhotos'
+import WeddingEindruecke from '@/components/wedding/WeddingEindruecke'
 
 type Step = 'choice' | 'code' | 'newguest' | 'loading' | 'form' | 'done'
 type Meal = 'fleisch' | 'fisch' | 'vegetarisch' | 'vegan'
 type Transport = 'auto' | 'bahn' | 'flugzeug' | 'andere'
 
-interface Companion { name: string; ageCategory: string; meal: Meal | '' }
+interface Companion { vorname: string; nachname: string; ageCategory: string; meal: Meal | '' }
 
 interface HotelRoom { id: string; type: string; totalRooms: number; bookedRooms: number; pricePerNight: number }
 interface Hotel { id: string; name: string; address: string | null; rooms: HotelRoom[] }
@@ -20,6 +22,7 @@ interface Hotel { id: string; name: string; address: string | null; rooms: Hotel
 interface RsvpData {
   event: {
     coupleName: string
+    date: string | null
     mealOptions: string[]
     maxBegleitpersonen: number
     isFrozen: boolean
@@ -61,14 +64,15 @@ async function fetchWithRetry(input: string, init?: RequestInit, retries = 1): P
   throw lastErr
 }
 
-export default function WeddingRsvp({ slug }: { slug: string }) {
+export default function WeddingRsvp({ slug, isAfterWedding = false, coupleName }: { slug: string; isAfterWedding?: boolean; coupleName?: string }) {
   const [step, setStep] = useState<Step>('choice')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Einstieg
   const [code, setCode] = useState('')
-  const [newName, setNewName] = useState('')
+  const [newVorname, setNewVorname] = useState('')
+  const [newNachname, setNewNachname] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [personalCode, setPersonalCode] = useState<string | null>(null)
 
@@ -89,8 +93,11 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
   const [hotelRoomId, setHotelRoomId] = useState('')
 
   // Persönlicher Deep-Link aus der Gästeliste: /wedding/[slug]/rsvp?code=XXXX
-  // → Code vorbefüllen und direkt einlösen.
+  // → Code vorbefüllen und direkt einlösen. Nach der Hochzeit gibt es kein
+  // RSVP-Formular mehr (siehe isAfterWedding-Zweig im Render unten) — Lookup
+  // dann gar nicht erst auslösen.
   useEffect(() => {
+    if (isAfterWedding) return
     const c = (new URLSearchParams(window.location.search).get('code') || '').toUpperCase().trim()
     if (!/^[A-Z0-9]{4}$/.test(c)) return
     setCode(c)
@@ -125,7 +132,7 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
       setAllergies(g.allergyCustom ?? '')
       setMessage(g.message ?? '')
       setCompanions((g.begleitpersonen ?? []).map((b: any) => ({
-        name: b.name ?? '', ageCategory: b.ageCategory ?? 'erwachsen', meal: (b.meal as Meal) ?? '',
+        vorname: b.vorname ?? '', nachname: b.nachname ?? '', ageCategory: b.ageCategory ?? 'erwachsen', meal: (b.meal as Meal) ?? '',
       })))
       setArrivalDate(g.arrivalDate ?? '')
       setArrivalTime(g.arrivalTime ? String(g.arrivalTime).slice(11, 16) : '')
@@ -155,7 +162,7 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
     try {
       const res = await fetch(`/api/wedding/public/${slug}/rsvp/register`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName, email: newEmail }),
+        body: JSON.stringify({ vorname: newVorname, nachname: newNachname, email: newEmail }),
       })
       const d = await res.json()
       if (!res.ok) throw new Error(d.error ?? 'Anmeldung fehlgeschlagen')
@@ -166,7 +173,7 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
   function addCompanion() {
     const max = data?.event.maxBegleitpersonen ?? 0
     if (companions.length >= max) return
-    setCompanions(c => [...c, { name: '', ageCategory: 'erwachsen', meal: '' }])
+    setCompanions(c => [...c, { vorname: '', nachname: '', ageCategory: 'erwachsen', meal: '' }])
   }
 
   async function submitRsvp(e?: React.FormEvent) {
@@ -186,9 +193,13 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
         transport: attending ? (transport || null) : null,
         hotelRoomId: attending ? (hotelRoomId || 'none') : 'none',
         begleitpersonen: attending
-          ? companions.filter(c => c.name.trim()).map(c => ({
-              name: c.name, ageCategory: c.ageCategory, meal: c.meal || null,
-            }))
+          ? companions
+              .filter(c => c.vorname.trim() && c.nachname.trim())
+              .map(c => ({
+                vorname: c.vorname, nachname: c.nachname,
+                name: `${c.vorname.trim()} ${c.nachname.trim()}`.trim(),
+                ageCategory: c.ageCategory, meal: c.meal || null,
+              }))
           : [],
       }
       const res = await fetchWithRetry(`/api/rsvp/${token}`, {
@@ -203,6 +214,12 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
+  // Nach der Hochzeit gibt es kein RSVP-Formular mehr — stattdessen nur noch
+  // die eigenständige Eindrücke-Ansicht (Fotos + Erinnerung hinterlassen).
+  if (isAfterWedding) {
+    return <WeddingEindruecke slug={slug} coupleName={coupleName} />
+  }
+
   return (
     <section className="wd-section wd-rsvp">
       {step === 'choice' && (
@@ -250,9 +267,15 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
           <button type="button" className="wd-btn wd-btn-ghost" style={{ marginTop: 0, marginBottom: '1rem' }} onClick={() => setStep('choice')}>
             <ArrowLeft size={15} /> Zurück
           </button>
-          <div className="wd-field">
-            <label className="wd-label">Dein Name</label>
-            <input className="wd-input" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Vor- und Nachname" />
+          <div className="wd-field" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div>
+              <label className="wd-label">Vorname</label>
+              <input className="wd-input" value={newVorname} onChange={e => setNewVorname(e.target.value)} placeholder="Vorname" />
+            </div>
+            <div>
+              <label className="wd-label">Nachname</label>
+              <input className="wd-input" value={newNachname} onChange={e => setNewNachname(e.target.value)} placeholder="Nachname" />
+            </div>
           </div>
           <div className="wd-field">
             <label className="wd-label">E-Mail</label>
@@ -260,7 +283,7 @@ export default function WeddingRsvp({ slug }: { slug: string }) {
             <p className="wd-hint">An diese Adresse senden wir dir deinen persönlichen Link zum späteren Ändern.</p>
           </div>
           {error && <p className="wd-error">{error}</p>}
-          <button className="wd-btn wd-btn-block wd-btn-lg" disabled={busy || newName.trim().length < 2}>
+          <button className="wd-btn wd-btn-block wd-btn-lg" disabled={busy || newVorname.trim().length < 1 || newNachname.trim().length < 1}>
             {busy ? <Loader size={16} className="wd-spin" /> : 'Weiter zur Anmeldung'}
           </button>
         </form>
@@ -325,7 +348,10 @@ function RsvpForm(p: any) {
   const idx = Math.min(wstep, steps.length - 1)
   const cur = steps[idx]
   const isLast = idx === steps.length - 1
-  const canAdvance = cur !== 'attend' || p.attending !== null
+  // Begleitpersonen brauchen jeweils Vor- UND Nachname, bevor man weiter darf.
+  const companionsIncomplete = (p.companions as Companion[]).some(c => !c.vorname.trim() || !c.nachname.trim())
+  const canAdvance = (cur !== 'attend' || p.attending !== null) && (cur !== 'companions' || !companionsIncomplete)
+  const canSubmit = !companionsIncomplete
 
   const STEP_TITLE: Record<string, string> = {
     attend: 'Bist du dabei?', details: 'Deine Angaben', companions: 'Begleitung',
@@ -397,10 +423,15 @@ function RsvpForm(p: any) {
           {p.companions.map((c: Companion, i: number) => (
             <div className="wd-companion" key={i}>
               <button type="button" className="wd-companion-remove" onClick={() => p.setCompanions((arr: Companion[]) => arr.filter((_, x) => x !== i))} aria-label="Entfernen"><X size={16} /></button>
-              <div className="wd-field" style={{ marginBottom: '0.6rem' }}>
-                <input className="wd-input" placeholder="Name der Begleitung" value={c.name}
-                  onChange={(e: any) => p.setCompanions((arr: Companion[]) => arr.map((x, xi) => xi === i ? { ...x, name: e.target.value } : x))} />
+              <div className="wd-field" style={{ marginBottom: '0.6rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <input className="wd-input" placeholder="Vorname" value={c.vorname}
+                  onChange={(e: any) => p.setCompanions((arr: Companion[]) => arr.map((x, xi) => xi === i ? { ...x, vorname: e.target.value } : x))} />
+                <input className="wd-input" placeholder="Nachname" value={c.nachname}
+                  onChange={(e: any) => p.setCompanions((arr: Companion[]) => arr.map((x, xi) => xi === i ? { ...x, nachname: e.target.value } : x))} />
               </div>
+              {(!c.vorname.trim() || !c.nachname.trim()) && (
+                <p className="wd-hint" style={{ marginTop: '-0.4rem', marginBottom: '0.6rem' }}>Vor- und Nachname sind Pflichtfelder.</p>
+              )}
               {ev.rsvpShowMenu && mealOptions.length > 0 && (
                 <div className="wd-pillrow">
                   {mealOptions.map(m => (
@@ -497,7 +528,7 @@ function RsvpForm(p: any) {
             Weiter
           </button>
         ) : (
-          <button type="button" className="wd-btn wd-btn-lg" style={{ marginLeft: 'auto' }} disabled={p.busy || frozen} onClick={() => p.onSubmit()}>
+          <button type="button" className="wd-btn wd-btn-lg" style={{ marginLeft: 'auto' }} disabled={p.busy || frozen || !canSubmit} onClick={() => p.onSubmit()}>
             {p.busy ? <Loader size={16} className="wd-spin" /> : 'Anmeldung absenden'}
           </button>
         )}
@@ -541,14 +572,6 @@ function DoneView(p: {
         <>
           <div className="wd-divider-soft" />
           <MusicWish token={p.token} />
-        </>
-      )}
-
-      {p.attending && (
-        <>
-          <div className="wd-divider-soft" />
-          <h3 className="wd-extras-title">Fotos teilen</h3>
-          <RsvpPhotos token={p.token} />
         </>
       )}
 
@@ -719,7 +742,17 @@ function WishlistItem({ token, wish, onChange }: { token: string; wish: any; onC
   return (
     <div className="wd-companion" style={{ display: 'block' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-        <div>
+        {wish.imageUrl && (
+          <img
+            src={wish.imageUrl}
+            alt={wish.title}
+            style={{
+              width: 64, height: 64, borderRadius: 10, objectFit: 'cover',
+              flexShrink: 0, border: '1px solid var(--wd-border, rgba(0,0,0,0.08))',
+            }}
+          />
+        )}
+        <div style={{ flex: 1, minWidth: 0 }}>
           <strong>{wish.title}</strong>
           {wish.description && <div className="wd-hint">{wish.description}</div>}
           {!wish.is_money_wish && wish.price ? <div className="wd-hint">{wish.price} €</div> : null}

@@ -5,17 +5,21 @@ import Link from 'next/link'
 import { Search, Check, Star, BadgeCheck, SlidersHorizontal, X, MapPin, Info } from 'lucide-react'
 import { MARKETPLACE_CATEGORIES, categoryLabel } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
+import VendorCardGallery from '@/components/marketplace/VendorCardGallery'
 import { haversineKm } from '@/lib/geo'
+import { resolveVendorCity } from '@/lib/vendor/location'
 
 interface VendorCard {
   id: string
   company_name: string | null
   category: string
   city: string | null
+  company_city: string | null
   price_range: string | null
   description: string | null
   logo_url: string | null
   cover_url: string | null
+  gallery_urls: string[]
   verified?: boolean
   tier?: string
   service_cities: string[]
@@ -33,8 +37,9 @@ interface FilterState {
   category: string
   sortKey: string
   radiusKm: number
+  baseCity: string
 }
-const DEFAULT_FILTER: FilterState = { category: '', sortKey: 'name_asc', radiusKm: RADIUS_DEFAULT }
+const DEFAULT_FILTER: FilterState = { category: '', sortKey: 'name_asc', radiusKm: RADIUS_DEFAULT, baseCity: '' }
 const STORAGE_KEY = 'mk_filter'
 
 const SORT_OPTIONS: { key: string; label: string; field: SortField; dir: 'asc' | 'desc' }[] = [
@@ -78,7 +83,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   const [q, setQ] = useState('')
   const [requests, setRequests] = useState<Req[]>([])
   const [eventCity, setEventCity] = useState<string | null>(null)
-  const [eventCoords, setEventCoords] = useState<Coords | null>(null)
+  const [baseCoords, setBaseCoords] = useState<Coords | null>(null)
   const [vendorCoords, setVendorCoords] = useState<Map<string, Coords | null>>(new Map())
 
   const [panelOpen, setPanelOpen] = useState(false)
@@ -87,6 +92,10 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
 
   // Track geocoding in-progress to avoid double-firing
   const geocodingRef = useRef(false)
+  // true solange die initiale Geocoding-Runde (Veranstaltungsort + Vendor-Staedte)
+  // noch laeuft — verhindert, dass der Ergebnis-Zaehler erst klein und dann
+  // "hochspringend" angezeigt wird (Aufgabe 3).
+  const [geocodingInProgress, setGeocodingInProgress] = useState(true)
 
   useEffect(() => {
     setApplied(loadStored())
@@ -121,12 +130,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     const res = await fetch(`/api/events/${eventId}`)
     if (res.ok) {
       const d = await res.json()
-      const city: string | null = d.location_city ?? null
-      setEventCity(city)
-      if (city) {
-        const coords = await geocode(city)
-        setEventCoords(coords)
-      }
+      setEventCity(d.location_city ?? null)
     }
   }, [eventId])
 
@@ -141,35 +145,49 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   useEffect(() => { loadRequests(); loadEvent() }, [loadRequests, loadEvent])
   useEffect(() => { load() }, [load])
 
+  // Umkreis-Ausgangsort: standardmäßig der Hochzeitsort, im Filter-Panel
+  // überschreibbar (applied.baseCity). Wird bei Änderung neu geocodiert.
+  const effectiveBaseCity = applied.baseCity.trim() || eventCity || null
+  useEffect(() => {
+    let cancelled = false
+    if (!effectiveBaseCity) { setBaseCoords(null); return }
+    geocode(effectiveBaseCity).then(c => { if (!cancelled) setBaseCoords(c) })
+    return () => { cancelled = true }
+  }, [effectiveBaseCity])
+
   // Geocode all unique vendor cities once vendors are loaded
   useEffect(() => {
-    if (!vendors.length || geocodingRef.current) return
+    if (loading) return
+    if (!vendors.length) { setGeocodingInProgress(false); return }
+    if (geocodingRef.current) return
     geocodingRef.current = true
 
     const cities = new Set<string>()
     for (const v of vendors) {
-      if (v.city) cities.add(v.city)
+      const city = resolveVendorCity(v)
+      if (city) cities.add(city)
       for (const c of v.service_cities) cities.add(c)
     }
 
     // Sequential calls to respect Nominatim rate limit (1 req/s)
     const citiesArr = Array.from(cities)
+    if (!citiesArr.length) { setGeocodingInProgress(false); return }
     let i = 0
     const next = async () => {
-      if (i >= citiesArr.length) return
+      if (i >= citiesArr.length) { setGeocodingInProgress(false); return }
       const city = citiesArr[i++]
       await geocode(city)
       setVendorCoords(new Map(geoCache))
       setTimeout(next, 1100)
     }
     next()
-  }, [vendors])
+  }, [vendors, loading])
 
   function requestFor(vendorId: string): Req | undefined {
     return requests.find(r => r.dienstleister_id === vendorId && (r.status === 'pending' || r.status === 'accepted'))
   }
 
-  const hasActiveFilter = applied.category !== '' || applied.sortKey !== 'name_asc' || applied.radiusKm !== RADIUS_DEFAULT
+  const hasActiveFilter = applied.category !== '' || applied.sortKey !== 'name_asc' || applied.radiusKm !== RADIUS_DEFAULT || applied.baseCity.trim() !== ''
   const sortOpt = useMemo(() => SORT_OPTIONS.find(s => s.key === applied.sortKey) ?? SORT_OPTIONS[0], [applied.sortKey])
 
   const filtered = useMemo(() => {
@@ -187,10 +205,11 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
       list = list.filter(v => v.category === applied.category)
     }
 
-    // Radius filter — only when we have event coordinates
-    if (eventCoords && applied.radiusKm < RADIUS_MAX) {
+    // Radius filter — only when we have coordinates for the (ggf. überschriebenen) Ausgangsort
+    if (baseCoords && applied.radiusKm < RADIUS_MAX) {
       list = list.filter(v => {
-        const noLocationData = !v.city && !v.service_cities.length
+        const resolvedCity = resolveVendorCity(v)
+        const noLocationData = !resolvedCity && !v.service_cities.length
         if (noLocationData) return true
 
         const getCoords = (city: string) =>
@@ -198,10 +217,10 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
 
         // Base city: apply both the customer's radius slider AND the vendor's own
         // service_radius_km (how far they're willing to travel from their location).
-        if (v.city) {
-          const coords = getCoords(v.city)
+        if (resolvedCity) {
+          const coords = getCoords(resolvedCity)
           if (coords) {
-            const dist = haversineKm(eventCoords.lat, eventCoords.lng, coords.lat, coords.lng)
+            const dist = haversineKm(baseCoords.lat, baseCoords.lng, coords.lat, coords.lng)
             const withinCustomer = dist <= applied.radiusKm
             const withinVendor = !v.service_radius_km || dist <= v.service_radius_km
             if (withinCustomer && withinVendor) return true
@@ -213,7 +232,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         for (const city of v.service_cities) {
           const coords = getCoords(city)
           if (!coords) continue
-          const dist = haversineKm(eventCoords.lat, eventCoords.lng, coords.lat, coords.lng)
+          const dist = haversineKm(baseCoords.lat, baseCoords.lng, coords.lat, coords.lng)
           if (dist <= applied.radiusKm) return true
         }
 
@@ -224,7 +243,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     const sorted = [...list]
     if (sortOpt.field === 'city') {
       sorted.sort((a, b) => {
-        const cmp = (a.city ?? '').localeCompare(b.city ?? '', 'de')
+        const cmp = (resolveVendorCity(a) ?? '').localeCompare(resolveVendorCity(b) ?? '', 'de')
         return sortOpt.dir === 'asc' ? cmp : -cmp
       })
     } else if (sortOpt.field === 'price') {
@@ -240,7 +259,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     }
 
     return sorted
-  }, [vendors, q, applied, eventCoords, vendorCoords, sortOpt])
+  }, [vendors, q, applied, baseCoords, vendorCoords, sortOpt])
 
   return (
     <div>
@@ -250,6 +269,16 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         .mp-media { position:relative; aspect-ratio:4/3; overflow:hidden; background:linear-gradient(135deg, var(--bp-gold-pale,#f3efe6), var(--bp-ivory-2,#efe9dd)); }
         .mp-media img { width:100%; height:100%; object-fit:cover; transition:transform .35s ease; }
         .mp-card:hover .mp-media img { transform:scale(1.06); }
+        .mp-gallery-arrow { position:absolute; top:50%; transform:translateY(-50%); width:28px; height:28px; border-radius:50%; border:none; background:rgba(0,0,0,0.45); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; transition:opacity .18s ease, background .18s ease; z-index:2; }
+        .mp-card:hover .mp-gallery-arrow { opacity:1; }
+        .mp-gallery-arrow:hover { background:rgba(0,0,0,0.7); }
+        .mp-gallery-arrow-left { left:8px; }
+        .mp-gallery-arrow-right { right:8px; }
+        .mp-gallery-dots { position:absolute; left:0; right:0; bottom:10px; display:flex; justify-content:center; gap:5px; z-index:2; }
+        .mp-gallery-dot { width:6px; height:6px; border-radius:50%; border:none; background:rgba(255,255,255,0.55); cursor:pointer; padding:0; transition:background .15s ease, transform .15s ease; }
+        .mp-gallery-dot[data-active="true"] { background:#fff; transform:scale(1.25); }
+        .mp-spinner { width:13px; height:13px; border-radius:50%; border:2px solid var(--bp-rule,#E8E8E6); border-top-color:var(--bp-gold,#B89968); animation:mp-spin .7s linear infinite; display:inline-block; }
+        @keyframes mp-spin { to { transform:rotate(360deg); } }
         .mp-radio { display:flex; flex-direction:column; gap:2px; }
         .mp-radio-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:8px; cursor:pointer; border:none; background:none; width:100%; text-align:left; font-family:inherit; font-size:13.5px; color:var(--bp-ink,#2C2825); transition:background .12s; }
         .mp-radio-item:hover { background:var(--bp-ivory-2,#F0F0EE); }
@@ -265,14 +294,14 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
       `}</style>
 
       {/* No-location banner */}
-      {!loading && !eventCity && (
+      {!loading && !effectiveBaseCity && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'var(--bp-ivory-2,#F5F2EC)', border: '1px solid var(--bp-rule-gold,#D4BC9A)', marginBottom: 16, fontSize: 13 }}>
           <Info size={15} style={{ color: 'var(--bp-gold-deep,#9C7F4F)', flexShrink: 0 }} />
           <span style={{ color: 'var(--bp-ink-2,#5C534A)' }}>
             Kein Veranstaltungsort hinterlegt — Standortfilter inaktiv.{' '}
             <Link href={`/brautpaar/${eventId}/allgemein`} style={{ color: 'var(--bp-gold-deep,#9C7F4F)', fontWeight: 600, textDecoration: 'underline' }}>
               Ort eintragen
-            </Link>
+            </Link>{' '}oder unter "Filter" einen Ausgangsort für den Umkreis festlegen.
           </span>
         </div>
       )}
@@ -310,9 +339,15 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         </button>
       </div>
 
-      {/* Result counter */}
+      {/* Result counter — wird erst nach Abschluss von Laden + Geocoding final angezeigt,
+          damit die Zahl nicht erst klein erscheint und dann hochspringt (Aufgabe 3). */}
       <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3,#8C8076)', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-        {loading ? ' ' : (
+        {loading || geocodingInProgress ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span className="mp-spinner" />
+            Anbieter werden geladen…
+          </span>
+        ) : (
           <>
             <span>{filtered.length} {filtered.length === 1 ? 'Dienstleister' : 'Dienstleister'} gefunden</span>
             {hasActiveFilter && (
@@ -325,7 +360,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
       </p>
 
       {/* Grid */}
-      {loading ? (
+      {loading || geocodingInProgress ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} style={{ border: '1px solid var(--bp-rule,#eee)', borderRadius: 16, overflow: 'hidden', background: '#fff' }}>
@@ -352,14 +387,12 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
           {filtered.map(v => {
             const req = requestFor(v.id)
+            const resolvedCity = resolveVendorCity(v)
             return (
               <Link key={v.id} href={`/brautpaar/${eventId}/dienstleister/anbieter/${v.id}`} className="mp-card">
                 <div className="mp-media">
-                  {v.cover_url
-                    ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={v.cover_url} alt="" />
-                    )
+                  {v.gallery_urls.length
+                    ? <VendorCardGallery images={v.gallery_urls} alt={v.company_name ?? ''} />
                     : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bp-gold-deep,#8a6f3f)', opacity: 0.5 }}><CategoryIcon category={v.category} size={48} /></div>}
                   {v.logo_url && v.cover_url && v.logo_url !== v.cover_url && (
                     <span style={{ position: 'absolute', left: 12, bottom: 12, width: 40, height: 40, borderRadius: 10, overflow: 'hidden', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', background: '#fff' }}>
@@ -387,7 +420,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
                   </div>
                   {v.description && <p style={{ fontSize: 12.5, color: 'var(--bp-ink-2,#666)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{v.description}</p>}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 'auto', paddingTop: 6 }}>
-                    {v.city && <span className="bp-badge bp-badge-neutral" style={{ gap: 4 }}><MapPin size={11} /> {v.city}</span>}
+                    {resolvedCity && <span className="bp-badge bp-badge-neutral" style={{ gap: 4 }}><MapPin size={11} /> {resolvedCity}</span>}
                     {v.price_range && <span className="bp-badge bp-badge-neutral">{v.price_range}</span>}
                   </div>
                 </div>
@@ -430,18 +463,37 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         <div style={{ flex: 1, overflowY: 'auto', padding: '18px 8px' }}>
 
           {/* Umkreis */}
-          <p className="mp-panel-section-title" style={{ paddingLeft: 12 }}>Umkreis (Hochzeitsort)</p>
+          <p className="mp-panel-section-title" style={{ paddingLeft: 12 }}>Umkreis</p>
           <div style={{ padding: '8px 12px 4px' }}>
-            {!eventCity ? (
-              <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3,#8C8076)', margin: 0 }}>
-                Kein Veranstaltungsort hinterlegt — Umkreis inaktiv.
+            <label style={{ fontSize: 11.5, color: 'var(--bp-ink-3,#8C8076)', display: 'block', marginBottom: 6 }}>
+              Ausgangsort
+            </label>
+            <input
+              className="bp-input"
+              placeholder={eventCity ?? 'z.B. Berlin'}
+              value={pending.baseCity}
+              onChange={e => setPending(p => ({ ...p, baseCity: e.target.value }))}
+              style={{ marginBottom: 6 }}
+            />
+            {eventCity && pending.baseCity.trim() !== '' && (
+              <button
+                type="button"
+                onClick={() => setPending(p => ({ ...p, baseCity: '' }))}
+                style={{ display: 'block', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, color: 'var(--bp-gold-deep,#9C7F4F)', padding: 0, marginBottom: 10, fontWeight: 600 }}
+              >
+                Hochzeitsort verwenden ({eventCity})
+              </button>
+            )}
+            {!(pending.baseCity.trim() || eventCity) ? (
+              <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3,#8C8076)', margin: '10px 0 0' }}>
+                Ort eingeben, um nach Umkreis zu filtern.
               </p>
             ) : (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, marginTop: 10 }}>
                   <span style={{ fontSize: 13, color: 'var(--bp-ink-2,#5C534A)' }}>
                     <MapPin size={12} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-                    {eventCity}
+                    {pending.baseCity.trim() || eventCity}
                   </span>
                   <span style={{ fontSize: 14, fontWeight: 700, color: pending.radiusKm >= RADIUS_MAX ? 'var(--bp-ink-3,#8C8076)' : 'var(--bp-gold-deep,#9C7F4F)' }}>
                     {pending.radiusKm >= RADIUS_MAX ? 'Unbegrenzt' : `${pending.radiusKm} km`}

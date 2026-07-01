@@ -63,7 +63,6 @@ export async function middleware(request: NextRequest) {
   const isPublic =
     PUBLIC_ROUTES.some(r => pathname === r) ||
     pathname.startsWith('/rsvp/') ||
-    pathname.startsWith('/einladung/') ||
     pathname.startsWith('/wedding/') ||
     pathname.startsWith('/api/')
   if (isPublic) return supabaseResponse

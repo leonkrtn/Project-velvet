@@ -111,13 +111,6 @@ const MEAL_LABELS: Record<string, string> = {
 // Anzeige-Label für meal_options / meal_choice-Werte: Label-Map bevorzugt, sonst capitalizeFirst
 const mealLabel = (v: string) => MEAL_LABELS[v.toLowerCase()] ?? capitalizeFirst(v)
 const DEFAULT_CARTE_COURSES = ['Vorspeisen', 'Hauptgänge', 'Desserts']
-const SERVICE_STYLES = [
-  { value: 'klassisch', label: 'Klassisches Menü' },
-  { value: 'buffet',    label: 'Buffet' },
-  { value: 'family',   label: 'Family Style' },
-  { value: 'foodtruck',label: 'Food Trucks' },
-  { value: 'live',     label: 'Live-Cooking' },
-]
 const DRINKS_OPTIONS = [
   { value: 'wein',       label: 'Wein' },
   { value: 'bier',       label: 'Bier' },
@@ -1068,27 +1061,6 @@ export default function CateringForm({
 
       {/* ── 3. Service & Ablauf ───────────────────────────────────────────── */}
       <SectionWrap title="Service & Ablauf">
-        <div style={{ marginBottom: 16 }}>
-          <label style={labelStyle}>Servicestil</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-            {SERVICE_STYLES.map(o => {
-              const active = plan.service_style === o.value
-              return (
-                <button key={o.value} type="button"
-                  onClick={() => updatePlan({ service_style: active ? '' : o.value })}
-                  style={{
-                    padding: '7px 16px', borderRadius: 20, border: '1px solid',
-                    borderColor: active ? 'var(--accent)' : 'var(--border)',
-                    background: active ? 'var(--accent-light)' : 'var(--surface)',
-                    color: active ? 'var(--accent)' : 'var(--text-secondary)',
-                    fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                  }}
-                >{o.label}</button>
-              )
-            })}
-          </div>
-        </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <ToggleRow checked={plan.location_has_kitchen} onChange={v => updatePlan({ location_has_kitchen: v })} label="Küche an Location vorhanden" />
           <ToggleRow checked={plan.service_staff} onChange={v => updatePlan({ service_staff: v })} label="Servicepersonal benötigt" />

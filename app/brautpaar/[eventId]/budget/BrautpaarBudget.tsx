@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Pencil, Settings, ChevronDown, ChevronRight, X } from 'lucide-react'
 import { useAutoSave } from '@/hooks/useAutoSave'
@@ -65,6 +65,19 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
   const [draft, setDraft]     = useState(item)
   const [delConfirm, setDelConfirm] = useState(false)
 
+  // "Tatsächlich/bezahlt" ist permanent inline editierbar (kein Bearbeiten-Klick nötig)
+  // und wird daher mit einem eigenen, vom restlichen Edit-Modus unabhängigen
+  // Auto-Save-State geführt.
+  const [actualDraft, setActualDraft] = useState(item.actual)
+  // Externe Änderungen (z. B. Rollback im Elternstate) nachziehen, solange der
+  // Wert nicht gerade lokal abweicht (vermeidet Überschreiben während der Eingabe).
+  const actualDraftRef = useRef(actualDraft)
+  actualDraftRef.current = actualDraft
+  useEffect(() => {
+    if (item.actual !== actualDraftRef.current) setActualDraft(item.actual)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.actual])
+
   async function save(d: BudgetItem) {
     const prev = item // letzter committeter Stand → Rollback-Snapshot
     const supabase = createClient()
@@ -77,7 +90,6 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
           description:    d.description,
           category:       d.category,
           planned:        d.planned,
-          actual:         d.actual,
           payment_status: d.payment_status,
           notes:          d.notes,
         })
@@ -88,7 +100,23 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
     if (!ok) throw new Error('save failed')
   }
 
+  async function saveActual(value: number) {
+    const prev = item // letzter committeter Stand → Rollback-Snapshot
+    const supabase = createClient()
+    const ok = await runOptimistic({
+      apply: () => onUpdate({ ...prev, actual: value }),
+      rollback: () => { onUpdate(prev); setActualDraft(prev.actual) },
+      commit: () => supabase
+        .from('budget_items')
+        .update({ actual: value })
+        .eq('id', item.id),
+      onError: (e) => console.error('Bezahlter Betrag speichern fehlgeschlagen', e),
+    })
+    if (!ok) throw new Error('save failed')
+  }
+
   const { status: saveStatus } = useAutoSave(draft, save, { enabled: editing })
+  const { status: actualSaveStatus, flush: flushActual } = useAutoSave(actualDraft, saveActual)
 
   if (editing) {
     return (
@@ -110,10 +138,6 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
               <div className="bp-field">
                 <label className="bp-label-text">Geplant (€)</label>
                 <input className="bp-input" type="number" min="0" step="0.01" value={draft.planned} onChange={e => setDraft(p => ({ ...p, planned: parseFloat(e.target.value) || 0 }))} />
-              </div>
-              <div className="bp-field">
-                <label className="bp-label-text">Tatsächlich (€)</label>
-                <input className="bp-input" type="number" min="0" step="0.01" value={draft.actual} onChange={e => setDraft(p => ({ ...p, actual: parseFloat(e.target.value) || 0 }))} />
               </div>
               <div className="bp-field">
                 <label className="bp-label-text">Status</label>
@@ -152,8 +176,29 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
       <td data-label="Geplant" style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', fontWeight: 600 }}>
         {formatCurrency(item.planned)}
       </td>
-      <td data-label="Tatsächlich" style={{ textAlign: 'right', fontFamily: 'Cormorant Garamond, serif', fontSize: '1.0625rem', color: 'var(--bp-ink-2)' }}>
-        {item.actual > 0 ? formatCurrency(item.actual) : '—'}
+      <td data-label="Tatsächlich" style={{ textAlign: 'right' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.375rem' }}>
+          {actualSaveStatus !== 'idle' && <SaveStatus status={actualSaveStatus} />}
+          <input
+            className="bp-input"
+            type="number"
+            min="0"
+            step="0.01"
+            value={actualDraft === 0 ? '' : actualDraft}
+            placeholder="0"
+            onChange={e => setActualDraft(parseFloat(e.target.value) || 0)}
+            onBlur={flushActual}
+            aria-label="Bezahlter Betrag (€)"
+            style={{
+              width: 100,
+              textAlign: 'right',
+              fontFamily: 'Cormorant Garamond, serif',
+              fontSize: '1.0625rem',
+              color: 'var(--bp-ink-2)',
+              padding: '0.25rem 0.5rem',
+            }}
+          />
+        </div>
       </td>
       <td data-label="Status"><StatusBadge status={item.payment_status} /></td>
       <td style={{ textAlign: 'right' }}>

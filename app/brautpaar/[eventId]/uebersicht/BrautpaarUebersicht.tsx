@@ -27,7 +27,6 @@ interface Props {
   guestDeclined: number
   guestPending: number
   guestNotInvited: number
-  guestApprovalPending: number
   budgetPlanned: number
   budgetLimit: number
   budgetItemCount: number
@@ -289,14 +288,13 @@ function NextTasksCard({ eventId, initialTasks, tasksDone, tasksTotal }: {
   )
 }
 
-function GuestStatusCard({ eventId, guestTotal, guestConfirmed, guestDeclined, guestPending, guestNotInvited, guestApprovalPending }: {
+function GuestStatusCard({ eventId, guestTotal, guestConfirmed, guestDeclined, guestPending, guestNotInvited }: {
   eventId: string
   guestTotal: number
   guestConfirmed: number
   guestDeclined: number
   guestPending: number
   guestNotInvited: number
-  guestApprovalPending: number
 }) {
   return (
     <div className="bp-card bp-mag-block bp-reveal" style={{ display: 'flex', flexDirection: 'column', transitionDelay: '110ms' }}>
@@ -319,14 +317,6 @@ function GuestStatusCard({ eventId, guestTotal, guestConfirmed, guestDeclined, g
               <div><span className="bp-mag-guest-dot" style={{ background: 'var(--bp-rule-gold)' }} />Ausstehend<b>{guestPending}</b></div>
               <div><span className="bp-mag-guest-dot" style={{ background: 'var(--bp-ink-3)' }} />Abgesagt<b>{guestDeclined}</b></div>
             </div>
-            {guestApprovalPending > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="bp-badge bp-badge-gold">{guestApprovalPending}</span>
-                <span style={{ fontSize: '0.875rem', color: 'var(--bp-ink-2)' }}>
-                  neue Anmeldung{guestApprovalPending !== 1 ? 'en' : ''} warten auf Bestätigung
-                </span>
-              </div>
-            )}
             {guestNotInvited > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Send size={14} style={{ color: 'var(--bp-gold-deep)', flexShrink: 0 }} />
@@ -335,7 +325,7 @@ function GuestStatusCard({ eventId, guestTotal, guestConfirmed, guestDeclined, g
                 </span>
               </div>
             )}
-            {guestApprovalPending === 0 && guestNotInvited === 0 && guestPending === 0 && (
+            {guestNotInvited === 0 && guestPending === 0 && (
               <p className="bp-caption" style={{ margin: 0 }}>Alle Gäste haben geantwortet.</p>
             )}
           </>
@@ -443,7 +433,7 @@ function RoterFaden({ eventId, steps }: { eventId: string; steps: SetupStep[] })
 export default function BrautpaarUebersicht({
   eventId, coverImageUrl, monogram = '', eventTitle, eventDate, coupleName, venueName,
   daysLeft, guestTotal, guestConfirmed, guestDeclined, guestPending,
-  guestNotInvited, guestApprovalPending,
+  guestNotInvited,
   budgetPlanned, budgetLimit, budgetItemCount, tasksDone, tasksTotal, nextTasks,
   seatedCount, songCount, timelineCount, cateringConfigured,
 }: Props) {
@@ -563,7 +553,6 @@ export default function BrautpaarUebersicht({
           guestDeclined={guestDeclined}
           guestPending={guestPending}
           guestNotInvited={guestNotInvited}
-          guestApprovalPending={guestApprovalPending}
         />
       </section>
 

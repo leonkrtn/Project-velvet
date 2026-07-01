@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   Users, Hotel as HotelIcon, Mail, Settings, Plus, Copy, Check,
   Trash2, QrCode, Download, X, Edit2, Star, Gift, ChevronDown, ChevronRight,
-  MessageCircle, Share2, Link2, UserCheck, UserPlus2,
+  MessageCircle, Share2, UserPlus2,
 } from 'lucide-react'
 import GeschenkTab from './GeschenkTab'
 import { titleCaseName, capitalizeFirst, allergyLabel } from '@/lib/text'
@@ -33,7 +33,6 @@ interface Guest {
   responded_at: string | null
   message: string | null
   invited_at: string | null
-  pending_approval: boolean
 }
 
 interface HotelRoom {
@@ -87,8 +86,6 @@ interface Props {
   childrenAllowed: boolean
   hotels: Hotel[]
   rsvpSettings: RsvpSettings | null
-  openInviteToken: string | null
-  openInviteEnabled: boolean
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -1209,13 +1206,11 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
 
 type InviteFilter = 'alle' | 'nicht_eingeladen' | 'ausstehend' | 'zugesagt' | 'abgesagt'
 
-function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteToken, openInviteEnabled }: {
+function RsvpTab({ eventId, guests, onUpdateGuest, invitationText }: {
   eventId: string
   guests: Guest[]
   onUpdateGuest: (g: Guest) => void
   invitationText: string | null
-  openInviteToken: string | null
-  openInviteEnabled: boolean
 }) {
   const [editingEmailId, setEditingEmailId] = useState<string | null>(null)
   const [emailInput, setEmailInput]         = useState('')
@@ -1230,10 +1225,6 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
   const [search, setSearch]                 = useState('')
   const [statusFilter, setStatusFilter]     = useState<InviteFilter>('alle')
   const [zipBusy, setZipBusy]               = useState(false)
-  const [openToken, setOpenToken]           = useState(openInviteToken)
-  const [openEnabled, setOpenEnabled]       = useState(openInviteEnabled)
-  const [openBusy, setOpenBusy]             = useState(false)
-  const [openCopied, setOpenCopied]         = useState(false)
 
   const isInvited = (g: Guest) => Boolean(g.invited_at) || g.status === 'eingeladen'
 
@@ -1411,37 +1402,6 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
     }
   }
 
-  // Sammel-Link aktivieren/deaktivieren
-  async function toggleOpenInvite() {
-    setOpenBusy(true)
-    try {
-      const res = await fetch(`/api/events/${eventId}/open-invite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: !openEnabled }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setOpenEnabled(data.enabled)
-        setOpenToken(data.token)
-      }
-    } finally {
-      setOpenBusy(false)
-    }
-  }
-
-  const openInviteUrl = openToken && typeof window !== 'undefined'
-    ? `${window.location.origin}/einladung/${openToken}`
-    : null
-
-  function copyOpenInviteLink() {
-    if (!openInviteUrl) return
-    navigator.clipboard.writeText(openInviteUrl).then(() => {
-      setOpenCopied(true)
-      setTimeout(() => setOpenCopied(false), 2000)
-    })
-  }
-
   const activeQrGuest = qrGuestId ? guests.find(g => g.id === qrGuestId) ?? null : null
   const activeQrUrl   = activeQrGuest ? qrDataUrls[activeQrGuest.id] ?? null : null
   const withEmail     = selectedGuests.filter(g => g.email && g.token).length
@@ -1609,49 +1569,6 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
           <Settings size={14} /> Hochzeitswebsite öffnen
         </Link>
-      </div>
-
-      {/* Sammel-Link: Gäste registrieren sich selbst (mit Bestätigung) */}
-      <div className="bp-card" style={{ padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <span style={{
-            width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-            background: 'var(--bp-gold-pale)', color: 'var(--bp-gold-deep)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Link2 size={16} />
-          </span>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--bp-ink)', margin: 0 }}>Sammel-Link</p>
-            <p className="bp-caption" style={{ margin: '0.125rem 0 0' }}>
-              Ein Link für alle: Gäste tragen sich selbst ein und erscheinen nach eurer Bestätigung in der Gästeliste.
-            </p>
-          </div>
-          {openEnabled && openInviteUrl && (
-            <button
-              className="bp-btn bp-btn-secondary bp-btn-sm"
-              onClick={copyOpenInviteLink}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}
-            >
-              {openCopied ? <><Check size={13} /> Kopiert</> : <><Copy size={13} /> Link kopieren</>}
-            </button>
-          )}
-          <button
-            className={`bp-btn ${openEnabled ? 'bp-btn-secondary' : 'bp-btn-primary'} bp-btn-sm`}
-            onClick={toggleOpenInvite}
-            disabled={openBusy}
-          >
-            {openBusy ? '…' : openEnabled ? 'Deaktivieren' : 'Aktivieren'}
-          </button>
-        </div>
-        {openEnabled && openInviteUrl && (
-          <p style={{
-            fontSize: '0.75rem', color: 'var(--bp-ink-3)', fontFamily: 'monospace',
-            margin: '0.625rem 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {openInviteUrl}
-          </p>
-        )}
       </div>
 
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1959,45 +1876,7 @@ function RsvpTab({ eventId, guests, onUpdateGuest, invitationText, openInviteTok
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-// Selbstregistrierte Gäste (Sammel-Link) — Bestätigungs-Schritt
-function PendingApprovals({ pending, onApprove, onReject }: {
-  pending: Guest[]
-  onApprove: (g: Guest) => void
-  onReject: (g: Guest) => void
-}) {
-  if (pending.length === 0) return null
-  return (
-    <div className="bp-card" style={{ marginBottom: '1.25rem', border: '1px solid var(--bp-rule-gold)' }}>
-      <div className="bp-card-header">
-        <span className="bp-section-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <UserCheck size={16} style={{ color: 'var(--bp-gold-deep)' }} />
-          Neue Anmeldungen über den Sammel-Link
-        </span>
-        <span className="bp-badge bp-badge-gold">{pending.length}</span>
-      </div>
-      <div className="bp-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        {pending.map(g => (
-          <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 160 }}>
-              <span style={{ fontWeight: 500, color: 'var(--bp-ink)', fontSize: '0.9375rem' }}>{g.name}</span>
-              <span className="bp-caption" style={{ marginLeft: '0.5rem' }}>
-                {g.status === 'zugesagt' ? 'hat zugesagt' : g.status === 'abgesagt' ? 'hat abgesagt' : 'noch keine Antwort'}
-              </span>
-            </div>
-            <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={() => onApprove(g)} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-              <Check size={13} /> Bestätigen
-            </button>
-            <button className="bp-btn bp-btn-danger bp-btn-sm" onClick={() => onReject(g)} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-              <X size={13} /> Ablehnen
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-export default function BrautpaarGaeste({ eventId, userId, initialGuests, initialBegleitpersonen, mealOptions, childrenAllowed, hotels, rsvpSettings, openInviteToken, openInviteEnabled }: Props) {
+export default function BrautpaarGaeste({ eventId, userId, initialGuests, initialBegleitpersonen, mealOptions, childrenAllowed, hotels, rsvpSettings }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('gaesteliste')
   const [guests, setGuests]       = useState<Guest[]>(initialGuests)
 
@@ -2012,29 +1891,11 @@ export default function BrautpaarGaeste({ eventId, userId, initialGuests, initia
     setGuests(prev => prev.filter(g => g.id !== id))
   }, [])
 
-  // Sammel-Link-Anmeldungen erst nach Bestätigung als vollwertige Gäste zeigen
-  const pendingGuests = guests.filter(g => g.pending_approval)
-  const activeGuests  = guests.filter(g => !g.pending_approval)
-
-  const approveGuest = useCallback(async (g: Guest) => {
-    handleGuestUpdate({ ...g, pending_approval: false })
-    const supabase = createClient()
-    await supabase.from('guests').update({ pending_approval: false }).eq('id', g.id)
-  }, [handleGuestUpdate])
-
-  const rejectGuest = useCallback(async (g: Guest) => {
-    handleGuestDelete(g.id)
-    const supabase = createClient()
-    await supabase.from('guests').delete().eq('id', g.id)
-  }, [handleGuestDelete])
-
   return (
     <div className="bp-page">
       <div className="bp-page-header">
         <h1 className="bp-page-title">Gäste</h1>
       </div>
-
-      <PendingApprovals pending={pendingGuests} onApprove={approveGuest} onReject={rejectGuest} />
 
       <div className="bp-step-tabs">
         {TABS.map((tab, idx) => (
@@ -2052,17 +1913,15 @@ export default function BrautpaarGaeste({ eventId, userId, initialGuests, initia
       </div>
 
       <div style={{ minHeight: 480 }}>
-        {activeTab === 'gaesteliste'   && <GaestelisteTab guests={activeGuests} begleitpersonen={initialBegleitpersonen} eventId={eventId} userId={userId} hotels={hotels} onUpdate={handleGuestUpdate} onDelete={handleGuestDelete} />}
+        {activeTab === 'gaesteliste'   && <GaestelisteTab guests={guests} begleitpersonen={initialBegleitpersonen} eventId={eventId} userId={userId} hotels={hotels} onUpdate={handleGuestUpdate} onDelete={handleGuestDelete} />}
         {activeTab === 'geschenke'     && <GeschenkTab eventId={eventId} />}
         {activeTab === 'hotel'         && <HotelTab eventId={eventId} hotels={hotels} />}
         {activeTab === 'rsvp'          && (
           <RsvpTab
             eventId={eventId}
-            guests={activeGuests}
+            guests={guests}
             onUpdateGuest={handleGuestUpdate}
             invitationText={rsvpSettings?.invitation_text ?? null}
-            openInviteToken={openInviteToken}
-            openInviteEnabled={openInviteEnabled}
           />
         )}
       </div>

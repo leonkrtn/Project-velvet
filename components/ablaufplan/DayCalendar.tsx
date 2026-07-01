@@ -279,6 +279,11 @@ export default function DayCalendar({
   const dragRef         = useRef<DragState | null>(null)
   const pointerDownPos  = useRef<{ x: number; y: number } | null>(null)
   const didRealDragRef  = useRef(false)
+  // Set when a touch pointerdown lands on empty grid background (case 3 below
+  // deliberately skips the drag-state machine for touch so native scrolling
+  // keeps working). handleClick uses this to know it should synthesize the
+  // tap-to-create call itself, without double-firing for mouse/pen.
+  const pendingTouchEmptyTap = useRef(false)
 
   const [dragState, setDragState] = useState<DragState | null>(null)
 
@@ -298,12 +303,28 @@ export default function DayCalendar({
   }
 
   // ─── Pointer down ────────────────────────────────────────────────────────────
+  // NOTE on touch handling: on touch devices, the empty grid background is the
+  // dominant hit area (entries only cover small blocks), and the calendar content
+  // is taller than the viewport on mobile. Previously every pointerdown — including
+  // taps on empty background — called setPointerCapture()+preventDefault() up front,
+  // which kills the browser's native touch-scroll inside the calendar's scroll
+  // container. On mobile that made existing entries effectively unreachable (you
+  // could never scroll down to them by touch), which presented as "entries don't
+  // render at all". Fix: touch taps on empty background no longer hijack the
+  // gesture — native vertical panning is left alone (see touchAction: 'pan-y'
+  // below) and a quick tap still creates an entry via onEmptyClick (through
+  // handleClick), matching standard mobile calendar UX (tap-to-create instead of
+  // drag-to-create on touch). Mouse/pen pointers and touches that start ON an
+  // existing entry or a resize handle keep the original instant-capture drag
+  // behavior, since those are small, deliberate targets, not the scrollable
+  // background.
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (readOnly) return
     pointerDownPos.current  = { x: e.clientX, y: e.clientY }
     didRealDragRef.current  = false
 
     const target = e.target as HTMLElement
+    const isTouch = e.pointerType === 'touch'
 
     // 1. Resize handle?
     const resizeEl = target.closest('[data-resize]') as HTMLElement | null
@@ -342,7 +363,13 @@ export default function DayCalendar({
       }
     }
 
-    // 3. Empty grid (create)
+    // 3. Empty grid (create). On touch, don't hijack the gesture up front — let it
+    // pass through as a native scroll/tap. handleClick still handles a plain tap
+    // (onEmptyClick) once the browser resolves it as a click rather than a scroll.
+    if (isTouch) {
+      pendingTouchEmptyTap.current = true
+      return
+    }
     const startMin   = getMinFromY(e.clientY)
     setDragState({ type: 'create', startMin, endMin: startMin + 60, movedEnough: false })
     containerRef.current!.setPointerCapture(e.pointerId)
@@ -409,15 +436,34 @@ export default function DayCalendar({
   }, [onDragCreate, onEmptyClick, onEventMove, onEventResize])
 
   // ─── Click: open modal only if not a real drag ────────────────────────────────
+  // Also handles tap-to-create on empty background for touch input: touch
+  // pointerdown on empty grid (case 3 in handlePointerDown) intentionally does
+  // NOT enter the drag-state machine anymore (so native scrolling keeps working),
+  // so a plain tap there never produces an onEmptyClick call from
+  // handlePointerUp. This click handler picks up that case via the browser's
+  // synthesized click event instead.
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const wasPendingTouchEmptyTap = pendingTouchEmptyTap.current
+    pendingTouchEmptyTap.current = false
+
     if (didRealDragRef.current) { didRealDragRef.current = false; return }
     const target  = e.target as HTMLElement
     if (target.closest('[data-resize]')) return
     const blockEl = target.closest('[data-entry-id]') as HTMLElement | null
-    if (!blockEl) return
-    const entry = entries.find(x => x.id === blockEl.dataset.entryId)
-    if (entry) onEventClick(entry)
-  }, [entries, onEventClick])
+    if (blockEl) {
+      const entry = entries.find(x => x.id === blockEl.dataset.entryId)
+      if (entry) onEventClick(entry)
+      return
+    }
+    // Empty background tap on touch: pointerdown deliberately skipped the
+    // drag-state machine (see handlePointerDown case 3) so native scrolling
+    // isn't blocked, so this synthesized click is the only signal we get for
+    // a genuine tap-to-create. Mouse/pen already create via the drag-state
+    // machine in handlePointerUp, so this only fires for the touch path.
+    if (!readOnly && wasPendingTouchEmptyTap) {
+      onEmptyClick(getMinFromY(e.clientY))
+    }
+  }, [entries, onEventClick, onEmptyClick, readOnly])
 
   // ─── Build layout with live drag overrides ────────────────────────────────────
   const movingId  = dragState?.type === 'move' ? dragState.entryId   : undefined
@@ -484,6 +530,11 @@ export default function DayCalendar({
           borderLeft: '1px solid var(--border)',
           cursor:     readOnly ? 'default' : 'crosshair',
           userSelect: 'none',
+          // Allow native vertical touch-scrolling over the grid background (see
+          // handlePointerDown for why empty-background touches no longer call
+          // preventDefault()). Entry blocks/resize handles still get dragged via
+          // explicit pointer capture, which overrides this for those sub-areas.
+          touchAction: 'pan-y',
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}

@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Loader2, Upload, Save, Send, CheckCircle2, AlertTriangle, Clock,
-  Plus, Trash2, ArrowUp, ArrowDown, Star,
+  Plus, Trash2, ArrowUp, ArrowDown, Star, Building2,
 } from 'lucide-react'
 import {
   MARKETPLACE_CATEGORIES, PRICE_UNITS, SOCIAL_PLATFORMS,
@@ -15,6 +15,7 @@ interface Vendor {
   id: string; name: string; company_name: string | null; category: string
   email: string | null; phone: string | null; website: string | null; description: string | null
   street: string | null; zip: string | null; city: string | null; price_range: string | null
+  company_street: string | null; company_zip: string | null; company_city: string | null
   moderation_status: ModerationStatus; pending_changes: Record<string, unknown> | null
   verified: boolean; published: boolean; rejected_reason: string | null
   social_links: Record<string, string>; service_cities: string[]; service_radius_km: number | null
@@ -93,6 +94,7 @@ export default function VendorListingClient() {
 
   const [f, setF] = useState({
     name: '', company_name: '', category: 'sonstiges', street: '', zip: '', city: '',
+    company_street: '', company_zip: '', company_city: '',
     description: '', email: '', phone: '', website: '', price_range: '',
     service_cities: '', service_radius_km: '', brand_color: '',
   })
@@ -120,6 +122,9 @@ export default function VendorListingClient() {
       street: String(pick('street', v.street) ?? ''),
       zip: String(pick('zip', v.zip) ?? ''),
       city: String(pick('city', v.city) ?? ''),
+      company_street: v.company_street ?? '',
+      company_zip: v.company_zip ?? '',
+      company_city: v.company_city ?? '',
       description: v.description ?? '',
       email: v.email ?? '',
       phone: v.phone ?? '',
@@ -143,6 +148,7 @@ export default function VendorListingClient() {
     const payload = {
       name: f.name, company_name: f.company_name, category: f.category,
       street: f.street, zip: f.zip, city: f.city,
+      company_street: f.company_street, company_zip: f.company_zip, company_city: f.company_city,
       description: f.description, email: f.email, phone: f.phone, website: f.website,
       price_range: f.price_range,
       service_cities: f.service_cities.split(',').map(s => s.trim()).filter(Boolean),
@@ -554,6 +560,23 @@ export default function VendorListingClient() {
                 <div><label style={lbl}>Website</label><input style={inp} value={f.website} onChange={set('website')} placeholder="https://" /></div>
                 <div><label style={lbl}>E-Mail (öffentlich nach Anfrage)</label><input style={inp} value={f.email} onChange={set('email')} /></div>
                 <div><label style={lbl}>Telefon (öffentlich nach Anfrage)</label><input style={inp} value={f.phone} onChange={set('phone')} /></div>
+              </div>
+            </div>
+
+            {/* ── Allgemeine Firmenadresse (Stammdaten, NICHT Teil des Marktplatz-Listings) ── */}
+            <div style={{ ...secCard, background: 'var(--bg)', border: '1px dashed var(--border)' }}>
+              <h2 style={{ ...h2s, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Building2 size={16} style={{ color: 'var(--text-dim)' }} />
+                Allgemeine Firmenadresse
+              </h2>
+              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.5 }}>
+                Interne Stammdaten (z. B. für Rechnungen) — <strong>nicht Teil deines Marktplatz-Listings</strong> und
+                geht nicht in die Prüfung. Wird nur angezeigt, wenn oben unter „Weitere Angaben“ keine Adresse hinterlegt ist.
+              </p>
+              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div><label style={lbl}>Straße</label><input style={inp} value={f.company_street} onChange={set('company_street')} /></div>
+                <div><label style={lbl}>PLZ</label><input style={inp} value={f.company_zip} onChange={set('company_zip')} /></div>
+                <div><label style={lbl}>Ort</label><input style={inp} value={f.company_city} onChange={set('company_city')} /></div>
               </div>
             </div>
 

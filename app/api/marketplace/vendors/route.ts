@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requestDownloadUrl } from '@/lib/files/worker-client'
 
+// Max. Anzahl Galerie-Bilder, die pro Vendor in der Listing-Karte mitgeliefert werden.
+const CARD_GALLERY_LIMIT = 5
+
 // GET — veröffentlichte Marktplatz-Vendors durchsuchen.
 // Query: ?category=&city=&q=  oder  ?id=<vendorId> für Detail (inkl. aller Fotos)
 export async function GET(req: NextRequest) {
@@ -43,7 +46,7 @@ export async function GET(req: NextRequest) {
 
   let query = admin
     .from('dienstleister_profiles')
-    .select('id, company_name, category, city, price_range, description, logo_r2_key, verified, tier, service_cities, service_radius_km')
+    .select('id, company_name, category, city, company_city, price_range, description, logo_r2_key, verified, tier, service_cities, service_radius_km')
     .eq('is_marketplace', true)
     .eq('published', true)
     .eq('moderation_status', 'approved')
@@ -56,9 +59,9 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query.order('company_name', { nullsFirst: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Erstes Galerie-Foto je Vendor als Cover ermitteln (für bildgeführte Karten)
+  // Galerie-Fotos je Vendor ermitteln (für bildgeführte Karten + Slider; max. CARD_GALLERY_LIMIT).
   const ids = (data ?? []).map(v => v.id)
-  const coverByVendor: Record<string, string> = {}
+  const photosByVendor: Record<string, string[]> = {}
   if (ids.length) {
     const { data: photos } = await admin
       .from('marketplace_vendor_photos')
@@ -67,23 +70,28 @@ export async function GET(req: NextRequest) {
       .order('sort_order')
     for (const p of photos ?? []) {
       const dlId = (p as { dienstleister_id: string }).dienstleister_id
-      if (!coverByVendor[dlId]) coverByVendor[dlId] = (p as { r2_key: string }).r2_key
+      const list = photosByVendor[dlId] ?? (photosByVendor[dlId] = [])
+      if (list.length < CARD_GALLERY_LIMIT) list.push((p as { r2_key: string }).r2_key)
     }
   }
 
   const vendors = await Promise.all((data ?? []).map(async v => {
     const logoUrl = v.logo_r2_key ? await requestDownloadUrl(v.logo_r2_key).catch(() => null) : null
-    const coverKey = coverByVendor[v.id]
-    const coverUrl = coverKey ? await requestDownloadUrl(coverKey).catch(() => null) : null
+    const galleryKeys = photosByVendor[v.id] ?? []
+    const galleryUrls = (await Promise.all(galleryKeys.map(k => requestDownloadUrl(k).catch(() => null))))
+      .filter((u): u is string => !!u)
+    const coverUrl = galleryUrls[0] ?? null
     return {
       id: v.id,
       company_name: v.company_name,
       category: v.category,
       city: v.city,
+      company_city: v.company_city ?? null,
       price_range: v.price_range,
       description: v.description,
       logo_url: logoUrl,
       cover_url: coverUrl ?? logoUrl,
+      gallery_urls: galleryUrls.length ? galleryUrls : (logoUrl ? [logoUrl] : []),
       verified: !!v.verified,
       tier: v.tier ?? 'free',
       service_cities: (v.service_cities as string[]) ?? [],
