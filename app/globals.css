@@ -112,6 +112,7 @@ input[type="datetime-local"] {
   color: inherit;
   font-family: inherit;
   font-size: inherit;
+  text-align: left;
 }
 
 /* ── Transitions ── */
