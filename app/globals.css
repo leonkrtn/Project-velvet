@@ -90,11 +90,6 @@ body {
     align-items: center !important;
     justify-content: center !important;
   }
-  .mob-touch-flex {
-    min-height: 44px !important;
-    display: flex !important;
-    align-items: center !important;
-  }
 }
 
 input, select, textarea, button {
@@ -121,12 +116,6 @@ a, button { transition: opacity 0.15s ease, background 0.15s ease, border-color 
 a:hover { opacity: 0.8; }
 
 button:hover:not(:disabled):not([data-sel]) { opacity: 1; }
-
-/* Feature grid links */
-.feature-grid a:hover {
-  color: var(--accent) !important;
-  opacity: 1;
-}
 
 /* Hover for inline-styled buttons:
    only a little darker, never force a text colour. Using filter: brightness()
@@ -156,15 +145,6 @@ button[style*="background: none"]:hover:not([data-sel]) {
   opacity: 1;
 }
 
-/* Tab bar */
-.tab-bar button:hover {
-  opacity: 1 !important;
-  background: none !important;
-  border-color: transparent !important;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
 /* ── Personalplanung responsive ── */
 .pp-stats-grid {
   display: grid;
@@ -189,10 +169,6 @@ button[style*="background: none"]:hover:not([data-sel]) {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
 @keyframes slideUp {
   from { transform: translate(-50%, 16px); opacity: 0; }
   to   { transform: translate(-50%, 0);    opacity: 1; }
@@ -205,18 +181,6 @@ button[style*="background: none"]:hover:not([data-sel]) {
   0%   { background-position: -600px 0; }
   100% { background-position:  600px 0; }
 }
-@keyframes modalOverlayIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes modalSheetIn {
-  from { opacity: 0; transform: scale(0.97) translateY(8px); }
-  to   { opacity: 1; transform: scale(1)    translateY(0); }
-}
-@keyframes slideInFromBottom {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 
 /* ── Skeleton utility ── */
 .skeleton {
@@ -226,24 +190,6 @@ button[style*="background: none"]:hover:not([data-sel]) {
   border-radius: 8px;
 }
 
-/* ── Page content fade-in ── */
-.page-enter {
-  animation: fadeIn 0.25s ease both;
-}
-
-/* ── Modal animations ── */
-.modal-overlay-animated {
-  animation: modalOverlayIn 0.18s ease both;
-}
-.modal-sheet-animated {
-  animation: modalSheetIn 0.22s cubic-bezier(0.34, 1.1, 0.64, 1) both;
-}
-
-/* ── List item stagger helper ── */
-.list-item-enter {
-  animation: slideInFromBottom 0.2s ease both;
-}
-
 /* ─────────────────────────────────────────────────────────────────────────
    Responsive Helpers — nur Mobile (Desktop bleibt unverändert)
    Gästelisten-Grids (Veranstalter + Dienstleister): am Handy Sekundärspalten
@@ -251,7 +197,6 @@ button[style*="background: none"]:hover:not([data-sel]) {
    ───────────────────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .va-guest-scroll { overflow-x: visible !important; }
-  .va-guest-min { min-width: 0 !important; }
   .va-guest-head { display: none !important; }
   .va-guest-row { grid-template-columns: 1fr !important; min-width: 0 !important; }
   .va-guest-sec { display: none !important; }

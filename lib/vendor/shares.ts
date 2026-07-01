@@ -11,7 +11,6 @@ export type ShareModule =
   | 'patisserie'
 
 export type ShareMode = 'snapshot' | 'live'
-export type ShareStatus = 'active' | 'frozen' | 'revoked'
 
 export interface ShareModuleDef {
   key: ShareModule
@@ -59,16 +58,3 @@ export interface ModuleSnapshot {
   blocks: SnapshotBlock[]
 }
 
-export interface DataShare {
-  id: string
-  event_id: string
-  conversation_id: string
-  module: ShareModule
-  mode: ShareMode
-  status: ShareStatus
-  snapshot: ModuleSnapshot | null
-  shared_by: string | null
-  message_id: string | null
-  created_at: string
-  updated_at: string
-}
