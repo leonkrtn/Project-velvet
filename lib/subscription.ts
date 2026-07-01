@@ -9,7 +9,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export const TRIAL_DAYS = 14
 export const PLAN_PRICES = { basis: 25, pro: 55 } as const
-export const PLAN_LABELS = { trial: 'Testphase', basis: 'Forevr', pro: 'Forevr Pro' } as const
 
 export type SubscriptionPlan = 'trial' | 'basis' | 'pro'
 

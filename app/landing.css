@@ -35,7 +35,6 @@
 .landing-root .lp-cta-band,
 .landing-root footer,
 .landing-root .lp-features,
-.landing-root .lp-steps,
 .landing-root .lp-faq {
   position: relative;
   z-index: 2;
@@ -1167,7 +1166,6 @@
   transition: opacity 0.7s ease, transform 0.7s ease;
 }
 .lp-reveal.visible { opacity: 1; transform: translateY(0); }
-.lp-reveal-d1 { transition-delay: 0.1s; }
 .lp-reveal-d2 { transition-delay: 0.2s; }
 .lp-reveal-d3 { transition-delay: 0.3s; }
 .lp-reveal-d4 { transition-delay: 0.4s; }
@@ -1179,15 +1177,6 @@
   transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .lp-reveal-clip.visible .lp-reveal-clip-inner { transform: translateY(0); }
-
-/* ─── SECTION DIVIDER ─── */
-.lp-section-divider {
-  height: 1px;
-  background: linear-gradient(to right, transparent, #8A6B28, transparent);
-  opacity: 0.25; transform-origin: left; transform: scaleX(0);
-  transition: transform 1.2s ease;
-}
-.lp-section-divider.visible { transform: scaleX(1); }
 
 /* ─── RESPONSIVE ─── */
 @media (max-width: 1024px) {

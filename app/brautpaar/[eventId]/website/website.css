@@ -27,11 +27,11 @@
 .we-flabel { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--bp-ink-3, #8a8178); margin-bottom: 0.35rem; }
 .we-count { font-variant-numeric: tabular-nums; }
 .we-count.over { color: #c0392b; }
-.we-input, .we-textarea, .we-select {
+.we-input, .we-textarea {
   width: 100%; padding: 0.6rem 0.7rem; border: 1px solid var(--bp-line, #e8e2d8); border-radius: 8px;
   font-family: inherit; font-size: 0.92rem; color: var(--bp-ink, #2c2622); background: #fff;
 }
-.we-input:focus, .we-textarea:focus, .we-select:focus { outline: 2px solid var(--bp-gold, #b9975b); outline-offset: 0; border-color: transparent; }
+.we-input:focus, .we-textarea:focus { outline: 2px solid var(--bp-gold, #b9975b); outline-offset: 0; border-color: transparent; }
 .we-input[type="date"], .we-input[type="time"], .we-input[type="datetime-local"] { -webkit-appearance: none; appearance: none; text-align: left; }
 .we-textarea { resize: vertical; min-height: 80px; }
 .we-readonly { background: #f5f2ec; color: var(--bp-ink-3, #8a8178); }

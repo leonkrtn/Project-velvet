@@ -319,14 +319,6 @@ export function resolveRsvpSettings(input: DisplaySettings): DisplaySettings {
   }
 }
 
-// Effektive Einzelwerte der RSVP-Seite (für die einladung-Seite weiter genutzt).
-export function invitationFont(s: DisplaySettings): HeadingFontKey {
-  return resolveRsvpSettings(s).headingFont
-}
-export function invitationAccent(s: DisplaySettings): string {
-  return resolveRsvpSettings(s).accent
-}
-
 // ── Bildausschnitt-Hilfen ──────────────────────────────────────────────────────
 export function normalizeFocus(raw: unknown): ImageFocus {
   const f = (raw && typeof raw === 'object') ? raw as Record<string, unknown> : {}
@@ -404,12 +396,6 @@ export function textureStyle(key: DisplaySettings['bgTexture']): { image: string
 // Effektive zweite Akzentfarbe (Fallback: aus Akzent abgeleitet).
 export function effectiveAccent2(s: DisplaySettings): string {
   return s.accent2 ?? shade(s.accent, -0.3)
-}
-
-// Liefert den Wert eines anpassbaren Textes (Override oder Standard).
-export function rsvpText(s: DisplaySettings, key: keyof RsvpTexts): string {
-  const v = s.texts?.[key]
-  return v && v.trim() ? v : RSVP_TEXT_DEFAULTS[key]
 }
 
 export function bodyFontHrefFor(key: BodyFontKey): string | null {

@@ -413,15 +413,6 @@ export function saveEvent(e: Event): void {
   localStorage.setItem(KEY, JSON.stringify(e))
 }
 
-export function resetEvent(): void {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(KEY, JSON.stringify(SEED_EVENT))
-}
-
-export function getGuestByToken(e: Event, token: string): Guest | undefined {
-  return e.guests.find(g => g.token === token)
-}
-
 // ── Stats ──────────────────────────────────────────────────────────────────
 export function getStats(event: Event) {
   const confirmed = event.guests.filter(g => g.status === 'zugesagt')

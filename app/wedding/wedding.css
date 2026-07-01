@@ -351,16 +351,15 @@
 .wd-card { background: var(--wd-surface); border: 1px solid var(--wd-line); border-radius: var(--wd-radius); padding: clamp(1.5rem, 4vw, 2.75rem); box-shadow: 0 14px 50px rgba(0,0,0,.06); }
 .wd-field { margin-bottom: 1.35rem; }
 .wd-label { display: block; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--wd-ink-soft); margin-bottom: 0.55rem; font-weight: 600; }
-.wd-input, .wd-textarea, .wd-select {
+.wd-input, .wd-textarea {
   width: 100%; padding: 0.85rem 1rem; background: var(--wd-bg);
   border: 1px solid var(--wd-line); border-radius: var(--wd-radius);
   color: var(--wd-ink); font-family: inherit; font-size: 1rem; transition: border-color .2s, box-shadow .2s;
 }
-.wd-input:focus, .wd-textarea:focus, .wd-select:focus { outline: none; border-color: var(--wd-accent); box-shadow: 0 0 0 3px var(--wd-accent-soft); }
+.wd-input:focus, .wd-textarea:focus { outline: none; border-color: var(--wd-accent); box-shadow: 0 0 0 3px var(--wd-accent-soft); }
 .wd-input[type="date"], .wd-input[type="time"], .wd-input[type="datetime-local"] { -webkit-appearance: none; appearance: none; text-align: left; }
 .wd-textarea { resize: vertical; min-height: 96px; }
 .wd-hint { font-size: 0.76rem; color: var(--wd-ink-soft); margin-top: 0.4rem; }
-.wd-counter { float: right; font-size: 0.7rem; color: var(--wd-ink-soft); }
 .wd-error { color: #c0392b; font-size: 0.85rem; margin-top: 0.6rem; }
 
 .wd-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }

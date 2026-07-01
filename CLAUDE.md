@@ -149,24 +149,23 @@ In den AGB des Dienstleisters (und ggf. der Forevr-Plattform-AGB) muss explizit 
 
 ## Permission System (Vendor Tabs)
 
-> **Hinweis (Stand 2026-06):** Der früher hier dokumentierte „Dual Permission"-Bug
-> ist behoben. Die Vendor-Sidebar liest die Tab-Sichtbarkeit jetzt aus dem
-> **neuen** System (`dienstleister_permissions`) — siehe
-> `app/vendor/dashboard/[eventId]/VendorSidebarLayout.tsx` (filtert per
-> `access !== 'none'`). Das alte `permissions`-System ist nur noch Legacy.
+> **Hinweis (Stand 2026-07):** `VendorSidebarLayout.tsx` existierte für die alte,
+> tab-basierte Vendor-Sidebar und wurde als toter Code entfernt (nie mehr importiert
+> seit dem Vendor-Redesign in Migration 0105 — siehe „Vendor Data Sharing" oben).
+> Beide unten beschriebenen Permission-Systeme sind für die aktuelle Vendor-Oberfläche
+> **Legacy** (Tabelle bleibt in der DB, aber keine UI liest sie mehr für Tab-Sichtbarkeit).
 
-### NEW system (DB RLS enforced since migration 0042) — maßgeblich
+### NEW system (DB RLS enforced since migration 0042) — Legacy seit Migration 0105
 - Table: `dienstleister_permissions` (columns: `event_id`, `dienstleister_user_id`, `tab_key TEXT`, `item_id TEXT|NULL`, `access: none|read|write`)
 - Tab keys: `uebersicht`, `catering`, `chats`, `ablaufplan`, `gaesteliste`, `musik`, `patisserie`, `medien`, `sitzplan`
 - `allgemein` is **explicitly blocked** — migration 0043 added a CHECK constraint (`tab_key <> 'allgemein'`) and purged existing rows
-- Written by: `BerechtigungenClient.tsx` (permission editor UI)
-- Read by: `VendorSidebarLayout.tsx` (tab visibility)
+- Written by: `BerechtigungenClient.tsx` (permission editor UI, dead für den neuen Flow)
 - Enforced by: `dl_has_tab_access()` SECURITY DEFINER function in all table RLS policies
 
 ### OLD system (Legacy, nicht mehr für Tab-Sichtbarkeit maßgeblich)
 - Table: `permissions` (columns: `event_id`, `user_id`, `permission TEXT`)
 - Keys: `mod_chat`, `mod_timeline`, `mod_timeline_read`, `mod_seating`, `mod_seating_read`, `mod_catering`, `mod_catering_read`, `mod_music`, `mod_music_read`, `mod_patisserie`, `mod_patisserie_read`, `mod_media`, `mod_media_read`, `mod_location`, `mod_guests`
-- Still referenced by: `vendor-modules.ts` (`ALL_MODULES`), `lib/store.ts`
+- Still referenced by: `lib/store.ts`
 
 ---
 
@@ -290,7 +289,6 @@ app/
 
 lib/
   store.ts              Legacy localStorage data model + event store
-  vendor-modules.ts     ALL_MODULES (old mod_* keys), ROLE_MODULE_DEFAULTS
 middleware.ts           Auth guard (has approval-check bug)
 
 app/veranstalter/[eventId]/
@@ -313,15 +311,8 @@ components/
   sitzplan/SitzplanEditor.tsx          SVG seating editor: room polygon + filtered elements + tables with 0.5m chair buffer
                                        Table sizes fixed from pool type; only capacity + rotation editable in panel
 
-app/vendor/dashboard/[eventId]/
-  VendorDashboardClient.tsx     Vendor portal (reads OLD system for tab visibility)
-  VendorSidebarLayout.tsx       Sidebar nav — allgemein removed; filters by dienstleister_permissions
-  uebersicht/page.tsx           Rebuilt overview: event details, veranstalter/brautpaar contacts,
-                                permission-gated module shortcut cards
-  sitzplan/page.tsx             Read-only seating view with table cards + guest names
-  files/page.tsx                Files tab (R2-backed, permission-gated)
-  tabs/FilesTab.tsx             Thin wrapper around FilesSection
-  tabs/                         Tab components (CateringTab, SeatingTab, ChatTab, …) — shared, not routes
+app/vendor/dashboard/[eventId]/ — siehe „Route Structure" oben (kommunikation/, informationen/; alte
+  Tab-Struktur inkl. VendorDashboardClient.tsx/VendorSidebarLayout.tsx wurde mit Migration 0105 entfernt)
 
 app/veranstalter/[eventId]/
   SidebarLayout.tsx             Bottom icon bar: Profile avatar → /veranstalter/profil, Settings → /veranstalter/konfiguration, Logout.
