@@ -304,9 +304,13 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
       <style>{`
         @media (max-width: 900px) {
           .ds-dialog { height: 100dvh !important; width: 100% !important; border-radius: 0 !important; }
-          .ds-header { flex-wrap: wrap; }
+          .ds-header { flex-wrap: wrap; row-gap: 8px; }
+          .ds-title { flex: 1 1 auto; min-width: 0; font-size: 1.05rem !important; overflow: hidden; text-overflow: ellipsis; }
+          .ds-search { order: 3; flex: 1 1 100% !important; max-width: none !important; }
+          .ds-header-actions { order: 4; flex: 1 1 100% !important; margin-left: 0 !important; justify-content: space-between !important; }
+          .ds-close { order: 2; }
           .ds-main { flex-direction: column !important; overflow-y: auto; }
-          .ds-sidebar { width: 100% !important; flex-direction: row !important; overflow-x: auto; overflow-y: hidden;
+          .ds-sidebar { width: 100% !important; display: flex !important; flex-direction: row !important; overflow-x: auto; overflow-y: hidden;
             border-right: none !important; border-bottom: 1px solid var(--bp-rule); padding: 8px !important; gap: 6px; }
           .ds-sidebar > div { margin-bottom: 0 !important; display: flex; gap: 4px; flex-shrink: 0; }
           .ds-grouplabel { display: none !important; }
@@ -321,27 +325,29 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
 
         {/* ── Kopfleiste ── */}
         <header className="ds-header" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--bp-rule)', flexShrink: 0 }}>
-          <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.4rem', fontWeight: 600, letterSpacing: '0.04em', margin: 0, color: 'var(--bp-ink)', whiteSpace: 'nowrap' }}>
+          <h2 className="ds-title" style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.4rem', fontWeight: 600, letterSpacing: '0.04em', margin: 0, color: 'var(--bp-ink)', whiteSpace: 'nowrap' }}>
             Anzeige &amp; RSVP gestalten
           </h2>
-          <div style={{ position: 'relative', flex: 1, maxWidth: 320 }}>
+          <div className="ds-search" style={{ position: 'relative', flex: 1, maxWidth: 320 }}>
             <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--bp-ink-3)' }} />
             <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Einstellung suchen …"
               style={{ width: '100%', height: 36, padding: '0 10px 0 32px', borderRadius: 9, border: '1px solid var(--bp-rule)', background: 'var(--bp-ivory-2)', fontSize: 13, color: 'var(--bp-ink)', outline: 'none' }} />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
-            <IconBtn title="Rückgängig (Strg+Z)" onClick={undo} disabled={!hist.past.length}><Undo2 size={16} /></IconBtn>
-            <IconBtn title="Wiederholen (Strg+Y)" onClick={redo} disabled={!hist.future.length}><Redo2 size={16} /></IconBtn>
+          <div className="ds-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <IconBtn title="Rückgängig (Strg+Z)" onClick={undo} disabled={!hist.past.length}><Undo2 size={16} /></IconBtn>
+              <IconBtn title="Wiederholen (Strg+Y)" onClick={redo} disabled={!hist.future.length}><Redo2 size={16} /></IconBtn>
+            </div>
+            <span style={{ fontSize: 12, color: dirty ? 'var(--bp-gold-deep)' : 'var(--bp-ink-3)', minWidth: 96, whiteSpace: 'nowrap', textAlign: 'right' }}>
+              {saving ? 'Speichert…' : saved ? 'Gespeichert' : dirty ? 'Nicht gespeichert' : 'Aktuell'}
+            </span>
+            <button type="button" className="bp-btn bp-btn-primary bp-btn-sm" onClick={save} disabled={saving || !dirty}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+              {saving ? <Loader2 size={14} className="bp-spin" /> : saved ? <Check size={14} /> : null}
+              Übernehmen
+            </button>
           </div>
-          <span style={{ fontSize: 12, color: dirty ? 'var(--bp-gold-deep)' : 'var(--bp-ink-3)', minWidth: 96, textAlign: 'right' }}>
-            {saving ? 'Speichert…' : saved ? 'Gespeichert' : dirty ? 'Nicht gespeichert' : 'Aktuell'}
-          </span>
-          <button type="button" className="bp-btn bp-btn-primary bp-btn-sm" onClick={save} disabled={saving || !dirty}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {saving ? <Loader2 size={14} className="bp-spin" /> : saved ? <Check size={14} /> : null}
-            Übernehmen
-          </button>
-          <IconBtn title="Schließen" onClick={requestClose}><X size={18} /></IconBtn>
+          <IconBtn className="ds-close" title="Schließen" onClick={requestClose}><X size={18} /></IconBtn>
         </header>
 
         {/* ── Hauptbereich: Sidebar | Inhalt | Vorschau ── */}
@@ -452,12 +458,12 @@ export default function DesignStudioModal({ eventId, onClose }: { eventId: strin
 }
 
 // ── Kopf-Icon-Button ────────────────────────────────────────────────────────────
-function IconBtn({ children, onClick, title, disabled }: { children: React.ReactNode; onClick: () => void; title: string; disabled?: boolean }) {
+function IconBtn({ children, onClick, title, disabled, className }: { children: React.ReactNode; onClick: () => void; title: string; disabled?: boolean; className?: string }) {
   return (
-    <button type="button" title={title} onClick={onClick} disabled={disabled}
+    <button type="button" className={className} title={title} onClick={onClick} disabled={disabled}
       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 9,
         border: '1px solid var(--bp-rule)', background: '#fff', cursor: disabled ? 'default' : 'pointer',
-        color: disabled ? 'var(--bp-ink-3)' : 'var(--bp-ink-2)', opacity: disabled ? 0.5 : 1 }}>
+        color: disabled ? 'var(--bp-ink-3)' : 'var(--bp-ink-2)', opacity: disabled ? 0.5 : 1, flexShrink: 0 }}>
       {children}
     </button>
   )
