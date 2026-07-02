@@ -639,6 +639,214 @@ function FunktionenSection() {
   )
 }
 
+// ─── Dashboard-Funktionen (Fächer-Karten) ──────────────────────────────────────
+
+const FEATURES_DASHBOARD = [
+  {
+    num: '01',
+    title: 'Sitzplan & Tischplanung',
+    desc: 'Tische, Kapazitäten und Belegung in Echtzeit — ihr seht sofort, wer noch keinen Platz hat.',
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="14" y="20" width="20" height="10" rx="1"/>
+        <line x1="17" y1="30" x2="17" y2="38"/><line x1="31" y1="30" x2="31" y2="38"/>
+        <rect x="19" y="11" width="10" height="6" rx="1"/>
+        <line x1="21" y1="17" x2="21" y2="20"/><line x1="27" y1="17" x2="27" y2="20"/>
+        <rect x="19" y="35" width="10" height="6" rx="1"/>
+        <line x1="21" y1="35" x2="21" y2="30"/><line x1="27" y1="35" x2="27" y2="30"/>
+        <rect x="5" y="21" width="6" height="10" rx="1"/>
+        <line x1="11" y1="23" x2="14" y2="23"/><line x1="11" y1="27" x2="14" y2="27"/>
+        <rect x="37" y="21" width="6" height="10" rx="1"/>
+        <line x1="37" y1="23" x2="34" y2="23"/><line x1="37" y1="27" x2="34" y2="27"/>
+      </svg>
+    ),
+  },
+  {
+    num: '02',
+    title: 'Gästeliste & RSVP',
+    desc: 'Jeder Gast bekommt einen persönlichen Link — Zusagen, Menüwahl und Allergien tragen sich von selbst ein.',
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="18" cy="16" r="7"/><circle cx="34" cy="16" r="5"/>
+        <path d="M2 38c0-8 7-13 16-13s16 5 16 13"/><path d="M34 26c5 0 10 3 10 10"/>
+      </svg>
+    ),
+  },
+  {
+    num: '03',
+    title: 'Aufgaben & To-Do-Liste',
+    desc: 'Alle Aufgaben nach Planungsphasen geordnet — von 12+ Monate vorher bis zum Hochzeitstag, gemeinsam abhakbar.',
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="6" y="8" width="36" height="36" rx="2"/>
+        <path d="M32 4v8M16 4v8"/><line x1="6" y1="20" x2="42" y2="20"/>
+        <path d="M14 28h4v4h-4zM22 28h4v4h-4zM30 28h4v4h-4z"/>
+      </svg>
+    ),
+  },
+  {
+    num: '04',
+    title: 'Budget im Griff',
+    desc: 'Geplante und tatsächliche Kosten je Kategorie — ihr seht jederzeit, wo ihr steht.',
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="6" y="13" width="36" height="24" rx="3"/>
+        <path d="M6 21h36"/>
+        <path d="M33 13v-3a2 2 0 00-2.4-1.96L9 12"/>
+        <circle cx="34" cy="29" r="2.5"/>
+      </svg>
+    ),
+  },
+  {
+    num: '05',
+    title: 'Hochzeitswebsite',
+    desc: 'Erstellt eure eigene Hochzeitswebsite in Minuten — mit RSVP, Ablauf und Fotos, direkt verknüpft mit eurem Dashboard.',
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="4" y="8" width="40" height="32" rx="3"/>
+        <line x1="4" y1="17" x2="44" y2="17"/>
+        <circle cx="10" cy="12.5" r="1.3" fill="currentColor" stroke="none"/>
+        <circle cx="15" cy="12.5" r="1.3" fill="currentColor" stroke="none"/>
+        <circle cx="20" cy="12.5" r="1.3" fill="currentColor" stroke="none"/>
+        <path d="M12 25h24M12 31h16"/>
+      </svg>
+    ),
+  },
+  {
+    num: '06',
+    title: 'Zeitstrahl & Regieplan',
+    desc: 'Euer Hochzeitstag minutengenau geplant — vom Sektempfang bis zum letzten Tanz.',
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="24" cy="24" r="18"/><path d="M24 12v12l8 4"/>
+      </svg>
+    ),
+  },
+  {
+    num: '07',
+    title: 'Dienstleister-Marktplatz',
+    desc: 'Entdeckt geprüfte Fotograf:innen, Caterer & mehr — anfragen und buchen, ohne die Plattform zu verlassen.',
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M6 18l2-10h32l2 10"/>
+        <path d="M6 18a5 5 0 0010 0 5 5 0 0010 0 5 5 0 0010 0 5 5 0 0010 0"/>
+        <path d="M9 18v20h30V18"/>
+        <rect x="19" y="28" width="10" height="10"/>
+      </svg>
+    ),
+  },
+  {
+    num: '08',
+    title: 'Direktnachrichten',
+    desc: 'Ein Chat mit allen Beteiligten — nachlesbar, in Echtzeit, ohne WhatsApp-Chaos.',
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M40 8H8a2 2 0 00-2 2v20a2 2 0 002 2h8l8 8 8-8h8a2 2 0 002-2V10a2 2 0 00-2-2z"/>
+        <line x1="16" y1="18" x2="32" y2="18"/><line x1="16" y1="24" x2="26" y2="24"/>
+      </svg>
+    ),
+  },
+]
+
+const FAN_CENTER_INDEX = 3
+const FAN_USP_INDICES = [1, 4, 6]
+
+function DashboardFeaturesSection() {
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null)
+  const [mobileOpen, setMobileOpen] = useState<number | null>(null)
+  const hasHover = hoveredCard !== null
+
+  return (
+    <section className="lp-features" id="lp-features">
+      <div className="lp-features-header">
+        <div>
+          <p className="lp-section-eyebrow lp-reveal">Euer Dashboard</p>
+          <h2 className="lp-section-title">
+            <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">Alles, was ihr <em>wirklich braucht</em></span></span>
+          </h2>
+        </div>
+        <div>
+          <p className="lp-section-sub lp-reveal lp-reveal-d2">
+            Das Forevr-Brautpaar-Dashboard vereint alle wichtigen Planungstools in einer eleganten Oberfläche — damit ihr euch auf das Wesentliche konzentrieren könnt: einander.
+          </p>
+        </div>
+      </div>
+
+      <div className="lp-fan-desktop" onMouseLeave={() => setHoveredCard(null)}>
+        {FEATURES_DASHBOARD.map((f, i) => {
+          const offset = i - FAN_CENTER_INDEX
+          const isHovered = hoveredCard === i
+          const isUSP = FAN_USP_INDICES.includes(i)
+          const neighborFactor = hasHover ? i - (hoveredCard as number) : 0
+          const absNeighbor = Math.abs(neighborFactor)
+          const rotate = isHovered ? 0 : offset * 3.2
+          const pushMagnitude = Math.max(70 - absNeighbor * 12, 22)
+          const translateY = isHovered
+            ? -64
+            : hasHover
+              ? absNeighbor * 10 + 14
+              : Math.abs(offset) * 15 - (offset === 0 ? 16 : 0)
+          const translateX = !isHovered && hasHover ? Math.sign(neighborFactor) * pushMagnitude : 0
+          const scale = isHovered
+            ? 1.10
+            : hasHover
+              ? Math.max(0.82, 0.94 - absNeighbor * 0.04)
+              : offset === 0 ? 1.08 : 1 - Math.abs(offset) * 0.012
+          const z = isHovered ? 50 : 20 - Math.abs(offset)
+          return (
+            <div
+              key={f.num}
+              className={`lp-fan-card${isUSP ? ' lp-fan-card-usp' : ''}`}
+              onMouseEnter={() => setHoveredCard(i)}
+              style={{
+                marginLeft: i === 0 ? 0 : -150,
+                transform: `translateX(${translateX}px) translateY(${translateY}px) rotate(${rotate}deg) scale(${scale})`,
+                zIndex: z,
+              }}
+            >
+              <span className="lp-fan-num">{f.num}</span>
+              {isUSP && <span className="lp-fan-badge">Herzstück</span>}
+              <div className="lp-fan-icon">{f.icon}</div>
+              <h3 className="lp-fan-title">{f.title}</h3>
+              <p className="lp-fan-desc">{f.desc}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="lp-fan-mobile">
+        {FEATURES_DASHBOARD.map((f, i) => {
+          const isOpen = mobileOpen === i
+          return (
+            <div className="lp-fan-mobile-item" key={f.num}>
+              <button
+                className="lp-fan-mobile-toggle"
+                onClick={() => setMobileOpen(isOpen ? null : i)}
+              >
+                <div className="lp-fan-mobile-icon">{f.icon}</div>
+                <span className="lp-fan-mobile-title">{f.title}</span>
+                <svg
+                  className={`lp-fan-mobile-chevron${isOpen ? ' lp-fan-mobile-chevron-open' : ''}`}
+                  width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B8923A" strokeWidth="1.5"
+                >
+                  <path d="M12 5v14M5 12h14"/>
+                </svg>
+              </button>
+              <div className="lp-fan-mobile-answer" style={{ maxHeight: isOpen ? 300 : 0 }}>
+                <p>{f.desc}</p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="lp-features-cta lp-reveal">
+        <a href={SIGNUP_URL} className="lp-text-cta">Alle Funktionen 14 Tage kostenlos ausprobieren &rarr;</a>
+      </div>
+    </section>
+  )
+}
+
 // ─── Veranstalter-Abschnitt ─────────────────────────────────────────────────────
 
 const VERANSTALTER_VORTEILE = [
@@ -848,7 +1056,6 @@ export default function LandingPage() {
             </p>
             <div className="lp-hero-actions">
               <a href={SIGNUP_URL} className="lp-btn-primary">14 Tage kostenlos testen</a>
-              <a href="#lp-funktionen" className="lp-btn-ghost">Funktionen</a>
             </div>
             <ul className="lp-hero-trust">
               <li><Check /> Alle Planungsfunktionen im Test</li>
@@ -898,120 +1105,7 @@ export default function LandingPage() {
       </section>
 
       {/* FEATURES */}
-      <section className="lp-features" id="lp-features">
-        <div className="lp-features-header">
-          <div>
-            <p className="lp-section-eyebrow lp-reveal">Euer Dashboard</p>
-            <h2 className="lp-section-title">
-              <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">Alles, was ihr <em>wirklich braucht</em></span></span>
-            </h2>
-          </div>
-          <div>
-            <p className="lp-section-sub lp-reveal lp-reveal-d2">
-              Das Forevr-Brautpaar-Dashboard vereint alle wichtigen Planungstools in einer eleganten Oberfläche — damit ihr euch auf das Wesentliche konzentrieren könnt: einander.
-            </p>
-          </div>
-        </div>
-        <div className="lp-features-grid">
-          <div className="lp-feature-card">
-            <span className="lp-feature-num">01</span>
-            <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="18" cy="16" r="7"/><circle cx="34" cy="16" r="5"/>
-              <path d="M2 38c0-8 7-13 16-13s16 5 16 13"/><path d="M34 26c5 0 10 3 10 10"/>
-            </svg>
-            <h3 className="lp-feature-title">Gästeliste &amp; RSVP</h3>
-            <p className="lp-feature-desc">Jeder Gast bekommt einen persönlichen Link — Zusagen, Menüwahl und Allergien tragen sich von selbst ein.</p>
-            <div className="lp-feature-bullets">
-              <span className="lp-feature-bullet">Zusagen &amp; Absagen in Echtzeit</span>
-              <span className="lp-feature-bullet">Begleitpersonen mit Namen &amp; Alter</span>
-              <span className="lp-feature-bullet">Allergien &amp; Menüwahl automatisch</span>
-            </div>
-          </div>
-          <div className="lp-feature-card">
-            <span className="lp-feature-num">02</span>
-            <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="14" y="20" width="20" height="10" rx="1"/>
-              <line x1="17" y1="30" x2="17" y2="38"/><line x1="31" y1="30" x2="31" y2="38"/>
-              <rect x="19" y="11" width="10" height="6" rx="1"/>
-              <line x1="21" y1="17" x2="21" y2="20"/><line x1="27" y1="17" x2="27" y2="20"/>
-              <rect x="19" y="35" width="10" height="6" rx="1"/>
-              <line x1="21" y1="35" x2="21" y2="30"/><line x1="27" y1="35" x2="27" y2="30"/>
-              <rect x="5" y="21" width="6" height="10" rx="1"/>
-              <line x1="11" y1="23" x2="14" y2="23"/><line x1="11" y1="27" x2="14" y2="27"/>
-              <rect x="37" y="21" width="6" height="10" rx="1"/>
-              <line x1="37" y1="23" x2="34" y2="23"/><line x1="37" y1="27" x2="34" y2="27"/>
-            </svg>
-            <h3 className="lp-feature-title">Sitzplan &amp; Tischplanung</h3>
-            <p className="lp-feature-desc">Tische, Kapazitäten und Belegung in Echtzeit — ihr seht sofort, wer noch keinen Platz hat.</p>
-            <div className="lp-feature-bullets">
-              <span className="lp-feature-bullet">Tischnamen &amp; Kapazitäten</span>
-              <span className="lp-feature-bullet">Live-Belegung nach RSVP</span>
-              <span className="lp-feature-bullet">Gäste ohne Platz auf einen Blick</span>
-            </div>
-          </div>
-          <div className="lp-feature-card">
-            <span className="lp-feature-num">03</span>
-            <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="6" y="8" width="36" height="36" rx="2"/>
-              <path d="M32 4v8M16 4v8"/><line x1="6" y1="20" x2="42" y2="20"/>
-              <path d="M14 28h4v4h-4zM22 28h4v4h-4zM30 28h4v4h-4z"/>
-            </svg>
-            <h3 className="lp-feature-title">Aufgaben &amp; To-Do-Liste</h3>
-            <p className="lp-feature-desc">Alle Aufgaben nach Planungsphasen geordnet — von 12+ Monate vorher bis zum Hochzeitstag, gemeinsam abhakbar.</p>
-            <div className="lp-feature-bullets">
-              <span className="lp-feature-bullet">6 strukturierte Planungsphasen</span>
-              <span className="lp-feature-bullet">Fortschrittsbalken pro Phase</span>
-              <span className="lp-feature-bullet">Gemeinsam abhaken in Echtzeit</span>
-            </div>
-          </div>
-          <div className="lp-feature-card">
-            <span className="lp-feature-num">04</span>
-            <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="6" y="13" width="36" height="24" rx="3"/>
-              <path d="M6 21h36"/>
-              <path d="M33 13v-3a2 2 0 00-2.4-1.96L9 12"/>
-              <circle cx="34" cy="29" r="2.5"/>
-            </svg>
-            <h3 className="lp-feature-title">Budget im Griff</h3>
-            <p className="lp-feature-desc">Geplante und tatsächliche Kosten je Kategorie — ihr seht jederzeit, wo ihr steht.</p>
-            <div className="lp-feature-bullets">
-              <span className="lp-feature-bullet">Soll/Ist je Kategorie</span>
-              <span className="lp-feature-bullet">Gesamtbudget-Übersicht</span>
-              <span className="lp-feature-bullet">Keine bösen Überraschungen</span>
-            </div>
-          </div>
-          <div className="lp-feature-card">
-            <span className="lp-feature-num">05</span>
-            <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="24" cy="24" r="18"/><path d="M24 12v12l8 4"/>
-            </svg>
-            <h3 className="lp-feature-title">Zeitstrahl &amp; Regieplan</h3>
-            <p className="lp-feature-desc">Euer Hochzeitstag minutengenau geplant — vom Sektempfang bis zum letzten Tanz.</p>
-            <div className="lp-feature-bullets">
-              <span className="lp-feature-bullet">Minutengenaue Tagesplanung</span>
-              <span className="lp-feature-bullet">Kategorien: Zeremonie bis Feier</span>
-              <span className="lp-feature-bullet">Ortsangaben für jeden Programmpunkt</span>
-            </div>
-          </div>
-          <div className="lp-feature-card">
-            <span className="lp-feature-num">06</span>
-            <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M40 8H8a2 2 0 00-2 2v20a2 2 0 002 2h8l8 8 8-8h8a2 2 0 002-2V10a2 2 0 00-2-2z"/>
-              <line x1="16" y1="18" x2="32" y2="18"/><line x1="16" y1="24" x2="26" y2="24"/>
-            </svg>
-            <h3 className="lp-feature-title">Direktnachrichten</h3>
-            <p className="lp-feature-desc">Ein Chat mit allen Beteiligten — nachlesbar, in Echtzeit, ohne WhatsApp-Chaos.</p>
-            <div className="lp-feature-bullets">
-              <span className="lp-feature-bullet">Echtzeit-Chat mit Verlauf</span>
-              <span className="lp-feature-bullet">Mehrere parallele Gespräche</span>
-              <span className="lp-feature-bullet">Dauerhafter Nachrichtenverlauf</span>
-            </div>
-          </div>
-        </div>
-        <div className="lp-features-cta lp-reveal">
-          <a href={SIGNUP_URL} className="lp-text-cta">Alle Funktionen 14 Tage kostenlos ausprobieren &rarr;</a>
-        </div>
-      </section>
+      <DashboardFeaturesSection />
 
       {/* PHOTO BAND */}
       <div className="lp-photo-band">
