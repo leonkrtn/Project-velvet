@@ -614,6 +614,11 @@
   -webkit-text-fill-color: transparent; color: transparent;
 }
 .lp-price-period { font-size: 15px; font-weight: 400; color: #8A8A96; }
+.lp-price-amount-note {
+  font-size: 16px; font-weight: 500; color: #5A5A6A;
+  margin-bottom: 28px; padding-bottom: 28px;
+  border-bottom: 1px solid rgba(221,208,184,0.7);
+}
 .lp-price-list { list-style: none; display: flex; flex-direction: column; gap: 16px; margin-bottom: 38px; }
 .lp-price-list li {
   display: flex; align-items: flex-start; gap: 12px;

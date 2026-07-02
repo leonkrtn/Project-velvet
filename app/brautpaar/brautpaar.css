@@ -1676,6 +1676,28 @@
   border: 1px solid var(--bp-gold-mist);
 }
 
+.bp-plan-price-note {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--bp-ink-2);
+  line-height: 1.3;
+  margin: 0;
+}
+
+.bp-plan-organizer-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--bp-ink-3);
+  background: none;
+  border: 1.5px dashed var(--bp-border);
+}
+
 /* Modals (Checkout + Kündigung) */
 .bp-modal-overlay {
   position: fixed;

@@ -1143,7 +1143,7 @@ export default function LandingPage() {
               <p className="lp-price-name">Forevr Pro</p>
               <p className="lp-price-tagline">Ihr plant mit Profis</p>
             </div>
-            <p className="lp-price-amount"><span className="lp-price-num">55 €</span><span className="lp-price-period">/ Monat</span></p>
+            <p className="lp-price-amount-note">Wird über euren Veranstalter abgerechnet</p>
             <ul className="lp-price-list">
               <li className="lp-price-plus">Alles aus Forevr, plus:</li>
               <li><CheckCircle /> Euer Hochzeitsplaner arbeitet im selben Dashboard mit</li>
@@ -1155,7 +1155,7 @@ export default function LandingPage() {
         </div>
         <div className="lp-pricing-foot lp-reveal">
           <p className="lp-pricing-note">
-            <strong>Erst klein anfangen, später hochschalten?</strong> Klar. Startet mit Forevr für 25 € — und holt euren Veranstalter oder eure Dienstleister jederzeit per Upgrade dazu. Monatlich kündbar, kein Jahresvertrag.
+            <strong>Erst klein anfangen, später hochschalten?</strong> Klar. Startet mit Forevr für 25 € — und holt euren Veranstalter jederzeit dazu. Die Pro-Funktionen für Veranstalter und Dienstleister werden dann über euren Veranstalter abgerechnet, nicht über euch. Monatlich kündbar, kein Jahresvertrag.
           </p>
           <span className="lp-pricing-rule" aria-hidden="true" />
           <p className="lp-pricing-compare">Zum Vergleich: weniger als ein Brautstrauß — für die Organisation eures gesamten Tages.</p>
@@ -1172,13 +1172,13 @@ export default function LandingPage() {
             </h2>
           </div>
           {([
-            { q: 'Was kostet Forevr?', a: 'Die ersten 14 Tage sind kostenlos — mit allen Planungsfunktionen und ohne Zahlungsdaten. Danach kostet Forevr 25 € im Monat. Wenn euer Hochzeitsplaner und eure Dienstleister mitarbeiten sollen — inklusive Team-Chat —, gibt es Forevr Pro für 55 € im Monat. Beides ist monatlich kündbar.' },
+            { q: 'Was kostet Forevr?', a: 'Die ersten 14 Tage sind kostenlos — mit allen Planungsfunktionen und ohne Zahlungsdaten. Danach kostet Forevr 25 € im Monat, monatlich kündbar. Wenn euer Hochzeitsplaner und eure Dienstleister mitarbeiten sollen — inklusive Team-Chat —, gibt es Forevr Pro; die Kosten dafür übernimmt euer Veranstalter.' },
             { q: 'Was passiert nach den 14 Testtagen?', a: 'Ihr entscheidet aktiv, ob ihr weitermacht — es wird nichts automatisch abgebucht, weil wir im Test keine Zahlungsdaten verlangen. Eure Daten bleiben gespeichert, sodass ihr nahtlos weiterplanen könnt, sobald ihr euch für ein Abo entscheidet.' },
             { q: 'Können wir Forevr jederzeit kündigen?', a: 'Ja. Es gibt keinen Jahresvertrag und keine Mindestlaufzeit — Forevr ist monatlich kündbar. Eure Daten bleiben auch danach für eine Weile gespeichert, falls ihr später weiterplanen möchtet.' },
-            { q: 'Können wir später von Forevr auf Pro wechseln?', a: 'Jederzeit, mit einem Klick. Viele Paare starten allein für 25 € und holen den Veranstalter oder die Dienstleister später per Upgrade dazu.' },
+            { q: 'Können wir später von Forevr auf Pro wechseln?', a: 'Ja, jederzeit. Ladet dazu euren Veranstalter ein — sobald er registriert ist, schaltet er Forevr Pro für euer Event frei. Die Kosten dafür trägt er, nicht ihr.' },
             { q: 'Können wir beide gemeinsam planen?', a: 'Ja! Das Dashboard ist für beide Partner gleichzeitig zugänglich. Ihr könnt von verschiedenen Geräten aus gleichzeitig arbeiten. Änderungen werden in Echtzeit synchronisiert — so seid ihr immer auf dem gleichen Stand.' },
             { q: 'Wie funktioniert der Dienstleister-Marktplatz?', a: 'Ihr durchstöbert geprüfte Fotograf:innen, Caterer, DJs, Floristen und mehr direkt in Forevr und schickt eine Anfrage mit euren Eckdaten. Ihr bekommt automatisch ein erstes, transparentes Angebot zurück, könnt direkt mit dem Dienstleister chatten und bei Zusage sofort verbindlich buchen — ohne die Plattform zu verlassen.' },
-            { q: 'Können wir unseren Hochzeitsplaner oder Dienstleister einladen?', a: 'Mit Forevr Pro schon. Ladet euren Veranstalter und eure Dienstleister direkt ins Dashboard ein — jeder sieht genau die Module, die ihr freigebt, und ihr kommuniziert über den integrierten Chat statt über verstreute WhatsApp-Gruppen.' },
+            { q: 'Können wir unseren Hochzeitsplaner oder Dienstleister einladen?', a: 'Mit Forevr Pro schon. Ladet euren Veranstalter und eure Dienstleister direkt ins Dashboard ein — jeder sieht genau die Module, die ihr freigebt, und ihr kommuniziert über den integrierten Chat statt über verstreute WhatsApp-Gruppen. Die Kosten für Forevr Pro trägt euer Veranstalter, nicht ihr.' },
             { q: 'Können wir eine eigene Hochzeitswebsite erstellen?', a: 'Ja, in wenigen Minuten. Eure Hochzeitswebsite ist direkt mit eurem Dashboard verknüpft — Zusagen über die Website landen automatisch in eurer Gästeliste, inklusive Menüwahl und Allergien.' },
             { q: 'Funktioniert Forevr auch auf dem Handy?', a: 'Ja, das Dashboard ist vollständig responsiv und läuft im Browser auf Smartphone, Tablet und Desktop — ohne separate App. Ihr könnt also auch unterwegs Gäste verwalten oder den Sitzplan anpassen.' },
             { q: 'Sind unsere Daten sicher?', a: 'Eure Daten sind ausschließlich für euch und die Personen sichtbar, die ihr zu eurer Planung einladet. Forevr verwendet eine sichere, verschlüsselte Verbindung. Eure Gästeliste, Sitzpläne und persönlichen Informationen werden vertraulich behandelt und nicht an Dritte weitergegeben.' },
