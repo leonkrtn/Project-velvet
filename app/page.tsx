@@ -989,8 +989,7 @@ export default function LandingPage() {
       {/* NAV */}
       <nav className="lp-nav">
         <a href="#" className="nav-logo">
-          <ForevrHeart size={24} color="#FFFDF9" style={{ marginRight: 8 }} />
-          <span className="lp-logo-text">FOREVR</span>
+          <ForevrHeart size={36} color="#FFFDF9" />
         </a>
         <ul className="nav-links">
           <li><a href="#lp-features">Funktionen</a></li>
@@ -1221,9 +1220,8 @@ export default function LandingPage() {
       <footer className="lp-footer">
         <div className="lp-footer-top">
           <div>
-            <div className="lp-footer-logo" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <ForevrHeart size={20} color="#3A3A45" />
-              <span className="lp-logo-text">FOREVR</span>
+            <div className="lp-footer-logo" style={{ display: 'flex', alignItems: 'center' }}>
+              <ForevrHeart size={30} color="#3A3A45" />
             </div>
             <p className="lp-footer-tagline">Euer großer Tag.<br />Einfach unvergesslich geplant.</p>
           </div>
