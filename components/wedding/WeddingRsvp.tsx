@@ -743,6 +743,7 @@ function WishlistItem({ token, wish, onChange }: { token: string; wish: any; onC
     <div className="wd-companion" style={{ display: 'block' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
         {wish.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={wish.imageUrl}
             alt={wish.title}

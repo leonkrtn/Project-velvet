@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Maximize2, Minimize2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { RaumPoint, RaumElement, RaumTablePool, RaumTableType } from '@/components/room/RaumKonfigurator'
 
@@ -95,6 +96,9 @@ const CANVAS_H = 480
 const PAD = 2.0
 const CHAIR_PAD = 0.5
 const GRID_SIZE = 0.5
+// Sitz-Kreise haben eine feste Größe in Metern (Weltkoordinaten), damit sie beim
+// Hinein-/Herauszoomen proportional mit der Fläche mitskalieren und nie überlappen.
+const SEAT_RADIUS_M = 0.2
 
 const HIDDEN_ELEM_TYPES = new Set(['strom', 'wasser', 'netzwerk'])
 
@@ -493,13 +497,20 @@ export default function SitzplanEditor({
 
   // Sitz-Tausch: ausgewählter Sitz (Tippen) + Drag-Status
   const [selectedSeat, setSelectedSeat] = useState<{ tableId: string; index: number } | null>(null)
+  // Sitz, der gerade per Ziehen bewegt wird (Position in SVG-Pixelkoordinaten für den "Ghost")
+  const [seatDragPos, setSeatDragPos] = useState<{ tableId: string; index: number; x: number; y: number } | null>(null)
+  // Sitz, über dem der Ghost aktuell schwebt (Drop-Ziel-Hervorhebung)
+  const [dragOverSeat, setDragOverSeat] = useState<{ tableId: string; index: number } | null>(null)
   const seatDrag = useRef<{ tableId: string; index: number; x: number; y: number; moved: boolean } | null>(null)
   const suppressSeatClick = useRef(false)
+  const seatPointerMoveRef = useRef<(e: PointerEvent) => void>(() => {})
   const seatPointerUpRef = useRef<(e: PointerEvent) => void>(() => {})
 
   const svgRef = useRef<SVGSVGElement>(null)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
   const [canvasW, setCanvasW] = useState(CANVAS_W)
+  const [canvasH, setCanvasH] = useState(CANVAS_H)
+  const [fullscreen, setFullscreen] = useState(false)
 
   // Auf dem Handy: nur Tische anlegen (Form + Plätze) und Gäste zuordnen — keine
   // Platzierung auf der Fläche. Raumplan/Platzierung/Drehung gibt es nur am Desktop.
@@ -514,12 +525,27 @@ export default function SitzplanEditor({
   useEffect(() => {
     const div = canvasContainerRef.current; if (!div) return
     const ro = new ResizeObserver(entries => {
-      const w = entries[0]?.contentRect.width
-      if (w) setCanvasW(w)
+      const rect = entries[0]?.contentRect
+      if (!rect) return
+      if (rect.width) setCanvasW(rect.width)
+      if (fullscreen && rect.height) setCanvasH(rect.height)
     })
     ro.observe(div)
     return () => ro.disconnect()
-  }, [loading]) // re-attach after loading completes
+  }, [loading, fullscreen]) // re-attach after loading completes / fullscreen toggles
+
+  // Vollbild: Esc zum Verlassen, Seiten-Scroll währenddessen sperren, Höhe zurücksetzen beim Verlassen
+  useEffect(() => {
+    if (!fullscreen) { setCanvasH(CANVAS_H); return }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreen(false) }
+    window.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [fullscreen])
 
   const dragState = useRef<{
     tableId: string
@@ -532,12 +558,12 @@ export default function SitzplanEditor({
   const [tx, setTx] = useState<{ scale: number; offX: number; offY: number } | null>(null)
   const panState = useRef<{ startX: number; startY: number; startOffX: number; startOffY: number } | null>(null)
 
-  const fit = computeScale(roomPoints, canvasW, CANVAS_H)
+  const fit = computeScale(roomPoints, canvasW, canvasH)
   const fitRef = useRef(fit)
   fitRef.current = fit
 
   // Reset transform when canvas is resized
-  useEffect(() => { setTx(null) }, [canvasW])
+  useEffect(() => { setTx(null) }, [canvasW, canvasH])
 
   const scale = tx?.scale ?? fit.scale
   const offX  = tx?.offX  ?? fit.offX
@@ -773,12 +799,36 @@ export default function SitzplanEditor({
 
   function onSeatPointerDown(e: React.PointerEvent, tableId: string, index: number) {
     e.stopPropagation()
+    e.preventDefault() // verhindert Text-/Element-Selektion beim Ziehen
     seatDrag.current = { tableId, index, x: e.clientX, y: e.clientY, moved: false }
+  }
+
+  // Drag-Bewegung: Ghost-Position aktualisieren + Sitz unter dem Zeiger als Drop-Ziel markieren
+  seatPointerMoveRef.current = (e: PointerEvent) => {
+    const sd = seatDrag.current; if (!sd) return
+    if (!sd.moved && Math.hypot(e.clientX - sd.x, e.clientY - sd.y) > 6) sd.moved = true
+    if (!sd.moved) return
+    e.preventDefault()
+    const svg = svgRef.current
+    if (svg) {
+      const p = clientToSvg(svg, e.clientX, e.clientY)
+      setSeatDragPos({ tableId: sd.tableId, index: sd.index, x: p.x, y: p.y })
+    }
+    const el = (document.elementFromPoint(e.clientX, e.clientY) as Element | null)?.closest('[data-seat]')
+    const tt = el?.getAttribute('data-tableid') ?? null
+    const ti = el ? Number(el.getAttribute('data-seat')) : null
+    if (tt === sd.tableId && ti !== null && ti !== sd.index) {
+      setDragOverSeat(prev => (prev && prev.tableId === tt && prev.index === ti) ? prev : { tableId: tt, index: ti })
+    } else {
+      setDragOverSeat(prev => (prev === null ? prev : null))
+    }
   }
 
   // Drag-Ende: Sitz unter dem Zeiger ermitteln und tauschen
   seatPointerUpRef.current = (e: PointerEvent) => {
     const sd = seatDrag.current; seatDrag.current = null
+    setSeatDragPos(null)
+    setDragOverSeat(null)
     if (!sd || !sd.moved) return
     const el = (document.elementFromPoint(e.clientX, e.clientY) as Element | null)?.closest('[data-seat]')
     if (!el) return
@@ -838,15 +888,26 @@ export default function SitzplanEditor({
 
   // Seat-Drag (Tausch per Ziehen) — global, da der Zeiger über andere Sitze geht
   useEffect(() => {
-    function mv(e: PointerEvent) {
-      const sd = seatDrag.current; if (!sd) return
-      if (Math.hypot(e.clientX - sd.x, e.clientY - sd.y) > 6) sd.moved = true
-    }
+    function mv(e: PointerEvent) { seatPointerMoveRef.current(e) }
     function up(e: PointerEvent) { seatPointerUpRef.current(e) }
     window.addEventListener('pointermove', mv)
     window.addEventListener('pointerup', up)
     return () => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up) }
   }, [])
+
+  // Während des Ziehens: Text-/Element-Selektion global sperren + "grabbing"-Cursor
+  const isDraggingSeat = seatDragPos !== null
+  useEffect(() => {
+    if (!isDraggingSeat) return
+    const prevUserSelect = document.body.style.userSelect
+    const prevCursor = document.body.style.cursor
+    document.body.style.userSelect = 'none'
+    document.body.style.cursor = 'grabbing'
+    return () => {
+      document.body.style.userSelect = prevUserSelect
+      document.body.style.cursor = prevCursor
+    }
+  }, [isDraggingSeat])
 
   useEffect(() => {
     function onMove(e: MouseEvent) {
@@ -1081,10 +1142,21 @@ export default function SitzplanEditor({
         <GuestLightbox entry={lightboxEntry} onClose={() => setLightboxEntry(null)} />
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 16, alignItems: 'start' }}>
+      <div style={fullscreen ? {
+        position: 'fixed', inset: 0, zIndex: 2000,
+        background: 'var(--background, #fff)',
+        padding: 16, boxSizing: 'border-box',
+        display: 'flex', flexDirection: 'column',
+      } : undefined}>
+      <div style={{
+        display: 'grid', gridTemplateColumns: '220px 1fr', gap: 16,
+        alignItems: fullscreen ? 'stretch' : 'start',
+        flex: fullscreen ? 1 : undefined,
+        minHeight: fullscreen ? 0 : undefined,
+      }}>
 
         {/* ── Sidebar ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: fullscreen ? 'auto' : undefined, minHeight: 0 }}>
 
           {/* Table pool / Schnell-Anlage */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
@@ -1302,20 +1374,40 @@ export default function SitzplanEditor({
         </div>
 
         {/* ── Right column: canvas + table list ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 16,
+          minHeight: fullscreen ? 0 : undefined,
+          height: fullscreen ? '100%' : undefined,
+        }}>
 
           {/* Canvas */}
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden',
+            display: fullscreen ? 'flex' : undefined, flexDirection: fullscreen ? 'column' : undefined,
+            flex: fullscreen ? 1 : undefined, minHeight: fullscreen ? 0 : undefined,
+          }}>
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
               <span>{tables.length} Tische · {guests.length + begleit.length + 2} Personen</span>
-              <button onClick={() => setTx(null)}
-                style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
-                Ansicht zurücksetzen
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button onClick={() => setTx(null)}
+                  style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+                  Ansicht zurücksetzen
+                </button>
+                <button onClick={() => setFullscreen(v => !v)}
+                  title={fullscreen ? 'Vollbild verlassen' : 'Vollbild'}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+                  {fullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                  {fullscreen ? 'Verlassen' : 'Vollbild'}
+                </button>
+              </div>
             </div>
 
-            <div ref={canvasContainerRef} style={{ background: '#F5F5F7', width: '100%' }}>
-              <svg ref={svgRef} width="100%" height={CANVAS_H} style={{ display: 'block' }}
+            <div ref={canvasContainerRef} style={{
+              background: '#F5F5F7', width: '100%',
+              flex: fullscreen ? 1 : undefined, minHeight: fullscreen ? 0 : undefined,
+            }}>
+              <svg ref={svgRef} width="100%" height={canvasH}
+                style={{ display: 'block', userSelect: 'none', WebkitUserSelect: 'none' }}
                 onMouseDown={onSvgMouseDown}
                 onMouseMove={onSvgMouseMove}
                 onMouseUp={onSvgMouseUp}
@@ -1358,7 +1450,7 @@ export default function SitzplanEditor({
                   const maxOcc = tas.reduce((m, a) => Math.max(m, (a.seat_index ?? -1) + 1), 0)
                   const seatCount = Math.max(table.capacity, maxOcc)
                   const locals = seatLocalPositions(table, seatCount)
-                  const rad = Math.max(8, scale * 0.2)
+                  const rad = scale * SEAT_RADIUS_M
                   return (
                     <g key={`seats-${table.id}`}>
                       {locals.map((loc, idx) => {
@@ -1366,28 +1458,36 @@ export default function SitzplanEditor({
                         const c = m2px(table.pos_x + rp.dx, table.pos_y + rp.dy, scale, offX, offY)
                         const occ = tas.find(a => (a.seat_index ?? -1) === idx)
                         const isSel = selectedSeat?.tableId === table.id && selectedSeat.index === idx
+                        const isDragOrigin = seatDragPos?.tableId === table.id && seatDragPos.index === idx
+                        const isDropTarget = dragOverSeat?.tableId === table.id && dragOverSeat.index === idx
                         const fill = occ
                           ? (occ.brautpaar_slot ? '#FEF3C7' : occ.begleitperson_id ? '#F3F4F6' : '#EEF2FF')
                           : '#FFFFFF'
-                        const stroke = isSel ? '#4338CA' : occ
+                        const stroke = isDropTarget ? '#16A34A' : isSel ? '#4338CA' : occ
                           ? (occ.brautpaar_slot ? '#F59E0B' : occ.begleitperson_id ? '#9CA3AF' : '#6366F1')
                           : '#C7C7CC'
                         const txtColor = occ
                           ? (occ.brautpaar_slot ? '#92400E' : occ.begleitperson_id ? '#4B5563' : '#4338CA')
                           : '#C7C7CC'
+                        const displayRad = isDropTarget ? rad * 1.18 : rad
                         return (
                           <g key={idx}
                             data-seat={idx} data-tableid={table.id}
                             onClick={e => { e.stopPropagation(); handleSeatTap(table.id, idx) }}
                             onPointerDown={e => onSeatPointerDown(e, table.id, idx)}
-                            style={{ cursor: occ ? 'grab' : 'pointer' }}>
-                            <circle cx={c.x} cy={c.y} r={rad}
+                            style={{ cursor: occ ? 'grab' : 'pointer', userSelect: 'none', touchAction: 'none' }}>
+                            {isDropTarget && (
+                              <circle cx={c.x} cy={c.y} r={displayRad + 4}
+                                fill="none" stroke="#16A34A" strokeWidth={1} strokeOpacity={0.35} />
+                            )}
+                            <circle cx={c.x} cy={c.y} r={displayRad}
                               fill={fill} stroke={stroke}
-                              strokeWidth={isSel ? 2.5 : 1.3}
-                              strokeDasharray={occ ? undefined : '3 2'} />
-                            {occ && (
+                              strokeWidth={isDropTarget || isSel ? 2.5 : 1.3}
+                              strokeDasharray={occ ? undefined : '3 2'}
+                              opacity={isDragOrigin ? 0.3 : 1} />
+                            {occ && !isDragOrigin && (
                               <text x={c.x} y={c.y} textAnchor="middle" dominantBaseline="central"
-                                fontSize={Math.max(7, rad * 0.85)} fontWeight="700"
+                                fontSize={Math.max(7, displayRad * 0.85)} fontWeight="700"
                                 fontFamily="-apple-system,Helvetica,sans-serif" fill={txtColor}
                                 style={{ pointerEvents: 'none', userSelect: 'none' }}>
                                 {initialsOf(personBaseName(occ))}
@@ -1399,13 +1499,45 @@ export default function SitzplanEditor({
                     </g>
                   )
                 })}
+
+                {/* Ghost: der gerade gezogene Sitz folgt dem Zeiger */}
+                {seatDragPos && (() => {
+                  const originTable = tables.find(t => t.id === seatDragPos.tableId)
+                  if (!originTable) return null
+                  const originOcc = assignments.find(a => a.table_id === seatDragPos.tableId && (a.seat_index ?? -1) === seatDragPos.index)
+                  const ghostRad = scale * SEAT_RADIUS_M * 1.15
+                  const fill = originOcc
+                    ? (originOcc.brautpaar_slot ? '#FEF3C7' : originOcc.begleitperson_id ? '#F3F4F6' : '#EEF2FF')
+                    : '#FFFFFF'
+                  const stroke = originOcc
+                    ? (originOcc.brautpaar_slot ? '#F59E0B' : originOcc.begleitperson_id ? '#9CA3AF' : '#6366F1')
+                    : '#C7C7CC'
+                  const txtColor = originOcc
+                    ? (originOcc.brautpaar_slot ? '#92400E' : originOcc.begleitperson_id ? '#4B5563' : '#4338CA')
+                    : '#C7C7CC'
+                  return (
+                    <g style={{ pointerEvents: 'none', filter: 'drop-shadow(0 3px 6px rgba(0,0,0,0.28))' }}>
+                      <circle cx={seatDragPos.x} cy={seatDragPos.y} r={ghostRad}
+                        fill={fill} stroke={stroke} strokeWidth={2.5} />
+                      {originOcc && (
+                        <text x={seatDragPos.x} y={seatDragPos.y} textAnchor="middle" dominantBaseline="central"
+                          fontSize={Math.max(7, ghostRad * 0.85)} fontWeight="700"
+                          fontFamily="-apple-system,Helvetica,sans-serif" fill={txtColor}>
+                          {initialsOf(personBaseName(originOcc))}
+                        </text>
+                      )}
+                    </g>
+                  )
+                })()}
               </svg>
             </div>
 
-            <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: 11, color: selectedSeat ? '#4338CA' : 'var(--text-tertiary)' }}>
-              {selectedSeat
-                ? 'Sitz markiert — anderen Sitz am selben Tisch antippen zum Tauschen (oder Sitz ziehen).'
-                : 'Tisch: anklicken = auswählen, ziehen = verschieben · Sitz: tippen oder ziehen zum Tauschen · Scroll = zoom'}
+            <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)', fontSize: 11, color: dragOverSeat ? '#16A34A' : selectedSeat ? '#4338CA' : 'var(--text-tertiary)' }}>
+              {dragOverSeat
+                ? 'Loslassen zum Tauschen.'
+                : selectedSeat
+                  ? 'Sitz markiert — anderen Sitz am selben Tisch antippen zum Tauschen (oder Sitz ziehen).'
+                  : 'Tisch: anklicken = auswählen, ziehen = verschieben · Sitz: tippen oder ziehen zum Tauschen · Scroll = zoom'}
             </div>
 
             {elemGroups.length > 0 && (() => {
@@ -1426,7 +1558,7 @@ export default function SitzplanEditor({
           </div>
 
           {/* ── Table list (collapsible) ── */}
-          {tables.length > 0 && (
+          {!fullscreen && tables.length > 0 && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
               <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>Tischbelegung</span>
@@ -1541,6 +1673,7 @@ export default function SitzplanEditor({
             </div>
           )}
         </div>
+      </div>
       </div>
     </>
   )

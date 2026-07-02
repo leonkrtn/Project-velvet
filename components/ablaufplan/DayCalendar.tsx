@@ -463,6 +463,7 @@ export default function DayCalendar({
     if (!readOnly && wasPendingTouchEmptyTap) {
       onEmptyClick(getMinFromY(e.clientY))
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, onEventClick, onEmptyClick, readOnly])
 
   // ─── Build layout with live drag overrides ────────────────────────────────────
