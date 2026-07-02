@@ -184,7 +184,7 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
             <div style={{ flex: 1 }}>
               <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: '#92400e' }}>Formular ist inaktiv</p>
               <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#78350f', lineHeight: 1.5 }}>
-                Brautpaare können aktuell keine Anfragen stellen. Klicke auf „Aktivieren" und speichere, damit Anfragen möglich sind.
+                Brautpaare können aktuell keine Anfragen stellen. Klicke auf „Aktivieren&rdquo; und speichere, damit Anfragen möglich sind.
               </p>
             </div>
             <button

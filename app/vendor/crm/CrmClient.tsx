@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
 import {
   Users, Plus, Search, Filter, Download, Upload, RefreshCw,
   Phone, Mail, Calendar, Euro, X, Check,
@@ -815,10 +816,10 @@ function ContactPanel({
                         </a>
                       )}
                       {contact.offer_id && (
-                        <a href="/vendor/angebote" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg)', textDecoration: 'none', color: 'var(--text-secondary)', fontSize: 13 }}>
+                        <Link href="/vendor/angebote" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg)', textDecoration: 'none', color: 'var(--text-secondary)', fontSize: 13 }}>
                           <Euro size={13} style={{ color: 'var(--accent)' }} />
                           <span>Angebot ansehen</span>
-                        </a>
+                        </Link>
                       )}
                       {contact.request_id && (
                         <a href="/vendor/anfragen" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--bg)', textDecoration: 'none', color: 'var(--text-secondary)', fontSize: 13 }}>

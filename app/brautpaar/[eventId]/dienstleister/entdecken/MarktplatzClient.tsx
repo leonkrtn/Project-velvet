@@ -301,7 +301,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
             Kein Veranstaltungsort hinterlegt — Standortfilter inaktiv.{' '}
             <Link href={`/brautpaar/${eventId}/allgemein`} style={{ color: 'var(--bp-gold-deep,#9C7F4F)', fontWeight: 600, textDecoration: 'underline' }}>
               Ort eintragen
-            </Link>{' '}oder unter "Filter" einen Ausgangsort für den Umkreis festlegen.
+            </Link>{' '}oder unter &quot;Filter&quot; einen Ausgangsort für den Umkreis festlegen.
           </span>
         </div>
       )}

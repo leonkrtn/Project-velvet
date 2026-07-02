@@ -343,7 +343,7 @@ export default function VendorTour() {
           </p>
           {stepAppear && (
             <p style={{ fontSize: '0.75rem', color: 'var(--gold, #B89968)', margin: '0 0 16px', lineHeight: 1.5 }}>
-              Die Tour springt automatisch weiter, sobald du die Aktion ausführst — oder klicke „Weiter", um zu überspringen.
+              Die Tour springt automatisch weiter, sobald du die Aktion ausführst — oder klicke „Weiter&rdquo;, um zu überspringen.
             </p>
           )}
 

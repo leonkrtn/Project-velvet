@@ -69,6 +69,7 @@ function WishCard({ item, onEdit, onDelete }: { item: WishItem; onEdit: () => vo
       <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-start' }}>
         {/* Image (if present) or icon fallback */}
         {item.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.imageUrl}
             alt={item.title}
@@ -353,6 +354,7 @@ function WishModal({ form, onChange, onSave, onClose, saving, isEdit, eventId, w
             />
             {form.imageUrl ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={form.imageUrl}
                   alt="Vorschau"
