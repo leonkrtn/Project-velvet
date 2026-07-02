@@ -549,78 +549,63 @@ function DemoSection() {
   )
 }
 
-// ─── Funktionen-Erklärung (ersetzt die Demo) ───────────────────────────────────
+// ─── Marktplatz-Erklärung (ersetzt die alte Vier-Funktionen-Übersicht) ─────────
 
-const FUNKTIONEN = [
+const MARKTPLATZ = [
   {
     num: '01',
-    title: 'Sitzplan',
-    desc: 'Tische frei anordnen und jeden Gast auf einen konkreten Platz setzen — pro Person ein Sitz, per Tausch in Sekunden umgeplant. Ihr seht sofort, wer noch keinen Platz hat.',
-    bullets: ['Jeder Gast auf seinem Platz', 'Plätze per Tausch umordnen', 'Live-Belegung nach Zusagen'],
+    title: 'Entdecken',
+    desc: 'Stöbert durch geprüfte Fotograf:innen, Caterer, DJs, Floristen und mehr — mit Profilbildern, Beschreibungen und Preisrahmen auf einen Blick.',
+    bullets: ['Geprüfte Dienstleister-Profile', 'Nach Kategorie & Region filtern', 'Preisrahmen sofort sichtbar'],
     icon: (
       <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <circle cx="24" cy="24" r="9"/>
-        <circle cx="24" cy="9" r="2.5"/><circle cx="24" cy="39" r="2.5"/>
-        <circle cx="9" cy="24" r="2.5"/><circle cx="39" cy="24" r="2.5"/>
-        <circle cx="13.5" cy="13.5" r="2.5"/><circle cx="34.5" cy="13.5" r="2.5"/>
-        <circle cx="13.5" cy="34.5" r="2.5"/><circle cx="34.5" cy="34.5" r="2.5"/>
+        <circle cx="21" cy="21" r="13"/><line x1="30.5" y1="30.5" x2="42" y2="42"/>
       </svg>
     ),
   },
   {
     num: '02',
-    title: 'Einladen',
-    desc: 'Jeder Gast bekommt einen persönlichen Einladungslink. Zu- und Absagen, Menüwahl, Allergien und Begleitpersonen tragen sich automatisch in eure Gästeliste ein.',
-    bullets: ['Persönliche RSVP-Links', 'Zusagen in Echtzeit', 'Menüwahl & Allergien automatisch'],
+    title: 'Anfragen',
+    desc: 'Eine Anfrage direkt über Forevr — mit euren Eckdaten wie Datum, Gästezahl und Ort. Ihr bekommt automatisch ein erstes, transparentes Angebot zurück.',
+    bullets: ['Anfrage in wenigen Klicks', 'Automatisch berechnetes Angebot', 'Keine Wartezeit auf Rückmeldung'],
     icon: (
       <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <rect x="6" y="11" width="36" height="26" rx="2"/><path d="M6 14l18 13L42 14"/>
+        <path d="M6 24L42 8 28 42l-6-14-14-4z" strokeLinejoin="round"/>
       </svg>
     ),
   },
   {
     num: '03',
-    title: 'Ablaufplan',
-    desc: 'Euer Hochzeitstag minutengenau — vom Sektempfang bis zum letzten Tanz. Jeder Programmpunkt mit Uhrzeit, Ort und Verantwortlichen, für alle Beteiligten sichtbar.',
-    bullets: ['Minutengenaue Tagesplanung', 'Ort & Verantwortliche je Punkt', 'Mehrtägige Events möglich'],
+    title: 'Buchen',
+    desc: 'Angebot prüfen, direkt mit dem Dienstleister chatten und bei Zusage sofort verbindlich buchen — alles dokumentiert an einem Ort, ohne Plattformwechsel.',
+    bullets: ['Chat direkt im Angebot', 'Buchen mit einem Klick', 'Alles an einem Ort gespeichert'],
     icon: (
       <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <circle cx="24" cy="24" r="18"/><path d="M24 12v12l8 4"/>
-      </svg>
-    ),
-  },
-  {
-    num: '04',
-    title: 'Catering',
-    desc: 'Menüs, Gänge und Essenswünsche an einem Ort. Aus den RSVP-Angaben eurer Gäste entstehen automatisch Mengen und eine Allergie-Übersicht für euren Caterer.',
-    bullets: ['Menüs & Gänge planen', 'Essenswünsche je Gast', 'Allergie-Übersicht automatisch'],
-    icon: (
-      <svg className="lp-feature-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M16 6v14a4 4 0 01-8 0V6M12 6v36"/><path d="M34 6c-4 0-7 4-7 12s3 9 7 9 7-1 7-9-3-12-7-12zM34 27v15"/>
+        <circle cx="24" cy="24" r="18"/><path d="M16 24l6 6 12-12"/>
       </svg>
     ),
   },
 ]
 
-function FunktionenSection() {
+function MarktplatzSection() {
   return (
     <section className="lp-features" id="lp-funktionen">
       <div className="lp-features-header">
         <div>
-          <p className="lp-section-eyebrow lp-reveal">So plant ihr mit Forevr</p>
+          <p className="lp-section-eyebrow lp-reveal">Dienstleister finden</p>
           <h2 className="lp-section-title">
-            <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">Vier Funktionen, <em>ein roter Faden</em></span></span>
+            <span className="lp-reveal-clip"><span className="lp-reveal-clip-inner">Der Marktplatz für <em>geprüfte Hochzeitsprofis</em></span></span>
           </h2>
         </div>
         <div>
           <p className="lp-section-sub lp-reveal lp-reveal-d2">
-            Sitzplan, Einladen, Ablaufplan und Catering greifen ineinander — was ihr einmal
-            erfasst, steht überall dort bereit, wo ihr es braucht.
+            Entdeckt Fotograf:innen, Caterer, DJs und mehr direkt in Forevr — anfragen, Angebot
+            erhalten und buchen, ohne die Plattform zu verlassen.
           </p>
         </div>
       </div>
-      <div className="lp-features-grid lp-funktionen-grid">
-        {FUNKTIONEN.map(f => (
+      <div className="lp-features-grid lp-marktplatz-grid">
+        {MARKTPLATZ.map(f => (
           <div className="lp-feature-card" key={f.num}>
             <span className="lp-feature-num">{f.num}</span>
             {f.icon}
@@ -633,7 +618,7 @@ function FunktionenSection() {
         ))}
       </div>
       <div className="lp-features-cta lp-reveal">
-        <a href={SIGNUP_URL} className="lp-text-cta">Alle Funktionen 14 Tage kostenlos ausprobieren &rarr;</a>
+        <a href={SIGNUP_URL} className="lp-text-cta">Marktplatz 14 Tage kostenlos entdecken &rarr;</a>
       </div>
     </section>
   )
@@ -1124,7 +1109,7 @@ export default function LandingPage() {
       </div>
 
       {/* DEMO SECTION */}
-      <FunktionenSection />
+      <MarktplatzSection />
 
       {/* PRICING */}
       <VeranstalterSection />
