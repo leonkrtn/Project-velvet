@@ -612,24 +612,22 @@
   display: block; transition: background 0.25s, transform 0.25s, border-color 0.25s, color 0.25s, box-shadow 0.25s;
 }
 .lp-price-btn-fill {
-  color: #D4A94E;
-  background: #1A1A1A;
-  border: 1px solid transparent;
-  box-shadow: 0 8px 22px rgba(26,26,26,0.28);
+  color: #2D2D35;
+  background: #FFFFFF;
+  border: 1.5px solid rgba(45,45,53,0.12);
+  box-shadow: 0 8px 22px rgba(45,45,53,0.14);
 }
 .lp-price-btn-fill:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(26,26,26,0.36);
-  background: #000000;
-  color: #D4A94E;
+  box-shadow: 0 12px 28px rgba(45,45,53,0.2);
+  border-color: rgba(45,45,53,0.2);
 }
 .lp-price-btn-outline {
-  color: #D4A94E; background: #1A1A1A;
-  border: 1.5px solid #1A1A1A;
+  color: #2D2D35; background: #FFFFFF;
+  border: 1.5px solid rgba(45,45,53,0.12);
 }
 .lp-price-btn-outline:hover {
-  border-color: #000000;
-  background: #000000;
+  border-color: rgba(45,45,53,0.2);
   transform: translateY(-2px);
 }
 .lp-pricing-foot {
