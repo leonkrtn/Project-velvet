@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Check, CreditCard, Sparkles, X, Lock, Loader2, Landmark, Wallet,
-  CalendarX, Database, RotateCcw, HeartCrack,
+  CalendarX, Database, RotateCcw, HeartCrack, Users,
 } from 'lucide-react'
 
 interface Promo {
@@ -56,7 +56,7 @@ function fmtDate(iso: string | null) {
 
 export default function AboClient({ eventId, initialState }: Props) {
   const state = initialState
-  const [checkoutPlan, setCheckoutPlan] = useState<'basis' | 'pro' | null>(null)
+  const [checkoutPlan, setCheckoutPlan] = useState<'basis' | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
 
   const isTrialing = state.status === 'trialing'
@@ -124,6 +124,7 @@ export default function AboClient({ eventId, initialState }: Props) {
         <PlanCard
           plan="pro"
           highlight
+          organizerBilled
           promo={state.promo}
           tagline="Ihr plant mit Profis — Veranstalter und Dienstleister arbeiten mit."
           features={[
@@ -133,8 +134,8 @@ export default function AboClient({ eventId, initialState }: Props) {
             'Chat mit eurem ganzen Team',
           ]}
           current={activePlan === 'pro'}
-          ctaLabel={activePlan === 'pro' ? null : activePlan === 'basis' ? 'Auf Pro upgraden' : 'Pro wählen'}
-          onSelect={() => setCheckoutPlan('pro')}
+          ctaLabel={null}
+          onSelect={() => {}}
         />
       </div>
 
@@ -163,7 +164,7 @@ export default function AboClient({ eventId, initialState }: Props) {
           eventId={eventId}
           plan={checkoutPlan}
           promo={state.promo}
-          isUpgrade={activePlan === 'basis' && checkoutPlan === 'pro'}
+          isUpgrade={false}
           onClose={() => setCheckoutPlan(null)}
         />
       )}
@@ -182,7 +183,7 @@ export default function AboClient({ eventId, initialState }: Props) {
 
 // ── Tarifkarte ────────────────────────────────────────────────────────────────
 
-function PlanCard({ plan, tagline, features, highlight, current, ctaLabel, onSelect, promo }: {
+function PlanCard({ plan, tagline, features, highlight, current, ctaLabel, onSelect, promo, organizerBilled }: {
   plan: 'basis' | 'pro'
   tagline: string
   features: string[]
@@ -191,6 +192,7 @@ function PlanCard({ plan, tagline, features, highlight, current, ctaLabel, onSel
   ctaLabel: string | null
   onSelect: () => void
   promo?: Promo | null
+  organizerBilled?: boolean
 }) {
   const info = PLAN_INFO[plan]
   const hasPromo = promoAppliesTo(promo ?? null, plan)
@@ -199,21 +201,27 @@ function PlanCard({ plan, tagline, features, highlight, current, ctaLabel, onSel
     <div className={`bp-plan-card${highlight ? ' pro' : ''}`}>
       {highlight && <span className="bp-plan-badge">Mit Profi-Team</span>}
       <p className="bp-plan-name">{info.name}</p>
-      <div className="bp-plan-price">
-        {hasPromo ? (
-          <>
-            <span style={{ textDecoration: 'line-through', color: 'var(--bp-ink-3)', fontWeight: 400, marginRight: 8 }}>{info.price} €</span>
-            {newPrice} €
-          </>
-        ) : (
-          <>{info.price} €</>
-        )}
-        <small>/ Monat</small>
-      </div>
-      {hasPromo && (
-        <p style={{ fontSize: '0.72rem', color: 'var(--bp-gold-deep)', fontWeight: 600, margin: '-0.3rem 0 0.5rem' }}>
-          −{promo!.percent} % {promo!.duration === 'forever' ? 'dauerhaft' : 'im ersten Monat'}
-        </p>
+      {organizerBilled ? (
+        <p className="bp-plan-price-note">Wird über euren Veranstalter abgerechnet</p>
+      ) : (
+        <>
+          <div className="bp-plan-price">
+            {hasPromo ? (
+              <>
+                <span style={{ textDecoration: 'line-through', color: 'var(--bp-ink-3)', fontWeight: 400, marginRight: 8 }}>{info.price} €</span>
+                {newPrice} €
+              </>
+            ) : (
+              <>{info.price} €</>
+            )}
+            <small>/ Monat</small>
+          </div>
+          {hasPromo && (
+            <p style={{ fontSize: '0.72rem', color: 'var(--bp-gold-deep)', fontWeight: 600, margin: '-0.3rem 0 0.5rem' }}>
+              −{promo!.percent} % {promo!.duration === 'forever' ? 'dauerhaft' : 'im ersten Monat'}
+            </p>
+          )}
+        </>
       )}
       <p className="bp-plan-tagline">{tagline}</p>
       <ul className="bp-plan-features">
@@ -226,6 +234,10 @@ function PlanCard({ plan, tagline, features, highlight, current, ctaLabel, onSel
       </ul>
       {current ? (
         <div className="bp-plan-current"><Check size={14} /> Euer aktueller Tarif</div>
+      ) : organizerBilled ? (
+        <div className="bp-plan-organizer-note">
+          <Users size={14} /> Sprecht euren Veranstalter an
+        </div>
       ) : ctaLabel ? (
         <button className={`bp-plan-cta${highlight ? ' solid' : ''}`} onClick={onSelect}>
           {ctaLabel}
@@ -243,7 +255,7 @@ type PayMethod = 'card' | 'paypal' | 'sepa'
 
 function CheckoutModal({ eventId, plan, isUpgrade, onClose, promo }: {
   eventId: string
-  plan: 'basis' | 'pro'
+  plan: 'basis'
   isUpgrade: boolean
   onClose: () => void
   promo?: Promo | null
