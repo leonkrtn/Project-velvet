@@ -1058,7 +1058,7 @@
 .lp-btn-gold {
   font-family: 'DM Sans', sans-serif;
   font-size: 13px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
-  color: #D4A94E; background: #1A1A1A;
+  color: #2D2D35; background: #FFFDF9;
   border: none; padding: 18px 48px; border-radius: 6px;
   cursor: pointer; text-decoration: none; display: inline-block;
   transition: background 0.25s, transform 0.25s;
@@ -1066,11 +1066,11 @@
 }
 .lp-btn-gold::before {
   content: ''; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  background: linear-gradient(90deg, transparent, rgba(45,45,53,0.08), transparent);
   transform: translateX(-100%); transition: transform 0.5s ease;
 }
 .lp-btn-gold:hover::before { transform: translateX(100%); }
-.lp-btn-gold:hover { background: #000000; transform: translateY(-2px); }
+.lp-btn-gold:hover { background: #FFFFFF; transform: translateY(-2px); }
 .lp-btn-outline-light {
   font-family: 'DM Sans', sans-serif;
   font-size: 13px; font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase;
