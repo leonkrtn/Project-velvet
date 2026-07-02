@@ -565,7 +565,7 @@
 }
 .lp-price-tagline { font-size: 14px; font-weight: 300; color: #5A5A6A; }
 .lp-price-amount {
-  display: flex; align-items: baseline; gap: 8px;
+  display: flex; align-items: baseline; gap: 8px; min-height: 58px;
   margin-bottom: 28px; padding-bottom: 28px;
   border-bottom: 1px solid rgba(221,208,184,0.7);
 }
@@ -581,6 +581,7 @@
 }
 .lp-price-period { font-size: 15px; font-weight: 400; color: #8A8A96; }
 .lp-price-amount-note {
+  display: flex; align-items: flex-end; min-height: 58px;
   font-size: 16px; font-weight: 500; color: #5A5A6A;
   margin-bottom: 28px; padding-bottom: 28px;
   border-bottom: 1px solid rgba(221,208,184,0.7);
