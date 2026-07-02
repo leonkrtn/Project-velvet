@@ -3,7 +3,54 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { loadFullQuestionnaire, normalizeAnswers } from '@/lib/vendor/load'
 import { buildStandardInfo } from '@/lib/vendor/standard-info'
-import { computeOffer } from '@/lib/vendor/pricing'
+import { computeOffer, type StandardInfo } from '@/lib/vendor/pricing'
+import type { Answer } from '@/lib/vendor/questionnaire'
+import { buildRequestExcel } from '@/lib/vendor/request-excel'
+import { sendEmail, emailLayout } from '@/lib/email/notify'
+
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://project-velvet.vercel.app').replace(/\/$/, '')
+
+async function notifyVendorByEmail(
+  admin: ReturnType<typeof createAdminClient>,
+  dienstleisterId: string,
+  standardInfo: StandardInfo,
+  message: string,
+  budget: number | null,
+  answers: Answer[],
+): Promise<void> {
+  try {
+    const { data: vendor } = await admin
+      .from('dienstleister_profiles')
+      .select('name, company_name, email, notify_new_request_email')
+      .eq('id', dienstleisterId)
+      .maybeSingle()
+    if (!vendor?.notify_new_request_email || !vendor.email) return
+
+    const vendorName = vendor.company_name || vendor.name || 'Dienstleister'
+    const excelBuffer = await buildRequestExcel({
+      vendorName,
+      requestUrl: `${APP_URL}/vendor/anfragen`,
+      standardInfo,
+      message,
+      budget,
+      answers,
+    })
+
+    await sendEmail(null, {
+      to: vendor.email,
+      subject: `Neue Anfrage über Forevr${standardInfo.coupleName ? ` von ${standardInfo.coupleName}` : ''}`,
+      html: emailLayout({
+        heading: 'Neue Anfrage eingegangen',
+        bodyHtml: `<tr><td style="padding:4px 0">Ihr habt eine neue Anfrage über den Forevr-Marktplatz erhalten. Alle Angaben findet ihr im Dashboard und zusätzlich als Excel-Export im Anhang dieser Mail.</td></tr>`,
+        ctaLabel: 'Anfrage im Dashboard ansehen',
+        ctaUrl: `${APP_URL}/vendor/anfragen`,
+      }),
+      attachments: [{ filename: 'forevr-anfrage.xlsx', content: excelBuffer }],
+    })
+  } catch (err) {
+    console.error('[Forevr] notifyVendorByEmail failed (ignored):', err)
+  }
+}
 
 const REQUESTER_ROLES = ['veranstalter', 'brautpaar', 'brautpaar_solo']
 
@@ -108,12 +155,13 @@ export async function POST(req: NextRequest) {
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+  const standardInfo = await buildStandardInfo(admin, eventId)
+  if (budget != null && Number.isFinite(budget as number)) standardInfo.budget = budget as number
+
   // Auto-Angebot (draft) erzeugen — nur Dienstleister sieht es, bis er freigibt.
   // Das Angebot ist lediglich ein Vorschlag/Input: Der Dienstleister entscheidet,
   // ob er es freigibt, anpasst, oder die Anfrage ohne Angebot annimmt (nur Chat).
   if (hasQuestionnaire && normalized) {
-    const standardInfo = await buildStandardInfo(admin, eventId)
-    if (budget != null && Number.isFinite(budget as number)) standardInfo.budget = budget as number
     const totals = computeOffer(questionnaire!, normalized.answers, standardInfo)
     const { error: offerErr } = await admin.from('vendor_offers').insert({
       request_id: data.id,
@@ -135,6 +183,14 @@ export async function POST(req: NextRequest) {
     // Schlaegt die Angebotserstellung fehl, bleibt die Anfrage als Freitext bestehen.
     if (offerErr) console.error('vendor_offers insert failed', offerErr.message)
   }
+
+  // Opt-in: Dienstleister zusätzlich per E-Mail mit Excel-Export benachrichtigen.
+  await notifyVendorByEmail(
+    admin, dienstleisterId, standardInfo,
+    (body.message as string)?.trim() || '',
+    Number.isFinite(budget as number) ? (budget as number) : null,
+    normalized?.answers ?? [],
+  )
 
   return NextResponse.json({ success: true, id: data.id, hasOffer: hasQuestionnaire })
 }

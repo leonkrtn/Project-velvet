@@ -130,8 +130,10 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const [showInviteModal, setShowInviteModal]   = useState(false)
   const [modalStep, setModalStep]               = useState<ModalStep>('basis')
   const [inviteDLCategory, setInviteDLCategory] = useState(DL_CATEGORIES[0])
+  const [inviteDLEmail, setInviteDLEmail]       = useState('')
   const [inviting, setInviting]                 = useState(false)
   const [inviteCode, setInviteCode]             = useState<string | null>(null)
+  const [dlEmailSent, setDlEmailSent]           = useState(false)
   const [copied, setCopied]                     = useState(false)
   const [removeConfirm, setRemoveConfirm]       = useState<string | null>(null)
   const [removing, setRemoving]                 = useState(false)
@@ -140,6 +142,8 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
   const [bpCode, setBpCode]                     = useState<string | null>(null)
   const [bpCodeCopied, setBpCodeCopied]         = useState(false)
   const [creatingBpCode, setCreatingBpCode]     = useState(false)
+  const [bpInviteEmail, setBpInviteEmail]       = useState('')
+  const [bpEmailSent, setBpEmailSent]           = useState(false)
 
   // Signup-Code
   const [signupCode, setSignupCode]               = useState<string | null>(null)
@@ -219,7 +223,9 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
     setShowInviteModal(true)
     setModalStep('basis')
     setInviteDLCategory(DL_CATEGORIES[0])
+    setInviteDLEmail('')
     setInviteCode(null)
+    setDlEmailSent(false)
     setCopied(false)
   }
 
@@ -227,14 +233,15 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
 
   async function createBpCode() {
     setCreatingBpCode(true)
+    const trimmedEmail = bpInviteEmail.trim()
     const res = await fetch('/api/invite/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId, targetRole: 'brautpaar' }),
+      body: JSON.stringify({ eventId, targetRole: 'brautpaar', email: trimmedEmail || undefined }),
     })
     const data = await res.json()
     setCreatingBpCode(false)
-    if (data.code) { setBpCode(data.code); setBpCodeCopied(false) }
+    if (data.code) { setBpCode(data.code); setBpCodeCopied(false); setBpEmailSent(!!trimmedEmail) }
   }
 
   async function copyBpCode() {
@@ -246,14 +253,15 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
 
   async function handleInviteVendor() {
     setInviting(true)
+    const trimmedEmail = inviteDLEmail.trim()
     const res = await fetch('/api/vendor/invite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eventId, category: inviteDLCategory }),
+      body: JSON.stringify({ eventId, category: inviteDLCategory, email: trimmedEmail || undefined }),
     })
     const data = await res.json()
     setInviting(false)
-    if (data.code) { setInviteCode(data.code); setModalStep('code') }
+    if (data.code) { setInviteCode(data.code); setDlEmailSent(!!trimmedEmail); setModalStep('code') }
   }
 
   function handleBasisWeiter() {
@@ -304,6 +312,10 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
           {DL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
+      <div style={{ marginBottom: 16 }}>
+        <Label>E-Mail (optional)</Label>
+        <FieldInput value={inviteDLEmail} onChange={setInviteDLEmail} placeholder="dienstleister@beispiel.de" type="email" />
+      </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
         <button onClick={closeModal} style={{ padding: '9px 18px', background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}>Abbrechen</button>
         <button onClick={handleBasisWeiter} disabled={inviting} style={{ padding: '9px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: inviting ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500 }}>
@@ -320,6 +332,12 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
         <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '8px 12px', fontSize: 13 }}>
           <span style={{ color: 'var(--text-tertiary)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Kategorie</span>
           <span>{inviteDLCategory}</span>
+          {inviteDLEmail.trim() && (
+            <>
+              <span style={{ color: 'var(--text-tertiary)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>E-Mail</span>
+              <span>{inviteDLEmail.trim()}</span>
+            </>
+          )}
         </div>
       </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
@@ -343,6 +361,11 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
           {copied ? 'Kopiert' : 'Kopieren'}
         </button>
       </div>
+      {dlEmailSent && (
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14 }}>
+          Die Einladung wurde zusätzlich per E-Mail an {inviteDLEmail.trim()} verschickt.
+        </p>
+      )}
       <button onClick={closeModal} style={{ width: '100%', padding: '10px', background: '#F5F5F7', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 14 }}>Schließen</button>
     </>
   )
@@ -573,14 +596,26 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>7 Tage gültig · Einmalig verwendbar</p>
-                <button onClick={() => setBpCode(null)} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--text-tertiary)', cursor: 'pointer', textDecoration: 'underline' }}>Neuen Code erstellen</button>
+                <button onClick={() => { setBpCode(null); setBpInviteEmail(''); setBpEmailSent(false) }} style={{ background: 'none', border: 'none', fontSize: 12, color: 'var(--text-tertiary)', cursor: 'pointer', textDecoration: 'underline' }}>Neuen Code erstellen</button>
               </div>
+              {bpEmailSent && (
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>Die Einladung wurde zusätzlich per E-Mail an {bpInviteEmail.trim()} verschickt.</p>
+              )}
             </div>
           ) : (
-            <button onClick={createBpCode} disabled={creatingBpCode} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: creatingBpCode ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, opacity: creatingBpCode ? 0.7 : 1 }}>
-              <Plus size={15} />
-              {creatingBpCode ? 'Erstellen…' : 'Einladungscode erstellen'}
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="email"
+                value={bpInviteEmail}
+                onChange={e => setBpInviteEmail(e.target.value)}
+                placeholder="E-Mail (optional, sendet den Link direkt)"
+                style={{ flex: '1 1 220px', padding: '10px 13px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 14, fontFamily: 'inherit', outline: 'none' }}
+              />
+              <button onClick={createBpCode} disabled={creatingBpCode} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: creatingBpCode ? 'wait' : 'pointer', fontSize: 14, fontWeight: 500, opacity: creatingBpCode ? 0.7 : 1, whiteSpace: 'nowrap' }}>
+                <Plus size={15} />
+                {creatingBpCode ? 'Erstellen…' : 'Einladungscode erstellen'}
+              </button>
+            </div>
           )}
         </div>
       </div>

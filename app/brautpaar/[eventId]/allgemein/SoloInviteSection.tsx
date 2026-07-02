@@ -35,9 +35,11 @@ interface InviteState {
   loading: boolean
   error: string | null
   copied: boolean
+  email: string
+  emailSent: boolean
 }
 
-const EMPTY: InviteState = { code: null, loading: false, error: null, copied: false }
+const EMPTY: InviteState = { code: null, loading: false, error: null, copied: false, email: '', emailSent: false }
 
 function initials(name: string | null, email: string | null): string {
   const src = (name ?? email ?? '?').trim()
@@ -86,16 +88,17 @@ export default function SoloInviteSection({
   const organizer = members.find(m => m.role === 'veranstalter')
 
   async function createCode(target: InviteTarget) {
+    const trimmedEmail = states[target].email.trim()
     patch(target, { loading: true, error: null })
     try {
       const res = await fetch('/api/invite/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId, targetRole: target }),
+        body: JSON.stringify({ eventId, targetRole: target, email: trimmedEmail || undefined }),
       })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error ?? 'Code konnte nicht erstellt werden')
-      patch(target, { code: data.code, loading: false })
+      patch(target, { code: data.code, loading: false, emailSent: !!trimmedEmail })
     } catch (err) {
       patch(target, {
         loading: false,
@@ -188,16 +191,29 @@ export default function SoloInviteSection({
               </button>
             </div>
             <p className="bp-invite-note">Der Link ist 7 Tage gültig und kann einmal eingelöst werden.</p>
+            {state.emailSent && (
+              <p className="bp-invite-note">Die Einladung wurde zusätzlich per E-Mail an {state.email.trim()} verschickt.</p>
+            )}
           </>
         ) : (
-          <button
-            type="button"
-            className="bp-btn bp-btn-primary bp-btn-sm"
-            onClick={() => createCode(target)}
-            disabled={state.loading}
-          >
-            {state.loading ? 'Erstelle Code …' : buttonLabel}
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              type="email"
+              value={state.email}
+              onChange={e => patch(target, { email: e.target.value })}
+              placeholder="E-Mail (optional, sendet den Link direkt)"
+              className="bp-code-box"
+              style={{ flex: '1 1 220px', minWidth: 0 }}
+            />
+            <button
+              type="button"
+              className="bp-btn bp-btn-primary bp-btn-sm"
+              onClick={() => createCode(target)}
+              disabled={state.loading}
+            >
+              {state.loading ? 'Erstelle Code …' : buttonLabel}
+            </button>
+          </div>
         )}
 
         {state.error && (

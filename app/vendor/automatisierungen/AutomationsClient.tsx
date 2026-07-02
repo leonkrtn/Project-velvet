@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check, CloudOff } from 'lucide-react'
+import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check, CloudOff, FileSpreadsheet } from 'lucide-react'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 type Kind = 'reminder' | 'review_request' | 'followup_offer' | 'followup_lead'
@@ -115,6 +115,8 @@ export default function AutomationsClient() {
         )
       })}
 
+      <NewRequestEmailSection />
+
       <ManualReviewSection />
 
       <style>{`
@@ -142,6 +144,53 @@ function SaveIndicator({ state }: { state: SaveState }) {
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, color: m.color }}>
       {m.icon} {m.text}
     </span>
+  )
+}
+
+function NewRequestEmailSection() {
+  const [loading, setLoading] = useState(true)
+  const [enabled, setEnabled] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/vendor/notifications').then(r => r.json()).then(d => {
+      setEnabled(!!d.notifyNewRequestEmail)
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
+
+  async function toggle(v: boolean) {
+    setEnabled(v)
+    setSaving(true)
+    try {
+      await fetch('/api/vendor/notifications', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notifyNewRequestEmail: v }),
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={card}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
+        <FileSpreadsheet size={16} style={{ color: C.gold }} />
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Neue Anfragen per E-Mail</h2>
+      </div>
+      <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 14px', lineHeight: 1.5 }}>
+        Erhalte zusätzlich zur Anzeige im Dashboard bei jeder neuen Marktplatz-Anfrage eine E-Mail mit
+        allen Anfrage-Daten als Excel-Datei im Anhang — praktisch, um ein Angebot außerhalb von Forevr zu kalkulieren.
+      </p>
+      {loading ? (
+        <div style={{ color: C.dim, fontSize: 13 }}><Loader2 size={15} className="bp-spin" /></div>
+      ) : (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: enabled ? C.text : C.dim }}>
+          <ToggleSwitch checked={enabled} onChange={toggle} size="sm" aria-label="Neue Anfragen per E-Mail" disabled={saving} />
+          {enabled ? 'an' : 'aus'}
+        </span>
+      )}
+    </div>
   )
 }
 

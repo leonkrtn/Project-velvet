@@ -558,10 +558,42 @@ components/rsvp/
 Env vars (Vercel):
   FILE_WORKER_URL               https://velvet-file-service.leon-s-account.workers.dev
   FILE_WORKER_INTERNAL_SECRET   Shared secret (also set as Worker secret INTERNAL_SECRET)
+  RESEND_API_KEY                Resend API-Key (E-Mail-Versand, siehe unten)
+  EMAIL_FROM                    Absender, z.B. "Forevr <no-reply@forevrweddings.de>" (optional, hat Default)
+  REPLY_TO_EMAIL                Default Reply-To für System-Mails (optional)
 
 Worker secrets (wrangler secret put):
   INTERNAL_SECRET   R2_ACCOUNT_ID   R2_ACCESS_KEY_ID   R2_SECRET_ACCESS_KEY   R2_BUCKET_NAME
 ```
+
+---
+
+## E-Mail-Versand (Resend)
+
+Transaktions-Mails laufen serverseitig direkt über die **Resend-API** (`lib/email/notify.ts`,
+`sendEmail()`/`emailLayout()`). Env: `RESEND_API_KEY`, `EMAIL_FROM` (Default
+`Forevr <no-reply@forevrweddings.de>`), optional `REPLY_TO_EMAIL`. Ohne `RESEND_API_KEY`
+ist der Versand ein No-Op (Konsolen-Warnung) — App-Flows werden nie blockiert.
+Die frühere Supabase-Edge-Function `notify-email` (SMTP-basiert) wurde entfernt.
+
+Aktuell versendete Mails:
+- Angebot freigegeben → Brautpaar (`lib/vendor/offer-notify.ts` `notifyOfferReleased`)
+- Angebot an-/abgelehnt → Dienstleister (`offer-notify.ts` `notifyOfferDecision`)
+- Review-Request, manuell + automatisiert (`lib/vendor/automation-tick.ts` `sendReviewInvite`)
+- Follow-up zu offenem Angebot → Brautpaar (`automation-tick.ts`, kind `followup_offer`)
+- Reminder vor gebuchtem Event → Dienstleister (`automation-tick.ts`, kind `reminder`)
+- Follow-up zu inaktivem Lead → Dienstleister (`automation-tick.ts`, kind `followup_lead`)
+- RSVP-Bestätigung mit persönlichem Link → Gast (`app/api/wedding/public/[slug]/rsvp/register/route.ts`)
+- Einladungs-Mails (optionales `email`-Feld, sendet den Code zusätzlich zum Link):
+  `app/api/invite/create/route.ts` (Brautpaar/Veranstalter/Partner),
+  `app/api/vendor/invite/route.ts` + `app/api/invite/dienstleister/route.ts` (Dienstleister)
+- Supabase Auth-Mails (Signup-Bestätigung, Passwort-Reset) laufen weiterhin über den in
+  Supabase hinterlegten SMTP-Server (unverändert, unabhängig von Resend)
+- Neue Marktplatz-Anfrage → Dienstleister (Opt-in, Migration 0132): E-Mail mit Excel-Anhang
+  (`lib/vendor/request-excel.ts`, Fragebogen-Antworten + Standard-Infos), zusätzlich zur
+  Dashboard-Anzeige. Toggle unter `/vendor/automatisierungen` (`notify_new_request_email`
+  in `dienstleister_profiles`, API `app/api/vendor/notifications/route.ts`). Ausgelöst in
+  `POST /api/marketplace/requests`. `sendEmail()` unterstützt dafür jetzt `attachments`.
 
 ---
 
