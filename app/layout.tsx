@@ -1,5 +1,6 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from 'next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 import ClientLayout from '@/components/ClientLayout'
 
@@ -35,7 +36,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       </head>
-      <body><ClientLayout>{children}</ClientLayout></body>
+      <body>
+        <ClientLayout>{children}</ClientLayout>
+        <SpeedInsights />
+      </body>
     </html>
   )
 }
