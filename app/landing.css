@@ -565,7 +565,7 @@
 }
 .lp-price-tagline { font-size: 14px; font-weight: 300; color: #5A5A6A; }
 .lp-price-amount {
-  display: flex; align-items: baseline; gap: 8px;
+  display: flex; align-items: baseline; gap: 8px; min-height: 58px;
   margin-bottom: 28px; padding-bottom: 28px;
   border-bottom: 1px solid rgba(221,208,184,0.7);
 }
@@ -581,6 +581,7 @@
 }
 .lp-price-period { font-size: 15px; font-weight: 400; color: #8A8A96; }
 .lp-price-amount-note {
+  display: flex; align-items: flex-end; min-height: 58px;
   font-size: 16px; font-weight: 500; color: #5A5A6A;
   margin-bottom: 28px; padding-bottom: 28px;
   border-bottom: 1px solid rgba(221,208,184,0.7);
@@ -611,24 +612,22 @@
   display: block; transition: background 0.25s, transform 0.25s, border-color 0.25s, color 0.25s, box-shadow 0.25s;
 }
 .lp-price-btn-fill {
-  color: #D4A94E;
-  background: #1A1A1A;
-  border: 1px solid transparent;
-  box-shadow: 0 8px 22px rgba(26,26,26,0.28);
+  color: #2D2D35;
+  background: #FFFFFF;
+  border: 1.5px solid rgba(45,45,53,0.12);
+  box-shadow: 0 8px 22px rgba(45,45,53,0.14);
 }
 .lp-price-btn-fill:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(26,26,26,0.36);
-  background: #000000;
-  color: #D4A94E;
+  box-shadow: 0 12px 28px rgba(45,45,53,0.2);
+  border-color: rgba(45,45,53,0.2);
 }
 .lp-price-btn-outline {
-  color: #D4A94E; background: #1A1A1A;
-  border: 1.5px solid #1A1A1A;
+  color: #2D2D35; background: #FFFFFF;
+  border: 1.5px solid rgba(45,45,53,0.12);
 }
 .lp-price-btn-outline:hover {
-  border-color: #000000;
-  background: #000000;
+  border-color: rgba(45,45,53,0.2);
   transform: translateY(-2px);
 }
 .lp-pricing-foot {
