@@ -1,10 +1,13 @@
 // app/api/wedding/public/[slug]/rsvp/register/route.ts
 // Öffentlich: neuer Gast meldet sich erstmals an (Name + E-Mail). Legt einen guests-Eintrag
 // im Event der Hochzeitswebsite an; short_code + token werden per DB-Trigger/Default erzeugt.
-// E-Mail-Versand des persönlichen Links ist als TODO vorgesehen (siehe unten).
+// Verschickt anschliessend eine Bestaetigungsmail mit dem persoenlichen Link/Code.
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { titleCaseName } from '@/lib/text'
+import { sendEmail, emailLayout } from '@/lib/email/notify'
+
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://project-velvet.vercel.app').replace(/\/$/, '')
 
 function isEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
@@ -38,6 +41,13 @@ export async function POST(
     .maybeSingle()
   if (!site) return NextResponse.json({ error: 'Hochzeitswebsite nicht gefunden' }, { status: 404 })
 
+  const { data: event } = await admin
+    .from('events')
+    .select('couple_name, title')
+    .eq('id', site.event_id)
+    .maybeSingle()
+  const coupleName = event?.couple_name || event?.title || 'Das Brautpaar'
+
   // Bereits vorhandener Gast mit dieser E-Mail? → bestehenden Zugang zurückgeben (keine Dublette).
   const { data: existing } = await admin
     .from('guests')
@@ -65,9 +75,19 @@ export async function POST(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // TODO(E-Mail): Bestätigungsmail mit persönlichem Link + Code versenden,
-  // sobald ein Mail-Dienst (z.B. Resend) angebunden ist. Aktuell wird der
-  // persönliche Code/Link dem Gast direkt auf der Seite angezeigt.
+  await sendEmail(null, {
+    to: email,
+    subject: `Deine Anmeldung zur Hochzeit von ${coupleName}`,
+    html: emailLayout({
+      heading: 'Schön, dass du dabei bist!',
+      bodyHtml: `
+        <tr><td style="padding:4px 0">Hallo ${vornameClean},</td></tr>
+        <tr><td style="padding:8px 0 4px">deine Anmeldung zur Hochzeit von <strong>${coupleName}</strong> ist eingegangen. Über den Button unten kommst du jederzeit zu deiner persönlichen RSVP-Seite.</td></tr>
+        <tr><td style="padding:8px 0 4px;color:#666">Dein persönlicher Code: <strong>${created.short_code}</strong></td></tr>`,
+      ctaLabel: 'Zu meiner RSVP-Seite',
+      ctaUrl: `${APP_URL}/rsvp/${created.token}`,
+    }),
+  })
 
   return NextResponse.json({ token: created.token, code: created.short_code, name: created.name, existing: false })
 }

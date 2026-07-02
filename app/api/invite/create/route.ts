@@ -12,6 +12,15 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { hasProAccess } from '@/lib/subscription'
+import { sendEmail, emailLayout } from '@/lib/email/notify'
+
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://project-velvet.vercel.app').replace(/\/$/, '')
+
+const TARGET_LABELS: Record<string, string> = {
+  brautpaar: 'als Brautpaar',
+  veranstalter: 'als Veranstalter',
+  brautpaar_solo: 'als Partner:in',
+}
 
 function getServiceClient() {
   return createServiceClient(
@@ -26,9 +35,10 @@ export async function POST(request: Request) {
   if (error || !user) return NextResponse.json({ error: 'Nicht authentifiziert' }, { status: 401 })
 
   const body = await request.json()
-  const { eventId, targetRole } = body as {
+  const { eventId, targetRole, email } = body as {
     eventId: string
     targetRole: 'brautpaar' | 'veranstalter' | 'brautpaar_solo'
+    email?: string
   }
 
   const validTargets = ['brautpaar', 'veranstalter', 'brautpaar_solo']
@@ -79,6 +89,23 @@ export async function POST(request: Request) {
   }).select('code').single()
 
   if (invErr) return NextResponse.json({ error: invErr.message }, { status: 500 })
+
+  const targetEmail = (email ?? '').trim().toLowerCase()
+  if (targetEmail) {
+    const { data: inviter } = await admin.from('profiles').select('name').eq('id', user.id).maybeSingle()
+    const inviterName = inviter?.name || 'Jemand aus eurem Team'
+    await sendEmail(null, {
+      to: targetEmail,
+      subject: `${inviterName} lädt dich zu Forevr ein`,
+      html: emailLayout({
+        heading: 'Du wurdest eingeladen',
+        bodyHtml: `<tr><td style="padding:4px 0">${inviterName} hat dich ${TARGET_LABELS[targetRole] ?? ''} zur gemeinsamen Hochzeitsplanung auf Forevr eingeladen.</td></tr>
+          <tr><td style="padding:8px 0 4px;color:#666">Der Link ist 7 Tage gültig und kann einmal eingelöst werden.</td></tr>`,
+        ctaLabel: 'Einladung annehmen',
+        ctaUrl: `${APP_URL}/join?code=${invite.code}`,
+      }),
+    })
+  }
 
   return NextResponse.json({ code: invite.code, expiresAt })
 }

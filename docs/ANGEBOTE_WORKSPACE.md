@@ -26,28 +26,23 @@ und `/api/couple/offers`-Routen 500er** (Spalten/Tabelle fehlen).
 
 > Hinweis: `messages.message_type = 'offer'` kommt bereits aus 0111.
 
-### 2. E-Mail-Benachrichtigung (Edge Function)
-`supabase/functions/notify-email/`
+### 2. E-Mail-Benachrichtigung (Resend)
+`lib/email/notify.ts`
 
-Versand läuft **über den in Supabase hinterlegten SMTP-Server** (dieselben
-Zugangsdaten wie für die Auth-Mails) via Deno-SMTP-Client (`denomailer`) —
-kein Drittanbieter-API-SDK.
+Versand läuft **direkt serverseitig über die Resend-API** (`resend`-SDK,
+kein Supabase-SMTP/Edge-Function-Umweg mehr — die frühere Edge Function
+`supabase/functions/notify-email/` wurde entfernt).
 
 ```bash
-supabase functions deploy notify-email
-# = eure Supabase-SMTP-Einstellungen:
-supabase secrets set SMTP_HOST=smtp.example.com SMTP_PORT=465 \
-  SMTP_USER=... SMTP_PASS=... EMAIL_FROM="Forevr <noreply@forevr.app>"
+# Vercel Env Vars:
+RESEND_API_KEY=re_...
+EMAIL_FROM="Forevr <no-reply@forevrweddings.de>"   # optional, sonst Default
 ```
 
-- Port 465 = implizites TLS, 587/25 = STARTTLS.
-- Ohne gesetzte SMTP-Secrets ist die Function ein **No-Op**
-  (`{ skipped: true }`) — Chat-Karte + Portal-Badge funktionieren trotzdem,
-  nur ohne Mail.
-- Aufruf erfolgt serverseitig best-effort via `admin.functions.invoke`
-  (`lib/email/notify.ts`); Mail-Fehler blockieren den App-Flow nie.
-- Die Edge Function ist Deno-Code und vom Next-Typecheck ausgeschlossen
-  (`tsconfig.json` → `exclude`), analog zum Cloudflare-Worker.
+- Ohne gesetzten `RESEND_API_KEY` ist der Versand ein **No-Op** (Konsolen-
+  Warnung) — Chat-Karte + Portal-Badge funktionieren trotzdem, nur ohne Mail.
+- Aufruf erfolgt serverseitig best-effort via `sendEmail()` in
+  `lib/email/notify.ts`; Mail-Fehler blockieren den App-Flow nie.
 
 ## Flow
 
@@ -64,7 +59,7 @@ AGB-Häkchen → *Verbindlich annehmen*. PDF beidseitig.
 Status-Listen.
 
 ## Relevante Dateien
-- DB: `supabase/migrations/0112_vendor_offers_workspace.sql`, `supabase/functions/notify-email/`
+- DB: `supabase/migrations/0112_vendor_offers_workspace.sql`
 - Logik: `lib/vendor/{pricing,offer-blocks,offer-service,offer-notify}.ts`, `lib/email/notify.ts`
 - Vendor-API: `app/api/vendor/event-offers/**`, `app/api/vendor/offer-blocks/**`
 - Couple-API: `app/api/couple/offers/**`

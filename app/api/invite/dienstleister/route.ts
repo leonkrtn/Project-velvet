@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { hasProAccess } from '@/lib/subscription'
+import { sendEmail, emailLayout } from '@/lib/email/notify'
+
+const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://project-velvet.vercel.app').replace(/\/$/, '')
 
 function getServiceClient() {
   return createServiceClient(
@@ -107,6 +110,23 @@ export async function POST(request: Request) {
   }).select('code').single()
 
   if (invErr) return NextResponse.json({ error: invErr.message }, { status: 500 })
+
+  const targetEmail = (email ?? '').trim().toLowerCase()
+  if (targetEmail) {
+    const { data: inviter } = await admin.from('profiles').select('name').eq('id', user.id).maybeSingle()
+    const inviterName = inviter?.name || 'Ein Brautpaar'
+    await sendEmail(null, {
+      to: targetEmail,
+      subject: `Einladung als Dienstleister: ${category}`,
+      html: emailLayout({
+        heading: 'Ihr wurdet als Dienstleister eingeladen',
+        bodyHtml: `<tr><td style="padding:4px 0">${inviterName} hat euch (${name}) als <strong>${category}</strong> zu einem Event auf Forevr eingeladen.</td></tr>
+          <tr><td style="padding:8px 0 4px;color:#666">Der Link ist 7 Tage gültig und kann einmal eingelöst werden.</td></tr>`,
+        ctaLabel: 'Einladung annehmen',
+        ctaUrl: `${APP_URL}/vendor/join?code=${invite.code}`,
+      }),
+    })
+  }
 
   return NextResponse.json({
     code: invite.code,

@@ -14,23 +14,27 @@ const DL_CATEGORIES = [
 export default function VendorInviteSection({ eventId }: { eventId: string }) {
   const router = useRouter()
   const [category, setCategory] = useState(DL_CATEGORIES[0])
+  const [email, setEmail] = useState('')
   const [code, setCode] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   async function createInvite() {
     setLoading(true)
     setError(null)
     try {
+      const trimmedEmail = email.trim()
       const res = await fetch('/api/vendor/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId, category }),
+        body: JSON.stringify({ eventId, category, email: trimmedEmail || undefined }),
       })
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error ?? 'Einladung konnte nicht erstellt werden')
       setCode(data.code)
+      setEmailSent(!!trimmedEmail)
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Einladung konnte nicht erstellt werden')
@@ -77,7 +81,7 @@ export default function VendorInviteSection({ eventId }: { eventId: string }) {
             {copied ? <Check size={14} /> : <Copy size={14} />}
             {copied ? 'Kopiert' : 'Link kopieren'}
           </button>
-          <button type="button" className="bp-btn" onClick={() => setCode(null)}>
+          <button type="button" className="bp-btn" onClick={() => { setCode(null); setEmail(''); setEmailSent(false) }}>
             Weitere Einladung
           </button>
         </div>
@@ -94,6 +98,17 @@ export default function VendorInviteSection({ eventId }: { eventId: string }) {
           >
             {DL_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="E-Mail (optional, sendet den Link direkt)"
+            style={{
+              flex: '1 1 240px', padding: '10px 12px', fontSize: 14, fontFamily: 'inherit',
+              border: '1px solid var(--bp-border, #e5ddd0)', borderRadius: 8,
+              background: '#fff', outline: 'none',
+            }}
+          />
           <button
             type="button"
             className="bp-btn bp-btn-primary"
@@ -103,6 +118,11 @@ export default function VendorInviteSection({ eventId }: { eventId: string }) {
             {loading ? 'Erstelle Link …' : 'Einladungslink erstellen'}
           </button>
         </div>
+      )}
+      {emailSent && (
+        <p className="bp-caption" style={{ margin: '10px 0 0', opacity: 0.7 }}>
+          Die Einladung wurde zusätzlich per E-Mail verschickt.
+        </p>
       )}
 
       {error && (

@@ -111,6 +111,18 @@ export async function runAutomationTick(admin: SupabaseClient): Promise<TickResu
               description: `Automatische Erinnerung · Event am ${ev.date}`,
               start_at: `${today}T00:00:00.000Z`, all_day: true, color: '#D97706', entry_type: 'reminder',
             })
+            const meta = await vendorMeta(admin, r.dienstleister_id, metaCache)
+            if (meta.email) {
+              await sendEmail(admin, {
+                to: meta.email,
+                subject: r.label || `Erinnerung: ${ev.couple_name || ev.title || 'Event'} steht bevor`,
+                html: emailLayout({
+                  heading: 'Bevorstehendes Event',
+                  bodyHtml: `<tr><td style="padding:4px 0">Erinnerung: <strong>${ev.couple_name || ev.title || 'Euer Event'}</strong> findet am <strong>${ev.date}</strong> statt.</td></tr>`,
+                  ctaLabel: 'Im Portal ansehen', ctaUrl: `${APP_URL}/vendor/ubersicht`,
+                }),
+              })
+            }
             res.reminders++
           }
         } catch { res.errors++ }
@@ -187,6 +199,18 @@ export async function runAutomationTick(admin: SupabaseClient): Promise<TickResu
           title: `Lead nachfassen: ${c.name || 'Kontakt'}`,
           due_at: new Date().toISOString(),
         })
+        const meta = await vendorMeta(admin, r.dienstleister_id, metaCache)
+        if (meta.email) {
+          await sendEmail(admin, {
+            to: meta.email,
+            subject: `Lead nachfassen: ${c.name || 'Kontakt'}`,
+            html: emailLayout({
+              heading: 'Inaktiver Lead',
+              bodyHtml: `<tr><td style="padding:4px 0"><strong>${c.name || 'Ein Kontakt'}</strong> hat sich seit mehr als ${Math.abs(r.offset_days)} Tagen nicht mehr gemeldet. Ein kurzes Nachfassen könnte sich lohnen.</td></tr>`,
+              ctaLabel: 'Im CRM ansehen', ctaUrl: `${APP_URL}/vendor/crm`,
+            }),
+          })
+        }
         res.followupLeads++
       }
     } catch { res.errors++ }

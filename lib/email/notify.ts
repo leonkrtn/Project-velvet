@@ -1,8 +1,9 @@
-// Server-only: Best-Effort-Versand von Transaktions-E-Mails ueber die Supabase
-// Edge Function 'notify-email' (Versand via Supabase-SMTP). Wirft NIE — Mail-
-// Fehler duerfen den App-Flow (Angebot freigeben/annehmen) nicht blockieren.
-// Ist kein SMTP konfiguriert, ist die Function ein No-Op.
+// Server-only: Best-Effort-Versand von Transaktions-E-Mails ueber Resend.
+// Wirft NIE — Mail-Fehler duerfen den App-Flow (Angebot freigeben/annehmen,
+// Einladung erzeugen, ...) nicht blockieren. Ist kein RESEND_API_KEY gesetzt,
+// ist der Versand ein No-Op (mit Konsolen-Warnung).
 import 'server-only'
+import { Resend } from 'resend'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 interface MailInput {
@@ -12,15 +13,40 @@ interface MailInput {
   replyTo?: string
 }
 
-export async function sendEmail(admin: SupabaseClient, input: MailInput): Promise<void> {
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Forevr <no-reply@forevrweddings.de>'
+const REPLY_TO_EMAIL = process.env.REPLY_TO_EMAIL || undefined
+
+let resendClient: Resend | null | undefined
+
+function getResend(): Resend | null {
+  if (resendClient !== undefined) return resendClient
+  const apiKey = process.env.RESEND_API_KEY
+  resendClient = apiKey ? new Resend(apiKey) : null
+  return resendClient
+}
+
+// admin-Parameter bleibt aus Kompatibilitaetsgruenden mit bestehenden Call-Sites
+// erhalten, wird fuer den Versand selbst aber nicht mehr benoetigt.
+export async function sendEmail(admin: SupabaseClient | null, input: MailInput): Promise<void> {
+  void admin
   const recipients = (Array.isArray(input.to) ? input.to : [input.to]).filter(Boolean)
   if (recipients.length === 0) return
+  const resend = getResend()
+  if (!resend) {
+    console.warn('[Forevr] RESEND_API_KEY not configured — email skipped:', input.subject)
+    return
+  }
   try {
-    await admin.functions.invoke('notify-email', {
-      body: { to: recipients, subject: input.subject, html: input.html, replyTo: input.replyTo },
+    const { error } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: recipients,
+      subject: input.subject,
+      html: input.html,
+      replyTo: input.replyTo || REPLY_TO_EMAIL,
     })
+    if (error) console.error('[Forevr] Resend send failed (ignored):', error)
   } catch (err) {
-    console.error('[Forevr] notify-email failed (ignored):', err)
+    console.error('[Forevr] Resend send threw (ignored):', err)
   }
 }
 
