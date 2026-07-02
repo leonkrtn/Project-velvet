@@ -6,11 +6,17 @@ import 'server-only'
 import { Resend } from 'resend'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+interface MailAttachment {
+  filename: string
+  content: Buffer
+}
+
 interface MailInput {
   to: string | string[]
   subject: string
   html: string
   replyTo?: string
+  attachments?: MailAttachment[]
 }
 
 const EMAIL_FROM = process.env.EMAIL_FROM || 'Forevr <no-reply@forevrweddings.de>'
@@ -43,6 +49,7 @@ export async function sendEmail(admin: SupabaseClient | null, input: MailInput):
       subject: input.subject,
       html: input.html,
       replyTo: input.replyTo || REPLY_TO_EMAIL,
+      attachments: input.attachments?.map(a => ({ filename: a.filename, content: a.content })),
     })
     if (error) console.error('[Forevr] Resend send failed (ignored):', error)
   } catch (err) {

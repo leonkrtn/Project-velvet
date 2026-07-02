@@ -589,6 +589,11 @@ Aktuell versendete Mails:
   `app/api/vendor/invite/route.ts` + `app/api/invite/dienstleister/route.ts` (Dienstleister)
 - Supabase Auth-Mails (Signup-Bestätigung, Passwort-Reset) laufen weiterhin über den in
   Supabase hinterlegten SMTP-Server (unverändert, unabhängig von Resend)
+- Neue Marktplatz-Anfrage → Dienstleister (Opt-in, Migration 0132): E-Mail mit Excel-Anhang
+  (`lib/vendor/request-excel.ts`, Fragebogen-Antworten + Standard-Infos), zusätzlich zur
+  Dashboard-Anzeige. Toggle unter `/vendor/automatisierungen` (`notify_new_request_email`
+  in `dienstleister_profiles`, API `app/api/vendor/notifications/route.ts`). Ausgelöst in
+  `POST /api/marketplace/requests`. `sendEmail()` unterstützt dafür jetzt `attachments`.
 
 ---
 
