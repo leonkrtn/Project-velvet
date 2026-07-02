@@ -1083,34 +1083,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* TRIAL TIMELINE */}
-      <section className="lp-trial">
-        <div className="lp-trial-grid">
-          <div className="lp-trial-line" aria-hidden="true" />
-          <div className="lp-trial-step lp-reveal">
-            <span className="lp-trial-node"><span className="lp-trial-dot">1</span></span>
-            <div className="lp-trial-body">
-              <p className="lp-trial-when">Tag 1–3</p>
-              <p className="lp-trial-text">Alle Planungsfunktionen testen. Gäste anlegen, Sitzplan bauen, Partner einladen.</p>
-            </div>
-          </div>
-          <div className="lp-trial-step lp-reveal lp-reveal-d2">
-            <span className="lp-trial-node"><span className="lp-trial-dot">2</span></span>
-            <div className="lp-trial-body">
-              <p className="lp-trial-when">Tag 3</p>
-              <p className="lp-trial-text">Ihr entscheidet: weiterplanen ab 25 €/Monat oder einfach nichts tun.</p>
-            </div>
-          </div>
-          <div className="lp-trial-step lp-reveal lp-reveal-d4">
-            <span className="lp-trial-node"><span className="lp-trial-dot">3</span></span>
-            <div className="lp-trial-body">
-              <p className="lp-trial-when">Jederzeit</p>
-              <p className="lp-trial-text">Upgraden, kündigen, pausieren. Eure Daten bleiben gespeichert.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* FAQ */}
       <section className="lp-faq" id="lp-faq">
         <div className="lp-faq-inner">
