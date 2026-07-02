@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { Maximize2, Minimize2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { RaumPoint, RaumElement, RaumTablePool, RaumTableType } from '@/components/room/RaumKonfigurator'
 
@@ -95,6 +96,9 @@ const CANVAS_H = 480
 const PAD = 2.0
 const CHAIR_PAD = 0.5
 const GRID_SIZE = 0.5
+// Sitz-Kreise haben eine feste Größe in Metern (Weltkoordinaten), damit sie beim
+// Hinein-/Herauszoomen proportional mit der Fläche mitskalieren und nie überlappen.
+const SEAT_RADIUS_M = 0.2
 
 const HIDDEN_ELEM_TYPES = new Set(['strom', 'wasser', 'netzwerk'])
 
@@ -500,6 +504,8 @@ export default function SitzplanEditor({
   const svgRef = useRef<SVGSVGElement>(null)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
   const [canvasW, setCanvasW] = useState(CANVAS_W)
+  const [canvasH, setCanvasH] = useState(CANVAS_H)
+  const [fullscreen, setFullscreen] = useState(false)
 
   // Auf dem Handy: nur Tische anlegen (Form + Plätze) und Gäste zuordnen — keine
   // Platzierung auf der Fläche. Raumplan/Platzierung/Drehung gibt es nur am Desktop.
@@ -514,12 +520,27 @@ export default function SitzplanEditor({
   useEffect(() => {
     const div = canvasContainerRef.current; if (!div) return
     const ro = new ResizeObserver(entries => {
-      const w = entries[0]?.contentRect.width
-      if (w) setCanvasW(w)
+      const rect = entries[0]?.contentRect
+      if (!rect) return
+      if (rect.width) setCanvasW(rect.width)
+      if (fullscreen && rect.height) setCanvasH(rect.height)
     })
     ro.observe(div)
     return () => ro.disconnect()
-  }, [loading]) // re-attach after loading completes
+  }, [loading, fullscreen]) // re-attach after loading completes / fullscreen toggles
+
+  // Vollbild: Esc zum Verlassen, Seiten-Scroll währenddessen sperren, Höhe zurücksetzen beim Verlassen
+  useEffect(() => {
+    if (!fullscreen) { setCanvasH(CANVAS_H); return }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreen(false) }
+    window.addEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [fullscreen])
 
   const dragState = useRef<{
     tableId: string
@@ -532,12 +553,12 @@ export default function SitzplanEditor({
   const [tx, setTx] = useState<{ scale: number; offX: number; offY: number } | null>(null)
   const panState = useRef<{ startX: number; startY: number; startOffX: number; startOffY: number } | null>(null)
 
-  const fit = computeScale(roomPoints, canvasW, CANVAS_H)
+  const fit = computeScale(roomPoints, canvasW, canvasH)
   const fitRef = useRef(fit)
   fitRef.current = fit
 
   // Reset transform when canvas is resized
-  useEffect(() => { setTx(null) }, [canvasW])
+  useEffect(() => { setTx(null) }, [canvasW, canvasH])
 
   const scale = tx?.scale ?? fit.scale
   const offX  = tx?.offX  ?? fit.offX
@@ -1081,10 +1102,21 @@ export default function SitzplanEditor({
         <GuestLightbox entry={lightboxEntry} onClose={() => setLightboxEntry(null)} />
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 16, alignItems: 'start' }}>
+      <div style={fullscreen ? {
+        position: 'fixed', inset: 0, zIndex: 2000,
+        background: 'var(--background, #fff)',
+        padding: 16, boxSizing: 'border-box',
+        display: 'flex', flexDirection: 'column',
+      } : undefined}>
+      <div style={{
+        display: 'grid', gridTemplateColumns: '220px 1fr', gap: 16,
+        alignItems: fullscreen ? 'stretch' : 'start',
+        flex: fullscreen ? 1 : undefined,
+        minHeight: fullscreen ? 0 : undefined,
+      }}>
 
         {/* ── Sidebar ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: fullscreen ? 'auto' : undefined, minHeight: 0 }}>
 
           {/* Table pool / Schnell-Anlage */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
@@ -1302,20 +1334,39 @@ export default function SitzplanEditor({
         </div>
 
         {/* ── Right column: canvas + table list ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 16,
+          minHeight: fullscreen ? 0 : undefined,
+          height: fullscreen ? '100%' : undefined,
+        }}>
 
           {/* Canvas */}
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+          <div style={{
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden',
+            display: fullscreen ? 'flex' : undefined, flexDirection: fullscreen ? 'column' : undefined,
+            flex: fullscreen ? 1 : undefined, minHeight: fullscreen ? 0 : undefined,
+          }}>
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
               <span>{tables.length} Tische · {guests.length + begleit.length + 2} Personen</span>
-              <button onClick={() => setTx(null)}
-                style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
-                Ansicht zurücksetzen
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button onClick={() => setTx(null)}
+                  style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+                  Ansicht zurücksetzen
+                </button>
+                <button onClick={() => setFullscreen(v => !v)}
+                  title={fullscreen ? 'Vollbild verlassen' : 'Vollbild'}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', color: 'var(--text-secondary)' }}>
+                  {fullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                  {fullscreen ? 'Verlassen' : 'Vollbild'}
+                </button>
+              </div>
             </div>
 
-            <div ref={canvasContainerRef} style={{ background: '#F5F5F7', width: '100%' }}>
-              <svg ref={svgRef} width="100%" height={CANVAS_H} style={{ display: 'block' }}
+            <div ref={canvasContainerRef} style={{
+              background: '#F5F5F7', width: '100%',
+              flex: fullscreen ? 1 : undefined, minHeight: fullscreen ? 0 : undefined,
+            }}>
+              <svg ref={svgRef} width="100%" height={canvasH} style={{ display: 'block' }}
                 onMouseDown={onSvgMouseDown}
                 onMouseMove={onSvgMouseMove}
                 onMouseUp={onSvgMouseUp}
@@ -1358,7 +1409,7 @@ export default function SitzplanEditor({
                   const maxOcc = tas.reduce((m, a) => Math.max(m, (a.seat_index ?? -1) + 1), 0)
                   const seatCount = Math.max(table.capacity, maxOcc)
                   const locals = seatLocalPositions(table, seatCount)
-                  const rad = Math.max(8, scale * 0.2)
+                  const rad = scale * SEAT_RADIUS_M
                   return (
                     <g key={`seats-${table.id}`}>
                       {locals.map((loc, idx) => {
@@ -1426,7 +1477,7 @@ export default function SitzplanEditor({
           </div>
 
           {/* ── Table list (collapsible) ── */}
-          {tables.length > 0 && (
+          {!fullscreen && tables.length > 0 && (
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
               <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-tertiary)' }}>Tischbelegung</span>
@@ -1541,6 +1592,7 @@ export default function SitzplanEditor({
             </div>
           )}
         </div>
+      </div>
       </div>
     </>
   )
