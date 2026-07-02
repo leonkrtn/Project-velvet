@@ -52,6 +52,10 @@ function isSupabaseConfigured(): boolean {
   return Boolean(url && url !== 'your-supabase-url' && url.startsWith('https://'))
 }
 
+function shouldAutoInitDb(): boolean {
+  return process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ENABLE_DB_INIT === 'true'
+}
+
 // Lazy-Imports — nur client-seitig geladen, nie im SSR-Bundle
 async function getDB() {
   return import('@/lib/db/events')
@@ -87,10 +91,18 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
 
   async function ensureTablesExist() {
     if (dbInitialized.current) return
-    try {
-      await fetch('/api/init-db', { method: 'POST' })
+    if (!shouldAutoInitDb()) {
       dbInitialized.current = true
+      return
+    }
+
+    try {
+      const response = await fetch('/api/init-db', { method: 'POST' })
+      if (!response.ok) {
+        console.warn('[EventContext] DB init skipped:', response.status)
+      }
     } catch { /* nicht fatal */ }
+    dbInitialized.current = true
   }
 
   async function loadRoleAndPermissions(userId: string, eventId: string) {
