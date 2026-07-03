@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Search, Check, Star, BadgeCheck, SlidersHorizontal, X, MapPin, Info } from 'lucide-react'
+import { Search, Check, Star, BadgeCheck, SlidersHorizontal, X, MapPin, Info, Heart, CalendarX } from 'lucide-react'
 import { MARKETPLACE_CATEGORIES, categoryLabel } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 import VendorCardGallery from '@/components/marketplace/VendorCardGallery'
@@ -24,10 +24,13 @@ interface VendorCard {
   tier?: string
   service_cities: string[]
   service_radius_km: number | null
+  review_avg: number
+  review_count: number
+  booked_on_date: boolean
 }
 interface Req { id: string; dienstleister_id: string; status: string }
 
-type SortField = 'name' | 'city' | 'price'
+type SortField = 'name' | 'city' | 'price' | 'rating'
 const PRICE_ORDER: Record<string, number> = { '€': 1, '€€': 2, '€€€': 3 }
 
 const RADIUS_DEFAULT = 50
@@ -38,11 +41,14 @@ interface FilterState {
   sortKey: string
   radiusKm: number
   baseCity: string
+  onlyAvailable: boolean
+  onlyFavorites: boolean
 }
-const DEFAULT_FILTER: FilterState = { category: '', sortKey: 'name_asc', radiusKm: RADIUS_DEFAULT, baseCity: '' }
+const DEFAULT_FILTER: FilterState = { category: '', sortKey: 'rating_desc', radiusKm: RADIUS_DEFAULT, baseCity: '', onlyAvailable: false, onlyFavorites: false }
 const STORAGE_KEY = 'mk_filter'
 
 const SORT_OPTIONS: { key: string; label: string; field: SortField; dir: 'asc' | 'desc' }[] = [
+  { key: 'rating_desc', label: 'Beste Bewertung',    field: 'rating', dir: 'desc' },
   { key: 'name_asc',   label: 'Name (A–Z)',          field: 'name',  dir: 'asc' },
   { key: 'name_desc',  label: 'Name (Z–A)',          field: 'name',  dir: 'desc' },
   { key: 'city_asc',   label: 'Ort (A–Z)',           field: 'city',  dir: 'asc' },
@@ -82,7 +88,10 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   const [loading, setLoading] = useState(true)
   const [q, setQ] = useState('')
   const [requests, setRequests] = useState<Req[]>([])
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [eventCity, setEventCity] = useState<string | null>(null)
+  const [eventDate, setEventDate] = useState<string | null>(null)
+  const [eventLoaded, setEventLoaded] = useState(false)
   const [baseCoords, setBaseCoords] = useState<Coords | null>(null)
   const [vendorCoords, setVendorCoords] = useState<Map<string, Coords | null>>(new Map())
 
@@ -127,23 +136,55 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   }, [eventId])
 
   const loadEvent = useCallback(async () => {
-    const res = await fetch(`/api/events/${eventId}`)
-    if (res.ok) {
-      const d = await res.json()
-      setEventCity(d.location_city ?? null)
+    try {
+      const res = await fetch(`/api/events/${eventId}`)
+      if (res.ok) {
+        const d = await res.json()
+        setEventCity(d.location_city ?? null)
+        setEventDate(d.date ?? null)
+      }
+    } finally {
+      setEventLoaded(true)
     }
   }, [eventId])
 
+  const loadFavorites = useCallback(async () => {
+    const res = await fetch(`/api/marketplace/favorites?eventId=${eventId}`)
+    if (res.ok) {
+      const json = await res.json()
+      setFavorites(new Set<string>(json.vendorIds ?? []))
+    }
+  }, [eventId])
+
+  // Vendors erst laden, wenn das Event-Datum bekannt ist — nur so kann die API
+  // die Termin-Belegung (booked_on_date) mitliefern.
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/marketplace/vendors')
+    const qs = eventDate ? `?date=${encodeURIComponent(eventDate)}` : ''
+    const res = await fetch(`/api/marketplace/vendors${qs}`)
     const json = await res.json()
     setVendors(json.vendors ?? [])
     setLoading(false)
-  }, [])
+  }, [eventDate])
 
-  useEffect(() => { loadRequests(); loadEvent() }, [loadRequests, loadEvent])
-  useEffect(() => { load() }, [load])
+  useEffect(() => { loadRequests(); loadEvent(); loadFavorites() }, [loadRequests, loadEvent, loadFavorites])
+  useEffect(() => { if (eventLoaded) load() }, [eventLoaded, load])
+
+  async function toggleFavorite(vendorId: string) {
+    const isFav = favorites.has(vendorId)
+    setFavorites(prev => {
+      const next = new Set(prev)
+      if (isFav) next.delete(vendorId); else next.add(vendorId)
+      return next
+    })
+    const res = isFav
+      ? await fetch(`/api/marketplace/favorites?eventId=${eventId}&vendorId=${vendorId}`, { method: 'DELETE' })
+      : await fetch('/api/marketplace/favorites', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId, vendorId }),
+        })
+    if (!res.ok) loadFavorites() // Rollback auf Serverstand
+  }
 
   // Umkreis-Ausgangsort: standardmäßig der Hochzeitsort, im Filter-Panel
   // überschreibbar (applied.baseCity). Wird bei Änderung neu geocodiert.
@@ -187,7 +228,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     return requests.find(r => r.dienstleister_id === vendorId && (r.status === 'pending' || r.status === 'accepted'))
   }
 
-  const hasActiveFilter = applied.category !== '' || applied.sortKey !== 'name_asc' || applied.radiusKm !== RADIUS_DEFAULT || applied.baseCity.trim() !== ''
+  const hasActiveFilter = applied.category !== '' || applied.sortKey !== DEFAULT_FILTER.sortKey || applied.radiusKm !== RADIUS_DEFAULT || applied.baseCity.trim() !== '' || applied.onlyAvailable || applied.onlyFavorites
   const sortOpt = useMemo(() => SORT_OPTIONS.find(s => s.key === applied.sortKey) ?? SORT_OPTIONS[0], [applied.sortKey])
 
   const filtered = useMemo(() => {
@@ -203,6 +244,14 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
 
     if (applied.category) {
       list = list.filter(v => v.category === applied.category)
+    }
+
+    if (applied.onlyFavorites) {
+      list = list.filter(v => favorites.has(v.id))
+    }
+
+    if (applied.onlyAvailable && eventDate) {
+      list = list.filter(v => !v.booked_on_date)
     }
 
     // Radius filter — only when we have coordinates for the (ggf. überschriebenen) Ausgangsort
@@ -246,6 +295,13 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         const cmp = (resolveVendorCity(a) ?? '').localeCompare(resolveVendorCity(b) ?? '', 'de')
         return sortOpt.dir === 'asc' ? cmp : -cmp
       })
+    } else if (sortOpt.field === 'rating') {
+      sorted.sort((a, b) => {
+        // Bewertete Anbieter zuerst (avg, dann Anzahl); unbewertete alphabetisch dahinter.
+        const cmp = (b.review_avg - a.review_avg) || (b.review_count - a.review_count)
+        if (cmp !== 0) return cmp
+        return (a.company_name || '').localeCompare(b.company_name || '', 'de')
+      })
     } else if (sortOpt.field === 'price') {
       sorted.sort((a, b) => {
         const cmp = (PRICE_ORDER[a.price_range ?? ''] ?? 9) - (PRICE_ORDER[b.price_range ?? ''] ?? 9)
@@ -259,7 +315,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     }
 
     return sorted
-  }, [vendors, q, applied, baseCoords, vendorCoords, sortOpt])
+  }, [vendors, q, applied, baseCoords, vendorCoords, sortOpt, favorites, eventDate])
 
   return (
     <div>
@@ -277,6 +333,15 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         .mp-gallery-dots { position:absolute; left:0; right:0; bottom:10px; display:flex; justify-content:center; gap:5px; z-index:2; }
         .mp-gallery-dot { width:6px; height:6px; border-radius:50%; border:none; background:rgba(255,255,255,0.55); cursor:pointer; padding:0; transition:background .15s ease, transform .15s ease; }
         .mp-gallery-dot[data-active="true"] { background:#fff; transform:scale(1.25); }
+        .mp-fav-btn { position:absolute; right:10px; bottom:10px; width:32px; height:32px; border-radius:50%; border:none; background:rgba(255,255,255,0.92); color:var(--bp-ink-3,#8C8076); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:3; box-shadow:0 1px 6px rgba(0,0,0,0.18); transition:transform .15s ease, color .15s ease; }
+        .mp-fav-btn:hover { transform:scale(1.12); color:#DC2626; }
+        .mp-fav-btn[data-active="true"] { color:#DC2626; }
+        .mp-toggle { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 12px; border-radius:8px; cursor:pointer; border:none; background:none; width:100%; text-align:left; font-family:inherit; font-size:13.5px; color:var(--bp-ink,#2C2825); transition:background .12s; }
+        .mp-toggle:hover { background:var(--bp-ivory-2,#F0F0EE); }
+        .mp-toggle-track { width:34px; height:20px; border-radius:999px; background:var(--bp-rule,#E8E8E6); position:relative; flex-shrink:0; transition:background .18s ease; }
+        .mp-toggle[data-active="true"] .mp-toggle-track { background:var(--bp-gold,#B89968); }
+        .mp-toggle-knob { position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.2); transition:transform .18s ease; }
+        .mp-toggle[data-active="true"] .mp-toggle-knob { transform:translateX(14px); }
         .mp-spinner { width:13px; height:13px; border-radius:50%; border:2px solid var(--bp-rule,#E8E8E6); border-top-color:var(--bp-gold,#B89968); animation:mp-spin .7s linear infinite; display:inline-block; }
         @keyframes mp-spin { to { transform:rotate(360deg); } }
         .mp-radio { display:flex; flex-direction:column; gap:2px; }
@@ -388,6 +453,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
           {filtered.map(v => {
             const req = requestFor(v.id)
             const resolvedCity = resolveVendorCity(v)
+            const isFav = favorites.has(v.id)
             return (
               <Link key={v.id} href={`/brautpaar/${eventId}/dienstleister/anbieter/${v.id}`} className="mp-card">
                 <div className="mp-media">
@@ -405,6 +471,20 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
                       <Check size={12} /> {req.status === 'accepted' ? 'Angenommen' : 'Angefragt'}
                     </span>
                   )}
+                  <button
+                    className="mp-fav-btn"
+                    data-active={isFav}
+                    aria-label={isFav ? 'Von Merkliste entfernen' : 'Auf Merkliste setzen'}
+                    title={isFav ? 'Von Merkliste entfernen' : 'Auf Merkliste setzen'}
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); toggleFavorite(v.id) }}
+                  >
+                    <Heart size={16} fill={isFav ? 'currentColor' : 'none'} />
+                  </button>
+                  {eventDate && v.booked_on_date && (
+                    <span style={{ position: 'absolute', left: 12, top: 12, fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '5px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4, background: '#B91C1C', color: '#fff' }}>
+                      <CalendarX size={12} /> Am Termin belegt
+                    </span>
+                  )}
                 </div>
                 <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600, color: 'var(--bp-gold-deep,#8a6f3f)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -415,8 +495,10 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
                     {v.verified && <BadgeCheck size={16} style={{ color: '#15803D', flexShrink: 0 }} aria-label="Verifiziert" />}
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--bp-gold,#b89968)' }}>
-                    {[0, 1, 2, 3, 4].map(i => <Star key={i} size={13} />)}
-                    <span style={{ fontSize: 11, color: 'var(--bp-ink-3,#999)', marginLeft: 2 }}>Neu</span>
+                    {[1, 2, 3, 4, 5].map(i => <Star key={i} size={13} fill={i <= Math.round(v.review_avg) ? 'currentColor' : 'none'} />)}
+                    <span style={{ fontSize: 11, color: 'var(--bp-ink-3,#999)', marginLeft: 2 }}>
+                      {v.review_count > 0 ? `${v.review_avg.toFixed(1)} (${v.review_count})` : 'Neu'}
+                    </span>
                   </div>
                   {v.description && <p style={{ fontSize: 12.5, color: 'var(--bp-ink-2,#666)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{v.description}</p>}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 'auto', paddingTop: 6 }}>
@@ -515,6 +597,35 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
               </>
             )}
           </div>
+
+          <div className="mp-divider" />
+
+          {/* Schnellfilter */}
+          <p className="mp-panel-section-title">Anzeigen</p>
+          <button
+            className="mp-toggle"
+            data-active={pending.onlyFavorites}
+            onClick={() => setPending(p => ({ ...p, onlyFavorites: !p.onlyFavorites }))}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <Heart size={14} style={{ color: pending.onlyFavorites ? '#DC2626' : 'var(--bp-ink-3,#8C8076)' }} fill={pending.onlyFavorites ? 'currentColor' : 'none'} />
+              Nur Merkliste{favorites.size > 0 ? ` (${favorites.size})` : ''}
+            </span>
+            <span className="mp-toggle-track"><span className="mp-toggle-knob" /></span>
+          </button>
+          {eventDate && (
+            <button
+              className="mp-toggle"
+              data-active={pending.onlyAvailable}
+              onClick={() => setPending(p => ({ ...p, onlyAvailable: !p.onlyAvailable }))}
+            >
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <CalendarX size={14} style={{ color: 'var(--bp-ink-3,#8C8076)' }} />
+                Am Hochzeitstermin belegte ausblenden
+              </span>
+              <span className="mp-toggle-track"><span className="mp-toggle-knob" /></span>
+            </button>
+          )}
 
           <div className="mp-divider" />
 

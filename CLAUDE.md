@@ -471,6 +471,18 @@ supabase/migrations/
                                        Anfragen koennen jederzeit ohne Angebot angenommen werden (VendorOfferEditor:
                                        "Ohne Angebot annehmen"). Der separate Modus war damit redundant.
 
+  0134_marketplace_favorites.sql       Merkliste: marketplace_favorites (event_id, dienstleister_id, created_by,
+                                       UNIQUE je Event+Vendor). RLS: SELECT via is_event_member; Writes nur ueber
+                                       Service-Role-API /api/marketplace/favorites.
+# ── Marktplatz-Listing-Upgrade (mit Migration 0134) ──────────────────────────
+# MarktplatzClient + GET /api/marketplace/vendors: (1) echte Bewertungs-Aggregate
+# (review_avg/review_count aus marketplace_reviews status=published) auf den Karten,
+# Default-Sortierung "Beste Bewertung"; (2) Termin-Verfuegbarkeit: Client laedt das
+# Event-Datum und ruft vendors mit ?date=YYYY-MM-DD — API liefert booked_on_date
+# (marketplace_availability), Karte zeigt Badge "Am Termin belegt", Filter-Panel hat
+# Toggle zum Ausblenden; (3) Merkliste: Herz-Button auf der Karte (optimistisches
+# Toggle via POST/DELETE /api/marketplace/favorites) + "Nur Merkliste"-Toggle.
+
 # ── Standalone-Angebot -> Event (event-offers action:accept) ──────────────────
 # Eigenständige Angebote (vendor_offers.event_id IS NULL, erstellt in OfferEditorFull,
 # Kundeninfo in standard_info.client_*) koennen vom Dienstleister angenommen werden:
