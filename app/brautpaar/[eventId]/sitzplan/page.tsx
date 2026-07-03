@@ -578,7 +578,7 @@ export default function BrautpaarSitzplanPage() {
           .eq('event_id', eventId)
         if (refreshed) setPlacedTables(refreshed as PlacedTablePreview[])
       }
-      setConfigSaved(true); setTimeout(() => setConfigSaved(false), 3000)
+      setConfigSaved(true); setTimeout(() => setConfigSaved(false), 1600)
       setShowConfigurator(false)
     } finally {
       setConfigSaving(false)

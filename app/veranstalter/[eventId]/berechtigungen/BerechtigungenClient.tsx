@@ -1,7 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Check } from 'lucide-react'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 interface Permissions {
   id?: string
@@ -136,14 +136,7 @@ export default function BerechtigungenClient({ eventId, initialPerms }: Props) {
           ))}
         </div>
 
-        {saving && (
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 12 }}>Speichern…</div>
-        )}
-        {saved && !saving && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--green)', marginTop: 12 }}>
-            <Check size={13} /> Gespeichert
-          </div>
-        )}
+        <SaveStatus status={saving ? 'saving' : saved ? 'saved' : 'idle'} />
       </div>
 
       {/* Right: BP info + active summary */}

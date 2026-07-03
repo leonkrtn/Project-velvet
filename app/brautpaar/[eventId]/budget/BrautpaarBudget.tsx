@@ -153,9 +153,8 @@ function ItemRow({ item, onUpdate, onDelete }: { item: BudgetItem; onUpdate: (i:
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-              {saveStatus === 'idle'
-                ? <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>Änderungen werden automatisch gespeichert.</span>
-                : <SaveStatus status={saveStatus} />}
+              <span style={{ fontSize: '0.75rem', color: 'var(--bp-ink-3)' }}>Änderungen werden automatisch gespeichert.</span>
+              <SaveStatus status={saveStatus} />
               <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={() => setEditing(false)}>Fertig</button>
             </div>
           </div>

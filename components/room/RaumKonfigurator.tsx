@@ -1,5 +1,6 @@
 'use client'
 import React, { useRef, useEffect, useState, useCallback } from 'react'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 /* ── Types ── */
 export interface RaumPoint { x: number; y: number }
@@ -1249,11 +1250,7 @@ export default function RaumKonfigurator({
                 <span>Tischtyp links wählen → Canvas klicken = platzieren · Ziehen = verschieben · R = 45° drehen</span>
               )}
             </div>
-            {onSave && (
-              <span style={{ fontSize:12, color: saved ? '#34C759' : '#AEAEB2' }}>
-                {saved ? 'Gespeichert ✓' : saving ? 'Wird gespeichert…' : ''}
-              </span>
-            )}
+            {onSave && <SaveStatus status={saving ? 'saving' : saved ? 'saved' : 'idle'} />}
           </div>
         </div>
       </div>

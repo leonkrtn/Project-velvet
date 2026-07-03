@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, X, ChevronDown, ChevronUp, Clock } from 'lucide-react'
 import TimeInput from '@/components/ui/TimeInput'
 import DateInput from '@/components/ui/DateInput'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 const FIXED_COST_CATEGORIES = [
   'Miete / Locationkosten',
@@ -225,7 +226,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
     setSaving(false)
     if (!err) {
       setSuccess(true)
-      setTimeout(() => setSuccess(false), 2500)
+      setTimeout(() => setSuccess(false), 1600)
     }
   }
   handleSaveRef.current = handleSave
@@ -747,20 +748,7 @@ export default function AllgemeinForm({ eventId, initialData, bpMembers, initial
         />
       </SectionWrap>
 
-      {(saving || success) && (
-        <div style={{
-          position: 'fixed', top: 24, right: 24, zIndex: 100,
-          background: success ? 'var(--green)' : 'var(--surface)',
-          color: success ? '#fff' : 'var(--text-secondary)',
-          padding: '8px 16px', borderRadius: 'var(--radius-sm)',
-          fontSize: 13, fontWeight: 500,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
-          border: success ? 'none' : '1px solid var(--border)',
-          pointerEvents: 'none',
-        }}>
-          {saving ? 'Speichert…' : 'Gespeichert ✓'}
-        </div>
-      )}
+      <SaveStatus status={saving ? 'saving' : success ? 'saved' : 'idle'} />
     </div>
   )
 }

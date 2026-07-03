@@ -298,7 +298,8 @@ if (loading) return (
 
       {/* Auto-Save: Änderungen werden automatisch gespeichert */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 20, fontSize: 13, color: 'var(--text-tertiary)' }}>
-        {saveState === 'idle' ? 'Änderungen werden automatisch gespeichert.' : <SaveStatus status={saveState} />}
+        Änderungen werden automatisch gespeichert.
+        <SaveStatus status={saveState} />
       </div>
 
     </div>

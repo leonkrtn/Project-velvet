@@ -120,7 +120,7 @@ export default function SitzplanPage() {
         { onConflict: 'event_id' }
       )
       setEventPoints(points); setEventElements(elements); setEventTablePool(tablePool); setHasEventConfig(true)
-      setConfigSaved(true); setTimeout(() => setConfigSaved(false), 3000)
+      setConfigSaved(true); setTimeout(() => setConfigSaved(false), 1600)
       setShowConfigurator(false)
     } finally {
       setConfigSaving(false)

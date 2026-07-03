@@ -7,6 +7,7 @@ import {
   Utensils, HandPlatter, BookOpen, Sandwich, Flame, Trash2,
 } from 'lucide-react'
 import { titleCaseName, capitalizeFirst, allergyLabel } from '@/lib/text'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -422,7 +423,7 @@ export default function CateringForm({
     setSaving(false)
     if (!evErr && !planErr) {
       setSuccess(true)
-      setTimeout(() => setSuccess(false), 2500)
+      setTimeout(() => setSuccess(false), 1600)
     }
   }
   handleSaveRef.current = handleSave
@@ -1330,20 +1331,7 @@ export default function CateringForm({
 
       </SectionWrap>}
 
-      {(saving || success) && (
-        <div style={{
-          position: 'fixed', top: 24, right: 24, zIndex: 100,
-          background: success ? 'var(--green)' : 'var(--surface)',
-          color: success ? '#fff' : 'var(--text-secondary)',
-          padding: '8px 16px', borderRadius: 'var(--radius-sm)',
-          fontSize: 13, fontWeight: 500,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
-          border: success ? 'none' : '1px solid var(--border)',
-          pointerEvents: 'none',
-        }}>
-          {saving ? 'Speichert…' : 'Gespeichert ✓'}
-        </div>
-      )}
+      <SaveStatus status={saving ? 'saving' : success ? 'saved' : 'idle'} />
     </div>
   )
 }

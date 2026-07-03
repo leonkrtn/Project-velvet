@@ -1,8 +1,9 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check, CloudOff, FileSpreadsheet } from 'lucide-react'
+import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check, FileSpreadsheet } from 'lucide-react'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 type Kind = 'reminder' | 'review_request' | 'followup_offer' | 'followup_lead'
 interface Rule { id?: string; kind: Kind; event_type: string; offset_days: number; label: string; enabled: boolean }
@@ -78,17 +79,19 @@ export default function AutomationsClient() {
   useEffect(() => {
     if (!loadedRef.current) return
     setSaveState('saving')
+    let idleTimer: ReturnType<typeof setTimeout> | undefined
     const t = setTimeout(async () => {
       try {
         const r = await fetch('/api/vendor/automations', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ automations: rules }),
         })
         setSaveState(r.ok ? 'saved' : 'error')
+        if (r.ok) idleTimer = setTimeout(() => setSaveState('idle'), 1600)
       } catch {
         setSaveState('error')
       }
     }, 700)
-    return () => clearTimeout(t)
+    return () => { clearTimeout(t); clearTimeout(idleTimer) }
   }, [rules])
 
   function setRule(i: number, patch: Partial<Rule>) { setRules(rs => rs.map((r, idx) => idx === i ? { ...r, ...patch } : r)) }
@@ -112,7 +115,7 @@ export default function AutomationsClient() {
             Regeln, die Forevr täglich automatisch für dich ausführt — Änderungen werden sofort gespeichert.
           </p>
         </div>
-        <span style={{ flexShrink: 0 }}><SaveIndicator state={saveState} /></span>
+        <span style={{ flexShrink: 0 }}><SaveStatus status={saveState} /></span>
       </div>
 
       <h3 style={{ ...sectionHead, marginTop: 0 }}>Automatische Regeln</h3>
@@ -207,21 +210,6 @@ export default function AutomationsClient() {
         }
       `}</style>
     </div>
-  )
-}
-
-function SaveIndicator({ state }: { state: SaveState }) {
-  if (state === 'idle') return null
-  const map: Record<Exclude<SaveState, 'idle'>, { text: string; color: string; icon: React.ReactNode }> = {
-    saving: { text: 'Speichert…', color: C.dim, icon: <Loader2 size={13} className="bp-spin" /> },
-    saved: { text: 'Gespeichert', color: '#15803D', icon: <Check size={13} /> },
-    error: { text: 'Nicht gespeichert', color: C.red, icon: <CloudOff size={13} /> },
-  }
-  const m = map[state]
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, color: m.color }}>
-      {m.icon} {m.text}
-    </span>
   )
 }
 

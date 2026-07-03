@@ -107,7 +107,7 @@ export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
           <p className="bp-page-subtitle">Grundlegende Details eurer Hochzeit</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', minHeight: 20, fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
-          {saveStatus === 'idle' ? 'Änderungen werden automatisch gespeichert.' : <SaveStatus status={saveStatus} />}
+          Änderungen werden automatisch gespeichert.
         </div>
       </div>
 
@@ -198,10 +198,7 @@ export default function BrautpaarAllgemein({ eventId, initialData }: Props) {
 
       </Section>
 
-      {/* Auto-Save footer */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', minHeight: 20, paddingTop: '0.5rem', paddingBottom: '2rem', fontSize: '0.8125rem', color: 'var(--bp-ink-3)' }}>
-        {saveStatus === 'idle' ? 'Änderungen werden automatisch gespeichert.' : <SaveStatus status={saveStatus} />}
-      </div>
+      <SaveStatus status={saveStatus} />
     </div>
   )
 }
