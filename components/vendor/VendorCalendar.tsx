@@ -102,7 +102,7 @@ const C = {
 }
 
 const inp: React.CSSProperties = {
-  padding: '8px 10px', fontSize: 13.5,
+  height: 36, padding: '0 10px', fontSize: 13.5,
   border: `1px solid ${C.border}`, borderRadius: 8,
   background: '#fff', fontFamily: 'inherit',
   outline: 'none', width: '100%', boxSizing: 'border-box',
@@ -802,7 +802,7 @@ function EntryModal({ modal, onClose, onSaved, onDeleted }: {
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: C.dim, display: 'block', marginBottom: 5 }}>Notiz</label>
             <textarea
-              style={{ ...inp, minHeight: 60, resize: 'vertical' }}
+              style={{ ...inp, height: 'auto', padding: '8px 10px', minHeight: 60, resize: 'vertical' }}
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Optionale Beschreibung…"

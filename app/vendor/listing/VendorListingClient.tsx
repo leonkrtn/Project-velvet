@@ -26,10 +26,12 @@ interface Faq { id: string; question: string; answer: string; sort_order: number
 interface Avail { id: string; day: string; status: string }
 
 const inp: React.CSSProperties = {
-  width: '100%', padding: '11px 13px', fontSize: 14, border: '1px solid var(--border)',
+  width: '100%', height: 42, padding: '0 13px', fontSize: 14, border: '1px solid var(--border)',
   borderRadius: 10, background: '#fff', fontFamily: 'inherit', outline: 'none',
   boxSizing: 'border-box', color: 'var(--text)',
 }
+// Für Textareas: Höhe/Padding von `inp` zurücknehmen (mehrzeilig).
+const txt: React.CSSProperties = { ...inp, height: 'auto', padding: '11px 13px', resize: 'vertical' }
 const lbl: React.CSSProperties = {
   display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-dim)', marginBottom: 8,
 }
@@ -39,14 +41,14 @@ const secCard: React.CSSProperties = {
 }
 const h2s: React.CSSProperties = { fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 14px' }
 const btnDark: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10,
+  display: 'inline-flex', alignItems: 'center', gap: 6, height: 42, padding: '0 18px', borderRadius: 10,
   fontSize: 13.5, fontWeight: 600, cursor: 'pointer', background: 'var(--accent)', color: '#fff',
-  border: 'none', fontFamily: 'inherit',
+  border: 'none', fontFamily: 'inherit', boxSizing: 'border-box',
 }
 const btnGhost: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 8,
+  display: 'inline-flex', alignItems: 'center', gap: 6, height: 42, padding: '0 16px', borderRadius: 8,
   fontSize: 13.5, fontWeight: 600, cursor: 'pointer', background: '#fff', color: 'var(--text)',
-  border: '1px solid var(--border)', fontFamily: 'inherit',
+  border: '1px solid var(--border)', fontFamily: 'inherit', boxSizing: 'border-box',
 }
 
 function getInitials(name: string): string {
@@ -511,7 +513,7 @@ export default function VendorListingClient() {
                   value={f.description}
                   onChange={set('description')}
                   placeholder="Beschreibe deine Leistung kurz und prägnant…"
-                  style={{ ...inp, minHeight: 90, resize: 'vertical', lineHeight: 1.55 }}
+                  style={{ ...txt, minHeight: 90, lineHeight: 1.55 }}
                 />
                 <p style={{ fontSize: 11.5, color: descLen >= 30 ? '#15803D' : 'var(--text-dim)', margin: '5px 0 0' }}>
                   {descLen >= 30 ? 'Mindestlänge erreicht' : `${descLen}/30 Zeichen (Minimum für die Freigabe)`}
@@ -526,7 +528,7 @@ export default function VendorListingClient() {
                     type="color"
                     value={/^#[0-9a-fA-F]{6}$/.test(f.brand_color) ? f.brand_color : '#B89968'}
                     onChange={set('brand_color')}
-                    style={{ width: 44, height: 38, padding: 2, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }}
+                    style={{ width: 44, height: 42, padding: 2, border: '1px solid var(--border)', borderRadius: 8, background: '#fff', cursor: 'pointer' }}
                     aria-label="Markenfarbe wählen"
                   />
                   <input
@@ -536,7 +538,7 @@ export default function VendorListingClient() {
                     style={{ ...inp, maxWidth: 240 }}
                   />
                   {f.brand_color && (
-                    <button onClick={() => setF(s => ({ ...s, brand_color: '' }))} style={{ ...btnGhost, padding: '8px 12px' }}>Zurücksetzen</button>
+                    <button onClick={() => setF(s => ({ ...s, brand_color: '' }))} style={{ ...btnGhost, padding: '0 12px' }}>Zurücksetzen</button>
                   )}
                 </div>
                 <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '6px 0 0' }}>
@@ -677,7 +679,7 @@ export default function VendorListingClient() {
                         {PRICE_UNITS.map(u => <option key={u.key} value={u.key}>{u.label}</option>)}
                       </select>
                     </div>
-                    <textarea style={{ ...inp, minHeight: 60, resize: 'vertical' }} value={p.description} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, description: e.target.value } : x))} placeholder="Was ist enthalten?" />
+                    <textarea style={{ ...txt, minHeight: 60 }} value={p.description} onChange={e => setPackages(a => a.map((x, i) => i === idx ? { ...x, description: e.target.value } : x))} placeholder="Was ist enthalten?" />
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                       <button onClick={() => savePackage(p)} style={btnDark}><Save size={14} /> Speichern</button>
                       <button onClick={() => delPackage(p.id)} style={{ ...btnGhost, color: 'var(--red)' }}><Trash2 size={14} /></button>
@@ -698,7 +700,7 @@ export default function VendorListingClient() {
                 {faqs.map((q, idx) => (
                   <div key={q.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
                     <input style={{ ...inp, marginBottom: 8 }} value={q.question} onChange={e => setFaqs(a => a.map((x, i) => i === idx ? { ...x, question: e.target.value } : x))} placeholder="Frage" />
-                    <textarea style={{ ...inp, minHeight: 60, resize: 'vertical' }} value={q.answer} onChange={e => setFaqs(a => a.map((x, i) => i === idx ? { ...x, answer: e.target.value } : x))} placeholder="Antwort" />
+                    <textarea style={{ ...txt, minHeight: 60 }} value={q.answer} onChange={e => setFaqs(a => a.map((x, i) => i === idx ? { ...x, answer: e.target.value } : x))} placeholder="Antwort" />
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                       <button onClick={() => saveFaq(q)} style={btnDark}><Save size={14} /> Speichern</button>
                       <button onClick={() => delFaq(q.id)} style={{ ...btnGhost, color: 'var(--red)' }}><Trash2 size={14} /></button>
@@ -736,7 +738,7 @@ export default function VendorListingClient() {
                 boxShadow: '0 8px 28px rgba(0,0,0,0.28)', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
               }}>
                 Ungespeicherte Änderungen
-                <button onClick={saveProfile} disabled={savingProfile} style={{ ...btnDark, padding: '7px 16px', borderRadius: 999 }}>
+                <button onClick={saveProfile} disabled={savingProfile} style={{ ...btnDark, height: 36, padding: '0 16px', borderRadius: 999 }}>
                   {savingProfile ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={14} />} Speichern
                 </button>
               </div>

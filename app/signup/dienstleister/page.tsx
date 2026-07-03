@@ -23,7 +23,7 @@ export default function DienstleisterSignupPage() {
   const [confirmEmail, setConfirmEmail] = useState(false)
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '13px 16px', fontSize: 15,
+    width: '100%', height: 48, padding: '0 16px', fontSize: 15,
     border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
     background: '#fff', fontFamily: 'inherit', outline: 'none',
     boxSizing: 'border-box', color: 'var(--text)',

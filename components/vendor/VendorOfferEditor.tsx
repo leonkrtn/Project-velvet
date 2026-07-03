@@ -21,7 +21,7 @@ interface Offer {
 }
 
 const C = { border: 'var(--border)', text: 'var(--text)', dim: 'var(--text-dim)', gold: 'var(--gold)', red: 'var(--red, #C5221F)', surface: 'var(--surface)', bg: 'var(--bg)' }
-const inp: React.CSSProperties = { padding: '7px 9px', fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text }
+const inp: React.CSSProperties = { height: 32, padding: '0 9px', fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 7, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text }
 const btn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid transparent' }
 const btnGhost: React.CSSProperties = { ...btn, background: C.surface, color: C.text, border: `1px solid ${C.border}` }
 
@@ -445,7 +445,7 @@ function OfferBody({ offer, items, editable, totals, notes, setNotes, validUntil
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 10, marginTop: 14 }}>
           <div>
             <label style={{ fontSize: 11.5, fontWeight: 600, color: C.dim, display: 'block', marginBottom: 5 }}>Anmerkungen ans Brautpaar</label>
-            <textarea style={{ ...inp, width: '100%', minHeight: 54, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} />
+            <textarea style={{ ...inp, height: 'auto', padding: '7px 9px', width: '100%', minHeight: 54, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} />
           </div>
           <div>
             <label style={{ fontSize: 11.5, fontWeight: 600, color: C.dim, display: 'block', marginBottom: 5 }}>Gültig bis</label>

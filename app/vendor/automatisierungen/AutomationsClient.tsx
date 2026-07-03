@@ -11,7 +11,7 @@ const C = {
   bg: 'var(--bg)', surface: 'var(--surface)', border: 'var(--border)',
   text: 'var(--text)', dim: 'var(--text-dim)', gold: 'var(--gold)', red: 'var(--red, #C5221F)',
 }
-const inp: React.CSSProperties = { padding: '8px 10px', fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 8, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text }
+const inp: React.CSSProperties = { height: 34, padding: '0 10px', fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 8, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text }
 const card: React.CSSProperties = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }
 const btnGold: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: 'none', background: C.gold, color: '#fff' }
 const btnGhost: React.CSSProperties = { ...btnGold, background: '#fff', color: C.text, border: `1px solid ${C.border}` }

@@ -19,9 +19,11 @@ const C = {
   text: 'var(--text)', dim: 'var(--text-dim)', gold: 'var(--gold)', red: 'var(--red, #C5221F)',
 }
 const inp: React.CSSProperties = {
-  width: '100%', padding: '9px 11px', fontSize: 13.5, border: `1px solid ${C.border}`,
+  width: '100%', height: 38, padding: '0 11px', fontSize: 13.5, border: `1px solid ${C.border}`,
   borderRadius: 8, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text,
 }
+// Für Textareas: Höhe/Padding von `inp` zurücknehmen (mehrzeilig).
+const txt: React.CSSProperties = { ...inp, height: 'auto', padding: '9px 11px', resize: 'vertical' }
 const lbl: React.CSSProperties = { display: 'block', fontSize: 11.5, fontWeight: 600, color: C.dim, marginBottom: 5 }
 const card: React.CSSProperties = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }
 const btn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid transparent' }
@@ -241,7 +243,7 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
           </button>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
             <LayoutTemplate size={15} style={{ color: C.dim }} />
-            <select style={{ ...inp, width: 'auto', padding: '7px 10px' }} value="" onChange={e => { if (e.target.value) requestTemplate(e.target.value) }}>
+            <select style={{ ...inp, width: 'auto' }} value="" onChange={e => { if (e.target.value) requestTemplate(e.target.value) }}>
               <option value="">Vorlage laden…</option>
               <option value={category}>Meine Kategorie</option>
               {MARKETPLACE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
@@ -301,7 +303,7 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
               </div>
               <div>
                 <label style={lbl}>Einleitungstext (optional)</label>
-                <textarea style={{ ...inp, minHeight: 64, resize: 'vertical' }} value={settings.intro_text} onChange={e => setSetting('intro_text', e.target.value)} placeholder="Kurze Begrüßung für das Brautpaar…" />
+                <textarea style={{ ...txt, minHeight: 64 }} value={settings.intro_text} onChange={e => setSetting('intro_text', e.target.value)} placeholder="Kurze Begrüßung für das Brautpaar…" />
               </div>
             </div>
 
@@ -864,5 +866,5 @@ function PreviewQuestion({ q, value, onChange }: { q: QQuestion; value: unknown;
   if (q.type === 'date') {
     return <div>{label}<input style={inp} type="date" value={value ? String(value) : ''} onChange={e => onChange(e.target.value)} /></div>
   }
-  return <div>{label}<textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={value ? String(value) : ''} onChange={e => onChange(e.target.value)} /></div>
+  return <div>{label}<textarea style={{ ...txt, minHeight: 70 }} value={value ? String(value) : ''} onChange={e => onChange(e.target.value)} /></div>
 }

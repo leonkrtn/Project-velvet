@@ -85,7 +85,7 @@ const dekoIconBtn: React.CSSProperties = {
 
 /* ── Shared styles ── */
 const inp: React.CSSProperties = {
-  width:'100%', padding:'10px 13px', background:'#fff',
+  width:'100%', height:40, padding:'0 13px', background:'#fff',
   border:'1px solid var(--border)', borderRadius:'var(--radius-sm)',
   fontSize:14, outline:'none', fontFamily:'inherit', boxSizing:'border-box', color:'var(--text)',
 }
@@ -663,7 +663,7 @@ export default function KonfigurationClient() {
                 </div>
                 <div style={{ marginBottom:14 }}>
                   <label style={label12}>Notizen</label>
-                  <textarea style={{ ...inp, minHeight:70, resize:'vertical' }} value={staffForm.notes??''} onChange={e=>setStaffForm(f=>({...f,notes:e.target.value}))} />
+                  <textarea style={{ ...inp, height:'auto', padding:'10px 13px', minHeight:70, resize:'vertical' }} value={staffForm.notes??''} onChange={e=>setStaffForm(f=>({...f,notes:e.target.value}))} />
                 </div>
 
                 {staffError && <p style={{ fontSize:13, color:'#D94848', marginBottom:12 }}>{staffError}</p>}
