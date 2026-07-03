@@ -335,7 +335,7 @@ export default function VendorListingClient() {
           <div>
             <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px', margin: 0 }}>Anbieter-Profil</h1>
             <p style={{ fontSize: 13.5, color: 'var(--text-dim)', marginTop: 6, marginBottom: 0 }}>
-              So erscheint du im Forevr-Marktplatz.
+              So erscheinst du im Forevr-Marktplatz.
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, paddingTop: 4 }}>

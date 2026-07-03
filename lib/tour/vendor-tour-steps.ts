@@ -170,8 +170,8 @@ export const VENDOR_TOUR_STEPS: VendorTourStep[] = [
   {
     module: 'anfrage-formular',
     target: 'vdr-fragebogen-actions',
-    title: 'Aktivieren & Speichern',
-    body: 'Aktiviere das Formular mit dem Schalter, damit Brautpaare es sehen können. Lade eine passende Vorlage für deine Kategorie, passe sie an und speichere — fertig.',
+    title: 'Aktivieren, Vorschau & Speichern',
+    body: 'Aktiviere das Formular mit dem Schalter, damit Brautpaare es sehen können. Über „Vorschau" siehst du das Formular jederzeit aus Brautpaar-Sicht. Lade eine passende Vorlage für deine Kategorie, passe sie an und speichere — fertig.',
   },
   {
     module: 'anfrage-formular',
@@ -188,14 +188,14 @@ export const VENDOR_TOUR_STEPS: VendorTourStep[] = [
   {
     module: 'anfrage-formular',
     target: 'vdr-fragebogen-pricing',
-    title: 'Preislogik',
-    body: 'Lege deinen Grundpreis, einen Preis pro Gast, einen Mindestbetrag und einen Wochenend-Aufschlag fest. Forevr rechnet daraus automatisch den ersten Angebotsentwurf — du prüfst und passt ihn vor dem Freigeben an.',
+    title: 'Reiter „Preise"',
+    body: 'Im Reiter „Preise" legst du Grundpreis, Preis pro Gast, Mengenstaffeln, Saison-Aufschläge und Anfahrtskosten fest. Forevr rechnet daraus automatisch den ersten Angebotsentwurf — du prüfst und passt ihn vor dem Freigeben an.',
   },
   {
     module: 'anfrage-formular',
     target: 'vdr-fragebogen-tax',
-    title: 'Steuer & Konditionen',
-    body: 'Wähle deine Umsatzsteuerregelung (regulär, Kleinunternehmer oder netto), stelle Währung und Angebots-Gültigkeit ein und hinterlege eine Fußnote — z. B. Zahlungsbedingungen oder AGBs.',
+    title: 'Reiter „Konditionen"',
+    body: 'Im Reiter „Konditionen" wählst du deine Umsatzsteuerregelung (regulär, Kleinunternehmer oder netto), stellst Währung und Angebots-Gültigkeit ein und hinterlegst eine Fußnote — z. B. Zahlungsbedingungen oder AGBs.',
   },
 
   // ── Abschluss ──────────────────────────────────────────────────────────────
