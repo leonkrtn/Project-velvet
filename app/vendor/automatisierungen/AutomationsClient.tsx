@@ -12,7 +12,7 @@ const C = {
   text: 'var(--text)', dim: 'var(--text-dim)', gold: 'var(--gold)', red: 'var(--red, #C5221F)',
 }
 const inp: React.CSSProperties = { height: 34, padding: '0 10px', fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 8, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text }
-const card: React.CSSProperties = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 14 }
+const card: React.CSSProperties = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 'var(--radius, 14px)', padding: 20, marginBottom: 14 }
 const btnGold: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: 'none', background: C.gold, color: '#fff' }
 const btnGhost: React.CSSProperties = { ...btnGold, background: '#fff', color: C.text, border: `1px solid ${C.border}` }
 const sectionHead: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: C.dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '26px 0 10px' }
@@ -98,17 +98,24 @@ export default function AutomationsClient() {
   if (loading) return <div style={{ minHeight: '60dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="bp-spin" /></div>
 
   return (
-    <div className="vnd-page-outer auto-page" style={{ minHeight: '100dvh', background: C.bg, padding: '28px 24px 80px', maxWidth: '100%', overflowX: 'hidden', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
-        <Zap size={20} style={{ color: C.gold }} />
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text }}>Automatisierungen</h1>
-        <span style={{ marginLeft: 'auto' }}><SaveIndicator state={saveState} /></span>
-      </div>
-      <p style={{ fontSize: 13, color: C.dim, margin: '0 0 4px', maxWidth: 620, lineHeight: 1.5 }}>
-        Lege Regeln fest, die Forevr täglich automatisch für dich ausführt. Änderungen werden sofort gespeichert.
-      </p>
+    <div className="vnd-page-outer" style={{ background: C.bg, flex: 1, minHeight: '100dvh', padding: '28px 24px 48px', overflow: 'auto', boxSizing: 'border-box' }}>
+      <div className="vnd-page-card" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '24px 28px' }}>
 
-      <h3 style={sectionHead}>Automatische Regeln</h3>
+      {/* Header (Muster wie Angebote/Anfragen/Report) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <div className="vnd-hdr-icon" style={{ width: 42, height: 42, borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Zap size={20} style={{ color: C.gold }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>Automatik</h1>
+          <p style={{ fontSize: 13.5, color: C.dim, marginTop: 2, marginBottom: 0 }}>
+            Regeln, die Forevr täglich automatisch für dich ausführt — Änderungen werden sofort gespeichert.
+          </p>
+        </div>
+        <span style={{ flexShrink: 0 }}><SaveIndicator state={saveState} /></span>
+      </div>
+
+      <h3 style={{ ...sectionHead, marginTop: 0 }}>Automatische Regeln</h3>
       {KINDS.map(group => {
         const groupRules = rules.map((r, i) => ({ r, i })).filter(x => x.r.kind === group.kind)
         const activeCount = groupRules.filter(x => x.r.enabled).length
@@ -191,9 +198,10 @@ export default function AutomationsClient() {
       <h3 style={sectionHead}>Manuelle Aktionen</h3>
       <ManualReviewSection />
 
+      </div>
+
       <style>{`
         @media (max-width: 640px) {
-          .auto-page { padding-left: 14px !important; padding-right: 14px !important; }
           .auto-rule { align-items: flex-start !important; }
           .auto-rule .auto-label { flex: 1 1 100% !important; margin-left: 0 !important; }
         }
