@@ -9,6 +9,8 @@ import RequestFlow from '@/components/marketplace/RequestFlow'
 import CoupleOfferPanel from '@/components/marketplace/CoupleOfferPanel'
 import CoupleDataRequests from '@/components/marketplace/CoupleDataRequests'
 import { resolveVendorCity, formatVendorAddress } from '@/lib/vendor/location'
+import { VideoCarousel, AudioSamplePlayer } from '@/components/marketplace/VendorMediaSection'
+import { youtubeVideoId } from '@/lib/marketplace/types'
 
 interface Vendor {
   id: string; company_name: string | null; category: string
@@ -18,6 +20,7 @@ interface Vendor {
   price_range: string | null
   verified: boolean; social_links: Record<string, string>; service_cities: string[]; service_radius_km: number | null
   logo_url: string | null; photos: { id: string; url: string }[]
+  video_urls: string[]; audio_url: string | null; audio_title: string | null
 }
 interface Pkg { id: string; title: string; description: string; price_from: number | null; price_unit: string }
 interface Faq { id: string; question: string; answer: string }
@@ -84,6 +87,7 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
   const resolvedCity = resolveVendorCity(vendor)
   const hero = vendor.photos[0]?.url ?? vendor.logo_url
   const rest = vendor.photos.slice(1)
+  const hasVideos = vendor.video_urls.some(u => youtubeVideoId(u))
   const socials = SOCIAL_PLATFORMS.filter(s => vendor.social_links?.[s.key])
 
   async function submitReview() {
@@ -158,6 +162,21 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
 
           {vendor.description && (
             <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--bp-ink-2)', margin: '18px 0 0' }}>{vendor.description}</p>
+          )}
+
+          {/* Videos + Hörprobe (Migration 0133) */}
+          {(hasVideos || vendor.audio_url) && (
+            <div style={{ marginTop: 26 }}>
+              <h3 className="bp-font-heading" style={{ fontSize: '1.2rem', margin: '0 0 12px' }}>
+                {hasVideos && vendor.audio_url ? 'Videos & Hörprobe' : hasVideos ? 'Videos' : 'Hörprobe'}
+              </h3>
+              {hasVideos && <VideoCarousel urls={vendor.video_urls} />}
+              {vendor.audio_url && (
+                <div style={{ marginTop: hasVideos ? 14 : 0 }}>
+                  <AudioSamplePlayer url={vendor.audio_url} title={vendor.audio_title} vendorName={vendor.company_name} />
+                </div>
+              )}
+            </div>
           )}
 
           {/* Einsatzgebiet */}
