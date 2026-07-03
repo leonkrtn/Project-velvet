@@ -12,23 +12,49 @@ const C = {
   text: 'var(--text)', dim: 'var(--text-dim)', gold: 'var(--gold)', red: 'var(--red, #C5221F)',
 }
 const inp: React.CSSProperties = { height: 34, padding: '0 10px', fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 8, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text }
-const card: React.CSSProperties = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }
+const card: React.CSSProperties = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 14 }
 const btnGold: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: 'none', background: C.gold, color: '#fff' }
 const btnGhost: React.CSSProperties = { ...btnGold, background: '#fff', color: C.text, border: `1px solid ${C.border}` }
+const sectionHead: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: C.dim, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '26px 0 10px' }
 
-const KINDS: { kind: Kind; title: string; desc: string; unit: string; icon: React.ReactNode }[] = [
-  { kind: 'reminder', title: 'Erinnerungen vor dem Event', desc: 'Kalender-Erinnerung für dich, X Tage vor einem gebuchten Event.', unit: 'Tage vorher', icon: <Bell size={16} /> },
-  { kind: 'review_request', title: 'Bewertungsanfragen', desc: 'Automatische E-Mail ans Brautpaar X Tage nach dem Event mit Bewertungslink.', unit: 'Tage nachher', icon: <Star size={16} /> },
-  { kind: 'followup_offer', title: 'Angebote nachfassen', desc: 'Erinnerung ans Brautpaar (und dich) X Tage nach Freigabe eines noch offenen Angebots.', unit: 'Tage nach Freigabe', icon: <MailQuestion size={16} /> },
-  { kind: 'followup_lead', title: 'Inaktive Leads', desc: 'Lege automatisch eine Aufgabe an, wenn ein Lead X Tage ohne Aktivität ist.', unit: 'Tage inaktiv', icon: <UserCheck size={16} /> },
+// Satzbausteine pro Regel-Art: [Toggle] <before> [Zahl] <after> · gilt für [Event-Typ]
+const KINDS: { kind: Kind; title: string; desc: string; before: string; after: string; example: string; icon: React.ReactNode }[] = [
+  {
+    kind: 'reminder', title: 'Erinnerung vor dem Event',
+    desc: 'Legt dir automatisch eine Kalender-Erinnerung vor jedem gebuchten Event an.',
+    before: 'Erinnere mich', after: 'Tage vor dem Event',
+    example: 'z. B. 7 Tage vorher, um letzte Details zu klären',
+    icon: <Bell size={16} />,
+  },
+  {
+    kind: 'review_request', title: 'Bewertung anfragen',
+    desc: 'Schickt dem Brautpaar automatisch eine E-Mail mit deinem Bewertungslink.',
+    before: 'Sende die Anfrage', after: 'Tage nach dem Event',
+    example: 'z. B. 5 Tage nachher, wenn die Erinnerungen noch frisch sind',
+    icon: <Star size={16} />,
+  },
+  {
+    kind: 'followup_offer', title: 'Offenes Angebot nachfassen',
+    desc: 'Erinnert das Brautpaar (und dich) an ein freigegebenes, noch unbeantwortetes Angebot.',
+    before: 'Fasse nach', after: 'Tage nach der Freigabe',
+    example: 'z. B. 5 Tage nach Versand des Angebots',
+    icon: <MailQuestion size={16} />,
+  },
+  {
+    kind: 'followup_lead', title: 'Inaktiven Lead wiedervorlegen',
+    desc: 'Legt dir eine Aufgabe im CRM an, wenn sich bei einem Lead nichts mehr tut.',
+    before: 'Lege eine Aufgabe an nach', after: 'Tagen ohne Aktivität',
+    example: 'z. B. 14 Tage Funkstille',
+    icon: <UserCheck size={16} />,
+  },
 ]
 
 const EVENT_TYPES = [
-  { v: 'all', l: 'Alle Event-Typen' },
-  { v: 'hochzeit', l: 'Hochzeit' },
-  { v: 'firmenevent', l: 'Firmenevent' },
-  { v: 'privat', l: 'Privat' },
-  { v: 'sonstige', l: 'Sonstige' },
+  { v: 'all', l: 'alle Event-Typen' },
+  { v: 'hochzeit', l: 'Hochzeiten' },
+  { v: 'firmenevent', l: 'Firmenevents' },
+  { v: 'privat', l: 'private Events' },
+  { v: 'sonstige', l: 'sonstige Events' },
 ]
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
@@ -78,54 +104,98 @@ export default function AutomationsClient() {
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text }}>Automatisierungen</h1>
         <span style={{ marginLeft: 'auto' }}><SaveIndicator state={saveState} /></span>
       </div>
-      <p style={{ fontSize: 13, color: C.dim, margin: '0 0 18px', maxWidth: 620, lineHeight: 1.5 }}>
-        Lege Regeln fest, die Forevr automatisch ausführt — Erinnerungen, Bewertungsanfragen und Nachfass-Aktionen. Sie laufen täglich im Hintergrund und werden automatisch gespeichert.
+      <p style={{ fontSize: 13, color: C.dim, margin: '0 0 4px', maxWidth: 620, lineHeight: 1.5 }}>
+        Lege Regeln fest, die Forevr täglich automatisch für dich ausführt. Änderungen werden sofort gespeichert.
       </p>
 
+      <h3 style={sectionHead}>Automatische Regeln</h3>
       {KINDS.map(group => {
         const groupRules = rules.map((r, i) => ({ r, i })).filter(x => x.r.kind === group.kind)
+        const activeCount = groupRules.filter(x => x.r.enabled).length
         return (
           <div key={group.kind} style={card}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
-              <span style={{ color: C.gold }}>{group.icon}</span>
-              <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{group.title}</h2>
-            </div>
-            <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 14px', lineHeight: 1.5 }}>{group.desc}</p>
-
-            {groupRules.length === 0 && <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 10px' }}>Keine Regel aktiv.</p>}
-            {groupRules.map(({ r, i }) => (
-              <div key={i} className="auto-rule" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                <span className="auto-toggle" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: r.enabled ? C.text : C.dim, minWidth: 64 }}>
-                  <ToggleSwitch checked={r.enabled} onChange={v => setRule(i, { enabled: v })} size="sm" aria-label="Regel aktiv" />
-                  {r.enabled ? 'an' : 'aus'}
-                </span>
-                <span className="auto-offset" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <input style={{ ...inp, width: 64, textAlign: 'right' }} type="number" value={r.offset_days} onChange={e => setRule(i, { offset_days: e.target.value === '' ? 0 : parseInt(e.target.value, 10) })} />
-                  <span style={{ fontSize: 12.5, color: C.dim, whiteSpace: 'nowrap' }}>{group.unit}</span>
-                </span>
-                <select className="auto-select" style={{ ...inp, width: 160 }} value={r.event_type} onChange={e => setRule(i, { event_type: e.target.value })}>
-                  {EVENT_TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
-                </select>
-                <input className="auto-label" style={{ ...inp, flex: '1 1 180px', minWidth: 120 }} value={r.label} placeholder="Bezeichnung (optional)" onChange={e => setRule(i, { label: e.target.value })} />
-                <button onClick={() => removeRule(i)} aria-label="Regel entfernen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex', flexShrink: 0 }}><Trash2 size={15} /></button>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+              <span style={{
+                width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                background: activeCount > 0 ? 'rgba(184,153,104,0.14)' : C.bg,
+                border: `1px solid ${activeCount > 0 ? 'rgba(184,153,104,0.35)' : C.border}`,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                color: activeCount > 0 ? C.gold : C.dim,
+              }}>
+                {group.icon}
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{group.title}</h2>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
+                    background: activeCount > 0 ? 'rgba(21,128,61,0.1)' : 'rgba(0,0,0,0.05)',
+                    color: activeCount > 0 ? '#15803D' : C.dim,
+                  }}>
+                    {activeCount > 0 ? `${activeCount} aktiv` : 'Aus'}
+                  </span>
+                </div>
+                <p style={{ fontSize: 12.5, color: C.dim, margin: '3px 0 0', lineHeight: 1.5 }}>{group.desc}</p>
               </div>
-            ))}
-            <button onClick={() => addRule(group.kind)} style={{ ...btnGhost, padding: '6px 11px', fontSize: 12 }}><Plus size={13} /> Regel</button>
+            </div>
+
+            {groupRules.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+                {groupRules.map(({ r, i }) => (
+                  <div
+                    key={i}
+                    className="auto-rule"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+                      padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.border}`,
+                      background: C.bg, opacity: r.enabled ? 1 : 0.55, transition: 'opacity 0.15s',
+                    }}
+                  >
+                    <ToggleSwitch checked={r.enabled} onChange={v => setRule(i, { enabled: v })} size="sm" aria-label="Regel aktiv" />
+                    <span className="auto-sentence" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13, color: C.text }}>
+                      {group.before}
+                      <input
+                        style={{ ...inp, width: 58, textAlign: 'right' }} type="number" min={0} value={r.offset_days}
+                        onChange={e => setRule(i, { offset_days: Math.max(0, e.target.value === '' ? 0 : parseInt(e.target.value, 10) || 0) })}
+                      />
+                      {group.after}
+                      <span style={{ color: C.dim }}>·</span>
+                      <span style={{ color: C.dim }}>gilt für</span>
+                      <select className="auto-select" style={{ ...inp, width: 'auto', maxWidth: 180 }} value={r.event_type} onChange={e => setRule(i, { event_type: e.target.value })}>
+                        {EVENT_TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
+                      </select>
+                    </span>
+                    <input
+                      className="auto-label"
+                      style={{ ...inp, flex: '1 1 150px', minWidth: 110, marginLeft: 'auto' }}
+                      value={r.label} placeholder="Interne Bezeichnung (optional)"
+                      onChange={e => setRule(i, { label: e.target.value })}
+                    />
+                    <button onClick={() => removeRule(i)} aria-label="Regel entfernen" title="Regel entfernen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex', flexShrink: 0, padding: 4 }}><Trash2 size={15} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: groupRules.length > 0 ? 10 : 14 }}>
+              <button onClick={() => addRule(group.kind)} style={{ ...btnGhost, padding: '6px 11px', fontSize: 12 }}><Plus size={13} /> Regel hinzufügen</button>
+              {groupRules.length === 0 && <span style={{ fontSize: 12, color: C.dim }}>{group.example}</span>}
+            </div>
           </div>
         )
       })}
 
+      <h3 style={sectionHead}>Benachrichtigungen</h3>
       <NewRequestEmailSection />
 
+      <h3 style={sectionHead}>Manuelle Aktionen</h3>
       <ManualReviewSection />
 
       <style>{`
         @media (max-width: 640px) {
           .auto-page { padding-left: 14px !important; padding-right: 14px !important; }
-          .auto-rule { flex-direction: column; align-items: stretch !important; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid ${C.border}; }
-          .auto-rule .auto-select, .auto-rule .auto-label { width: 100% !important; flex: 1 1 auto !important; min-width: 0 !important; }
-          .auto-rule .auto-offset { justify-content: space-between; }
-          .auto-rule .auto-offset input { flex: 1 1 auto; }
+          .auto-rule { align-items: flex-start !important; }
+          .auto-rule .auto-label { flex: 1 1 100% !important; margin-left: 0 !important; }
         }
       `}</style>
     </div>
@@ -173,23 +243,28 @@ function NewRequestEmailSection() {
   }
 
   return (
-    <div style={card}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
-        <FileSpreadsheet size={16} style={{ color: C.gold }} />
+    <div style={{ ...card, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+      <span style={{
+        width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+        background: enabled ? 'rgba(184,153,104,0.14)' : C.bg,
+        border: `1px solid ${enabled ? 'rgba(184,153,104,0.35)' : C.border}`,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        color: enabled ? C.gold : C.dim,
+      }}>
+        <FileSpreadsheet size={16} />
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Neue Anfragen per E-Mail</h2>
+        <p style={{ fontSize: 12.5, color: C.dim, margin: '3px 0 0', lineHeight: 1.5 }}>
+          Bei jeder neuen Marktplatz-Anfrage bekommst du eine E-Mail mit allen Anfrage-Daten
+          als Excel-Anhang — praktisch, um außerhalb von Forevr zu kalkulieren.
+        </p>
       </div>
-      <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 14px', lineHeight: 1.5 }}>
-        Erhalte zusätzlich zur Anzeige im Dashboard bei jeder neuen Marktplatz-Anfrage eine E-Mail mit
-        allen Anfrage-Daten als Excel-Datei im Anhang — praktisch, um ein Angebot außerhalb von Forevr zu kalkulieren.
-      </p>
-      {loading ? (
-        <div style={{ color: C.dim, fontSize: 13 }}><Loader2 size={15} className="bp-spin" /></div>
-      ) : (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: enabled ? C.text : C.dim }}>
-          <ToggleSwitch checked={enabled} onChange={toggle} size="sm" aria-label="Neue Anfragen per E-Mail" disabled={saving} />
-          {enabled ? 'an' : 'aus'}
-        </span>
-      )}
+      <span style={{ flexShrink: 0, paddingTop: 4 }}>
+        {loading
+          ? <Loader2 size={15} className="bp-spin" style={{ color: C.dim }} />
+          : <ToggleSwitch checked={enabled} onChange={toggle} size="sm" aria-label="Neue Anfragen per E-Mail" disabled={saving} />}
+      </span>
     </div>
   )
 }
@@ -215,21 +290,29 @@ function ManualReviewSection() {
 
   return (
     <div style={card}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
-        <Star size={16} style={{ color: C.gold }} />
-        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Bewertung manuell anfragen</h2>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: events.length > 0 || loading ? 14 : 0 }}>
+        <span style={{
+          width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+          background: C.bg, border: `1px solid ${C.border}`,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: C.dim,
+        }}>
+          <Star size={16} />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Bewertung manuell anfragen</h2>
+          <p style={{ fontSize: 12.5, color: C.dim, margin: '3px 0 0', lineHeight: 1.5 }}>
+            Sende für ein abgeschlossenes Event jederzeit selbst eine Bewertungsanfrage ans Brautpaar.
+          </p>
+        </div>
       </div>
-      <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 14px', lineHeight: 1.5 }}>
-        Sende für ein abgeschlossenes Event jederzeit selbst eine Bewertungsanfrage ans Brautpaar.
-      </p>
       {loading ? (
         <div style={{ color: C.dim, fontSize: 13 }}><Loader2 size={15} className="bp-spin" /></div>
       ) : events.length === 0 ? (
-        <p style={{ fontSize: 12.5, color: C.dim, margin: 0 }}>Noch keine abgeschlossenen (angenommenen) Aufträge.</p>
+        <p style={{ fontSize: 12.5, color: C.dim, margin: '10px 0 0' }}>Noch keine abgeschlossenen (angenommenen) Aufträge.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {events.map(e => (
-            <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', border: `1px solid ${C.border}`, borderRadius: 9 }}>
+            <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', border: `1px solid ${C.border}`, borderRadius: 9, background: C.bg }}>
               <Calendar size={14} style={{ color: C.dim, flexShrink: 0 }} />
               <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}{e.date ? ` · ${e.date}` : ''}</span>
               {e.invited ? (
