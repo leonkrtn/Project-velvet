@@ -4,10 +4,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Loader2, Upload, Save, Send, CheckCircle2, AlertTriangle, Clock,
   Plus, Trash2, ArrowUp, ArrowDown, Star, Building2, CalendarDays, X,
+  PlayCircle, Music2,
 } from 'lucide-react'
 import {
   MARKETPLACE_CATEGORIES, PRICE_UNITS, SOCIAL_PLATFORMS,
   moderationLabel, type ModerationStatus,
+  MAX_VIDEO_URLS, youtubeVideoId, youtubeEmbedUrl,
 } from '@/lib/marketplace/types'
 import FragebogenBuilderClient from '@/app/vendor/anfrage-formular/FragebogenBuilderClient'
 
@@ -19,6 +21,7 @@ interface Vendor {
   moderation_status: ModerationStatus; pending_changes: Record<string, unknown> | null
   verified: boolean; published: boolean; rejected_reason: string | null
   social_links: Record<string, string>; service_cities: string[]; service_radius_km: number | null
+  video_urls: string[] | null; audio_r2_key: string | null; audio_title: string | null
 }
 interface Photo { id: string; sort_order: number; url: string | null }
 interface Pkg { id: string; title: string; description: string; price_from: number | null; price_unit: string; sort_order: number }
@@ -100,13 +103,16 @@ export default function VendorListingClient() {
     name: '', company_name: '', category: 'sonstiges', street: '', zip: '', city: '',
     company_street: '', company_zip: '', company_city: '',
     description: '', email: '', phone: '', website: '', price_range: '',
-    service_cities: '', service_radius_km: '', brand_color: '',
+    service_cities: '', service_radius_km: '', brand_color: '', audio_title: '',
   })
   const [social, setSocial] = useState<Record<string, string>>({})
+  const [videos, setVideos] = useState<string[]>([])
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [uploadingAudio, setUploadingAudio] = useState(false)
 
   // Snapshot des zuletzt geladenen/gespeicherten Profil-Stands für Dirty-Erkennung.
   const savedSnapshot = useRef('')
-  const dirty = !loading && !!vendor && JSON.stringify({ f, social }) !== savedSnapshot.current
+  const dirty = !loading && !!vendor && JSON.stringify({ f, social, videos }) !== savedSnapshot.current
 
   const load = useCallback(async (initial = false) => {
     if (initial) setLoading(true)
@@ -141,11 +147,15 @@ export default function VendorListingClient() {
       service_cities: (v.service_cities ?? []).join(', '),
       service_radius_km: v.service_radius_km != null ? String(v.service_radius_km) : '',
       brand_color: (v as { brand_color?: string }).brand_color ?? '',
+      audio_title: v.audio_title ?? '',
     }
     const nextSocial = v.social_links ?? {}
+    const nextVideos = v.video_urls ?? []
     setF(nextF)
     setSocial(nextSocial)
-    savedSnapshot.current = JSON.stringify({ f: nextF, social: nextSocial })
+    setVideos(nextVideos)
+    setAudioUrl(d.audioUrl ?? null)
+    savedSnapshot.current = JSON.stringify({ f: nextF, social: nextSocial, videos: nextVideos })
     setLoading(false)
   }, [])
 
@@ -174,6 +184,8 @@ export default function VendorListingClient() {
       service_radius_km: f.service_radius_km,
       social_links: social,
       brand_color: f.brand_color,
+      video_urls: videos.map(v => v.trim()).filter(Boolean),
+      audio_title: f.audio_title,
     }
     setSavingProfile(true)
     try {
@@ -184,7 +196,7 @@ export default function VendorListingClient() {
       if (!res.ok) {
         flash('err', d.error ?? 'Speichern fehlgeschlagen')
       } else {
-        savedSnapshot.current = JSON.stringify({ f, social })
+        savedSnapshot.current = JSON.stringify({ f, social, videos })
         flash('ok', d.hasPendingChanges ? 'Gespeichert — sensible Änderungen gehen in die Prüfung.' : 'Gespeichert.')
       }
     } catch {
@@ -268,6 +280,49 @@ export default function VendorListingClient() {
     }
     setUploadingPhoto(false)
     flash('ok', 'Fotos hinzugefügt.'); load(false)
+  }
+
+  const audioInput = useRef<HTMLInputElement>(null)
+
+  async function onAudio(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (file.size > 25 * 1024 * 1024) { flash('err', 'Die Hörprobe darf max. 25 MB groß sein'); return }
+    setUploadingAudio(true)
+    try {
+      const contentType = file.type || 'audio/mpeg'
+      const res = await fetch('/api/vendor/marketplace/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'audio', contentType }),
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        flash('err', d.error ?? 'Upload-URL fehlgeschlagen'); return
+      }
+      const { uploadUrl, key } = await res.json()
+      const put = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: file })
+      if (!put.ok) { flash('err', 'Upload fehlgeschlagen'); return }
+      const patch = await fetch('/api/vendor/marketplace/profile', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ audio_r2_key: key }),
+      })
+      if (!patch.ok) { flash('err', 'Hörprobe konnte nicht gespeichert werden'); return }
+      flash('ok', 'Hörprobe hochgeladen.')
+      load(false)
+    } finally {
+      setUploadingAudio(false)
+    }
+  }
+
+  async function deleteAudio() {
+    const res = await fetch('/api/vendor/marketplace/profile', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ audio_r2_key: null }),
+    }).catch(() => null)
+    if (!res?.ok) { flash('err', 'Hörprobe konnte nicht entfernt werden'); return }
+    setAudioUrl(null)
+    setF(s => ({ ...s, audio_title: '' }))
+    flash('ok', 'Hörprobe entfernt.')
+    load(false)
   }
 
   async function deletePhoto(id: string) {
@@ -593,6 +648,90 @@ export default function VendorListingClient() {
                 )}
               </div>
               <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
+            </div>
+
+            {/* ── Videos & Hörprobe ── */}
+            <div style={secCard}>
+              <h2 style={{ ...h2s, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <PlayCircle size={16} style={{ color: 'var(--text-dim)' }} />
+                Videos & Hörprobe
+              </h2>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.5 }}>
+                Zeige Brautpaaren, wie du arbeitest: bis zu {MAX_VIDEO_URLS} YouTube-Videos (werden auf deiner
+                Detailseite in einem Player angezeigt) und eine Hörprobe — ideal für DJs und Bands.
+              </p>
+
+              <label style={lbl}>YouTube-Videos (max. {MAX_VIDEO_URLS})</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+                {videos.map((url, i) => {
+                  const vid = youtubeVideoId(url)
+                  return (
+                    <div key={i}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          style={{ ...inp, flex: 1, minWidth: 0 }}
+                          value={url}
+                          onChange={e => setVideos(v => v.map((x, j) => j === i ? e.target.value : x))}
+                          placeholder="https://www.youtube.com/watch?v=…"
+                        />
+                        <button onClick={() => setVideos(v => v.filter((_, j) => j !== i))} style={{ ...btnGhost, color: 'var(--red)', padding: '0 12px' }} title="Video entfernen">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      {url.trim() && !vid && (
+                        <p style={{ fontSize: 11.5, color: '#B91C1C', margin: '5px 0 0' }}>
+                          Kein gültiger YouTube-Link (z. B. youtube.com/watch?v=… oder youtu.be/…)
+                        </p>
+                      )}
+                      {vid && (
+                        <div style={{ marginTop: 8, width: 240, maxWidth: '100%', aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                          <iframe
+                            title={`Video ${i + 1}`}
+                            src={youtubeEmbedUrl(vid)}
+                            style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {videos.length < MAX_VIDEO_URLS && (
+                <button onClick={() => setVideos(v => [...v, ''])} style={btnGhost}>
+                  <Plus size={15} /> Video hinzufügen
+                </button>
+              )}
+
+              <div style={{ borderTop: '1px solid var(--border)', margin: '18px 0 14px' }} />
+
+              <label style={{ ...lbl, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Music2 size={13} /> Hörprobe (eine Audiodatei, z. B. MP3 — max. 25 MB)
+              </label>
+              {audioUrl ? (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, background: '#fff' }}>
+                  <audio controls src={audioUrl} style={{ width: '100%', display: 'block' }} preload="metadata" />
+                  <div style={{ marginTop: 10 }}>
+                    <label style={lbl}>Titel der Hörprobe (optional)</label>
+                    <input style={inp} value={f.audio_title} onChange={set('audio_title')} placeholder='z. B. "Live-Mitschnitt Hochzeit 2025"' />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                    <button onClick={() => audioInput.current?.click()} disabled={uploadingAudio} style={btnGhost}>
+                      {uploadingAudio ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Upload size={14} />} Ersetzen
+                    </button>
+                    <button onClick={deleteAudio} style={{ ...btnGhost, color: 'var(--red)' }}>
+                      <Trash2 size={14} /> Entfernen
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => audioInput.current?.click()} disabled={uploadingAudio} style={btnGhost}>
+                  {uploadingAudio ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Music2 size={15} />} Audiodatei hochladen
+                </button>
+              )}
+              <input ref={audioInput} type="file" accept="audio/mpeg,audio/mp3,audio/mp4,audio/aac,audio/wav,audio/x-wav,audio/x-m4a,audio/ogg,.mp3,.m4a,.wav,.ogg,.aac" hidden onChange={onAudio} />
             </div>
 
             {/* ── Weitere Stammdaten ── */}

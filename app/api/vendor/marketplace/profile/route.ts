@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireVendorOwner } from '@/lib/marketplace/owner'
-import { requestDownloadUrl } from '@/lib/files/worker-client'
-import { SENSITIVE_FIELDS, MARKETPLACE_CATEGORIES, PRICE_RANGES } from '@/lib/marketplace/types'
+import { requestDownloadUrl, deleteR2Object } from '@/lib/files/worker-client'
+import { SENSITIVE_FIELDS, MARKETPLACE_CATEGORIES, PRICE_RANGES, MAX_VIDEO_URLS, youtubeVideoId } from '@/lib/marketplace/types'
 
 // company_street/company_zip/company_city = allgemeine Firmenadresse (Migration 0127).
 // NICHT Teil des Marktplatz-Listings (street/zip/city bleiben in SENSITIVE_FIELDS) und
 // daher ohne erneute Moderationsprüfung sofort speicherbar.
-const INSTANT = ['description', 'email', 'phone', 'website', 'price_range', 'social_links', 'service_cities', 'service_radius_km', 'brand_color', 'company_street', 'company_zip', 'company_city'] as const
+const INSTANT = ['description', 'email', 'phone', 'website', 'price_range', 'social_links', 'service_cities', 'service_radius_km', 'brand_color', 'company_street', 'company_zip', 'company_city', 'video_urls', 'audio_title'] as const
 
 // GET — komplettes eigenes Profil inkl. Fotos, Pakete, FAQ, Verfügbarkeit.
 export async function GET() {
@@ -26,8 +26,9 @@ export async function GET() {
     id: p.id, sort_order: p.sort_order, url: await requestDownloadUrl(p.r2_key).catch(() => null),
   })))
   const logoUrl = vendor?.logo_r2_key ? await requestDownloadUrl(vendor.logo_r2_key).catch(() => null) : null
+  const audioUrl = vendor?.audio_r2_key ? await requestDownloadUrl(vendor.audio_r2_key).catch(() => null) : null
 
-  return NextResponse.json({ vendor, logoUrl, photos, packages: packages ?? [], faqs: faqs ?? [], availability: availability ?? [] })
+  return NextResponse.json({ vendor, logoUrl, audioUrl, photos, packages: packages ?? [], faqs: faqs ?? [], availability: availability ?? [] })
 }
 
 function sanitize(key: string, value: unknown): unknown {
@@ -47,6 +48,24 @@ function sanitize(key: string, value: unknown): unknown {
   if (key === 'service_radius_km') {
     const n = Number(value)
     return Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), 2000) : null
+  }
+  if (key === 'video_urls') {
+    if (!Array.isArray(value)) return []
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const v of value) {
+      const url = String(v ?? '').trim()
+      const id = youtubeVideoId(url)
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      out.push(url)
+      if (out.length >= MAX_VIDEO_URLS) break
+    }
+    return out
+  }
+  if (key === 'audio_title') {
+    const v = String(value ?? '').trim().slice(0, 120)
+    return v || null
   }
   if (key === 'social_links') {
     if (value && typeof value === 'object') {
@@ -75,7 +94,7 @@ export async function PATCH(req: NextRequest) {
 
   const { data: current } = await admin
     .from('dienstleister_profiles')
-    .select('moderation_status, pending_changes')
+    .select('moderation_status, pending_changes, audio_r2_key')
     .eq('id', vendorId)
     .single()
   if (!current) return NextResponse.json({ error: 'Profil nicht gefunden' }, { status: 404 })
@@ -87,6 +106,20 @@ export async function PATCH(req: NextRequest) {
 
   for (const key of INSTANT) {
     if (key in body) directPatch[key] = sanitize(key, body[key])
+  }
+
+  // Hörprobe (max. 1): nur eigene Audio-Keys akzeptieren; null = entfernen.
+  // Der bisherige R2-Objekt wird beim Ersetzen/Entfernen best effort gelöscht.
+  if ('audio_r2_key' in body) {
+    const raw = body.audio_r2_key
+    const next = raw == null ? null : String(raw)
+    if (next !== null && !next.startsWith(`marketplace/${vendorId}/audio/`)) {
+      return NextResponse.json({ error: 'Ungültiger Audio-Key' }, { status: 400 })
+    }
+    directPatch.audio_r2_key = next
+    if (next === null) directPatch.audio_title = null
+    const old = current.audio_r2_key as string | null
+    if (old && old !== next) await deleteR2Object(old).catch(() => {})
   }
   for (const key of SENSITIVE_FIELDS) {
     if (!(key in body)) continue
