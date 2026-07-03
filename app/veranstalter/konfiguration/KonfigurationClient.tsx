@@ -210,7 +210,7 @@ export default function KonfigurationClient() {
       )
       setRoomPoints(points); setRoomElements(elements)
       setRoomSaved(true)
-      setTimeout(() => setRoomSaved(false), 3000)
+      setTimeout(() => setRoomSaved(false), 1600)
     } finally {
       setRoomSaving(false)
     }
@@ -338,7 +338,7 @@ export default function KonfigurationClient() {
         points, elements, table_pool: tablePool, placed_tables: placedTables, updated_at: new Date().toISOString(),
       }).eq('id', editingConceptId)
       setConcepts(prev => prev.map(c => c.id === editingConceptId ? { ...c, points, elements, table_pool: tablePool, placed_tables: placedTables } : c))
-      setConceptSaved(true); setTimeout(() => setConceptSaved(false), 3000)
+      setConceptSaved(true); setTimeout(() => setConceptSaved(false), 1600)
     } finally {
       setConceptSaving(false)
     }
@@ -786,7 +786,8 @@ export default function KonfigurationClient() {
           </div>
 
           <div style={{ display:'flex', alignItems:'center', gap:12, minHeight:20, fontSize:13, color:'var(--text-tertiary)' }}>
-            {settingsStatus === 'idle' ? 'Änderungen werden automatisch gespeichert.' : <SaveStatus status={settingsStatus} />}
+            Änderungen werden automatisch gespeichert.
+            <SaveStatus status={settingsStatus} />
           </div>
         </div>
       )}

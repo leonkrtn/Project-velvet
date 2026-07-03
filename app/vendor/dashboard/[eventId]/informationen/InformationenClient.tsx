@@ -2,8 +2,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Calendar, MapPin, Users, Mail, Phone, Heart, UserCircle, Tag,
-  Lock, Check, Loader2,
+  Lock,
 } from 'lucide-react'
+import { SaveStatus } from '@/components/ui/SaveStatus'
 
 interface Contact { name: string | null; email: string | null; phone: string | null }
 interface EventInfo {
@@ -44,7 +45,7 @@ export default function InformationenClient({ eventId, event, confirmed, pending
       body: JSON.stringify({ eventId, content }),
     })
     setSaveState(res.ok ? 'saved' : 'idle')
-    if (res.ok) setTimeout(() => setSaveState('idle'), 2000)
+    if (res.ok) setTimeout(() => setSaveState('idle'), 1600)
   }, [eventId])
 
   function onNotesChange(v: string) {
@@ -99,10 +100,7 @@ export default function InformationenClient({ eventId, event, confirmed, pending
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <Lock size={14} style={{ color: 'var(--text-tertiary)' }} />
             <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--text-tertiary)', margin: 0 }}>Interne Notizen</p>
-            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              {saveState === 'saving' && <><Loader2 size={12} className="spin" /> Speichert…</>}
-              {saveState === 'saved' && <><Check size={12} /> Gespeichert</>}
-            </span>
+            <SaveStatus status={saveState} />
           </div>
           <p style={{ fontSize: 12.5, color: 'var(--text-tertiary)', marginBottom: 10 }}>
             Nur für euer Team sichtbar — das Brautpaar kann diese Notizen nicht sehen.

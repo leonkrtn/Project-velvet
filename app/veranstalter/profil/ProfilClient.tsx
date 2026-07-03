@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChevronLeft, Camera, User, Mail, Lock, Check, AlertCircle, Loader2 } from 'lucide-react'
+import { SaveStatus as SaveStatusToast } from '@/components/ui/SaveStatus'
 
 interface Props {
   userId: string
@@ -52,7 +53,7 @@ export default function ProfilClient({ userId: _userId, initialName, initialEmai
       if (res.ok) {
         nameInitialRef.current = name
         setNameStatus('saved')
-        setTimeout(() => setNameStatus('idle'), 2500)
+        setTimeout(() => setNameStatus('idle'), 1600)
       } else {
         setNameStatus('error')
       }
@@ -188,7 +189,8 @@ export default function ProfilClient({ userId: _userId, initialName, initialEmai
         </div>
 
         {/* Name — autosave */}
-        <FormCard icon={<User size={16} />} title="Name" statusEl={<AutosaveStatus status={nameStatus} />}>
+        <SaveStatusToast status={nameStatus} />
+        <FormCard icon={<User size={16} />} title="Name">
           <input
             value={name}
             onChange={e => setName(e.target.value)}
@@ -247,23 +249,6 @@ function FormCard({ icon, title, statusEl, children }: { icon: React.ReactNode; 
       {children}
     </div>
   )
-}
-
-function AutosaveStatus({ status }: { status: 'idle' | 'saving' | 'saved' | 'error' }) {
-  if (status === 'idle') return null
-  if (status === 'saving') return (
-    <span style={{ fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-      <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
-      Speichert…
-    </span>
-  )
-  if (status === 'saved') return (
-    <span style={{ fontSize: 12, color: '#2E7D32', display: 'flex', alignItems: 'center', gap: 4 }}>
-      <Check size={12} />
-      Gespeichert
-    </span>
-  )
-  return <span style={{ fontSize: 12, color: '#C62828' }}>Fehler beim Speichern</span>
 }
 
 function ActionRow({ children }: { children: React.ReactNode }) {

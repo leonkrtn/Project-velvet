@@ -44,7 +44,7 @@ export function useAutoSave<T>(
       lastSavedRef.current = serialized
       setStatus('saved')
       clearTimeout(savedTimerRef.current)
-      savedTimerRef.current = setTimeout(() => setStatus('idle'), 2000)
+      savedTimerRef.current = setTimeout(() => setStatus('idle'), 1600)
     } catch {
       setStatus('error')
     }
