@@ -23,7 +23,7 @@ interface Vendor {
   login_email: string | null
 }
 
-const inp: React.CSSProperties = { width: '100%', padding: '9px 11px', border: '1px solid var(--border, #ddd)', borderRadius: 8, fontSize: 13.5, fontFamily: 'inherit', boxSizing: 'border-box' }
+const inp: React.CSSProperties = { width: '100%', height: 38, padding: '0 11px', border: '1px solid var(--border, #ddd)', borderRadius: 8, fontSize: 13.5, fontFamily: 'inherit', boxSizing: 'border-box' }
 const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--text-tertiary, #888)', marginBottom: 4, display: 'block' }
 const btnP: React.CSSProperties = { padding: '9px 18px', borderRadius: 8, border: 'none', background: 'var(--gold, #B89968)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }
 const btnS: React.CSSProperties = { padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border, #ddd)', background: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5 }
@@ -217,7 +217,7 @@ function VendorForm({ vendor, onDone, onCancel }: { vendor?: Vendor; onDone: () 
         <div><label style={lbl}>PLZ</label><input style={inp} value={f.zip} onChange={e => set('zip', e.target.value)} /></div>
         <div><label style={lbl}>Stadt</label><input style={inp} value={f.city} onChange={e => set('city', e.target.value)} /></div>
       </div>
-      <div><label style={lbl}>Beschreibung</label><textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={f.description} onChange={e => set('description', e.target.value)} /></div>
+      <div><label style={lbl}>Beschreibung</label><textarea style={{ ...inp, height: 'auto', padding: '9px 11px', minHeight: 70, resize: 'vertical' }} value={f.description} onChange={e => set('description', e.target.value)} /></div>
       <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
         <ToggleSwitch checked={f.published} onChange={v => set('published', v)} size="sm" aria-label="Veröffentlicht" /> Veröffentlicht (für Brautpaare sichtbar)
       </span>

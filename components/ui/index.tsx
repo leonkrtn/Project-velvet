@@ -5,7 +5,7 @@ import type { MealChoice, AllergyTag } from '@/lib/store'
 
 // ── Shared input style ────────────────────────────────────────────────────
 export const inputStyle: React.CSSProperties = {
-  width:'100%', padding:'11px 14px',
+  width:'100%', height:42, padding:'0 14px', boxSizing:'border-box',
   background:'#FFFFFF', border:'1px solid var(--border)',
   borderRadius:'var(--r-sm)', fontSize:14, color:'var(--text)',
   outline:'none', fontFamily:'inherit', transition:'border-color 0.15s',
@@ -182,7 +182,7 @@ export function Textarea({ label, value, onChange, placeholder, rows=3 }: {
     <div style={{ marginBottom:14 }}>
       {label && <FieldLabel>{label}</FieldLabel>}
       <textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={rows}
-        style={{ ...inputStyle, resize:'vertical' }}
+        style={{ ...inputStyle, height:'auto', padding:'11px 14px', resize:'vertical' }}
         onFocus={e=>{e.target.style.borderColor='var(--gold)'}}
         onBlur={e=>{e.target.style.borderColor='var(--border)'}}
       />

@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Loader2, Save, Plus, Trash2, ArrowUp, ArrowDown, FileText, LayoutTemplate, GripVertical,
-  AlertTriangle, Eye, EyeOff,
+  AlertTriangle, Eye, EyeOff, ChevronDown, ChevronRight, X, ClipboardList, ListChecks, Euro, Scale,
 } from 'lucide-react'
 import {
   DEFAULT_SETTINGS, QUESTION_TYPE_LABELS, TAX_MODE_LABELS,
@@ -19,9 +19,11 @@ const C = {
   text: 'var(--text)', dim: 'var(--text-dim)', gold: 'var(--gold)', red: 'var(--red, #C5221F)',
 }
 const inp: React.CSSProperties = {
-  width: '100%', padding: '9px 11px', fontSize: 13.5, border: `1px solid ${C.border}`,
+  width: '100%', height: 38, padding: '0 11px', fontSize: 13.5, border: `1px solid ${C.border}`,
   borderRadius: 8, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text,
 }
+// Für Textareas: Höhe/Padding von `inp` zurücknehmen (mehrzeilig).
+const txt: React.CSSProperties = { ...inp, height: 'auto', padding: '9px 11px', resize: 'vertical' }
 const lbl: React.CSSProperties = { display: 'block', fontSize: 11.5, fontWeight: 600, color: C.dim, marginBottom: 5 }
 const card: React.CSSProperties = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }
 const btn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid transparent' }
@@ -39,12 +41,29 @@ function newSection(sort: number): QSection {
   return { id, title: '', description: '', sort_order: sort, questions: [newQuestion(id, 0)] }
 }
 
+type BuilderTab = 'fragen' | 'preise' | 'konditionen'
+
+const BUILDER_TABS: { key: BuilderTab; label: string; icon: React.ReactNode }[] = [
+  { key: 'fragen', label: 'Fragen', icon: <ListChecks size={15} /> },
+  { key: 'preise', label: 'Preise', icon: <Euro size={15} /> },
+  { key: 'konditionen', label: 'Konditionen', icon: <Scale size={15} /> },
+]
+
 export default function FragebogenBuilderClient({ category, embedded }: { category: string; embedded?: boolean }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [settings, setSettings] = useState<QuestionnaireSettings>(DEFAULT_SETTINGS)
   const [sections, setSections] = useState<QSection[]>([])
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  const [tab, setTab] = useState<BuilderTab>('fragen')
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [pendingTemplate, setPendingTemplate] = useState<string | null>(null)
+
+  // Snapshot des zuletzt geladenen/gespeicherten Stands für Dirty-Erkennung.
+  const savedSnapshot = useRef('')
+  const snapshotOf = (s: QuestionnaireSettings, secs: QSection[]) => JSON.stringify({ s, secs })
+  const dirty = !loading && snapshotOf(settings, sections) !== savedSnapshot.current
 
   const flash = (kind: 'ok' | 'err', text: string) => { setMsg({ kind, text }); setTimeout(() => setMsg(null), 4000) }
 
@@ -53,18 +72,33 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
     if (res.ok) {
       const { questionnaire } = await res.json()
       const { sections: secs, id, dienstleister_id, ...rest } = questionnaire
-      setSettings({ ...DEFAULT_SETTINGS, ...rest })
-      setSections(Array.isArray(secs) ? secs : [])
+      const nextSettings = { ...DEFAULT_SETTINGS, ...rest }
+      const nextSections = Array.isArray(secs) ? secs : []
+      setSettings(nextSettings)
+      setSections(nextSections)
+      savedSnapshot.current = snapshotOf(nextSettings, nextSections)
     }
     setLoading(false)
   }, [])
   useEffect(() => { load() }, [load])
 
+  // Warnung beim Verlassen der Seite mit ungespeicherten Änderungen.
+  useEffect(() => {
+    if (!dirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [dirty])
+
   const setSetting = <K extends keyof QuestionnaireSettings>(k: K, v: QuestionnaireSettings[K]) =>
     setSettings(s => ({ ...s, [k]: v }))
 
   // ── Sektionen ──────────────────────────────────────────────────────────────
-  function addSection() { setSections(s => [...s, newSection(s.length)]) }
+  function addSection() {
+    const sec = newSection(sections.length)
+    setSections(s => [...s, sec])
+    setExpanded(prev => new Set(prev).add(sec.questions[0].id))
+  }
   function removeSection(id: string) { setSections(s => s.filter(x => x.id !== id)) }
   function moveSection(idx: number, dir: -1 | 1) {
     setSections(s => {
@@ -80,7 +114,9 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
 
   // ── Fragen ─────────────────────────────────────────────────────────────────
   function addQuestion(sectionId: string) {
-    setSections(s => s.map(x => x.id === sectionId ? { ...x, questions: [...x.questions, newQuestion(sectionId, x.questions.length)] } : x))
+    const q = newQuestion(sectionId, 0)
+    setSections(s => s.map(x => x.id === sectionId ? { ...x, questions: [...x.questions, { ...q, sort_order: x.questions.length }] } : x))
+    setExpanded(prev => new Set(prev).add(q.id))
   }
   function removeQuestion(sectionId: string, qid: string) {
     setSections(s => s.map(x => x.id === sectionId ? { ...x, questions: x.questions.filter(q => q.id !== qid) } : x))
@@ -97,11 +133,19 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
   function updateQuestion(sectionId: string, qid: string, patch: Partial<QQuestion>) {
     setSections(s => s.map(x => x.id === sectionId ? { ...x, questions: x.questions.map(q => q.id === qid ? { ...q, ...patch } : q) } : x))
   }
+  function toggleExpanded(qid: string) {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(qid)) next.delete(qid); else next.add(qid)
+      return next
+    })
+  }
 
   function applyTemplate(cat: string) {
-    if (sections.length > 0 && !window.confirm('Bestehende Abschnitte durch die Vorlage ersetzen?')) return
     const tpl = templateForCategory(cat)
-    setSettings(s => ({ ...s, ...tpl.settings, is_active: true }))
+    // is_active bewusst NICHT aus der Vorlage übernehmen — Aktivieren bleibt
+    // eine explizite Entscheidung des Dienstleisters.
+    setSettings(s => ({ ...s, ...tpl.settings, is_active: s.is_active }))
     setSections(tpl.sections.map((sec, si) => {
       const sid = uid()
       return {
@@ -114,7 +158,14 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
         })),
       }
     }))
+    setExpanded(new Set())
+    setTab('fragen')
     flash('ok', 'Vorlage geladen — noch nicht gespeichert.')
+  }
+
+  function requestTemplate(cat: string) {
+    if (sections.length > 0) setPendingTemplate(cat)
+    else applyTemplate(cat)
   }
 
   async function save() {
@@ -124,9 +175,30 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
       body: JSON.stringify({ settings, sections }),
     })
     setSaving(false)
-    if (res.ok) { flash('ok', 'Fragebogen gespeichert.'); load() }
-    else { const d = await res.json().catch(() => ({})); flash('err', d.error ?? 'Speichern fehlgeschlagen') }
+    if (res.ok) {
+      savedSnapshot.current = snapshotOf(settings, sections)
+      flash('ok', 'Anfrageformular gespeichert.')
+      load()
+    } else {
+      const d = await res.json().catch(() => ({}))
+      flash('err', d.error ?? 'Speichern fehlgeschlagen')
+    }
   }
+
+  // ── Preis-Konflikt: globaler Pro-Gast-Preis vs. Pro-Gast-Preise in Fragen ──
+  const perGuestConflicts = useMemo(() => {
+    const globalPerGuest = settings.per_guest_price > 0 || settings.guest_tiers.length > 0
+    if (!globalPerGuest) return []
+    const labels: string[] = []
+    for (const sec of sections) {
+      for (const q of sec.questions) {
+        const optionPerGuest = q.options.some(o => o.perGuest && (o.price ?? 0) !== 0)
+        const pricingPerGuest = !!q.pricing.perGuest && (q.pricing.price ?? 0) !== 0
+        if (optionPerGuest || pricingPerGuest) labels.push(q.label || 'Frage ohne Titel')
+      }
+    }
+    return labels
+  }, [settings.per_guest_price, settings.guest_tiers, sections])
 
   if (loading) {
     return <div style={{ minHeight: embedded ? 120 : '100dvh', background: embedded ? 'transparent' : C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="bp-spin" /></div>
@@ -138,7 +210,7 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 10 }}>
             <div>
               <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: C.text, display: 'flex', alignItems: 'center', gap: 9 }}>
-                <FileText size={20} style={{ color: C.gold }} /> Anfrage-Formular
+                <FileText size={20} style={{ color: C.gold }} /> Anfrageformular
               </h1>
               <p style={{ fontSize: 13, color: C.dim, marginTop: 6, maxWidth: 560, lineHeight: 1.5 }}>
                 Lege fest, welche Fragen Brautpaare bei einer Anfrage beantworten. Aus den Antworten erstellt Forevr automatisch einen Angebotsentwurf, den du vor dem Freigeben prüfst.
@@ -166,9 +238,12 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
             {settings.is_active ? <Eye size={14} /> : <EyeOff size={14} />}
             {settings.is_active ? 'Aktiv' : 'Inaktiv'}
           </button>
+          <button onClick={() => setPreviewOpen(true)} style={btnGhost}>
+            <ClipboardList size={14} /> Vorschau
+          </button>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
             <LayoutTemplate size={15} style={{ color: C.dim }} />
-            <select style={{ ...inp, width: 'auto', padding: '7px 10px' }} defaultValue="" onChange={e => { if (e.target.value) { applyTemplate(e.target.value); e.target.value = '' } }}>
+            <select style={{ ...inp, width: 'auto' }} value="" onChange={e => { if (e.target.value) requestTemplate(e.target.value) }}>
               <option value="">Vorlage laden…</option>
               <option value={category}>Meine Kategorie</option>
               {MARKETPLACE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
@@ -196,110 +271,185 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
           </div>
         )}
 
-        {/* Kopf des Fragebogens */}
-        <div data-tour="vdr-fragebogen-allgemein" style={card}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>Allgemein</h2>
-          <div style={{ marginBottom: 12 }}>
-            <label style={lbl}>Titel</label>
-            <input style={inp} value={settings.title} onChange={e => setSetting('title', e.target.value)} placeholder="Angebotsanfrage" />
-          </div>
-          <div>
-            <label style={lbl}>Einleitungstext (optional)</label>
-            <textarea style={{ ...inp, minHeight: 64, resize: 'vertical' }} value={settings.intro_text} onChange={e => setSetting('intro_text', e.target.value)} placeholder="Kurze Begrüßung für das Brautpaar…" />
-          </div>
+        {/* ── Unter-Navigation: Fragen / Preise / Konditionen ── */}
+        <div style={{ display: 'inline-flex', background: C.border, borderRadius: 10, padding: 3, marginBottom: 18, gap: 2, flexWrap: 'wrap' }}>
+          {BUILDER_TABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              data-tour={t.key === 'preise' ? 'vdr-fragebogen-pricing' : t.key === 'konditionen' ? 'vdr-fragebogen-tax' : 'vdr-fragebogen-fragen-tab'}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600,
+                background: tab === t.key ? C.surface : 'transparent',
+                color: tab === t.key ? C.text : C.dim,
+                boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
+              }}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
         </div>
 
-        {/* Abschnitte */}
-        <div data-tour="vdr-fragebogen-sections">
-        {sections.map((sec, si) => (
-          <div key={sec.id} style={card}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <GripVertical size={16} style={{ color: C.dim }} />
-              <input style={{ ...inp, fontWeight: 700, fontSize: 14.5 }} value={sec.title} onChange={e => updateSection(sec.id, { title: e.target.value })} placeholder={`Abschnitt ${si + 1}`} />
-              <button style={iconBtn} onClick={() => moveSection(si, -1)} title="Nach oben"><ArrowUp size={16} /></button>
-              <button style={iconBtn} onClick={() => moveSection(si, 1)} title="Nach unten"><ArrowDown size={16} /></button>
-              <button style={{ ...iconBtn, color: C.red }} onClick={() => removeSection(sec.id)} title="Abschnitt löschen"><Trash2 size={16} /></button>
+        {/* ════════ Tab: Fragen ════════ */}
+        {tab === 'fragen' && (
+          <>
+            <div data-tour="vdr-fragebogen-allgemein" style={card}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>Allgemein</h2>
+              <div style={{ marginBottom: 12 }}>
+                <label style={lbl}>Titel</label>
+                <input style={inp} value={settings.title} onChange={e => setSetting('title', e.target.value)} placeholder="Angebotsanfrage" />
+              </div>
+              <div>
+                <label style={lbl}>Einleitungstext (optional)</label>
+                <textarea style={{ ...txt, minHeight: 64 }} value={settings.intro_text} onChange={e => setSetting('intro_text', e.target.value)} placeholder="Kurze Begrüßung für das Brautpaar…" />
+              </div>
             </div>
-            <input style={{ ...inp, marginBottom: 14, fontSize: 12.5, color: C.dim }} value={sec.description} onChange={e => updateSection(sec.id, { description: e.target.value })} placeholder="Beschreibung (optional)" />
 
-            {sec.questions.map((q, qi) => (
-              <QuestionEditor
-                key={q.id} q={q} index={qi} total={sec.questions.length}
-                onChange={patch => updateQuestion(sec.id, q.id, patch)}
-                onRemove={() => removeQuestion(sec.id, q.id)}
-                onMove={dir => moveQuestion(sec.id, qi, dir)}
-              />
+            <div data-tour="vdr-fragebogen-sections">
+            {sections.map((sec, si) => (
+              <div key={sec.id} style={card}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <GripVertical size={16} style={{ color: C.dim }} />
+                  <input style={{ ...inp, fontWeight: 700, fontSize: 14.5 }} value={sec.title} onChange={e => updateSection(sec.id, { title: e.target.value })} placeholder={`Abschnitt ${si + 1}`} />
+                  <button style={iconBtn} onClick={() => moveSection(si, -1)} title="Nach oben"><ArrowUp size={16} /></button>
+                  <button style={iconBtn} onClick={() => moveSection(si, 1)} title="Nach unten"><ArrowDown size={16} /></button>
+                  <button style={{ ...iconBtn, color: C.red }} onClick={() => removeSection(sec.id)} title="Abschnitt löschen"><Trash2 size={16} /></button>
+                </div>
+                <input style={{ ...inp, marginBottom: 14, fontSize: 12.5, color: C.dim }} value={sec.description} onChange={e => updateSection(sec.id, { description: e.target.value })} placeholder="Beschreibung (optional)" />
+
+                {sec.questions.map((q, qi) => (
+                  <QuestionEditor
+                    key={q.id} q={q} index={qi} total={sec.questions.length}
+                    expanded={expanded.has(q.id)}
+                    onToggle={() => toggleExpanded(q.id)}
+                    onChange={patch => updateQuestion(sec.id, q.id, patch)}
+                    onRemove={() => removeQuestion(sec.id, q.id)}
+                    onMove={dir => moveQuestion(sec.id, qi, dir)}
+                  />
+                ))}
+                <button onClick={() => addQuestion(sec.id)} style={{ ...btnGhost, marginTop: 6 }}><Plus size={15} /> Frage hinzufügen</button>
+              </div>
             ))}
-            <button onClick={() => addQuestion(sec.id)} style={{ ...btnGhost, marginTop: 6 }}><Plus size={15} /> Frage hinzufügen</button>
-          </div>
-        ))}
 
-        <button onClick={addSection} style={{ ...btnGhost, marginBottom: 20 }}><Plus size={15} /> Abschnitt hinzufügen</button>
-        </div>
-
-        {/* Preislogik */}
-        <div data-tour="vdr-fragebogen-pricing" style={card}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px' }}>Preislogik</h2>
-          <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 16px', lineHeight: 1.5 }}>
-            Diese Werte bilden den automatischen Angebotsentwurf. Du prüfst und passt jedes Angebot vor dem Freigeben an — die Automatik ist nur ein Startpunkt.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <NumField label="Grundpreis (€)" value={settings.base_price} onChange={v => setSetting('base_price', v)} />
-            <NumField label="Preis pro Gast (€)" value={settings.per_guest_price} onChange={v => setSetting('per_guest_price', v)} hint="× bestätigte Gästezahl (entfällt, wenn Staffeln gesetzt sind)" />
-            <NumField label="Mindestbestellwert (€)" value={settings.min_total} onChange={v => setSetting('min_total', v)} hint="wird ggf. aufgefüllt" />
-            <NumField label="Wochenend-Aufschlag (%)" value={settings.weekend_surcharge_pct} onChange={v => setSetting('weekend_surcharge_pct', v)} hint="bei Sa/So" />
-          </div>
-
-          {/* Mengenstaffeln auf die Gästezahl */}
-          <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
-            <label style={{ ...lbl, marginBottom: 3 }}>Mengenstaffeln (Pro-Gast-Preis)</label>
-            <p style={{ fontSize: 11.5, color: C.dim, margin: '0 0 10px', lineHeight: 1.5 }}>
-              Optional: Pro-Gast-Preis je nach Gästezahl. Greift die passende Stufe, ersetzt sie den festen Pro-Gast-Preis oben.
-            </p>
-            <TiersEditor tiers={settings.guest_tiers} unitWord="Gäste" onChange={t => setSetting('guest_tiers', t)} />
-          </div>
-        </div>
-
-        {/* Saison- / Datumsaufschläge */}
-        <div style={card}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px' }}>Saison- &amp; Datumsaufschläge</h2>
-          <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 14px', lineHeight: 1.5 }}>
-            Auf- oder Abschläge für bestimmte Zeiträume (z. B. Hochsaison, Feiertage). Gilt zusätzlich zum Wochenend-Aufschlag. Datum als <code>JJJJ-MM-TT</code> (festes Datum) oder <code>MM-TT</code> (jährlich wiederkehrend).
-          </p>
-          <SeasonEditor rules={settings.season_rules} onChange={r => setSetting('season_rules', r)} />
-        </div>
-
-        {/* Anfahrt / Reisekosten */}
-        <div style={card}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px' }}>Anfahrt &amp; Reisekosten</h2>
-          <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 14px', lineHeight: 1.5 }}>
-            PLZ-Zonen werden automatisch als (abwählbare) Angebotsposition gesetzt, sobald die PLZ des Veranstaltungsorts passt. Der km-Satz dient dir als Richtwert zum manuellen Eintragen im Angebot.
-          </p>
-          <TravelEditor settings={settings} setSetting={setSetting} />
-        </div>
-
-        {/* Steuer & Konditionen */}
-        <div data-tour="vdr-fragebogen-tax" style={card}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>Steuer & Konditionen</h2>
-          <div style={{ marginBottom: 14 }}>
-            <label style={lbl}>Umsatzsteuer</label>
-            <select style={inp} value={settings.tax_mode} onChange={e => setSetting('tax_mode', e.target.value as TaxMode)}>
-              {(Object.keys(TAX_MODE_LABELS) as TaxMode[]).map(m => <option key={m} value={m}>{TAX_MODE_LABELS[m]}</option>)}
-            </select>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
-            {settings.tax_mode === 'regular' && <NumField label="USt.-Satz (%)" value={settings.tax_rate} onChange={v => setSetting('tax_rate', v)} />}
-            <div>
-              <label style={lbl}>Währung</label>
-              <input style={inp} value={settings.currency} onChange={e => setSetting('currency', e.target.value)} />
+            <button onClick={addSection} style={{ ...btnGhost, marginBottom: 20 }}><Plus size={15} /> Abschnitt hinzufügen</button>
             </div>
-            <NumField label="Gültigkeit (Tage)" value={settings.valid_days} onChange={v => setSetting('valid_days', v)} />
+          </>
+        )}
+
+        {/* ════════ Tab: Preise ════════ */}
+        {tab === 'preise' && (
+          <>
+            {perGuestConflicts.length > 0 && (
+              <div style={{ display: 'flex', gap: 12, padding: '13px 16px', marginBottom: 16, borderRadius: 12, background: 'rgba(202,138,4,0.07)', border: '1px solid rgba(202,138,4,0.28)' }}>
+                <AlertTriangle size={17} style={{ color: '#b45309', flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#92400e' }}>Mögliche doppelte Pro-Gast-Berechnung</p>
+                  <p style={{ margin: '3px 0 0', fontSize: 12.5, color: '#78350f', lineHeight: 1.5 }}>
+                    Du hast einen globalen Pro-Gast-Preis{settings.guest_tiers.length > 0 ? ' (bzw. Mengenstaffeln)' : ''} gesetzt
+                    UND folgende Fragen rechnen zusätzlich pro Gast: <strong>{perGuestConflicts.join(', ')}</strong>.
+                    Beides wird addiert — prüfe, ob das so gewollt ist.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div style={card}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px' }}>Preislogik</h2>
+              <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 16px', lineHeight: 1.5 }}>
+                Diese Werte bilden den automatischen Angebotsentwurf. Du prüfst und passt jedes Angebot vor dem Freigeben an — die Automatik ist nur ein Startpunkt.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <NumField label="Grundpreis (€)" value={settings.base_price} onChange={v => setSetting('base_price', v)} />
+                <NumField label="Preis pro Gast (€)" value={settings.per_guest_price} onChange={v => setSetting('per_guest_price', v)} hint="× bestätigte Gästezahl (entfällt, wenn Staffeln gesetzt sind)" />
+                <NumField label="Mindestbestellwert (€)" value={settings.min_total} onChange={v => setSetting('min_total', v)} hint="wird ggf. aufgefüllt" />
+                <NumField label="Wochenend-Aufschlag (%)" value={settings.weekend_surcharge_pct} onChange={v => setSetting('weekend_surcharge_pct', v)} hint="bei Sa/So" />
+              </div>
+
+              {/* Mengenstaffeln auf die Gästezahl */}
+              <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+                <label style={{ ...lbl, marginBottom: 3 }}>Mengenstaffeln (Pro-Gast-Preis)</label>
+                <p style={{ fontSize: 11.5, color: C.dim, margin: '0 0 10px', lineHeight: 1.5 }}>
+                  Optional: Pro-Gast-Preis je nach Gästezahl. Greift die passende Stufe, ersetzt sie den festen Pro-Gast-Preis oben.
+                </p>
+                <TiersEditor tiers={settings.guest_tiers} unitWord="Gäste" onChange={t => setSetting('guest_tiers', t)} />
+              </div>
+            </div>
+
+            {/* Saison- / Datumsaufschläge */}
+            <div style={card}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px' }}>Saison- &amp; Datumsaufschläge</h2>
+              <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 14px', lineHeight: 1.5 }}>
+                Auf- oder Abschläge für bestimmte Zeiträume (z. B. Hochsaison, Feiertage). Gilt zusätzlich zum Wochenend-Aufschlag. Datum als <code>JJJJ-MM-TT</code> (festes Datum) oder <code>MM-TT</code> (jährlich wiederkehrend).
+              </p>
+              <SeasonEditor rules={settings.season_rules} onChange={r => setSetting('season_rules', r)} />
+            </div>
+
+            {/* Anfahrt / Reisekosten */}
+            <div style={card}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 6px' }}>Anfahrt &amp; Reisekosten</h2>
+              <p style={{ fontSize: 12.5, color: C.dim, margin: '0 0 14px', lineHeight: 1.5 }}>
+                PLZ-Zonen werden automatisch als (abwählbare) Angebotsposition gesetzt, sobald die PLZ des Veranstaltungsorts passt. Der km-Satz dient dir als Richtwert zum manuellen Eintragen im Angebot.
+              </p>
+              <TravelEditor settings={settings} setSetting={setSetting} />
+            </div>
+          </>
+        )}
+
+        {/* ════════ Tab: Konditionen ════════ */}
+        {tab === 'konditionen' && (
+          <div style={card}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>Steuer &amp; Konditionen</h2>
+            <div style={{ marginBottom: 14 }}>
+              <label style={lbl}>Umsatzsteuer</label>
+              <select style={inp} value={settings.tax_mode} onChange={e => setSetting('tax_mode', e.target.value as TaxMode)}>
+                {(Object.keys(TAX_MODE_LABELS) as TaxMode[]).map(m => <option key={m} value={m}>{TAX_MODE_LABELS[m]}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+              {settings.tax_mode === 'regular' && <NumField label="USt.-Satz (%)" value={settings.tax_rate} onChange={v => setSetting('tax_rate', v)} />}
+              <div>
+                <label style={lbl}>Währung</label>
+                <input style={inp} value={settings.currency} onChange={e => setSetting('currency', e.target.value)} />
+              </div>
+              <NumField label="Gültigkeit (Tage)" value={settings.valid_days} onChange={v => setSetting('valid_days', v)} />
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <label style={lbl}>Fußnote auf dem Angebot</label>
+              <input style={inp} value={settings.footer_note} onChange={e => setSetting('footer_note', e.target.value)} />
+            </div>
           </div>
-          <div style={{ marginTop: 14 }}>
-            <label style={lbl}>Fußnote auf dem Angebot</label>
-            <input style={inp} value={settings.footer_note} onChange={e => setSetting('footer_note', e.target.value)} />
+        )}
+
+        {/* ── Schwebende Speichern-Leiste bei ungespeicherten Änderungen ── */}
+        {dirty && (
+          <div style={{
+            position: 'fixed', bottom: 18, left: '50%', transform: 'translateX(-50%)', zIndex: 60,
+            display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px 10px 18px',
+            background: C.text, color: '#fff', borderRadius: 999,
+            boxShadow: '0 8px 28px rgba(0,0,0,0.28)', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
+          }}>
+            Ungespeicherte Änderungen
+            <button onClick={save} disabled={saving} style={{ ...btnGold, padding: '7px 16px', borderRadius: 999 }}>
+              {saving ? <Loader2 size={14} className="bp-spin" /> : <Save size={14} />} Speichern
+            </button>
           </div>
-        </div>
+        )}
+
+        {/* ── Vorlagen-Bestätigung ── */}
+        {pendingTemplate && (
+          <ConfirmTemplateDialog
+            categoryLabel={MARKETPLACE_CATEGORIES.find(c => c.key === pendingTemplate)?.label ?? pendingTemplate}
+            onCancel={() => setPendingTemplate(null)}
+            onConfirm={() => { const cat = pendingTemplate; setPendingTemplate(null); applyTemplate(cat) }}
+          />
+        )}
+
+        {/* ── Formular-Vorschau (Brautpaar-Sicht) ── */}
+        {previewOpen && (
+          <PreviewModal settings={settings} sections={sections} onClose={() => setPreviewOpen(false)} />
+        )}
     </>
   )
 
@@ -325,14 +475,72 @@ function NumField({ label, value, onChange, hint }: { label: string; value: numb
   )
 }
 
-function QuestionEditor({ q, index, total, onChange, onRemove, onMove }: {
-  q: QQuestion; index: number; total: number
+// ── Vorlagen-Bestätigungsdialog (ersetzt window.confirm) ─────────────────────
+function ConfirmTemplateDialog({ categoryLabel, onCancel, onConfirm }: {
+  categoryLabel: string; onCancel: () => void; onConfirm: () => void
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onCancel])
+  return (
+    <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 24, maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <AlertTriangle size={19} style={{ color: '#b45309', flexShrink: 0 }} />
+          <h3 style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: C.text }}>Vorlage „{categoryLabel}&ldquo; laden?</h3>
+        </div>
+        <p style={{ margin: '0 0 18px', fontSize: 13.5, color: C.dim, lineHeight: 1.55 }}>
+          Deine bestehenden Abschnitte und Fragen werden dabei <strong>ersetzt</strong>. Auch Titel und Preislogik werden
+          mit den Werten der Vorlage überschrieben. Erst beim Speichern wird die Änderung endgültig.
+        </p>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={onCancel} style={btnGhost}>Abbrechen</button>
+          <button onClick={onConfirm} style={{ ...btn, background: '#b45309', color: '#fff' }}>Vorlage laden</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Fragen-Editor mit Einklappen ─────────────────────────────────────────────
+function QuestionEditor({ q, index, total, expanded, onToggle, onChange, onRemove, onMove }: {
+  q: QQuestion; index: number; total: number; expanded: boolean; onToggle: () => void
   onChange: (patch: Partial<QQuestion>) => void; onRemove: () => void; onMove: (dir: -1 | 1) => void
 }) {
   const hasOptions = q.type === 'single' || q.type === 'multi'
+
+  if (!expanded) {
+    return (
+      <div
+        onClick={onToggle}
+        style={{
+          border: `1px solid ${C.border}`, borderRadius: 10, padding: '10px 14px', marginBottom: 10,
+          background: C.bg, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+        }}
+      >
+        <ChevronRight size={15} style={{ color: C.dim, flexShrink: 0 }} />
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: q.label ? C.text : C.dim, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {q.label || 'Frage ohne Titel'}
+        </span>
+        <span style={{ fontSize: 11.5, color: C.dim, flexShrink: 0, padding: '2px 8px', borderRadius: 6, background: C.surface, border: `1px solid ${C.border}` }}>
+          {QUESTION_TYPE_LABELS[q.type]}
+        </span>
+        {q.required && <span style={{ fontSize: 11, fontWeight: 700, color: C.red, flexShrink: 0 }}>Pflicht</span>}
+        <span style={{ display: 'inline-flex', gap: 2, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+          <button style={iconBtn} onClick={() => onMove(-1)} disabled={index === 0} title="Nach oben"><ArrowUp size={14} /></button>
+          <button style={iconBtn} onClick={() => onMove(1)} disabled={index === total - 1} title="Nach unten"><ArrowDown size={14} /></button>
+          <button style={{ ...iconBtn, color: C.red }} onClick={onRemove} title="Frage löschen"><Trash2 size={14} /></button>
+        </span>
+      </div>
+    )
+  }
+
   return (
     <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: 14, marginBottom: 10, background: C.bg }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        <button style={{ ...iconBtn, marginTop: 6 }} onClick={onToggle} title="Einklappen"><ChevronDown size={15} /></button>
         <input style={{ ...inp, fontWeight: 600 }} value={q.label} onChange={e => onChange({ label: e.target.value })} placeholder="Fragetext" />
         <select style={{ ...inp, width: 150 }} value={q.type} onChange={e => {
           const type = e.target.value as QuestionType
@@ -546,4 +754,117 @@ function OptionalToggle({ q, onChange }: { q: QQuestion; onChange: (patch: Parti
       <ToggleSwitch checked={!!q.pricing.optional} size="sm" aria-label="Optionale Position" onChange={v => onChange({ pricing: { ...q.pricing, optional: v } })} /> optional
     </span>
   )
+}
+
+// ── Formular-Vorschau: das Formular aus Brautpaar-Sicht (ohne Preise) ────────
+function PreviewModal({ settings, sections, onClose }: {
+  settings: QuestionnaireSettings; sections: QSection[]; onClose: () => void
+}) {
+  const [answers, setAnswers] = useState<Record<string, unknown>>({})
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  const setAnswer = (id: string, v: unknown) => setAnswers(a => ({ ...a, [id]: v }))
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 560, width: '100%', maxHeight: '86dvh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 70px rgba(0,0,0,0.35)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: `1px solid ${C.border}` }}>
+          <ClipboardList size={17} style={{ color: C.gold }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.text }}>Vorschau: So sieht das Brautpaar dein Formular</h3>
+            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: C.dim }}>Preise sind für das Brautpaar nie sichtbar. Eingaben hier werden nicht gespeichert.</p>
+          </div>
+          <button onClick={onClose} style={iconBtn} title="Schließen"><X size={18} /></button>
+        </div>
+
+        <div style={{ overflowY: 'auto', padding: '18px 22px 26px' }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 700, color: C.text }}>{settings.title || 'Angebotsanfrage'}</h2>
+          {settings.intro_text && <p style={{ margin: '0 0 16px', fontSize: 13, color: C.dim, lineHeight: 1.55 }}>{settings.intro_text}</p>}
+          {sections.length === 0 && (
+            <p style={{ fontSize: 13, color: C.dim }}>Noch keine Abschnitte — füge Fragen hinzu oder lade eine Vorlage.</p>
+          )}
+          {sections.map((sec, si) => (
+            <div key={sec.id} style={{ marginTop: si === 0 ? 8 : 22 }}>
+              <h4 style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 700, color: C.text }}>{sec.title || `Abschnitt ${si + 1}`}</h4>
+              {sec.description && <p style={{ margin: '0 0 10px', fontSize: 12, color: C.dim }}>{sec.description}</p>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 10 }}>
+                {sec.questions.map(q => (
+                  <PreviewQuestion key={q.id} q={q} value={answers[q.id]} onChange={v => setAnswer(q.id, v)} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PreviewQuestion({ q, value, onChange }: { q: QQuestion; value: unknown; onChange: (v: unknown) => void }) {
+  const label = (
+    <label style={{ fontSize: 13.5, fontWeight: 600, color: C.text, display: 'block', marginBottom: 6 }}>
+      {q.label || 'Frage ohne Titel'}{q.required && <span style={{ color: C.red }}> *</span>}
+      {q.help_text && <span style={{ display: 'block', fontWeight: 400, fontSize: 12, color: C.dim, marginTop: 2 }}>{q.help_text}</span>}
+    </label>
+  )
+  if (q.type === 'single') {
+    return (
+      <div>{label}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {q.options.map((o, oi) => (
+            <label key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, cursor: 'pointer', color: C.text }}>
+              <input type="radio" name={`pv-${q.id}`} checked={value === o.id} onChange={() => onChange(o.id)} /> {o.label || `Option ${oi + 1}`}
+            </label>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  if (q.type === 'multi') {
+    const arr = Array.isArray(value) ? value as string[] : []
+    return (
+      <div>{label}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {q.options.map((o, oi) => (
+            <label key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, cursor: 'pointer', color: C.text }}>
+              <input type="checkbox" checked={arr.includes(o.id)} onChange={e => onChange(e.target.checked ? [...arr, o.id] : arr.filter(x => x !== o.id))} /> {o.label || `Option ${oi + 1}`}
+            </label>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  if (q.type === 'boolean') {
+    return (
+      <div>{label}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {([['ja', 'Ja', true], ['nein', 'Nein', false]] as const).map(([key, lab, val]) => (
+            <button key={key} type="button" onClick={() => onChange(val)}
+              style={{ ...btnGhost, flex: 1, justifyContent: 'center', background: value === val ? 'rgba(184,153,104,0.12)' : '#fff', borderColor: value === val ? C.gold : C.border }}>
+              {lab}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  if (q.type === 'number') {
+    return (
+      <div>{label}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input style={{ ...inp, flex: 1 }} type="number" min={q.pricing.min} max={q.pricing.max} step={q.pricing.step}
+            value={value === undefined || value === null ? '' : String(value)}
+            onChange={e => onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} />
+          {q.pricing.unitLabel && <span style={{ fontSize: 13, color: C.dim, whiteSpace: 'nowrap' }}>{q.pricing.unitLabel}</span>}
+        </div>
+      </div>
+    )
+  }
+  if (q.type === 'date') {
+    return <div>{label}<input style={inp} type="date" value={value ? String(value) : ''} onChange={e => onChange(e.target.value)} /></div>
+  }
+  return <div>{label}<textarea style={{ ...txt, minHeight: 70 }} value={value ? String(value) : ''} onChange={e => onChange(e.target.value)} /></div>
 }

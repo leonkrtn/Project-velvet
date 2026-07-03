@@ -110,6 +110,22 @@ input[type="datetime-local"] {
   text-align: left;
 }
 
+/* Normalize selects — the native widget chrome renders taller than a text
+   input with identical padding/font, so selects in mixed rows stick out.
+   appearance:none makes the height derive from padding + line-height exactly
+   like inputs; the chevron is re-added as a background image. !important is
+   needed because most selects carry inline `background`/`padding` from
+   shared style objects that would otherwise wipe the chevron. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' viewBox='0 0 12 8'%3E%3Cpath stroke='%23888888' stroke-width='1.5' d='M1 1l5 5 5-5'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 12px 8px !important;
+  padding-right: 30px !important;
+}
+
 /* ── Transitions ── */
 a, button { transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease; }
 

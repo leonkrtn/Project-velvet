@@ -42,7 +42,9 @@ interface Offer {
 interface OwnBlock { id: string; label: string; item_type: LineItemType; default_qty: number; unit_price: number }
 
 const C = { border: 'var(--border)', text: 'var(--text)', dim: 'var(--text-dim)', gold: 'var(--gold)', red: 'var(--red, #C5221F)', surface: 'var(--surface)', bg: 'var(--bg)' }
-const inp: React.CSSProperties = { padding: '8px 10px', fontSize: 13.5, border: `1px solid ${C.border}`, borderRadius: 8, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text }
+const inp: React.CSSProperties = { height: 36, padding: '0 10px', fontSize: 13.5, border: `1px solid ${C.border}`, borderRadius: 8, background: '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', color: C.text }
+// Für Textareas: Höhe/Padding von `inp` zurücknehmen (mehrzeilig).
+const txt: React.CSSProperties = { ...inp, height: 'auto', padding: '8px 10px', resize: 'vertical' }
 const btn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 9, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid transparent' }
 const btnGhost: React.CSSProperties = { ...btn, background: C.surface, color: C.text, border: `1px solid ${C.border}` }
 
@@ -382,7 +384,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
               <div key={i} style={{ padding: '10px 12px', borderTop: i > 0 ? `1px solid ${C.border}` : 'none', background: type === 'discount' ? 'rgba(197,34,31,0.03)' : 'transparent' }}>
                 {editable ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                    <select value={type} onChange={e => setItem(i, { type: e.target.value as LineItemType, selected: e.target.value === 'optional' ? true : undefined })} style={{ ...inp, width: 104, padding: '7px 6px' }}>
+                    <select value={type} onChange={e => setItem(i, { type: e.target.value as LineItemType, selected: e.target.value === 'optional' ? true : undefined })} style={{ ...inp, width: 104, padding: '0 6px' }}>
                       {(Object.keys(TYPE_LABELS) as LineItemType[]).map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
                     </select>
                     <input style={{ ...inp, flex: 1, minWidth: 140 }} value={li.label} onChange={e => setItem(i, { label: e.target.value })} placeholder="Bezeichnung" />
@@ -452,7 +454,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
               <input style={{ ...inp, width: '100%' }} value={balanceDueNote} onChange={e => setBalanceDueNote(e.target.value)} placeholder="z. B. Restbetrag bis 14 Tage vor dem Event" />
             </Field>
             <Field label="Zahlungsbedingungen">
-              <textarea style={{ ...inp, width: '100%', minHeight: 56, resize: 'vertical' }} value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} placeholder="z. B. Überweisung, Zahlungsziel, Bankverbindung …" />
+              <textarea style={{ ...txt, width: '100%', minHeight: 56 }} value={paymentTerms} onChange={e => setPaymentTerms(e.target.value)} placeholder="z. B. Überweisung, Zahlungsziel, Bankverbindung …" />
             </Field>
           </div>
         ) : (
@@ -468,7 +470,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
       <Section title="AGB & Stornobedingungen">
         {editable ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <textarea style={{ ...inp, width: '100%', minHeight: 90, resize: 'vertical' }} value={agbText} onChange={e => setAgbText(e.target.value)} placeholder="AGB, Stornobedingungen, Leistungsumfang … Das Brautpaar bestätigt diese bei der Annahme." />
+            <textarea style={{ ...txt, width: '100%', minHeight: 90 }} value={agbText} onChange={e => setAgbText(e.target.value)} placeholder="AGB, Stornobedingungen, Leistungsumfang … Das Brautpaar bestätigt diese bei der Annahme." />
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.text }}>
               <ToggleSwitch checked={agbRequired} onChange={v => setAgbRequired(v)} size="sm" aria-label="AGB-Bestätigung verpflichtend" />
               Bestätigung der AGB ist für die Annahme verpflichtend
@@ -484,7 +486,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
         {editable ? (
           <div className="ofe-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 170px', gap: 12 }}>
             <Field label={eventId === null ? 'Anmerkungen an den Kunden' : 'Anmerkungen ans Brautpaar'}>
-              <textarea style={{ ...inp, width: '100%', minHeight: 56, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} />
+              <textarea style={{ ...txt, width: '100%', minHeight: 56 }} value={notes} onChange={e => setNotes(e.target.value)} />
             </Field>
             <Field label="Gültig bis">
               <input style={{ ...inp, width: '100%' }} type="date" value={validUntil ?? ''} onChange={e => setValidUntil(e.target.value)} />
