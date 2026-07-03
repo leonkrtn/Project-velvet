@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Loader2, Upload, Save, Send, CheckCircle2, AlertTriangle, Clock,
-  Plus, Trash2, ArrowUp, ArrowDown, Star, Building2,
+  Plus, Trash2, ArrowUp, ArrowDown, Star, Building2, CalendarDays, X,
 } from 'lucide-react'
 import {
   MARKETPLACE_CATEGORIES, PRICE_UNITS, SOCIAL_PLATFORMS,
@@ -90,6 +90,8 @@ export default function VendorListingClient() {
   const [faqs, setFaqs] = useState<Faq[]>([])
   const [availability, setAvailability] = useState<Avail[]>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [confirmPhotoId, setConfirmPhotoId] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
   const [f, setF] = useState({
@@ -99,6 +101,10 @@ export default function VendorListingClient() {
     service_cities: '', service_radius_km: '', brand_color: '',
   })
   const [social, setSocial] = useState<Record<string, string>>({})
+
+  // Snapshot des zuletzt geladenen/gespeicherten Profil-Stands für Dirty-Erkennung.
+  const savedSnapshot = useRef('')
+  const dirty = !loading && !!vendor && JSON.stringify({ f, social }) !== savedSnapshot.current
 
   const load = useCallback(async (initial = false) => {
     if (initial) setLoading(true)
@@ -115,7 +121,7 @@ export default function VendorListingClient() {
     setPackages(d.packages ?? []); setFaqs(d.faqs ?? []); setAvailability(d.availability ?? [])
     const pc = (v.pending_changes ?? {}) as Record<string, unknown>
     const pick = (k: string, fallback: unknown) => (k in pc ? pc[k] : fallback)
-    setF({
+    const nextF = {
       name: String(pick('name', v.name) ?? ''),
       company_name: String(pick('company_name', v.company_name) ?? ''),
       category: String(pick('category', v.category) ?? 'sonstiges'),
@@ -133,18 +139,29 @@ export default function VendorListingClient() {
       service_cities: (v.service_cities ?? []).join(', '),
       service_radius_km: v.service_radius_km != null ? String(v.service_radius_km) : '',
       brand_color: (v as { brand_color?: string }).brand_color ?? '',
-    })
-    setSocial(v.social_links ?? {})
+    }
+    const nextSocial = v.social_links ?? {}
+    setF(nextF)
+    setSocial(nextSocial)
+    savedSnapshot.current = JSON.stringify({ f: nextF, social: nextSocial })
     setLoading(false)
   }, [])
 
   useEffect(() => { load(true) }, [load])
 
+  // Warnung beim Verlassen der Seite mit ungespeicherten Profil-Änderungen.
+  useEffect(() => {
+    if (!dirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [dirty])
+
   const flash = (kind: 'ok' | 'err', text: string) => {
     setMsg({ kind, text }); setTimeout(() => setMsg(null), 4000)
   }
 
-  function saveProfile() {
+  async function saveProfile() {
     const payload = {
       name: f.name, company_name: f.company_name, category: f.category,
       street: f.street, zip: f.zip, city: f.city,
@@ -156,33 +173,60 @@ export default function VendorListingClient() {
       social_links: social,
       brand_color: f.brand_color,
     }
-    flash('ok', 'Gespeichert.')
-    fetch('/api/vendor/marketplace/profile', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-    }).then(async res => {
+    setSavingProfile(true)
+    try {
+      const res = await fetch('/api/vendor/marketplace/profile', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+      })
       const d = await res.json().catch(() => ({}))
-      if (!res.ok) flash('err', d.error ?? 'Speichern fehlgeschlagen')
-      else if (d.hasPendingChanges) flash('ok', 'Gespeichert — sensible Änderungen gehen in die Prüfung.')
+      if (!res.ok) {
+        flash('err', d.error ?? 'Speichern fehlgeschlagen')
+      } else {
+        savedSnapshot.current = JSON.stringify({ f, social })
+        flash('ok', d.hasPendingChanges ? 'Gespeichert — sensible Änderungen gehen in die Prüfung.' : 'Gespeichert.')
+      }
+    } catch {
+      flash('err', 'Speichern fehlgeschlagen')
+    }
+    setSavingProfile(false)
+    load(false)
+  }
+
+  async function submitForReview() {
+    try {
+      const res = await fetch('/api/vendor/marketplace/profile/submit', { method: 'POST' })
+      if (res.ok) {
+        setVendor(v => v ? { ...v, moderation_status: 'pending', rejected_reason: null } : v)
+        flash('ok', 'Zur Prüfung eingereicht.')
+      } else {
+        const d = await res.json().catch(() => ({}))
+        flash('err', d.error ?? 'Einreichen fehlgeschlagen')
+        load(false)
+      }
+    } catch {
+      flash('err', 'Einreichen fehlgeschlagen')
       load(false)
-    }).catch(() => load(false))
+    }
   }
 
-  function submitForReview() {
-    setVendor(v => v ? { ...v, moderation_status: 'pending', rejected_reason: null } : v)
-    flash('ok', 'Zur Prüfung eingereicht.')
-    fetch('/api/vendor/marketplace/profile/submit', { method: 'POST' }).then(async res => {
-      if (!res.ok) { const d = await res.json().catch(() => ({})); flash('err', d.error ?? 'Fehler'); load(false) }
-    }).catch(() => load(false))
-  }
-
-  function togglePublish() {
+  async function togglePublish() {
     if (!vendor) return
     const next = !vendor.published
     setVendor(v => v ? { ...v, published: next } : v)
-    flash('ok', next ? 'Listing ist online.' : 'Listing ist offline.')
-    fetch('/api/vendor/marketplace/profile/publish', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ published: next }),
-    }).then(res => { if (!res.ok) load(false) }).catch(() => load(false))
+    try {
+      const res = await fetch('/api/vendor/marketplace/profile/publish', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ published: next }),
+      })
+      if (!res.ok) {
+        setVendor(v => v ? { ...v, published: !next } : v)
+        flash('err', 'Sichtbarkeit konnte nicht geändert werden')
+        return
+      }
+      flash('ok', next ? 'Listing ist online.' : 'Listing ist offline.')
+    } catch {
+      setVendor(v => v ? { ...v, published: !next } : v)
+      flash('err', 'Sichtbarkeit konnte nicht geändert werden')
+    }
   }
 
   const logoInput = useRef<HTMLInputElement>(null)
@@ -225,7 +269,9 @@ export default function VendorListingClient() {
   }
 
   async function deletePhoto(id: string) {
-    await fetch(`/api/vendor/marketplace/photos/${id}`, { method: 'DELETE' })
+    setConfirmPhotoId(null)
+    const res = await fetch(`/api/vendor/marketplace/photos/${id}`, { method: 'DELETE' }).catch(() => null)
+    if (!res?.ok) { flash('err', 'Foto konnte nicht gelöscht werden'); return }
     setPhotos(p => p.filter(x => x.id !== id))
   }
   async function movePhoto(i: number, dir: -1 | 1) {
@@ -246,12 +292,13 @@ export default function VendorListingClient() {
     if (!res.ok) { flash('err', d.error ?? 'Fehler'); return }
     setPackages(x => [...x, { id: d.id, title: 'Neues Paket', description: '', price_from: null, price_unit: 'ab', sort_order: x.length }])
   }
-  function savePackage(p: Pkg) {
-    flash('ok', 'Paket gespeichert.')
-    fetch(`/api/vendor/marketplace/packages/${p.id}`, {
+  async function savePackage(p: Pkg) {
+    const res = await fetch(`/api/vendor/marketplace/packages/${p.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: p.title, description: p.description, price_from: p.price_from, price_unit: p.price_unit }),
-    }).then(res => { if (!res.ok) flash('err', 'Konnte nicht speichern') })
+    }).catch(() => null)
+    if (res?.ok) flash('ok', 'Paket gespeichert.')
+    else flash('err', 'Paket konnte nicht gespeichert werden')
   }
   async function delPackage(id: string) {
     await fetch(`/api/vendor/marketplace/packages/${id}`, { method: 'DELETE' })
@@ -266,11 +313,12 @@ export default function VendorListingClient() {
     if (!res.ok) { flash('err', d.error ?? 'Fehler'); return }
     setFaqs(x => [...x, { id: d.id, question: 'Neue Frage', answer: '', sort_order: x.length }])
   }
-  function saveFaq(q: Faq) {
-    flash('ok', 'FAQ gespeichert.')
-    fetch(`/api/vendor/marketplace/faqs/${q.id}`, {
+  async function saveFaq(q: Faq) {
+    const res = await fetch(`/api/vendor/marketplace/faqs/${q.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q.question, answer: q.answer }),
-    }).then(res => { if (!res.ok) flash('err', 'Konnte nicht speichern') })
+    }).catch(() => null)
+    if (res?.ok) flash('ok', 'FAQ gespeichert.')
+    else flash('err', 'FAQ konnte nicht gespeichert werden')
   }
   async function delFaq(id: string) {
     await fetch(`/api/vendor/marketplace/faqs/${id}`, { method: 'DELETE' })
@@ -323,6 +371,7 @@ export default function VendorListingClient() {
   ]
   const allRequirementsMet = requirements.every(r => r.ok)
   const showRequirements = status === 'draft' || status === 'rejected'
+  const descLen = f.description.trim().length
 
   const categoryLabel = MARKETPLACE_CATEGORIES.find(c => c.key === f.category)?.label ?? f.category
 
@@ -338,13 +387,18 @@ export default function VendorListingClient() {
               So erscheinst du im Forevr-Marktplatz.
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, paddingTop: 4 }}>
-            <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text)' }}>Öffentlich sichtbar</span>
-            <Toggle
-              checked={vendor.published}
-              onChange={togglePublish}
-              disabled={status !== 'approved'}
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0, paddingTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text)' }}>Öffentlich sichtbar</span>
+              <Toggle
+                checked={vendor.published}
+                onChange={togglePublish}
+                disabled={status !== 'approved'}
+              />
+            </div>
+            {status !== 'approved' && (
+              <span style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>Verfügbar, sobald dein Profil freigegeben ist</span>
+            )}
           </div>
         </div>
 
@@ -372,6 +426,34 @@ export default function VendorListingClient() {
 
         {activeTab === 'anzeige' ? (
           <>
+            {/* ── Status banner (zuerst — wichtigste Info) ── */}
+            <StatusBanner status={status} hasPending={hasPending} verified={vendor.verified} published={vendor.published} reason={vendor.rejected_reason} />
+
+            {/* ── Submit for review (draft/rejected) ── */}
+            {showRequirements && (
+              <div style={{ ...secCard, marginBottom: 16 }}>
+                <h2 style={h2s}>Zur Prüfung einreichen</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                  {requirements.map(r => (
+                    <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: r.ok ? '#15803D' : 'var(--text-dim)' }}>
+                      {r.ok
+                        ? <CheckCircle2 size={15} />
+                        : <span style={{ width: 15, height: 15, borderRadius: '50%', border: '1.5px solid var(--border)', display: 'inline-block', flexShrink: 0 }} />
+                      }
+                      {r.label}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={submitForReview}
+                  disabled={!allRequirementsMet}
+                  style={{ ...btnDark, opacity: allRequirementsMet ? 1 : 0.5, cursor: allRequirementsMet ? 'pointer' : 'not-allowed' }}
+                >
+                  <Send size={15} /> Zur Prüfung einreichen
+                </button>
+              </div>
+            )}
+
             {/* ── Main profile card ── */}
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
 
@@ -431,6 +513,9 @@ export default function VendorListingClient() {
                   placeholder="Beschreibe deine Leistung kurz und prägnant…"
                   style={{ ...inp, minHeight: 90, resize: 'vertical', lineHeight: 1.55 }}
                 />
+                <p style={{ fontSize: 11.5, color: descLen >= 30 ? '#15803D' : 'var(--text-dim)', margin: '5px 0 0' }}>
+                  {descLen >= 30 ? 'Mindestlänge erreicht' : `${descLen}/30 Zeichen (Minimum für die Freigabe)`}
+                </p>
               </div>
 
               {/* Markenfarbe */}
@@ -460,7 +545,7 @@ export default function VendorListingClient() {
               </div>
 
               {/* Kategorie + Ab-Preis */}
-              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={lbl}>Kategorie</label>
                   <select value={f.category} onChange={set('category')} style={inp}>
@@ -472,47 +557,7 @@ export default function VendorListingClient() {
                   <input value={f.price_range} onChange={set('price_range')} placeholder="ab 1.600 €" style={inp} />
                 </div>
               </div>
-
-              {/* Save */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <button onClick={saveProfile} style={btnDark}>
-                  <Save size={15} /> Speichern
-                </button>
-                {msg && (
-                  <span style={{ fontSize: 13, fontWeight: 600, color: msg.kind === 'ok' ? '#15803D' : 'var(--red)' }}>
-                    {msg.text}
-                  </span>
-                )}
-              </div>
             </div>
-
-            {/* ── Status banner ── */}
-            <StatusBanner status={status} hasPending={hasPending} verified={vendor.verified} published={vendor.published} reason={vendor.rejected_reason} />
-
-            {/* ── Submit for review (draft/rejected) ── */}
-            {showRequirements && (
-              <div style={{ ...secCard, marginBottom: 16 }}>
-                <h2 style={h2s}>Zur Prüfung einreichen</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-                  {requirements.map(r => (
-                    <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: r.ok ? '#15803D' : 'var(--text-dim)' }}>
-                      {r.ok
-                        ? <CheckCircle2 size={15} />
-                        : <span style={{ width: 15, height: 15, borderRadius: '50%', border: '1.5px solid var(--border)', display: 'inline-block', flexShrink: 0 }} />
-                      }
-                      {r.label}
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={submitForReview}
-                  disabled={!allRequirementsMet}
-                  style={{ ...btnDark, opacity: allRequirementsMet ? 1 : 0.5, cursor: allRequirementsMet ? 'pointer' : 'not-allowed' }}
-                >
-                  <Send size={15} /> Zur Prüfung einreichen
-                </button>
-              </div>
-            )}
 
             {/* ── Galerie ── */}
             <div data-tour="vdr-listing-gallery" style={secCard}>
@@ -535,7 +580,7 @@ export default function VendorListingClient() {
                     <div style={{ position: 'absolute', bottom: 2, right: 2, display: 'flex', gap: 2 }}>
                       <button onClick={() => movePhoto(i, -1)} style={miniBtn} title="nach vorne"><ArrowUp size={11} /></button>
                       <button onClick={() => movePhoto(i, 1)} style={miniBtn} title="nach hinten"><ArrowDown size={11} /></button>
-                      <button onClick={() => deletePhoto(p.id)} style={{ ...miniBtn, color: '#fff', background: 'rgba(185,28,28,0.85)' }} title="löschen"><Trash2 size={11} /></button>
+                      <button onClick={() => setConfirmPhotoId(p.id)} style={{ ...miniBtn, color: '#fff', background: 'rgba(185,28,28,0.85)' }} title="löschen"><Trash2 size={11} /></button>
                     </div>
                   </div>
                 ))}
@@ -563,23 +608,6 @@ export default function VendorListingClient() {
               </div>
             </div>
 
-            {/* ── Allgemeine Firmenadresse (Stammdaten, NICHT Teil des Marktplatz-Listings) ── */}
-            <div style={{ ...secCard, background: 'var(--bg)', border: '1px dashed var(--border)' }}>
-              <h2 style={{ ...h2s, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Building2 size={16} style={{ color: 'var(--text-dim)' }} />
-                Allgemeine Firmenadresse
-              </h2>
-              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.5 }}>
-                Interne Stammdaten (z. B. für Rechnungen) — <strong>nicht Teil deines Marktplatz-Listings</strong> und
-                geht nicht in die Prüfung. Wird nur angezeigt, wenn oben unter „Weitere Angaben“ keine Adresse hinterlegt ist.
-              </p>
-              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={lbl}>Straße</label><input style={inp} value={f.company_street} onChange={set('company_street')} /></div>
-                <div><label style={lbl}>PLZ</label><input style={inp} value={f.company_zip} onChange={set('company_zip')} /></div>
-                <div><label style={lbl}>Ort</label><input style={inp} value={f.company_city} onChange={set('company_city')} /></div>
-              </div>
-            </div>
-
             {/* ── Einsatzgebiet ── */}
             <div style={secCard}>
               <h2 style={h2s}>Einsatzgebiet</h2>
@@ -589,6 +617,34 @@ export default function VendorListingClient() {
                 <label style={lbl}>Anfahrtsradius (km, optional)</label>
                 <input style={inp} type="number" value={f.service_radius_km} onChange={set('service_radius_km')} placeholder="100" />
               </div>
+            </div>
+
+            {/* ── Belegte Termine ── */}
+            <div style={secCard}>
+              <h2 style={{ ...h2s, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CalendarDays size={16} style={{ color: 'var(--text-dim)' }} />
+                Belegte Termine
+              </h2>
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px', lineHeight: 1.5 }}>
+                Markiere Tage, an denen du bereits gebucht bist. Sie werden in deinem Marktplatz-Profil
+                als „Belegte Termine&ldquo; angezeigt, damit Brautpaare nicht umsonst anfragen.
+              </p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: availability.length > 0 ? 12 : 0, flexWrap: 'wrap' }}>
+                <input style={{ ...inp, maxWidth: 190 }} type="date" value={newDay} onChange={e => setNewDay(e.target.value)} />
+                <button onClick={addDay} disabled={!newDay} style={{ ...btnGhost, opacity: newDay ? 1 : 0.5 }}>
+                  <Plus size={15} /> Tag blockieren
+                </button>
+              </div>
+              {availability.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {availability.map(d => (
+                    <span key={d.day} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 6px 4px 10px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', fontSize: 12.5, color: 'var(--text)' }}>
+                      {new Date(`${d.day}T00:00:00`).toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      <button onClick={() => delDay(d.day)} title="Tag wieder freigeben" style={{ ...miniBtn, background: 'transparent', color: 'var(--text-dim)' }}><X size={12} /></button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* ── Social-Media ── */}
@@ -652,12 +708,77 @@ export default function VendorListingClient() {
               </div>
             </div>
 
+            {/* ── Allgemeine Firmenadresse (interne Stammdaten, NICHT Teil des Listings) ── */}
+            <div style={{ ...secCard, background: 'var(--bg)', border: '1px dashed var(--border)' }}>
+              <h2 style={{ ...h2s, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Building2 size={16} style={{ color: 'var(--text-dim)' }} />
+                Allgemeine Firmenadresse
+              </h2>
+              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.5 }}>
+                Interne Stammdaten (z. B. für Rechnungen) — <strong>nicht Teil deines Marktplatz-Listings</strong> und
+                geht nicht in die Prüfung. Wird nur angezeigt, wenn oben unter „Weitere Angaben“ keine Adresse hinterlegt ist.
+              </p>
+              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div><label style={lbl}>Straße</label><input style={inp} value={f.company_street} onChange={set('company_street')} /></div>
+                <div><label style={lbl}>PLZ</label><input style={inp} value={f.company_zip} onChange={set('company_zip')} /></div>
+                <div><label style={lbl}>Ort</label><input style={inp} value={f.company_city} onChange={set('company_city')} /></div>
+              </div>
+            </div>
+
             <div style={{ height: 40 }} />
+
+            {/* ── Schwebende Speichern-Leiste bei ungespeicherten Änderungen ── */}
+            {dirty && (
+              <div style={{
+                position: 'fixed', bottom: 18, left: '50%', transform: 'translateX(-50%)', zIndex: 60,
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px 10px 18px',
+                background: 'var(--text)', color: '#fff', borderRadius: 999,
+                boxShadow: '0 8px 28px rgba(0,0,0,0.28)', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
+              }}>
+                Ungespeicherte Änderungen
+                <button onClick={saveProfile} disabled={savingProfile} style={{ ...btnDark, padding: '7px 16px', borderRadius: 999 }}>
+                  {savingProfile ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={14} />} Speichern
+                </button>
+              </div>
+            )}
+
+            {/* ── Foto löschen: Bestätigung ── */}
+            {confirmPhotoId && (
+              <div onClick={() => setConfirmPhotoId(null)} style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, padding: 24, maxWidth: 380, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <AlertTriangle size={19} style={{ color: '#B91C1C', flexShrink: 0 }} />
+                    <h3 style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: 'var(--text)' }}>Foto löschen?</h3>
+                  </div>
+                  <p style={{ margin: '0 0 18px', fontSize: 13.5, color: 'var(--text-dim)', lineHeight: 1.55 }}>
+                    Das Foto wird dauerhaft aus deiner Galerie entfernt.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                    <button onClick={() => setConfirmPhotoId(null)} style={btnGhost}>Abbrechen</button>
+                    <button onClick={() => deletePhoto(confirmPhotoId)} style={{ ...btnDark, background: '#B91C1C' }}><Trash2 size={14} /> Löschen</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <FragebogenBuilderClient category={f.category} embedded />
         )}
       </div>
+
+      {/* ── Feedback-Toast ── */}
+      {msg && (
+        <div style={{
+          position: 'fixed', bottom: 18, right: 18, zIndex: 70,
+          padding: '11px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+          background: msg.kind === 'ok' ? '#F0FDF4' : '#FEF2F2',
+          color: msg.kind === 'ok' ? '#15803D' : '#B91C1C',
+          border: `1px solid ${msg.kind === 'ok' ? 'rgba(21,128,61,0.25)' : 'rgba(185,28,28,0.25)'}`,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxWidth: 340,
+        }}>
+          {msg.text}
+        </div>
+      )}
 
       <style>{`
         @keyframes spin{to{transform:rotate(360deg)}}
