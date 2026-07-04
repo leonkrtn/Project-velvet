@@ -86,6 +86,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ re
       await admin.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', reqRow.conversation_id)
     }
 
+    // Budget-Übernahme: angenommenes Angebot als Budget-Posten anlegen
+    // (source_offer_id + Unique-Index verhindern Doppel-Übernahme).
+    if (acceptedTotal != null && Number(acceptedTotal) > 0) {
+      const { data: vendorProf } = await admin
+        .from('dienstleister_profiles')
+        .select('company_name, name, category')
+        .eq('id', res.offer.dienstleister_id)
+        .maybeSingle()
+      const vendorName = vendorProf?.company_name || vendorProf?.name || 'Dienstleister'
+      await admin.from('budget_items').insert({
+        event_id: res.offer.event_id,
+        category: vendorProf?.category ?? null,
+        description: `${vendorName} — angenommenes Angebot (Forevr Marktplatz)`,
+        planned: Number(acceptedTotal),
+        source_offer_id: res.offer.id,
+      })
+      // Fehler (z.B. Unique-Konflikt bei erneuter Annahme) bewusst ignoriert —
+      // die Annahme selbst darf daran nie scheitern.
+    }
+
     // Sync CRM: mark contact as gebucht and set final deal_value
     if (res.offer.dienstleister_id) {
       await admin.from('crm_contacts')

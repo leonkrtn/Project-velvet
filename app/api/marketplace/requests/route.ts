@@ -84,7 +84,32 @@ export async function GET(req: NextRequest) {
     .eq('event_id', eventId)
     .order('created_at', { ascending: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ requests: data ?? [] })
+
+  // Typische Antwortzeit je Vendor (über alle Events) — für die Erwartungs-
+  // Anzeige bei offenen Anfragen ("antwortet meist innerhalb von …").
+  const requests = data ?? []
+  const vendorIds = Array.from(new Set(requests.map(r => r.dienstleister_id)))
+  const typicalByVendor: Record<string, number> = {}
+  if (vendorIds.length) {
+    const { data: responded } = await admin
+      .from('marketplace_requests')
+      .select('dienstleister_id, created_at, responded_at')
+      .not('responded_at', 'is', null)
+      .in('dienstleister_id', vendorIds)
+    const agg: Record<string, { sum: number; count: number }> = {}
+    for (const r of responded ?? []) {
+      const hours = (new Date(r.responded_at as string).getTime() - new Date(r.created_at).getTime()) / 3600000
+      if (hours < 0) continue
+      const a = agg[r.dienstleister_id] ?? (agg[r.dienstleister_id] = { sum: 0, count: 0 })
+      a.sum += hours
+      a.count += 1
+    }
+    for (const [id, a] of Object.entries(agg)) typicalByVendor[id] = Math.round(a.sum / a.count)
+  }
+
+  return NextResponse.json({
+    requests: requests.map(r => ({ ...r, typical_response_hours: typicalByVendor[r.dienstleister_id] ?? null })),
+  })
 }
 
 // POST — neue Anfrage an einen Vendor. Body: { eventId, dienstleisterId, message, budget? }

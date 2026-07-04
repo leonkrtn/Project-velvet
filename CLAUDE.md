@@ -486,6 +486,28 @@ supabase/migrations/
 # (schreiben direkt in den angewendeten Filter). Detailseite: Bewertungs-
 # Verteilungsbalken 5->1 (AnbieterDetailClient, client-seitig aus reviews).
 
+  0135_review_photos_offer_budget.sql  (1) marketplace_reviews.photo_r2_keys TEXT[] (Bewertungs-Fotos, R2);
+                                       (2) budget_items.source_offer_id (Unique-Partial-Index) fuer die
+                                       automatische Budget-Uebernahme angenommener Angebote.
+# ── Brautpaar-Marktplatz-Ausbau (mit Migration 0135) ─────────────────────────
+# (1) Angebotsvergleich: neuer Tab "Angebote" (DienstleisterTabs -> AngeboteVergleich)
+#     via GET /api/marketplace/offers?eventId= (alle Angebote ab released, je Gewerk
+#     gruppiert, Summenleiste "Zugesagt"/"Offen", PDF-Link, Varianten-Anzahl).
+# (2) Budget-Uebernahme: PATCH /api/marketplace/offers/[requestId] action:accept legt
+#     zusaetzlich einen budget_items-Posten an (planned=Angebotssumme, source_offer_id
+#     verhindert Duplikate; Fehler blockieren die Annahme nie).
+# (3) Gewerke-Abdeckung: GewerkeStatus-Leiste ueber den Dienstleister-Tabs
+#     (gebucht = accepted-Anfrage oder aktiver Vendor, angefragt = pending).
+# (4) Meine Anfragen: declined bleibt sichtbar (Badge "Abgelehnt" + Link "Aehnliche
+#     Anbieter ansehen" -> ?category= Deep-Link, DienstleisterTabs/MarktplatzClient
+#     werten ihn aus); offene Anfragen zeigen "Antwortet meist innerhalb von ..."
+#     (typical_response_hours in GET /api/marketplace/requests).
+# (5) Aehnliche Anbieter: Detailseite laedt Top-3 derselben Kategorie (nach Rating).
+# (6) Suche im Listing matcht auch Ort/service_cities.
+# (7) Review-Fotos: Upload via POST /api/marketplace/reviews/photo-upload (presigned
+#     PUT, nur nach Zusammenarbeit, max. 4, JPG/PNG/WebP), Keys in photo_r2_keys;
+#     Anzeige mit Lightbox + Badge "Verifizierte Zusammenarbeit" je Review.
+
 # ── Standalone-Angebot -> Event (event-offers action:accept) ──────────────────
 # Eigenständige Angebote (vendor_offers.event_id IS NULL, erstellt in OfferEditorFull,
 # Kundeninfo in standard_info.client_*) koennen vom Dienstleister angenommen werden:

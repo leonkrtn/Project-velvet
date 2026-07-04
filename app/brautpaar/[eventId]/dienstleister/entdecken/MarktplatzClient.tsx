@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Search, Check, Star, BadgeCheck, SlidersHorizontal, X, MapPin, Info, Heart, Zap } from 'lucide-react'
 import { MARKETPLACE_CATEGORIES, categoryLabel } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
@@ -104,9 +105,18 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   // "hochspringend" angezeigt wird (Aufgabe 3).
   const [geocodingInProgress, setGeocodingInProgress] = useState(true)
 
+  // ?category= (Deep-Link, z.B. "Ähnliche Anbieter" nach Absage) übersteuert
+  // den gespeicherten Kategorie-Filter.
+  const searchParams = useSearchParams()
+  const categoryParam = searchParams.get('category')
+
   useEffect(() => {
-    setApplied(loadStored())
-  }, [])
+    const stored = loadStored()
+    if (categoryParam && MARKETPLACE_CATEGORIES.some(c => c.key === categoryParam)) {
+      stored.category = categoryParam
+    }
+    setApplied(stored)
+  }, [categoryParam])
 
   function openPanel() { setPending(applied); setPanelOpen(true) }
   function applyFilter() {
@@ -238,7 +248,9 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
       const qLow = q.trim().toLowerCase()
       list = list.filter(v =>
         (v.company_name?.toLowerCase().includes(qLow)) ||
-        (v.description?.toLowerCase().includes(qLow))
+        (v.description?.toLowerCase().includes(qLow)) ||
+        (resolveVendorCity(v)?.toLowerCase().includes(qLow)) ||
+        v.service_cities.some(c => c.toLowerCase().includes(qLow))
       )
     }
 
@@ -378,7 +390,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
           <Search size={15} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--bp-ink-3,#8C8076)', pointerEvents: 'none' }} />
           <input
             className="bp-input"
-            placeholder="Dienstleister suchen…"
+            placeholder="Dienstleister oder Ort suchen…"
             value={q}
             onChange={e => setQ(e.target.value)}
             style={{ paddingLeft: 34 }}

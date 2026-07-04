@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, MapPin, Globe, Phone, Mail, Star, Check, X, MessageSquare, Lock, BadgeCheck, ChevronDown, Flag } from 'lucide-react'
+import { ChevronLeft, MapPin, Globe, Phone, Mail, Star, Check, X, MessageSquare, Lock, BadgeCheck, ChevronDown, Flag, Camera, ShieldCheck } from 'lucide-react'
 import { categoryLabel, PRICE_UNITS, SOCIAL_PLATFORMS } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 import RequestFlow from '@/components/marketplace/RequestFlow'
@@ -24,12 +24,16 @@ interface Vendor {
 }
 interface Pkg { id: string; title: string; description: string; price_from: number | null; price_unit: string }
 interface Faq { id: string; question: string; answer: string }
-interface Review { id: string; author_name: string; rating: number; title: string; body: string; created_at: string }
+interface Review { id: string; author_name: string; rating: number; title: string; body: string; created_at: string; photo_urls: string[] }
+interface Similar {
+  id: string; company_name: string | null; city: string | null; verified: boolean
+  review_avg: number; review_count: number; cover_url: string | null
+}
 interface Existing { id: string; status: string; conversation_id: string | null }
 
 interface Props {
   eventId: string; vendor: Vendor
-  packages: Pkg[]; faqs: Faq[]; reviews: Review[]; reviewAvg: number; reviewCount: number
+  packages: Pkg[]; faqs: Faq[]; reviews: Review[]; similar: Similar[]; reviewAvg: number; reviewCount: number
   availability: string[]; contactUnlocked: boolean; canReview: boolean; existing: Existing | null
 }
 
@@ -47,7 +51,7 @@ const REPORT_REASONS = [
   { key: 'spam', label: 'Spam' },
 ] as const
 
-export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, reviews, reviewAvg, reviewCount, availability, contactUnlocked, canReview, existing }: Props) {
+export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, reviews, similar, reviewAvg, reviewCount, availability, contactUnlocked, canReview, existing }: Props) {
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [sent, setSent] = useState<Existing | null>(existing)
   const [openFaq, setOpenFaq] = useState<string | null>(null)
@@ -59,6 +63,31 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
   const [revBusy, setRevBusy] = useState(false)
   const [revDone, setRevDone] = useState(false)
   const [revErr, setRevErr] = useState('')
+  const [revPhotos, setRevPhotos] = useState<{ key: string; previewUrl: string }[]>([])
+  const [photoBusy, setPhotoBusy] = useState(false)
+
+  const MAX_REVIEW_PHOTOS = 4
+
+  async function addReviewPhotos(files: FileList | null) {
+    if (!files?.length) return
+    setRevErr(''); setPhotoBusy(true)
+    try {
+      for (const file of Array.from(files)) {
+        if (revPhotos.length >= MAX_REVIEW_PHOTOS) break
+        const res = await fetch('/api/marketplace/reviews/photo-upload', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vendorId: vendor.id, contentType: file.type }),
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error)
+        const put = await fetch(json.uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file })
+        if (!put.ok) throw new Error('Upload fehlgeschlagen')
+        setRevPhotos(prev => prev.length >= MAX_REVIEW_PHOTOS ? prev : [...prev, { key: json.key, previewUrl: URL.createObjectURL(file) }])
+      }
+    } catch (e) {
+      setRevErr(e instanceof Error ? e.message : 'Foto-Upload fehlgeschlagen')
+    } finally { setPhotoBusy(false) }
+  }
 
   // Anbieter melden
   const [showReport, setShowReport] = useState(false)
@@ -95,7 +124,7 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
     try {
       const res = await fetch('/api/marketplace/reviews', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vendorId: vendor.id, eventId, rating: revRating, title: revTitle, body: revBody }),
+        body: JSON.stringify({ vendorId: vendor.id, eventId, rating: revRating, title: revTitle, body: revBody, photoKeys: revPhotos.map(p => p.key) }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
@@ -264,12 +293,27 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {reviews.map(r => (
                 <div key={r.id} className="bp-card" style={{ padding: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                    <strong style={{ fontSize: 14, color: 'var(--bp-ink)' }}>{r.author_name}</strong>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <strong style={{ fontSize: 14, color: 'var(--bp-ink)' }}>{r.author_name}</strong>
+                      <span title="Bewertungen sind nur nach einer Zusammenarbeit über Forevr möglich" style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#15803D' }}>
+                        <ShieldCheck size={13} /> Verifizierte Zusammenarbeit
+                      </span>
+                    </span>
                     <Stars value={r.rating} size={13} />
                   </div>
                   {r.title && <p style={{ margin: '8px 0 2px', fontSize: 14, fontWeight: 600, color: 'var(--bp-ink)' }}>{r.title}</p>}
                   {r.body && <p style={{ margin: '4px 0 0', fontSize: 13.5, color: 'var(--bp-ink-2)', lineHeight: 1.6 }}>{r.body}</p>}
+                  {r.photo_urls.length > 0 && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                      {r.photo_urls.map((url, i) => (
+                        <button key={i} onClick={() => setLightbox(url)} style={{ width: 72, height: 72, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--bp-rule)', cursor: 'zoom-in', padding: 0, background: 'none' }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -287,7 +331,31 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
                 {revErr && <p style={{ color: '#C62828', fontSize: 12.5, margin: '0 0 8px' }}>{revErr}</p>}
                 <input className="bp-input" placeholder="Titel (optional)" value={revTitle} onChange={e => setRevTitle(e.target.value)} style={{ marginBottom: 8 }} />
                 <textarea className="bp-textarea" placeholder="Wie war die Zusammenarbeit?" value={revBody} onChange={e => setRevBody(e.target.value)} style={{ minHeight: 80, marginBottom: 10 }} />
-                <button onClick={submitReview} disabled={revBusy} className="bp-btn bp-btn-primary"><Star size={15} /> {revBusy ? 'Sendet…' : 'Bewertung senden'}</button>
+
+                {/* Fotos (optional, max. 4) */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+                  {revPhotos.map((p, i) => (
+                    <span key={p.key} style={{ position: 'relative', width: 60, height: 60, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--bp-rule)' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.previewUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button
+                        onClick={() => setRevPhotos(prev => prev.filter((_, j) => j !== i))}
+                        aria-label="Foto entfernen"
+                        style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: 999, border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                  {revPhotos.length < MAX_REVIEW_PHOTOS && (
+                    <label className="bp-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: photoBusy ? 'wait' : 'pointer', fontSize: 12.5 }}>
+                      <Camera size={14} /> {photoBusy ? 'Lädt…' : 'Fotos hinzufügen'}
+                      <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={photoBusy} onChange={e => { addReviewPhotos(e.target.files); e.target.value = '' }} />
+                    </label>
+                  )}
+                </div>
+
+                <button onClick={submitReview} disabled={revBusy || photoBusy} className="bp-btn bp-btn-primary"><Star size={15} /> {revBusy ? 'Sendet…' : 'Bewertung senden'}</button>
               </div>
             )}
             {revDone && <p style={{ fontSize: 13.5, color: '#15803D', marginTop: 12, fontWeight: 600 }}>Danke für deine Bewertung!</p>}
@@ -369,6 +437,46 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
           )}
         </aside>
       </div>
+
+      {/* Ähnliche Anbieter */}
+      {similar.length > 0 && (
+        <div style={{ marginTop: 36 }}>
+          <h3 className="bp-font-heading" style={{ fontSize: '1.2rem', margin: '0 0 12px' }}>
+            Ähnliche Anbieter · {categoryLabel(vendor.category)}
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 14 }}>
+            {similar.map(s => (
+              <Link
+                key={s.id}
+                href={`/brautpaar/${eventId}/dienstleister/anbieter/${s.id}`}
+                className="bp-card"
+                style={{ padding: 0, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
+              >
+                <div style={{ aspectRatio: '16/10', background: 'linear-gradient(135deg, var(--bp-gold-pale), var(--bp-ivory-2))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {s.cover_url
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={s.cover_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <span style={{ color: 'var(--bp-gold-deep)', opacity: 0.5 }}><CategoryIcon category={vendor.category} size={36} /></span>}
+                </div>
+                <div style={{ padding: '10px 13px 13px' }}>
+                  <p style={{ fontWeight: 600, fontSize: 14, margin: 0, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {s.company_name || 'Anbieter'}
+                    {s.verified && <BadgeCheck size={14} style={{ color: '#15803D', flexShrink: 0 }} />}
+                  </p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--bp-ink-3)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--bp-gold)' }}>
+                      <Star size={12} fill={s.review_count > 0 ? 'currentColor' : 'none'} />
+                      <span style={{ color: 'var(--bp-ink-2)', fontWeight: 600 }}>{s.review_count > 0 ? s.review_avg.toFixed(1) : 'Neu'}</span>
+                      {s.review_count > 0 && <span style={{ color: 'var(--bp-ink-3)' }}>({s.review_count})</span>}
+                    </span>
+                    {s.city && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><MapPin size={11} /> {s.city}</span>}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Melden-Link */}
       <div style={{ marginTop: 32, paddingTop: 20, borderTop: '1px solid var(--bp-rule)', textAlign: 'right' }}>
