@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { FileText, Check, Clock, X, Download, ExternalLink, Euro, Layers } from 'lucide-react'
+import { FileText, Check, Clock, X, Download, ExternalLink, Euro, Layers, Tag } from 'lucide-react'
 import { categoryLabel } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 
@@ -28,6 +28,10 @@ const STATUS_META: Record<Offer['status'], { label: string; bg: string; color: s
 
 function euro(n: number | null) {
   return n != null ? `${Number(n).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : '—'
+}
+
+function dateLabel(iso: string | null) {
+  return iso ? new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null
 }
 
 // Angebotsvergleich: alle freigegebenen Angebote des Events, nach Gewerk
@@ -92,21 +96,20 @@ export default function AngeboteVergleich({ eventId }: { eventId: string }) {
   return (
     <div>
       {/* Summenleiste */}
-      <div className="bp-card" style={{ padding: '0.9rem 1.1rem', marginBottom: 16, display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 10, background: '#E6F4EA', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1E7E34' }}><Euro size={16} /></span>
-          <div>
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--bp-ink)' }}>{euro(acceptedSum)}</p>
-            <p className="bp-caption" style={{ margin: 0 }}>Zugesagt (angenommene Angebote)</p>
+      <div className="bp-card" style={{ padding: '0.9rem 1.1rem', marginBottom: 16, display: 'flex', gap: 0, flexWrap: 'wrap', alignItems: 'stretch' }}>
+        {[
+          { icon: <Euro size={16} />, bg: '#E6F4EA', color: '#1E7E34', value: euro(acceptedSum), label: 'Zugesagt (angenommen)' },
+          { icon: <Clock size={16} />, bg: '#FEF3E0', color: '#B26A00', value: String(openCount), label: `Offene${openCount === 1 ? 's' : ''} Angebot${openCount === 1 ? '' : 'e'}` },
+          { icon: <FileText size={16} />, bg: 'var(--bp-gold-pale,#F5F0E8)', color: 'var(--bp-gold-deep,#9C7F4F)', value: String(offers.length), label: `Angebot${offers.length === 1 ? '' : 'e'} insgesamt` },
+        ].map((s, i) => (
+          <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 22px 4px 0', marginRight: 22, borderRight: i < 2 ? '1px solid var(--bp-rule,#E8E8E6)' : 'none' }}>
+            <span style={{ width: 34, height: 34, borderRadius: 10, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, flexShrink: 0 }}>{s.icon}</span>
+            <div>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--bp-ink)', whiteSpace: 'nowrap' }}>{s.value}</p>
+              <p className="bp-caption" style={{ margin: 0, whiteSpace: 'nowrap' }}>{s.label}</p>
+            </div>
           </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 10, background: '#FEF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B26A00' }}><Clock size={16} /></span>
-          <div>
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--bp-ink)' }}>{openCount}</p>
-            <p className="bp-caption" style={{ margin: 0 }}>Offene Angebote</p>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Gruppen je Gewerk */}
@@ -120,22 +123,36 @@ export default function AngeboteVergleich({ eventId }: { eventId: string }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 12 }}>
               {list.map(o => {
                 const meta = STATUS_META[o.status]
+                // "Bester Preis" nur, wenn es im Gewerk echte Auswahl gibt (>=2 nicht
+                // abgelehnte Angebote mit Preis) — markiert das günstigste davon.
+                const priced = list.filter(x => x.status !== 'declined' && x.total != null)
+                const isBestPrice = priced.length >= 2 && o.status !== 'declined' && o.total != null
+                  && Number(o.total) === Math.min(...priced.map(x => Number(x.total)))
+                const date = o.status === 'accepted' ? dateLabel(o.accepted_at) : dateLabel(o.released_at)
                 return (
-                  <div key={o.id} className="bp-card" style={{ padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: 8, opacity: o.status === 'declined' ? 0.65 : 1 }}>
+                  <div key={o.id} className="bp-card" style={{ padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: 8, opacity: o.status === 'declined' ? 0.65 : 1, borderColor: isBestPrice ? 'var(--bp-rule-gold,#D4BC9A)' : undefined }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                       <p style={{ fontWeight: 600, fontSize: 14.5, margin: 0, minWidth: 0 }}>{o.vendor_name}</p>
                       <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '4px 9px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4, background: meta.bg, color: meta.color, flexShrink: 0 }}>
                         {meta.icon} {meta.label}
                       </span>
                     </div>
-                    <p className="bp-font-heading" style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, color: 'var(--bp-ink)' }}>{euro(o.total)}</p>
-                    <p className="bp-caption" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                      <p className="bp-font-heading" style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, color: 'var(--bp-ink)' }}>{euro(o.total)}</p>
+                      {isBestPrice && (
+                        <span style={{ fontSize: 10.5, fontWeight: 700, lineHeight: 1, padding: '4px 8px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--bp-gold-pale,#F5F0E8)', color: 'var(--bp-gold-deep,#9C7F4F)', border: '1px solid var(--bp-rule-gold,#D4BC9A)' }}>
+                          <Tag size={11} /> Bester Preis
+                        </span>
+                      )}
+                    </div>
+                    <p className="bp-caption" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <span>{o.line_item_count} Position{o.line_item_count === 1 ? '' : 'en'}</span>
                       {o.variant_count > 0 && (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           <Layers size={12} /> {o.variant_count} Variante{o.variant_count === 1 ? '' : 'n'}
                         </span>
                       )}
+                      {date && <span>{o.status === 'accepted' ? 'Angenommen' : 'Erhalten'} am {date}</span>}
                     </p>
                     <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4, flexWrap: 'wrap' }}>
                       <Link

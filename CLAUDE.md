@@ -482,9 +482,11 @@ supabase/migrations/
 # Merkliste"-Toggle im Filter-Panel; (3) "ab X €" auf der Karte (guenstigstes
 # marketplace_packages.price_from, Fallback price_range); (4) Badge "Antwortet
 # schnell" (fast_responder: >=3 beantwortete marketplace_requests, >=80% davon
-# binnen 48h via responded_at); (5) horizontale Kategorie-Chips ueber dem Grid
-# (schreiben direkt in den angewendeten Filter). Detailseite: Bewertungs-
-# Verteilungsbalken 5->1 (AnbieterDetailClient, client-seitig aus reviews).
+# binnen 48h via responded_at); (5) aktive Filter als entfernbare Tags neben dem
+# Ergebniszaehler (Kategorie/Merkliste/Umkreis, mp-filter-tag). Detailseite:
+# Bewertungs-Verteilungsbalken 5->1 (AnbieterDetailClient, client-seitig aus
+# reviews). Kategorie-Chips ueber dem Grid und die GewerkeStatus-Leiste wurden
+# bewusst wieder entfernt (UI-Entscheidung).
 
   0135_review_photos_offer_budget.sql  (1) marketplace_reviews.photo_r2_keys TEXT[] (Bewertungs-Fotos, R2);
                                        (2) budget_items.source_offer_id (Unique-Partial-Index) fuer die
@@ -496,8 +498,9 @@ supabase/migrations/
 # (2) Budget-Uebernahme: PATCH /api/marketplace/offers/[requestId] action:accept legt
 #     zusaetzlich einen budget_items-Posten an (planned=Angebotssumme, source_offer_id
 #     verhindert Duplikate; Fehler blockieren die Annahme nie).
-# (3) Gewerke-Abdeckung: GewerkeStatus-Leiste ueber den Dienstleister-Tabs
-#     (gebucht = accepted-Anfrage oder aktiver Vendor, angefragt = pending).
+# (3) Angebotsvergleich-Details: "Bester Preis"-Tag am guenstigsten nicht abgelehnten
+#     Angebot je Gewerk (ab 2 bepreisten), Erhalten-/Angenommen-Datum je Karte,
+#     Summenleiste mit Zugesagt/Offen/Gesamt.
 # (4) Meine Anfragen: declined bleibt sichtbar (Badge "Abgelehnt" + Link "Aehnliche
 #     Anbieter ansehen" -> ?category= Deep-Link, DienstleisterTabs/MarktplatzClient
 #     werten ihn aus); offene Anfragen zeigen "Antwortet meist innerhalb von ..."

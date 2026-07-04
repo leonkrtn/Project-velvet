@@ -9,7 +9,6 @@ import Link from 'next/link'
 import { Briefcase, SlidersHorizontal, Sparkles } from 'lucide-react'
 import VendorInviteSection from './VendorInviteSection'
 import DienstleisterTabs from './DienstleisterTabs'
-import GewerkeStatus from './GewerkeStatus'
 import MarktplatzClient from './entdecken/MarktplatzClient'
 import AktiveDienstleisterClient, { type ActiveVendor } from './AktiveDienstleisterClient'
 
@@ -94,30 +93,11 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
   }
   const active = <AktiveDienstleisterClient eventId={eventId} currentUserId={user.id} vendors={activeVendors} />
 
-  // ── Gewerke-Abdeckung: gebucht = angenommene Anfrage oder aktive Verknüpfung,
-  //    angefragt = offene Marktplatz-Anfrage. ─────────────────────────────────
-  const { data: mkRequests } = await admin
-    .from('marketplace_requests')
-    .select('status, dienstleister_profiles(category)')
-    .eq('event_id', eventId)
-    .in('status', ['pending', 'accepted'])
-  const bookedCategories = new Set<string>()
-  const requestedCategories = new Set<string>()
-  for (const r of (mkRequests ?? []) as any[]) {
-    const dp = Array.isArray(r.dienstleister_profiles) ? r.dienstleister_profiles[0] : r.dienstleister_profiles
-    if (!dp?.category) continue
-    if (r.status === 'accepted') bookedCategories.add(dp.category)
-    else requestedCategories.add(dp.category)
-  }
-  for (const v of activeVendors) if (v.category) bookedCategories.add(v.category)
-  const gewerke = <GewerkeStatus booked={Array.from(bookedCategories)} requested={Array.from(requestedCategories)} />
-
   // Brautpaar MIT Veranstalter: Entdecken + Aktive Dienstleister + Meine Anfragen.
   if (!isSolo) {
     return (
       <div className="bp-page">
         {header}
-        {gewerke}
         <DienstleisterTabs eventId={eventId} isSolo={false} discover={discover} active={active} />
       </div>
     )
@@ -216,7 +196,6 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
   return (
     <div className="bp-page">
       {header}
-      {gewerke}
       <DienstleisterTabs eventId={eventId} isSolo discover={discover} active={active} manage={manage} />
     </div>
   )

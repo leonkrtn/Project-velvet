@@ -110,7 +110,9 @@ export default function MeineAnfragen({ eventId }: { eventId: string }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontWeight: 600, fontSize: 14.5, margin: 0 }}>{name}</p>
-                <p className="bp-caption" style={{ margin: '2px 0 0' }}>{categoryLabel(r.dienstleister_profiles?.category)}</p>
+                <p className="bp-caption" style={{ margin: '2px 0 0' }}>
+                  {categoryLabel(r.dienstleister_profiles?.category)} · Gestellt am {new Date(r.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                </p>
               </div>
               <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '4px 10px', borderRadius: 100, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, background: badge.bg, color: badge.color }}>
                 {badge.icon} {badge.label}

@@ -230,14 +230,14 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
 
   const hasActiveFilter = applied.category !== '' || applied.sortKey !== DEFAULT_FILTER.sortKey || applied.radiusKm !== RADIUS_DEFAULT || applied.baseCity.trim() !== '' || applied.onlyFavorites
 
-  // Kategorie-Chips schreiben direkt in den angewendeten Filter (und persistieren ihn).
-  function setCategory(category: string) {
+  // Einzelnen Filter entfernen (Tag-× neben dem Ergebniszähler).
+  function clearFilter(patch: Partial<FilterState>) {
     setApplied(prev => {
-      const next = { ...prev, category }
+      const next = { ...prev, ...patch }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
       return next
     })
-    setPending(p => ({ ...p, category }))
+    setPending(p => ({ ...p, ...patch }))
   }
   const sortOpt = useMemo(() => SORT_OPTIONS.find(s => s.key === applied.sortKey) ?? SORT_OPTIONS[0], [applied.sortKey])
 
@@ -341,11 +341,8 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         .mp-gallery-dots { position:absolute; left:0; right:0; bottom:10px; display:flex; justify-content:center; gap:5px; z-index:2; }
         .mp-gallery-dot { width:6px; height:6px; border-radius:50%; border:none; background:rgba(255,255,255,0.55); cursor:pointer; padding:0; transition:background .15s ease, transform .15s ease; }
         .mp-gallery-dot[data-active="true"] { background:#fff; transform:scale(1.25); }
-        .mp-chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:8px; scrollbar-width:none; }
-        .mp-chips::-webkit-scrollbar { display:none; }
-        .mp-chip { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; padding:7px 14px; border-radius:999px; border:1px solid var(--bp-rule,#E8E8E6); background:#fff; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:600; color:var(--bp-ink-2,#5C534A); transition:border-color .15s ease, background .15s ease, color .15s ease; white-space:nowrap; }
-        .mp-chip:hover { border-color:var(--bp-rule-gold,#D4BC9A); }
-        .mp-chip[data-active="true"] { background:var(--bp-ink,#2C2825); border-color:var(--bp-ink,#2C2825); color:#fff; }
+        .mp-filter-tag { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; border:1px solid var(--bp-rule-gold,#D4BC9A); background:var(--bp-gold-pale,#F5F0E8); cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; color:var(--bp-ink,#2C2825); transition:background .15s ease; }
+        .mp-filter-tag:hover { background:var(--bp-gold-mist,#EDE4D2); }
         .mp-fav-btn { position:absolute; right:10px; bottom:10px; width:32px; height:32px; border-radius:50%; border:none; background:rgba(255,255,255,0.92); color:var(--bp-ink-3,#8C8076); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:3; box-shadow:0 1px 6px rgba(0,0,0,0.18); transition:transform .15s ease, color .15s ease; }
         .mp-fav-btn:hover { transform:scale(1.12); color:#DC2626; }
         .mp-fav-btn[data-active="true"] { color:#DC2626; }
@@ -417,31 +414,9 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         </button>
       </div>
 
-      {/* Kategorie-Chips — horizontale Schnellauswahl im Stil großer Marktplätze */}
-      <div className="mp-chips" role="tablist" aria-label="Kategorie">
-        <button
-          className="mp-chip"
-          data-active={applied.category === ''}
-          onClick={() => setCategory('')}
-        >
-          Alle
-        </button>
-        {SORTED_CATEGORIES.map(c => (
-          <button
-            key={c.key}
-            className="mp-chip"
-            data-active={applied.category === c.key}
-            onClick={() => setCategory(applied.category === c.key ? '' : c.key)}
-          >
-            <CategoryIcon category={c.key} size={13} />
-            {c.label}
-          </button>
-        ))}
-      </div>
-
       {/* Result counter — wird erst nach Abschluss von Laden + Geocoding final angezeigt,
           damit die Zahl nicht erst klein erscheint und dann hochspringt (Aufgabe 3). */}
-      <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3,#8C8076)', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <p style={{ fontSize: 12.5, color: 'var(--bp-ink-3,#8C8076)', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {loading || geocodingInProgress ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span className="mp-spinner" />
@@ -450,9 +425,24 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         ) : (
           <>
             <span>{filtered.length} {filtered.length === 1 ? 'Dienstleister' : 'Dienstleister'} gefunden</span>
+            {applied.category !== '' && (
+              <button className="mp-filter-tag" onClick={() => clearFilter({ category: '' })} title="Kategorie-Filter entfernen">
+                <CategoryIcon category={applied.category} size={12} /> {categoryLabel(applied.category)} <X size={12} />
+              </button>
+            )}
+            {applied.onlyFavorites && (
+              <button className="mp-filter-tag" onClick={() => clearFilter({ onlyFavorites: false })} title="Merkliste-Filter entfernen">
+                <Heart size={12} fill="currentColor" style={{ color: '#DC2626' }} /> Merkliste <X size={12} />
+              </button>
+            )}
+            {(applied.radiusKm !== RADIUS_DEFAULT || applied.baseCity.trim() !== '') && (
+              <button className="mp-filter-tag" onClick={() => clearFilter({ radiusKm: RADIUS_DEFAULT, baseCity: '' })} title="Umkreis zurücksetzen">
+                <MapPin size={12} /> {applied.baseCity.trim() || eventCity || 'Umkreis'}{applied.radiusKm < RADIUS_MAX ? ` · ${applied.radiusKm} km` : ''} <X size={12} />
+              </button>
+            )}
             {hasActiveFilter && (
               <button onClick={resetFilter} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, color: 'var(--bp-gold-deep,#9C7F4F)', padding: 0, fontWeight: 600 }}>
-                Zurücksetzen
+                Alle zurücksetzen
               </button>
             )}
           </>

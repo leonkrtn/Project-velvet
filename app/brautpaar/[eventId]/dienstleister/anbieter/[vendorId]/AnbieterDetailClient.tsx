@@ -449,7 +449,7 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
               <Link
                 key={s.id}
                 href={`/brautpaar/${eventId}/dienstleister/anbieter/${s.id}`}
-                className="bp-card"
+                className="bp-card mp-sim-card"
                 style={{ padding: 0, overflow: 'hidden', textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
               >
                 <div style={{ aspectRatio: '16/10', background: 'linear-gradient(135deg, var(--bp-gold-pale), var(--bp-ivory-2))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -488,7 +488,11 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
         </button>
       </div>
 
-      <style>{`@media (max-width: 880px){ .mp-detail-grid{ grid-template-columns:1fr !important; } .mp-detail-aside{ position:static !important; } }`}</style>
+      <style>{`
+        @media (max-width: 880px){ .mp-detail-grid{ grid-template-columns:1fr !important; } .mp-detail-aside{ position:static !important; } }
+        .mp-sim-card { transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease; }
+        .mp-sim-card:hover { box-shadow: 0 12px 28px rgba(0,0,0,0.10); transform: translateY(-2px); border-color: var(--bp-gold-mist,#e5dcc6); }
+      `}</style>
 
       {/* Report-Modal */}
       {showReport && (
