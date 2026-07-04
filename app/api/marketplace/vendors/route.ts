@@ -6,10 +6,13 @@ import { requestDownloadUrl } from '@/lib/files/worker-client'
 // Max. Anzahl Galerie-Bilder, die pro Vendor in der Listing-Karte mitgeliefert werden.
 const CARD_GALLERY_LIMIT = 5
 
+// Anfragen, die ein Vendor innerhalb dieser Frist beantwortet, zählen als "schnell".
+const FAST_RESPONSE_HOURS = 48
+// Mindestanzahl beantworteter Anfragen, bevor das Badge vergeben wird.
+const FAST_RESPONSE_MIN_COUNT = 3
+
 // GET — veröffentlichte Marktplatz-Vendors durchsuchen.
-// Query: ?category=&city=&q=&date=YYYY-MM-DD  oder  ?id=<vendorId> für Detail (inkl. aller Fotos)
-// date: Hochzeitstermin — liefert pro Vendor booked_on_date (true, wenn der Tag
-// in marketplace_availability als belegt/blockiert markiert ist).
+// Query: ?category=&city=&q=  oder  ?id=<vendorId> für Detail (inkl. aller Fotos)
 export async function GET(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -64,12 +67,12 @@ export async function GET(req: NextRequest) {
   // Galerie-Fotos je Vendor ermitteln (für bildgeführte Karten + Slider; max. CARD_GALLERY_LIMIT).
   const ids = (data ?? []).map(v => v.id)
   const photosByVendor: Record<string, string[]> = {}
-  // Bewertungs-Aggregat + Termin-Belegung je Vendor
+  // Bewertungs-, Preis- und Antwortzeit-Aggregate je Vendor
   const ratingByVendor: Record<string, { sum: number; count: number }> = {}
-  const bookedOnDate = new Set<string>()
-  const date = sp.get('date')
+  const priceFromByVendor: Record<string, number> = {}
+  const responsesByVendor: Record<string, { fast: number; total: number }> = {}
   if (ids.length) {
-    const [{ data: photos }, { data: reviewRows }, availRes] = await Promise.all([
+    const [{ data: photos }, { data: reviewRows }, { data: pkgRows }, { data: reqRows }] = await Promise.all([
       admin
         .from('marketplace_vendor_photos')
         .select('dienstleister_id, r2_key, sort_order')
@@ -80,13 +83,16 @@ export async function GET(req: NextRequest) {
         .select('dienstleister_id, rating')
         .eq('status', 'published')
         .in('dienstleister_id', ids),
-      date && /^\d{4}-\d{2}-\d{2}$/.test(date)
-        ? admin
-            .from('marketplace_availability')
-            .select('dienstleister_id')
-            .eq('day', date)
-            .in('dienstleister_id', ids)
-        : Promise.resolve({ data: null }),
+      admin
+        .from('marketplace_packages')
+        .select('dienstleister_id, price_from')
+        .not('price_from', 'is', null)
+        .in('dienstleister_id', ids),
+      admin
+        .from('marketplace_requests')
+        .select('dienstleister_id, created_at, responded_at')
+        .not('responded_at', 'is', null)
+        .in('dienstleister_id', ids),
     ])
     for (const p of photos ?? []) {
       const dlId = (p as { dienstleister_id: string }).dienstleister_id
@@ -98,7 +104,18 @@ export async function GET(req: NextRequest) {
       agg.sum += r.rating
       agg.count += 1
     }
-    for (const a of availRes.data ?? []) bookedOnDate.add(a.dienstleister_id)
+    for (const p of pkgRows ?? []) {
+      const price = Number(p.price_from)
+      if (!Number.isFinite(price)) continue
+      const current = priceFromByVendor[p.dienstleister_id]
+      if (current === undefined || price < current) priceFromByVendor[p.dienstleister_id] = price
+    }
+    for (const r of reqRows ?? []) {
+      const agg = responsesByVendor[r.dienstleister_id] ?? (responsesByVendor[r.dienstleister_id] = { fast: 0, total: 0 })
+      agg.total += 1
+      const hours = (new Date(r.responded_at as string).getTime() - new Date(r.created_at).getTime()) / 3600000
+      if (hours >= 0 && hours <= FAST_RESPONSE_HOURS) agg.fast += 1
+    }
   }
 
   const vendors = await Promise.all((data ?? []).map(async v => {
@@ -108,6 +125,7 @@ export async function GET(req: NextRequest) {
       .filter((u): u is string => !!u)
     const coverUrl = galleryUrls[0] ?? null
     const agg = ratingByVendor[v.id]
+    const resp = responsesByVendor[v.id]
     return {
       id: v.id,
       company_name: v.company_name,
@@ -125,7 +143,9 @@ export async function GET(req: NextRequest) {
       service_radius_km: v.service_radius_km ?? null,
       review_avg: agg ? Math.round((agg.sum / agg.count) * 10) / 10 : 0,
       review_count: agg?.count ?? 0,
-      booked_on_date: bookedOnDate.has(v.id),
+      price_from: priceFromByVendor[v.id] ?? null,
+      // "Antwortet schnell": mind. 3 beantwortete Anfragen, davon ≥80% innerhalb von 48h.
+      fast_responder: !!resp && resp.total >= FAST_RESPONSE_MIN_COUNT && resp.fast / resp.total >= 0.8,
     }
   }))
 

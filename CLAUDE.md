@@ -477,11 +477,14 @@ supabase/migrations/
 # ── Marktplatz-Listing-Upgrade (mit Migration 0134) ──────────────────────────
 # MarktplatzClient + GET /api/marketplace/vendors: (1) echte Bewertungs-Aggregate
 # (review_avg/review_count aus marketplace_reviews status=published) auf den Karten,
-# Default-Sortierung "Beste Bewertung"; (2) Termin-Verfuegbarkeit: Client laedt das
-# Event-Datum und ruft vendors mit ?date=YYYY-MM-DD — API liefert booked_on_date
-# (marketplace_availability), Karte zeigt Badge "Am Termin belegt", Filter-Panel hat
-# Toggle zum Ausblenden; (3) Merkliste: Herz-Button auf der Karte (optimistisches
-# Toggle via POST/DELETE /api/marketplace/favorites) + "Nur Merkliste"-Toggle.
+# Default-Sortierung "Beste Bewertung"; (2) Merkliste: Herz-Button auf der Karte
+# (optimistisches Toggle via POST/DELETE /api/marketplace/favorites) + "Nur
+# Merkliste"-Toggle im Filter-Panel; (3) "ab X €" auf der Karte (guenstigstes
+# marketplace_packages.price_from, Fallback price_range); (4) Badge "Antwortet
+# schnell" (fast_responder: >=3 beantwortete marketplace_requests, >=80% davon
+# binnen 48h via responded_at); (5) horizontale Kategorie-Chips ueber dem Grid
+# (schreiben direkt in den angewendeten Filter). Detailseite: Bewertungs-
+# Verteilungsbalken 5->1 (AnbieterDetailClient, client-seitig aus reviews).
 
 # ── Standalone-Angebot -> Event (event-offers action:accept) ──────────────────
 # Eigenständige Angebote (vendor_offers.event_id IS NULL, erstellt in OfferEditorFull,

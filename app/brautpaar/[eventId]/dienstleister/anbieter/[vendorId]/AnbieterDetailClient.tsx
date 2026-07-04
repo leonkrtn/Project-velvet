@@ -234,6 +234,33 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
           <div style={{ marginTop: 26 }}>
             <h3 className="bp-font-heading" style={{ fontSize: '1.2rem', margin: '0 0 12px' }}>Bewertungen</h3>
             {reviews.length === 0 && <p style={{ fontSize: 13.5, color: 'var(--bp-ink-3)', margin: 0 }}>Noch keine Bewertungen.</p>}
+
+            {/* Verteilung 5→1 Sterne */}
+            {reviewCount > 0 && (
+              <div className="bp-card" style={{ padding: 16, marginBottom: 12, display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ textAlign: 'center', minWidth: 90 }}>
+                  <div className="bp-font-heading" style={{ fontSize: '2.2rem', fontWeight: 600, lineHeight: 1, color: 'var(--bp-ink)' }}>{reviewAvg.toFixed(1)}</div>
+                  <Stars value={reviewAvg} size={13} />
+                  <div style={{ fontSize: 11.5, color: 'var(--bp-ink-3)', marginTop: 4 }}>{reviewCount} Bewertung{reviewCount === 1 ? '' : 'en'}</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {[5, 4, 3, 2, 1].map(stars => {
+                    const count = reviews.filter(r => r.rating === stars).length
+                    const pct = Math.round((count / reviewCount) * 100)
+                    return (
+                      <div key={stars} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                        <span style={{ width: 12, textAlign: 'right', color: 'var(--bp-ink-2)', fontWeight: 600 }}>{stars}</span>
+                        <Star size={11} fill="currentColor" style={{ color: 'var(--bp-gold)', flexShrink: 0 }} />
+                        <div style={{ flex: 1, height: 7, borderRadius: 999, background: 'var(--bp-rule,#E8E8E6)', overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, background: 'var(--bp-gold,#B89968)' }} />
+                        </div>
+                        <span style={{ width: 24, color: 'var(--bp-ink-3)', fontSize: 11.5 }}>{count}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {reviews.map(r => (
                 <div key={r.id} className="bp-card" style={{ padding: 16 }}>

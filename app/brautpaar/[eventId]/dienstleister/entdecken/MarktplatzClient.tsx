@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Search, Check, Star, BadgeCheck, SlidersHorizontal, X, MapPin, Info, Heart, CalendarX } from 'lucide-react'
+import { Search, Check, Star, BadgeCheck, SlidersHorizontal, X, MapPin, Info, Heart, Zap } from 'lucide-react'
 import { MARKETPLACE_CATEGORIES, categoryLabel } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 import VendorCardGallery from '@/components/marketplace/VendorCardGallery'
@@ -26,7 +26,8 @@ interface VendorCard {
   service_radius_km: number | null
   review_avg: number
   review_count: number
-  booked_on_date: boolean
+  price_from: number | null
+  fast_responder: boolean
 }
 interface Req { id: string; dienstleister_id: string; status: string }
 
@@ -41,10 +42,9 @@ interface FilterState {
   sortKey: string
   radiusKm: number
   baseCity: string
-  onlyAvailable: boolean
   onlyFavorites: boolean
 }
-const DEFAULT_FILTER: FilterState = { category: '', sortKey: 'rating_desc', radiusKm: RADIUS_DEFAULT, baseCity: '', onlyAvailable: false, onlyFavorites: false }
+const DEFAULT_FILTER: FilterState = { category: '', sortKey: 'rating_desc', radiusKm: RADIUS_DEFAULT, baseCity: '', onlyFavorites: false }
 const STORAGE_KEY = 'mk_filter'
 
 const SORT_OPTIONS: { key: string; label: string; field: SortField; dir: 'asc' | 'desc' }[] = [
@@ -90,8 +90,6 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   const [requests, setRequests] = useState<Req[]>([])
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [eventCity, setEventCity] = useState<string | null>(null)
-  const [eventDate, setEventDate] = useState<string | null>(null)
-  const [eventLoaded, setEventLoaded] = useState(false)
   const [baseCoords, setBaseCoords] = useState<Coords | null>(null)
   const [vendorCoords, setVendorCoords] = useState<Map<string, Coords | null>>(new Map())
 
@@ -136,15 +134,10 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
   }, [eventId])
 
   const loadEvent = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/events/${eventId}`)
-      if (res.ok) {
-        const d = await res.json()
-        setEventCity(d.location_city ?? null)
-        setEventDate(d.date ?? null)
-      }
-    } finally {
-      setEventLoaded(true)
+    const res = await fetch(`/api/events/${eventId}`)
+    if (res.ok) {
+      const d = await res.json()
+      setEventCity(d.location_city ?? null)
     }
   }, [eventId])
 
@@ -156,19 +149,16 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     }
   }, [eventId])
 
-  // Vendors erst laden, wenn das Event-Datum bekannt ist — nur so kann die API
-  // die Termin-Belegung (booked_on_date) mitliefern.
   const load = useCallback(async () => {
     setLoading(true)
-    const qs = eventDate ? `?date=${encodeURIComponent(eventDate)}` : ''
-    const res = await fetch(`/api/marketplace/vendors${qs}`)
+    const res = await fetch('/api/marketplace/vendors')
     const json = await res.json()
     setVendors(json.vendors ?? [])
     setLoading(false)
-  }, [eventDate])
+  }, [])
 
   useEffect(() => { loadRequests(); loadEvent(); loadFavorites() }, [loadRequests, loadEvent, loadFavorites])
-  useEffect(() => { if (eventLoaded) load() }, [eventLoaded, load])
+  useEffect(() => { load() }, [load])
 
   async function toggleFavorite(vendorId: string) {
     const isFav = favorites.has(vendorId)
@@ -228,7 +218,17 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     return requests.find(r => r.dienstleister_id === vendorId && (r.status === 'pending' || r.status === 'accepted'))
   }
 
-  const hasActiveFilter = applied.category !== '' || applied.sortKey !== DEFAULT_FILTER.sortKey || applied.radiusKm !== RADIUS_DEFAULT || applied.baseCity.trim() !== '' || applied.onlyAvailable || applied.onlyFavorites
+  const hasActiveFilter = applied.category !== '' || applied.sortKey !== DEFAULT_FILTER.sortKey || applied.radiusKm !== RADIUS_DEFAULT || applied.baseCity.trim() !== '' || applied.onlyFavorites
+
+  // Kategorie-Chips schreiben direkt in den angewendeten Filter (und persistieren ihn).
+  function setCategory(category: string) {
+    setApplied(prev => {
+      const next = { ...prev, category }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+    setPending(p => ({ ...p, category }))
+  }
   const sortOpt = useMemo(() => SORT_OPTIONS.find(s => s.key === applied.sortKey) ?? SORT_OPTIONS[0], [applied.sortKey])
 
   const filtered = useMemo(() => {
@@ -248,10 +248,6 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
 
     if (applied.onlyFavorites) {
       list = list.filter(v => favorites.has(v.id))
-    }
-
-    if (applied.onlyAvailable && eventDate) {
-      list = list.filter(v => !v.booked_on_date)
     }
 
     // Radius filter — only when we have coordinates for the (ggf. überschriebenen) Ausgangsort
@@ -315,7 +311,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
     }
 
     return sorted
-  }, [vendors, q, applied, baseCoords, vendorCoords, sortOpt, favorites, eventDate])
+  }, [vendors, q, applied, baseCoords, vendorCoords, sortOpt, favorites])
 
   return (
     <div>
@@ -333,6 +329,11 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         .mp-gallery-dots { position:absolute; left:0; right:0; bottom:10px; display:flex; justify-content:center; gap:5px; z-index:2; }
         .mp-gallery-dot { width:6px; height:6px; border-radius:50%; border:none; background:rgba(255,255,255,0.55); cursor:pointer; padding:0; transition:background .15s ease, transform .15s ease; }
         .mp-gallery-dot[data-active="true"] { background:#fff; transform:scale(1.25); }
+        .mp-chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; margin-bottom:8px; scrollbar-width:none; }
+        .mp-chips::-webkit-scrollbar { display:none; }
+        .mp-chip { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; padding:7px 14px; border-radius:999px; border:1px solid var(--bp-rule,#E8E8E6); background:#fff; cursor:pointer; font-family:inherit; font-size:12.5px; font-weight:600; color:var(--bp-ink-2,#5C534A); transition:border-color .15s ease, background .15s ease, color .15s ease; white-space:nowrap; }
+        .mp-chip:hover { border-color:var(--bp-rule-gold,#D4BC9A); }
+        .mp-chip[data-active="true"] { background:var(--bp-ink,#2C2825); border-color:var(--bp-ink,#2C2825); color:#fff; }
         .mp-fav-btn { position:absolute; right:10px; bottom:10px; width:32px; height:32px; border-radius:50%; border:none; background:rgba(255,255,255,0.92); color:var(--bp-ink-3,#8C8076); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:3; box-shadow:0 1px 6px rgba(0,0,0,0.18); transition:transform .15s ease, color .15s ease; }
         .mp-fav-btn:hover { transform:scale(1.12); color:#DC2626; }
         .mp-fav-btn[data-active="true"] { color:#DC2626; }
@@ -402,6 +403,28 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
           <SlidersHorizontal size={15} />
           Filter
         </button>
+      </div>
+
+      {/* Kategorie-Chips — horizontale Schnellauswahl im Stil großer Marktplätze */}
+      <div className="mp-chips" role="tablist" aria-label="Kategorie">
+        <button
+          className="mp-chip"
+          data-active={applied.category === ''}
+          onClick={() => setCategory('')}
+        >
+          Alle
+        </button>
+        {SORTED_CATEGORIES.map(c => (
+          <button
+            key={c.key}
+            className="mp-chip"
+            data-active={applied.category === c.key}
+            onClick={() => setCategory(applied.category === c.key ? '' : c.key)}
+          >
+            <CategoryIcon category={c.key} size={13} />
+            {c.label}
+          </button>
+        ))}
       </div>
 
       {/* Result counter — wird erst nach Abschluss von Laden + Geocoding final angezeigt,
@@ -480,9 +503,9 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
                   >
                     <Heart size={16} fill={isFav ? 'currentColor' : 'none'} />
                   </button>
-                  {eventDate && v.booked_on_date && (
-                    <span style={{ position: 'absolute', left: 12, top: 12, fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '5px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4, background: '#B91C1C', color: '#fff' }}>
-                      <CalendarX size={12} /> Am Termin belegt
+                  {v.fast_responder && !req && (
+                    <span style={{ position: 'absolute', left: 12, top: 12, fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '5px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.94)', color: 'var(--bp-ink,#2C2825)', boxShadow: '0 1px 6px rgba(0,0,0,0.12)' }}>
+                      <Zap size={12} style={{ color: 'var(--bp-gold-deep,#9C7F4F)' }} /> Antwortet schnell
                     </span>
                   )}
                 </div>
@@ -501,9 +524,11 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
                     </span>
                   </div>
                   {v.description && <p style={{ fontSize: 12.5, color: 'var(--bp-ink-2,#666)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{v.description}</p>}
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 'auto', paddingTop: 6 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 'auto', paddingTop: 6 }}>
                     {resolvedCity && <span className="bp-badge bp-badge-neutral" style={{ gap: 4 }}><MapPin size={11} /> {resolvedCity}</span>}
-                    {v.price_range && <span className="bp-badge bp-badge-neutral">{v.price_range}</span>}
+                    {v.price_from != null
+                      ? <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700, color: 'var(--bp-ink,#2C2825)', whiteSpace: 'nowrap' }}>ab {v.price_from.toLocaleString('de-DE')} €</span>
+                      : v.price_range && <span className="bp-badge bp-badge-neutral" style={{ marginLeft: 'auto' }}>{v.price_range}</span>}
                   </div>
                 </div>
               </Link>
@@ -613,19 +638,6 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
             </span>
             <span className="mp-toggle-track"><span className="mp-toggle-knob" /></span>
           </button>
-          {eventDate && (
-            <button
-              className="mp-toggle"
-              data-active={pending.onlyAvailable}
-              onClick={() => setPending(p => ({ ...p, onlyAvailable: !p.onlyAvailable }))}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                <CalendarX size={14} style={{ color: 'var(--bp-ink-3,#8C8076)' }} />
-                Am Hochzeitstermin belegte ausblenden
-              </span>
-              <span className="mp-toggle-track"><span className="mp-toggle-knob" /></span>
-            </button>
-          )}
 
           <div className="mp-divider" />
 
