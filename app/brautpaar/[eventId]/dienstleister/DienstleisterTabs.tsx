@@ -1,14 +1,17 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Store, SlidersHorizontal, Inbox, Handshake } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Store, SlidersHorizontal, Inbox, Handshake, FileText } from 'lucide-react'
 import MeineAnfragen from './MeineAnfragen'
+import AngeboteVergleich from './AngeboteVergleich'
 
-type Tab = 'discover' | 'active' | 'requests' | 'manage'
+type Tab = 'discover' | 'active' | 'offers' | 'requests' | 'manage'
 
 // Tab-Umschalter im Dienstleister-Bereich:
 //   "Entdecken"           = Marktplatz (alle Brautpaare)
 //   "Aktive Dienstleister"= aktuelle Zusammenarbeit + Chat (alle Brautpaare)
+//   "Angebote"            = Angebotsvergleich über alle Anfragen (alle Brautpaare)
 //   "Meine Anfragen"      = gestellte Anfragen + Zurückziehen/Beenden (alle Brautpaare)
 //   "Meine Dienstleister" = eigene Vendors + Datenfreigaben (nur Solo-Brautpaare)
 export default function DienstleisterTabs({
@@ -25,6 +28,14 @@ export default function DienstleisterTabs({
   manage?: React.ReactNode
 }) {
   const [tab, setTab] = useState<Tab>('discover')
+
+  // Deep-Link ?category= (z.B. "Ähnliche Anbieter ansehen" nach Absage):
+  // immer auf den Entdecken-Tab schalten, der Marktplatz übernimmt den Filter.
+  const searchParams = useSearchParams()
+  const categoryParam = searchParams.get('category')
+  useEffect(() => {
+    if (categoryParam) setTab('discover')
+  }, [categoryParam])
 
   const tabBtn = (on: boolean): React.CSSProperties => ({
     display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -43,6 +54,9 @@ export default function DienstleisterTabs({
         <button style={tabBtn(tab === 'active')} onClick={() => setTab('active')}>
           <Handshake size={15} /> Aktive Dienstleister
         </button>
+        <button style={tabBtn(tab === 'offers')} onClick={() => setTab('offers')}>
+          <FileText size={15} /> Angebote
+        </button>
         {isSolo && (
           <button style={tabBtn(tab === 'manage')} onClick={() => setTab('manage')}>
             <SlidersHorizontal size={15} /> Meine Dienstleister
@@ -55,6 +69,9 @@ export default function DienstleisterTabs({
       </div>
       <div style={{ display: tab === 'discover' ? 'block' : 'none' }}>{discover}</div>
       <div style={{ display: tab === 'active' ? 'block' : 'none' }}>{active}</div>
+      <div style={{ display: tab === 'offers' ? 'block' : 'none' }}>
+        {tab === 'offers' && <AngeboteVergleich eventId={eventId} />}
+      </div>
       <div style={{ display: tab === 'requests' ? 'block' : 'none' }}>
         {tab === 'requests' && <MeineAnfragen eventId={eventId} />}
       </div>

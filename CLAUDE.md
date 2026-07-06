@@ -471,6 +471,46 @@ supabase/migrations/
                                        Anfragen koennen jederzeit ohne Angebot angenommen werden (VendorOfferEditor:
                                        "Ohne Angebot annehmen"). Der separate Modus war damit redundant.
 
+  0134_marketplace_favorites.sql       Merkliste: marketplace_favorites (event_id, dienstleister_id, created_by,
+                                       UNIQUE je Event+Vendor). RLS: SELECT via is_event_member; Writes nur ueber
+                                       Service-Role-API /api/marketplace/favorites.
+# ── Marktplatz-Listing-Upgrade (mit Migration 0134) ──────────────────────────
+# MarktplatzClient + GET /api/marketplace/vendors: (1) echte Bewertungs-Aggregate
+# (review_avg/review_count aus marketplace_reviews status=published) auf den Karten,
+# Default-Sortierung "Beste Bewertung"; (2) Merkliste: Herz-Button auf der Karte
+# (optimistisches Toggle via POST/DELETE /api/marketplace/favorites) + "Nur
+# Merkliste"-Toggle im Filter-Panel; (3) "ab X €" auf der Karte (guenstigstes
+# marketplace_packages.price_from, Fallback price_range); (4) Badge "Antwortet
+# schnell" (fast_responder: >=3 beantwortete marketplace_requests, >=80% davon
+# binnen 48h via responded_at); (5) aktive Filter als entfernbare Tags neben dem
+# Ergebniszaehler (Kategorie/Merkliste/Umkreis, mp-filter-tag). Detailseite:
+# Bewertungs-Verteilungsbalken 5->1 (AnbieterDetailClient, client-seitig aus
+# reviews). Kategorie-Chips ueber dem Grid und die GewerkeStatus-Leiste wurden
+# bewusst wieder entfernt (UI-Entscheidung).
+
+  0135_review_photos_offer_budget.sql  (1) marketplace_reviews.photo_r2_keys TEXT[] (Bewertungs-Fotos, R2);
+                                       (2) budget_items.source_offer_id (Unique-Partial-Index) fuer die
+                                       automatische Budget-Uebernahme angenommener Angebote.
+# ── Brautpaar-Marktplatz-Ausbau (mit Migration 0135) ─────────────────────────
+# (1) Angebotsvergleich: neuer Tab "Angebote" (DienstleisterTabs -> AngeboteVergleich)
+#     via GET /api/marketplace/offers?eventId= (alle Angebote ab released, je Gewerk
+#     gruppiert, Summenleiste "Zugesagt"/"Offen", PDF-Link, Varianten-Anzahl).
+# (2) Budget-Uebernahme: PATCH /api/marketplace/offers/[requestId] action:accept legt
+#     zusaetzlich einen budget_items-Posten an (planned=Angebotssumme, source_offer_id
+#     verhindert Duplikate; Fehler blockieren die Annahme nie).
+# (3) Angebotsvergleich-Details: "Bester Preis"-Tag am guenstigsten nicht abgelehnten
+#     Angebot je Gewerk (ab 2 bepreisten), Erhalten-/Angenommen-Datum je Karte,
+#     Summenleiste mit Zugesagt/Offen/Gesamt.
+# (4) Meine Anfragen: declined bleibt sichtbar (Badge "Abgelehnt" + Link "Aehnliche
+#     Anbieter ansehen" -> ?category= Deep-Link, DienstleisterTabs/MarktplatzClient
+#     werten ihn aus); offene Anfragen zeigen "Antwortet meist innerhalb von ..."
+#     (typical_response_hours in GET /api/marketplace/requests).
+# (5) Aehnliche Anbieter: Detailseite laedt Top-3 derselben Kategorie (nach Rating).
+# (6) Suche im Listing matcht auch Ort/service_cities.
+# (7) Review-Fotos: Upload via POST /api/marketplace/reviews/photo-upload (presigned
+#     PUT, nur nach Zusammenarbeit, max. 4, JPG/PNG/WebP), Keys in photo_r2_keys;
+#     Anzeige mit Lightbox + Badge "Verifizierte Zusammenarbeit" je Review.
+
 # ── Standalone-Angebot -> Event (event-offers action:accept) ──────────────────
 # Eigenständige Angebote (vendor_offers.event_id IS NULL, erstellt in OfferEditorFull,
 # Kundeninfo in standard_info.client_*) koennen vom Dienstleister angenommen werden:

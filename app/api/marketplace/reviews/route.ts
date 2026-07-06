@@ -21,8 +21,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ reviews, count, avg })
 }
 
+const MAX_REVIEW_PHOTOS = 4
+
 // POST — Bewertung abgeben (nur nach nachgewiesener Zusammenarbeit).
-// Body: { vendorId, rating, title?, body?, eventId? }
+// Body: { vendorId, rating, title?, body?, eventId?, photoKeys?: string[] }
+// photoKeys: zuvor via /api/marketplace/reviews/photo-upload hochgeladene R2-Keys;
+// nur eigene Keys (Prefix review-photos/{vendorId}/{userId}/) werden übernommen.
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -55,6 +59,10 @@ export async function POST(req: NextRequest) {
   const { data: prof } = await admin.from('profiles').select('name').eq('id', user.id).maybeSingle()
   const authorName = prof?.name?.trim() || 'Brautpaar'
 
+  const photoKeys = (Array.isArray(body.photoKeys) ? body.photoKeys : [])
+    .filter((k): k is string => typeof k === 'string' && k.startsWith(`review-photos/${vendorId}/${user.id}/`))
+    .slice(0, MAX_REVIEW_PHOTOS)
+
   const { error } = await admin.from('marketplace_reviews').upsert({
     dienstleister_id: vendorId,
     event_id: (body.eventId as string) || eventIds[0],
@@ -63,6 +71,7 @@ export async function POST(req: NextRequest) {
     rating,
     title: (body.title as string)?.trim() || '',
     body: (body.body as string)?.trim() || '',
+    photo_r2_keys: photoKeys,
     status: 'published',
   }, { onConflict: 'dienstleister_id,author_user_id' })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

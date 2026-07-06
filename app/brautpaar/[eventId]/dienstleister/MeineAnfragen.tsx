@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Clock, Check, MessageSquare, X, Euro } from 'lucide-react'
+import { Clock, Check, MessageSquare, X, Euro, Search, Timer } from 'lucide-react'
 import { categoryLabel } from '@/lib/marketplace/types'
 
 interface Req {
@@ -13,7 +13,14 @@ interface Req {
   status: 'pending' | 'accepted' | 'declined' | 'cancelled'
   conversation_id: string | null
   created_at: string
+  typical_response_hours?: number | null
   dienstleister_profiles?: { name: string; company_name: string | null; category: string } | null
+}
+
+// "meist innerhalb von …" — grob gerundete, menschenlesbare Antwortzeit.
+function typicalResponseLabel(hours: number): string {
+  if (hours <= 24) return `~${Math.max(1, hours)} Std.`
+  return `~${Math.round(hours / 24)} Tag${Math.round(hours / 24) === 1 ? '' : 'en'}`
 }
 
 const END_REASONS = [
@@ -34,7 +41,8 @@ export default function MeineAnfragen({ eventId }: { eventId: string }) {
     setLoading(true)
     const res = await fetch(`/api/marketplace/requests?eventId=${eventId}`)
     const json = await res.json()
-    setRequests((json.requests ?? []).filter((r: Req) => r.status === 'pending' || r.status === 'accepted'))
+    // declined bleibt sichtbar (mit Alternativen-Hinweis); nur cancelled wird ausgeblendet.
+    setRequests((json.requests ?? []).filter((r: Req) => r.status !== 'cancelled'))
     setLoading(false)
   }, [eventId])
   useEffect(() => { load() }, [load])
@@ -91,17 +99,31 @@ export default function MeineAnfragen({ eventId }: { eventId: string }) {
       {requests.map(r => {
         const name = r.dienstleister_profiles?.company_name || r.dienstleister_profiles?.name || 'Dienstleister'
         const pending = r.status === 'pending'
+        const declined = r.status === 'declined'
+        const badge = declined
+          ? { bg: '#FDECEA', color: '#C0392B', icon: <X size={12} />, label: 'Abgelehnt' }
+          : pending
+            ? { bg: '#FEF3E0', color: '#B26A00', icon: <Clock size={12} />, label: 'Offen' }
+            : { bg: '#E6F4EA', color: '#1E7E34', icon: <Check size={12} />, label: 'Angenommen' }
         return (
-          <div key={r.id} className="bp-card" style={{ padding: '1rem 1.1rem' }}>
+          <div key={r.id} className="bp-card" style={{ padding: '1rem 1.1rem', opacity: declined ? 0.85 : 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontWeight: 600, fontSize: 14.5, margin: 0 }}>{name}</p>
-                <p className="bp-caption" style={{ margin: '2px 0 0' }}>{categoryLabel(r.dienstleister_profiles?.category)}</p>
+                <p className="bp-caption" style={{ margin: '2px 0 0' }}>
+                  {categoryLabel(r.dienstleister_profiles?.category)} · Gestellt am {new Date(r.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                </p>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '4px 10px', borderRadius: 100, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, background: pending ? '#FEF3E0' : '#E6F4EA', color: pending ? '#B26A00' : '#1E7E34' }}>
-                {pending ? <Clock size={12} /> : <Check size={12} />} {pending ? 'Offen' : 'Angenommen'}
+              <span style={{ fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '4px 10px', borderRadius: 100, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, background: badge.bg, color: badge.color }}>
+                {badge.icon} {badge.label}
               </span>
             </div>
+
+            {pending && r.typical_response_hours != null && (
+              <p style={{ display: 'flex', alignItems: 'center', gap: 5, margin: '8px 0 0', fontSize: 12.5, color: 'var(--bp-ink-3,#8C8076)' }}>
+                <Timer size={13} /> Antwortet meist innerhalb von {typicalResponseLabel(r.typical_response_hours)}
+              </p>
+            )}
 
             {(r.message || r.budget != null) && (
               <div style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--bp-ink-2, #555)' }}>
@@ -111,7 +133,15 @@ export default function MeineAnfragen({ eventId }: { eventId: string }) {
             )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-              {pending ? (
+              {declined ? (
+                <Link
+                  href={`/brautpaar/${eventId}/dienstleister?category=${encodeURIComponent(r.dienstleister_profiles?.category ?? '')}`}
+                  className="bp-btn"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
+                >
+                  <Search size={14} /> Ähnliche Anbieter ansehen
+                </Link>
+              ) : pending ? (
                 <button onClick={() => withdraw(r)} disabled={busyId === r.id} className="bp-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <X size={14} /> Zurückziehen
                 </button>

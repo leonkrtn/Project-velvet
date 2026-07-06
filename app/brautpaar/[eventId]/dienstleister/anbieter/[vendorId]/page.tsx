@@ -27,7 +27,7 @@ export default async function AnbieterDetailPage({ params }: { params: Promise<{
     admin.from('marketplace_vendor_photos').select('id, r2_key, sort_order').eq('dienstleister_id', vendorId).order('sort_order'),
     admin.from('marketplace_packages').select('id, title, description, price_from, price_unit').eq('dienstleister_id', vendorId).order('sort_order'),
     admin.from('marketplace_faqs').select('id, question, answer').eq('dienstleister_id', vendorId).order('sort_order'),
-    admin.from('marketplace_reviews').select('id, author_name, rating, title, body, created_at').eq('dienstleister_id', vendorId).eq('status', 'published').order('created_at', { ascending: false }),
+    admin.from('marketplace_reviews').select('id, author_name, rating, title, body, created_at, photo_r2_keys').eq('dienstleister_id', vendorId).eq('status', 'published').order('created_at', { ascending: false }),
     admin.from('marketplace_availability').select('day, status').eq('dienstleister_id', vendorId).gte('day', new Date().toISOString().slice(0, 10)).order('day'),
     admin.from('marketplace_requests').select('id, status, conversation_id').eq('event_id', eventId).eq('dienstleister_id', vendorId).in('status', ['pending', 'accepted']).order('created_at', { ascending: false }).maybeSingle(),
   ])
@@ -47,6 +47,60 @@ export default async function AnbieterDetailPage({ params }: { params: Promise<{
   const reviews = reviewRows ?? []
   const reviewCount = reviews.length
   const reviewAvg = reviewCount ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviewCount) * 10) / 10 : 0
+
+  // Bewertungs-Fotos auflösen (presigned GET, 1h); R2-Keys bleiben serverseitig.
+  const reviewsWithPhotos = await Promise.all(reviews.map(async r => ({
+    id: r.id, author_name: r.author_name, rating: r.rating, title: r.title, body: r.body, created_at: r.created_at,
+    photo_urls: (await Promise.all(((r.photo_r2_keys as string[]) ?? []).map(k => requestDownloadUrl(k).catch(() => null))))
+      .filter((u): u is string => !!u),
+  })))
+
+  // ── Ähnliche Anbieter: gleiche Kategorie, beste Bewertung zuerst ────────────
+  const { data: similarRows } = await admin
+    .from('dienstleister_profiles')
+    .select('id, company_name, category, city, company_city, logo_r2_key, verified')
+    .eq('is_marketplace', true).eq('published', true).eq('moderation_status', 'approved')
+    .eq('category', v.category)
+    .neq('id', vendorId)
+    .limit(8)
+  const similarIds = (similarRows ?? []).map(s => s.id)
+  const similarRatings: Record<string, { sum: number; count: number }> = {}
+  const similarCoverKeys: Record<string, string> = {}
+  if (similarIds.length) {
+    const [{ data: simReviews }, { data: simPhotos }] = await Promise.all([
+      admin.from('marketplace_reviews').select('dienstleister_id, rating').eq('status', 'published').in('dienstleister_id', similarIds),
+      admin.from('marketplace_vendor_photos').select('dienstleister_id, r2_key, sort_order').in('dienstleister_id', similarIds).order('sort_order'),
+    ])
+    for (const r of simReviews ?? []) {
+      const a = similarRatings[r.dienstleister_id] ?? (similarRatings[r.dienstleister_id] = { sum: 0, count: 0 })
+      a.sum += r.rating; a.count += 1
+    }
+    for (const p of simPhotos ?? []) {
+      if (!similarCoverKeys[p.dienstleister_id]) similarCoverKeys[p.dienstleister_id] = p.r2_key
+    }
+  }
+  const similar = (await Promise.all((similarRows ?? [])
+    .map(s => {
+      const agg = similarRatings[s.id]
+      return {
+        row: s,
+        review_avg: agg ? Math.round((agg.sum / agg.count) * 10) / 10 : 0,
+        review_count: agg?.count ?? 0,
+      }
+    })
+    .sort((a, b) => (b.review_avg - a.review_avg) || (b.review_count - a.review_count))
+    .slice(0, 3)
+    .map(async ({ row, review_avg, review_count }) => ({
+      id: row.id,
+      company_name: row.company_name,
+      city: row.company_city ?? row.city ?? null,
+      verified: !!row.verified,
+      review_avg,
+      review_count,
+      cover_url: similarCoverKeys[row.id]
+        ? await requestDownloadUrl(similarCoverKeys[row.id]).catch(() => null)
+        : (row.logo_r2_key ? await requestDownloadUrl(row.logo_r2_key).catch(() => null) : null),
+    }))))
 
   return (
     <AnbieterDetailClient
@@ -69,7 +123,8 @@ export default async function AnbieterDetailPage({ params }: { params: Promise<{
       }}
       packages={packages ?? []}
       faqs={faqs ?? []}
-      reviews={reviews}
+      reviews={reviewsWithPhotos}
+      similar={similar}
       reviewAvg={reviewAvg}
       reviewCount={reviewCount}
       availability={(availability ?? []).map(a => a.day)}

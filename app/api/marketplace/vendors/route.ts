@@ -6,6 +6,11 @@ import { requestDownloadUrl } from '@/lib/files/worker-client'
 // Max. Anzahl Galerie-Bilder, die pro Vendor in der Listing-Karte mitgeliefert werden.
 const CARD_GALLERY_LIMIT = 5
 
+// Anfragen, die ein Vendor innerhalb dieser Frist beantwortet, zählen als "schnell".
+const FAST_RESPONSE_HOURS = 48
+// Mindestanzahl beantworteter Anfragen, bevor das Badge vergeben wird.
+const FAST_RESPONSE_MIN_COUNT = 3
+
 // GET — veröffentlichte Marktplatz-Vendors durchsuchen.
 // Query: ?category=&city=&q=  oder  ?id=<vendorId> für Detail (inkl. aller Fotos)
 export async function GET(req: NextRequest) {
@@ -62,16 +67,54 @@ export async function GET(req: NextRequest) {
   // Galerie-Fotos je Vendor ermitteln (für bildgeführte Karten + Slider; max. CARD_GALLERY_LIMIT).
   const ids = (data ?? []).map(v => v.id)
   const photosByVendor: Record<string, string[]> = {}
+  // Bewertungs-, Preis- und Antwortzeit-Aggregate je Vendor
+  const ratingByVendor: Record<string, { sum: number; count: number }> = {}
+  const priceFromByVendor: Record<string, number> = {}
+  const responsesByVendor: Record<string, { fast: number; total: number }> = {}
   if (ids.length) {
-    const { data: photos } = await admin
-      .from('marketplace_vendor_photos')
-      .select('dienstleister_id, r2_key, sort_order')
-      .in('dienstleister_id', ids)
-      .order('sort_order')
+    const [{ data: photos }, { data: reviewRows }, { data: pkgRows }, { data: reqRows }] = await Promise.all([
+      admin
+        .from('marketplace_vendor_photos')
+        .select('dienstleister_id, r2_key, sort_order')
+        .in('dienstleister_id', ids)
+        .order('sort_order'),
+      admin
+        .from('marketplace_reviews')
+        .select('dienstleister_id, rating')
+        .eq('status', 'published')
+        .in('dienstleister_id', ids),
+      admin
+        .from('marketplace_packages')
+        .select('dienstleister_id, price_from')
+        .not('price_from', 'is', null)
+        .in('dienstleister_id', ids),
+      admin
+        .from('marketplace_requests')
+        .select('dienstleister_id, created_at, responded_at')
+        .not('responded_at', 'is', null)
+        .in('dienstleister_id', ids),
+    ])
     for (const p of photos ?? []) {
       const dlId = (p as { dienstleister_id: string }).dienstleister_id
       const list = photosByVendor[dlId] ?? (photosByVendor[dlId] = [])
       if (list.length < CARD_GALLERY_LIMIT) list.push((p as { r2_key: string }).r2_key)
+    }
+    for (const r of reviewRows ?? []) {
+      const agg = ratingByVendor[r.dienstleister_id] ?? (ratingByVendor[r.dienstleister_id] = { sum: 0, count: 0 })
+      agg.sum += r.rating
+      agg.count += 1
+    }
+    for (const p of pkgRows ?? []) {
+      const price = Number(p.price_from)
+      if (!Number.isFinite(price)) continue
+      const current = priceFromByVendor[p.dienstleister_id]
+      if (current === undefined || price < current) priceFromByVendor[p.dienstleister_id] = price
+    }
+    for (const r of reqRows ?? []) {
+      const agg = responsesByVendor[r.dienstleister_id] ?? (responsesByVendor[r.dienstleister_id] = { fast: 0, total: 0 })
+      agg.total += 1
+      const hours = (new Date(r.responded_at as string).getTime() - new Date(r.created_at).getTime()) / 3600000
+      if (hours >= 0 && hours <= FAST_RESPONSE_HOURS) agg.fast += 1
     }
   }
 
@@ -81,6 +124,8 @@ export async function GET(req: NextRequest) {
     const galleryUrls = (await Promise.all(galleryKeys.map(k => requestDownloadUrl(k).catch(() => null))))
       .filter((u): u is string => !!u)
     const coverUrl = galleryUrls[0] ?? null
+    const agg = ratingByVendor[v.id]
+    const resp = responsesByVendor[v.id]
     return {
       id: v.id,
       company_name: v.company_name,
@@ -96,6 +141,11 @@ export async function GET(req: NextRequest) {
       tier: v.tier ?? 'free',
       service_cities: (v.service_cities as string[]) ?? [],
       service_radius_km: v.service_radius_km ?? null,
+      review_avg: agg ? Math.round((agg.sum / agg.count) * 10) / 10 : 0,
+      review_count: agg?.count ?? 0,
+      price_from: priceFromByVendor[v.id] ?? null,
+      // "Antwortet schnell": mind. 3 beantwortete Anfragen, davon ≥80% innerhalb von 48h.
+      fast_responder: !!resp && resp.total >= FAST_RESPONSE_MIN_COUNT && resp.fast / resp.total >= 0.8,
     }
   }))
 
