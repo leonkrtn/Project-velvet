@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSubscriptionState } from '@/lib/subscription'
+import { BILLING_ENABLED } from '@/lib/billing'
 import { ensureVendorConversation, backfillVendorChatParticipants } from '@/lib/vendor/ensureChat'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -104,6 +105,18 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
   }
 
   // ── Solo: Verwaltungs-Tab vorbereiten ───────────────────────────────────────
+  // Die Dienstleister-Verwaltung (eigene Vendors einladen + Datenfreigaben) ist
+  // ein Pro-Feature. In der Gratis-Phase (Abo-System aus) wird sie weder
+  // angezeigt noch beworben — der Marktplatz bleibt voll nutzbar.
+  if (!BILLING_ENABLED) {
+    return (
+      <div className="bp-page">
+        {header}
+        <DienstleisterTabs eventId={eventId} isSolo showManage={false} discover={discover} active={active} />
+      </div>
+    )
+  }
+
   const rows = activeVendors.map(v => ({ id: v.userId, userId: v.userId, name: v.name, email: v.email }))
 
   // Dienstleister-Verwaltung ist ein Pro-Feature (Marktplatz bleibt frei).
@@ -196,7 +209,7 @@ export default async function BrautpaarDienstleisterPage({ params }: Props) {
   return (
     <div className="bp-page">
       {header}
-      <DienstleisterTabs eventId={eventId} isSolo discover={discover} active={active} manage={manage} />
+      <DienstleisterTabs eventId={eventId} isSolo showManage discover={discover} active={active} manage={manage} />
     </div>
   )
 }

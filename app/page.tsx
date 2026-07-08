@@ -5,9 +5,12 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Menu, X } from 'lucide-react'
 import ForevrHeart from '@/components/ForevrHeart'
+import { BILLING_ENABLED } from '@/lib/billing'
 import './landing.css'
 
 const SIGNUP_URL = '/signup/brautpaar'
+// Gratis-Phase: keine Preis-/Tarif-Kommunikation, kostenloser Einstieg.
+const CTA_LABEL = BILLING_ENABLED ? '14 Tage kostenlos testen' : 'Kostenlos starten'
 
 function Check() {
   return (
@@ -539,7 +542,7 @@ function DemoSection() {
           </div>
         </div>
         <a href={SIGNUP_URL} className="lp-btn-primary" style={{ marginTop: '36px', display: 'block', width: 'fit-content', marginLeft: 'auto', marginRight: 'auto' }}>
-          14 Tage kostenlos testen
+          {CTA_LABEL}
         </a>
         <p className="lp-demo-invite-note">
           Ihr habt einen Einladungslink von eurem Veranstalter? Dann seid ihr mit einem Klick drin.
@@ -618,7 +621,7 @@ function MarktplatzSection() {
         ))}
       </div>
       <div className="lp-features-cta lp-reveal">
-        <a href={SIGNUP_URL} className="lp-text-cta">Marktplatz 14 Tage kostenlos entdecken &rarr;</a>
+        <a href={SIGNUP_URL} className="lp-text-cta">{BILLING_ENABLED ? 'Marktplatz 14 Tage kostenlos entdecken' : 'Marktplatz kostenlos entdecken'} &rarr;</a>
       </div>
     </section>
   )
@@ -826,7 +829,7 @@ function DashboardFeaturesSection() {
       </div>
 
       <div className="lp-features-cta lp-reveal">
-        <a href={SIGNUP_URL} className="lp-text-cta">Alle Funktionen 14 Tage kostenlos ausprobieren &rarr;</a>
+        <a href={SIGNUP_URL} className="lp-text-cta">{BILLING_ENABLED ? 'Alle Funktionen 14 Tage kostenlos ausprobieren' : 'Alle Funktionen kostenlos ausprobieren'} &rarr;</a>
       </div>
     </section>
   )
@@ -947,7 +950,7 @@ export default function LandingPage() {
     if (cards[0]) cardObs.observe(cards[0])
 
     // Active nav section highlight
-    const sectionIds = ['lp-features', 'lp-demo', 'lp-pricing', 'lp-faq']
+    const sectionIds = ['lp-features', 'lp-demo', ...(BILLING_ENABLED ? ['lp-pricing'] : []), 'lp-faq']
     const navAnchors: Record<string, Element> = {}
     sectionIds.forEach(id => {
       const a = document.querySelector(`.lp-nav .nav-links a[href="#${id}"]`)
@@ -993,13 +996,13 @@ export default function LandingPage() {
         </a>
         <ul className="nav-links">
           <li><a href="#lp-features">Funktionen</a></li>
-          <li><a href="#lp-pricing">Preise</a></li>
+          {BILLING_ENABLED && <li><a href="#lp-pricing">Preise</a></li>}
           <li><a href="#lp-funktionen">Funktionen</a></li>
           <li><a href="#lp-faq">FAQ</a></li>
         </ul>
         <div className="lp-nav-right">
           <a href="/login" className="lp-nav-login">Anmelden</a>
-          <a href={SIGNUP_URL} className="lp-nav-cta">14 Tage kostenlos testen</a>
+          <a href={SIGNUP_URL} className="lp-nav-cta">{CTA_LABEL}</a>
           <button
             type="button"
             className="lp-nav-burger"
@@ -1014,11 +1017,11 @@ export default function LandingPage() {
         {menuOpen && (
           <div id="lp-mobile-menu" className="lp-nav-mobile-menu">
             <a href="#lp-features" onClick={() => setMenuOpen(false)}>Funktionen</a>
-            <a href="#lp-pricing" onClick={() => setMenuOpen(false)}>Preise</a>
+            {BILLING_ENABLED && <a href="#lp-pricing" onClick={() => setMenuOpen(false)}>Preise</a>}
             <a href="#lp-funktionen" onClick={() => setMenuOpen(false)}>Funktionen</a>
             <a href="#lp-faq" onClick={() => setMenuOpen(false)}>FAQ</a>
             <a href="/login" className="lp-nav-mobile-login" onClick={() => setMenuOpen(false)}>Anmelden</a>
-            <a href={SIGNUP_URL} className="lp-nav-mobile-cta" onClick={() => setMenuOpen(false)}>14 Tage kostenlos testen</a>
+            <a href={SIGNUP_URL} className="lp-nav-mobile-cta" onClick={() => setMenuOpen(false)}>{CTA_LABEL}</a>
           </div>
         )}
       </nav>
@@ -1039,12 +1042,12 @@ export default function LandingPage() {
               Gästeliste mit RSVP-Links, Sitzplan, Budget, Aufgaben und Zeitplan — in einem eleganten Dashboard für euch beide. Schluss mit Excel-Tabellen und WhatsApp-Chaos.
             </p>
             <div className="lp-hero-actions">
-              <a href={SIGNUP_URL} className="lp-btn-primary">14 Tage kostenlos testen</a>
+              <a href={SIGNUP_URL} className="lp-btn-primary">{CTA_LABEL}</a>
             </div>
             <ul className="lp-hero-trust">
-              <li><Check /> Alle Planungsfunktionen im Test</li>
+              <li><Check /> {BILLING_ENABLED ? 'Alle Planungsfunktionen im Test' : 'Alle Planungsfunktionen inklusive'}</li>
               <li><Check /> Keine Zahlungsdaten nötig</li>
-              <li><Check /> Monatlich kündbar</li>
+              {BILLING_ENABLED && <li><Check /> Monatlich kündbar</li>}
             </ul>
           </div>
         </div>
@@ -1113,6 +1116,7 @@ export default function LandingPage() {
       {/* PRICING */}
       <VeranstalterSection />
 
+      {BILLING_ENABLED && (
       <section className="lp-pricing" id="lp-pricing">
         <div className="lp-pricing-header">
           <p className="lp-section-eyebrow lp-reveal">Ein Preis, kein Kleingedrucktes</p>
@@ -1160,6 +1164,7 @@ export default function LandingPage() {
           <p className="lp-pricing-compare">Zum Vergleich: weniger als ein Brautstrauß — für die Organisation eures gesamten Tages.</p>
         </div>
       </section>
+      )}
 
       {/* FAQ */}
       <section className="lp-faq" id="lp-faq">
@@ -1171,17 +1176,17 @@ export default function LandingPage() {
             </h2>
           </div>
           {([
-            { q: 'Was kostet Forevr?', a: 'Die ersten 14 Tage sind kostenlos — mit allen Planungsfunktionen und ohne Zahlungsdaten. Danach kostet Forevr 25 € im Monat, monatlich kündbar. Wenn euer Hochzeitsplaner und eure Dienstleister mitarbeiten sollen — inklusive Team-Chat —, gibt es Forevr Pro; die Kosten dafür übernimmt euer Veranstalter.' },
-            { q: 'Was passiert nach den 14 Testtagen?', a: 'Ihr entscheidet aktiv, ob ihr weitermacht — es wird nichts automatisch abgebucht, weil wir im Test keine Zahlungsdaten verlangen. Eure Daten bleiben gespeichert, sodass ihr nahtlos weiterplanen könnt, sobald ihr euch für ein Abo entscheidet.' },
-            { q: 'Können wir Forevr jederzeit kündigen?', a: 'Ja. Es gibt keinen Jahresvertrag und keine Mindestlaufzeit — Forevr ist monatlich kündbar. Eure Daten bleiben auch danach für eine Weile gespeichert, falls ihr später weiterplanen möchtet.' },
-            { q: 'Können wir später von Forevr auf Pro wechseln?', a: 'Ja, jederzeit. Ladet dazu euren Veranstalter ein — sobald er registriert ist, schaltet er Forevr Pro für euer Event frei. Die Kosten dafür trägt er, nicht ihr.' },
+            { q: 'Was kostet Forevr?', a: 'Die ersten 14 Tage sind kostenlos — mit allen Planungsfunktionen und ohne Zahlungsdaten. Danach kostet Forevr 25 € im Monat, monatlich kündbar. Wenn euer Hochzeitsplaner und eure Dienstleister mitarbeiten sollen — inklusive Team-Chat —, gibt es Forevr Pro; die Kosten dafür übernimmt euer Veranstalter.', billing: true },
+            { q: 'Was passiert nach den 14 Testtagen?', a: 'Ihr entscheidet aktiv, ob ihr weitermacht — es wird nichts automatisch abgebucht, weil wir im Test keine Zahlungsdaten verlangen. Eure Daten bleiben gespeichert, sodass ihr nahtlos weiterplanen könnt, sobald ihr euch für ein Abo entscheidet.', billing: true },
+            { q: 'Können wir Forevr jederzeit kündigen?', a: 'Ja. Es gibt keinen Jahresvertrag und keine Mindestlaufzeit — Forevr ist monatlich kündbar. Eure Daten bleiben auch danach für eine Weile gespeichert, falls ihr später weiterplanen möchtet.', billing: true },
+            { q: 'Können wir später von Forevr auf Pro wechseln?', a: 'Ja, jederzeit. Ladet dazu euren Veranstalter ein — sobald er registriert ist, schaltet er Forevr Pro für euer Event frei. Die Kosten dafür trägt er, nicht ihr.', billing: true },
             { q: 'Können wir beide gemeinsam planen?', a: 'Ja! Das Dashboard ist für beide Partner gleichzeitig zugänglich. Ihr könnt von verschiedenen Geräten aus gleichzeitig arbeiten. Änderungen werden in Echtzeit synchronisiert — so seid ihr immer auf dem gleichen Stand.' },
             { q: 'Wie funktioniert der Dienstleister-Marktplatz?', a: 'Ihr durchstöbert geprüfte Fotograf:innen, Caterer, DJs, Floristen und mehr direkt in Forevr und schickt eine Anfrage mit euren Eckdaten. Ihr bekommt automatisch ein erstes, transparentes Angebot zurück, könnt direkt mit dem Dienstleister chatten und bei Zusage sofort verbindlich buchen — ohne die Plattform zu verlassen.' },
-            { q: 'Können wir unseren Hochzeitsplaner oder Dienstleister einladen?', a: 'Mit Forevr Pro schon. Ladet euren Veranstalter und eure Dienstleister direkt ins Dashboard ein — jeder sieht genau die Module, die ihr freigebt, und ihr kommuniziert über den integrierten Chat statt über verstreute WhatsApp-Gruppen. Die Kosten für Forevr Pro trägt euer Veranstalter, nicht ihr.' },
+            { q: 'Können wir unseren Hochzeitsplaner oder Dienstleister einladen?', a: 'Mit Forevr Pro schon. Ladet euren Veranstalter und eure Dienstleister direkt ins Dashboard ein — jeder sieht genau die Module, die ihr freigebt, und ihr kommuniziert über den integrierten Chat statt über verstreute WhatsApp-Gruppen. Die Kosten für Forevr Pro trägt euer Veranstalter, nicht ihr.', billing: true },
             { q: 'Können wir eine eigene Hochzeitswebsite erstellen?', a: 'Ja, in wenigen Minuten. Eure Hochzeitswebsite ist direkt mit eurem Dashboard verknüpft — Zusagen über die Website landen automatisch in eurer Gästeliste, inklusive Menüwahl und Allergien.' },
             { q: 'Funktioniert Forevr auch auf dem Handy?', a: 'Ja, das Dashboard ist vollständig responsiv und läuft im Browser auf Smartphone, Tablet und Desktop — ohne separate App. Ihr könnt also auch unterwegs Gäste verwalten oder den Sitzplan anpassen.' },
             { q: 'Sind unsere Daten sicher?', a: 'Eure Daten sind ausschließlich für euch und die Personen sichtbar, die ihr zu eurer Planung einladet. Forevr verwendet eine sichere, verschlüsselte Verbindung. Eure Gästeliste, Sitzpläne und persönlichen Informationen werden vertraulich behandelt und nicht an Dritte weitergegeben.' },
-          ] as const).map(({ q, a }, i) => (
+          ] as { q: string; a: string; billing?: boolean }[]).filter(f => BILLING_ENABLED || !f.billing).map(({ q, a }, i) => (
             <div key={i} className={`lp-faq-item lp-reveal${i > 0 ? ` lp-reveal-d${i}` : ''}`}>
               <button
                 className="lp-faq-q"
@@ -1210,9 +1215,13 @@ export default function LandingPage() {
           <p className="lp-cta-eyebrow">Euer Einstieg</p>
           <h2 className="lp-cta-title">Eure Hochzeit. Euer Dashboard. <em>Ab heute.</em></h2>
           <div className="lp-cta-actions">
-            <a href={SIGNUP_URL} className="lp-btn-gold">14 Tage kostenlos testen</a>
+            <a href={SIGNUP_URL} className="lp-btn-gold">{CTA_LABEL}</a>
           </div>
-          <p className="lp-cta-foot">14 Tage kostenlos · danach ab 25 €/Monat · monatlich kündbar</p>
+          <p className="lp-cta-foot">
+            {BILLING_ENABLED
+              ? '14 Tage kostenlos · danach ab 25 €/Monat · monatlich kündbar'
+              : 'Kostenlos starten · keine Zahlungsdaten nötig'}
+          </p>
         </div>
       </div>
 
@@ -1229,10 +1238,10 @@ export default function LandingPage() {
             <p className="lp-footer-col-title">Navigation</p>
             <ul className="lp-footer-links">
               <li><a href="#lp-features">Funktionen</a></li>
-              <li><a href="#lp-pricing">Preise</a></li>
+              {BILLING_ENABLED && <li><a href="#lp-pricing">Preise</a></li>}
               <li><a href="#lp-funktionen">Funktionen</a></li>
               <li><a href="#lp-faq">FAQ</a></li>
-              <li><a href="/signup/brautpaar">14 Tage kostenlos testen</a></li>
+              <li><a href="/signup/brautpaar">{CTA_LABEL}</a></li>
               <li><a href="/login">Anmelden</a></li>
             </ul>
           </div>

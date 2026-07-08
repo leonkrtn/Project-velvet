@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getSubscriptionState } from '@/lib/subscription'
+import { BILLING_ENABLED } from '@/lib/billing'
 import AboClient from './AboClient'
 
 interface Props {
@@ -9,6 +10,10 @@ interface Props {
 
 export default async function AboPage({ params }: Props) {
   const { eventId } = await params
+
+  // Gratis-Phase: keine Tarifauswahl — die Abo-Seite existiert nicht.
+  if (!BILLING_ENABLED) redirect(`/brautpaar/${eventId}/uebersicht`)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()

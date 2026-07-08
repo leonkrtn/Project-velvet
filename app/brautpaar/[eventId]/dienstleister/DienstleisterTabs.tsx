@@ -20,14 +20,19 @@ export default function DienstleisterTabs({
   discover,
   active,
   manage,
+  showManage = true,
 }: {
   eventId: string
   isSolo: boolean
   discover: React.ReactNode
   active?: React.ReactNode
   manage?: React.ReactNode
+  /** "Meine Dienstleister"-Tab (Pro-Feature) anzeigen. In der Gratis-Phase aus. */
+  showManage?: boolean
 }) {
   const [tab, setTab] = useState<Tab>('discover')
+  // "Meine Dienstleister" nur für Solo-Paare und nur wenn das Abo-System aktiv ist.
+  const manageVisible = isSolo && showManage
 
   // Deep-Link ?category= (z.B. "Ähnliche Anbieter ansehen" nach Absage):
   // immer auf den Entdecken-Tab schalten, der Marktplatz übernimmt den Filter.
@@ -57,7 +62,7 @@ export default function DienstleisterTabs({
         <button style={tabBtn(tab === 'offers')} onClick={() => setTab('offers')}>
           <FileText size={15} /> Angebote
         </button>
-        {isSolo && (
+        {manageVisible && (
           <button style={tabBtn(tab === 'manage')} onClick={() => setTab('manage')}>
             <SlidersHorizontal size={15} /> Meine Dienstleister
           </button>
@@ -75,7 +80,7 @@ export default function DienstleisterTabs({
       <div style={{ display: tab === 'requests' ? 'block' : 'none' }}>
         {tab === 'requests' && <MeineAnfragen eventId={eventId} />}
       </div>
-      {isSolo && <div style={{ display: tab === 'manage' ? 'block' : 'none' }}>{manage}</div>}
+      {manageVisible && <div style={{ display: tab === 'manage' ? 'block' : 'none' }}>{manage}</div>}
     </div>
   )
 }

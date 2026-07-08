@@ -6,12 +6,16 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isSoloMember, PLAN_PRICES, TRIAL_DAYS } from '@/lib/subscription'
+import { BILLING_ENABLED } from '@/lib/billing'
 
 function normCode(s: string) {
   return s.trim().toUpperCase()
 }
 
 export async function POST(req: Request) {
+  // Gratis-Phase: kein Abo-System — Promo-Codes sind nicht einlösbar.
+  if (!BILLING_ENABLED) return NextResponse.json({ error: 'Nicht verfügbar' }, { status: 404 })
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Nicht angemeldet' }, { status: 401 })

@@ -6,6 +6,7 @@ import { Search, FileDown, CreditCard, GraduationCap, ChevronRight } from 'lucid
 import DisplaySettingsLauncher from '@/components/display-studio/DisplaySettingsLauncher'
 import SoloInviteSection from '../allgemein/SoloInviteSection'
 import { TOUR_START_EVENT } from '@/components/tour/ProductTour'
+import { BILLING_ENABLED } from '@/lib/billing'
 
 interface Props {
   eventId: string
@@ -56,12 +57,13 @@ export default function EinstellungenClient({ eventId, currentUserId, isSolo, ha
       {
         key: 'einladen',
         keywords: 'personen einladen partner partnerin code link veranstalter',
+        // Veranstalter-Onboarding ist ein Pro-Feature — in der Gratis-Phase aus.
         node: (
           <SoloInviteSection
             eventId={eventId}
             currentUserId={currentUserId}
             partnerTarget={isSolo ? 'brautpaar_solo' : 'brautpaar'}
-            showOrganizer={isSolo}
+            showOrganizer={isSolo && BILLING_ENABLED}
           />
         ),
       },
@@ -81,7 +83,7 @@ export default function EinstellungenClient({ eventId, currentUserId, isSolo, ha
           />
         ),
       },
-      ...(!hasOrganizer ? [{
+      ...(!hasOrganizer && BILLING_ENABLED ? [{
         key: 'abo',
         keywords: 'abo tarif abonnement forevr pro zahlung rechnung upgrade',
         node: (
