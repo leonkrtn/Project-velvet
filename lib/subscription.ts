@@ -6,6 +6,7 @@
 // ein Zahlungsdienstleister (z. B. Stripe) angebunden wird, ersetzen dessen
 // Webhooks die simulate*-Stellen — die State-Berechnung hier bleibt gleich.
 import { createAdminClient } from '@/lib/supabase/admin'
+import { BILLING_ENABLED } from '@/lib/billing'
 
 export const TRIAL_DAYS = 14
 export const PLAN_PRICES = { basis: 25, pro: 55 } as const
@@ -33,6 +34,17 @@ export interface SubscriptionState {
 
 const UNGATED: SubscriptionState = {
   gated: false, plan: 'pro', status: 'active', isActive: true, isPro: true,
+  trialEndsAt: null, currentPeriodEnd: null, canceledAt: null, daysLeft: 0, promo: null,
+}
+
+// Gratis-Phase (BILLING_ENABLED=false): jeder Solo-Account ist dauerhaft
+// kostenlos auf Basis-Niveau aktiv — kein Trial, kein Ablauf, keine
+// Tarifauswahl. Chat ist Teil von Basis (siehe unten). `isPro: false` hält die
+// echten Pro-Funktionen (Dienstleister direkt einladen, Veranstalter onboarden)
+// weiterhin gesperrt; deren Oberflächen werden in der Gratis-Phase zusätzlich
+// gar nicht erst angezeigt/beworben.
+const FREE_BASIS: SubscriptionState = {
+  gated: true, plan: 'basis', status: 'active', isActive: true, isPro: false,
   trialEndsAt: null, currentPeriodEnd: null, canceledAt: null, daysLeft: 0, promo: null,
 }
 
@@ -116,6 +128,10 @@ export async function getSubscriptionState(
   eventId: string,
   opts: { lazyCreateTrial?: boolean } = {},
 ): Promise<SubscriptionState> {
+  // Gratis-Phase: kein Abo-System — jeder ist kostenlos auf Basis aktiv.
+  // (Kein DB-Zugriff, keine lazy Trial-Zeile.)
+  if (!BILLING_ENABLED) return FREE_BASIS
+
   const admin = createAdminClient()
 
   const { data: row } = await admin

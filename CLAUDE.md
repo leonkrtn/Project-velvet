@@ -83,6 +83,36 @@ In den AGB des Dienstleisters (und ggf. der Forevr-Plattform-AGB) muss explizit 
 
 ---
 
+## ⚠️ Billing / Gratis-Phase (globaler Schalter `lib/billing.ts`)
+
+Forevr startet aktuell **kostenlos**. Ein einziger Schalter steuert das gesamte
+Abo-System: `BILLING_ENABLED = process.env.NEXT_PUBLIC_BILLING_ENABLED === 'true'`
+(`lib/billing.ts`, `NEXT_PUBLIC_`, damit Server- und Client-Bundles denselben Wert
+sehen). Default (Env nicht gesetzt) = `false` = **Gratis-Phase**.
+
+**Gratis-Phase (`BILLING_ENABLED=false`):**
+- Jeder Solo-Account ist dauerhaft kostenlos auf **Basis** aktiv — `getSubscriptionState()`
+  gibt sofort `FREE_BASIS` zurück (kein DB-Zugriff, **keine** lazy Trial-Zeile, kein
+  Ablaufen). Bestehende `event_subscriptions`-Zeilen werden ignoriert → niemand ist ausgesperrt.
+- **Chat gehört fest zu Basis** (dauerhafte Produktentscheidung, unabhängig vom Schalter):
+  `nachrichten/page.tsx` ohne Pro-Gate, `BrautpaarShell` `chatEnabled = true`.
+- Marktplatz + alles dahinter (Anfragen, Angebote, Vendor-Chat) ist voll nutzbar
+  (Marketplace-APIs waren nie gegated).
+- **Pro-only bleibt gesperrt UND unbeworben:** „Meine Dienstleister" (Vendor direkt
+  einladen, `DienstleisterTabs showManage={false}`) und Veranstalter-Onboarding
+  (`SoloInviteSection showOrganizer={false}`) sind ausgeblendet. Server bleibt
+  hart über `hasProAccess()` (FREE_BASIS `isPro=false`) abgesichert.
+- **Abo-/Preis-Oberflächen weg:** `/brautpaar/[eventId]/abo` redirectet auf `uebersicht`,
+  Einstellungen-Abo-Card ausgeblendet, Landing-Page-Preise/Trial-Copy (`app/page.tsx`)
+  ausgeblendet, Billing-Mutations-APIs (`/api/subscription/{checkout,cancel,reactivate}`,
+  `/api/promo/redeem`) antworten 404.
+
+**Abo-System später aktivieren:** `NEXT_PUBLIC_BILLING_ENABLED=true` setzen + neu deployen.
+Danach greift wieder die volle Trial-/Pro-Logik in `lib/subscription.ts` samt aller
+Abo-/Preis-Oberflächen — ohne weitere Code-Änderungen. (Chat bleibt Basis.)
+
+---
+
 ## Route Structure
 
 ```

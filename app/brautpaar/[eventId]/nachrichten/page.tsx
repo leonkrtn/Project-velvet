@@ -1,10 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getSubscriptionState } from '@/lib/subscription'
 import { backfillVendorChatParticipants } from '@/lib/vendor/ensureChat'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
 import ChatsClient from '@/app/veranstalter/[eventId]/chats/ChatsClient'
 
 interface Props {
@@ -25,16 +22,8 @@ export default async function NachrichtenPage({ params, searchParams }: Props) {
   // (Bestandsdaten lazy nachbessern), bevor die Konversationen geladen werden.
   await backfillVendorChatParticipants(admin, eventId)
 
-  // Chat ist ein Forevr-Pro-Feature: Solo-Paare ohne Pro haben keinen Zugriff
-  // (Eintrag ist auch aus dem Menü entfernt) → zur Abo-Seite leiten.
-  const { data: ownRole } = await supabase
-    .from('event_members').select('role').eq('event_id', eventId).eq('user_id', user.id).maybeSingle()
-  if (ownRole?.role === 'brautpaar_solo') {
-    const sub = await getSubscriptionState(eventId)
-    if (sub.gated && !sub.isPro) redirect(`/brautpaar/${eventId}/abo`)
-  }
-
-  const [conversationsRes, membersRes, ownMemberRes] = await Promise.all([
+  // Chat gehört fest zum Basis-Tarif (immer verfügbar) — keine Pro-Schranke.
+  const [conversationsRes, membersRes] = await Promise.all([
     supabase
       .from('conversations')
       .select(`
@@ -48,26 +37,9 @@ export default async function NachrichtenPage({ params, searchParams }: Props) {
       .from('event_members')
       .select('id, user_id, role, profiles!user_id(id, name, email)')
       .eq('event_id', eventId),
-    supabase
-      .from('event_members')
-      .select('role')
-      .eq('event_id', eventId)
-      .eq('user_id', user.id)
-      .maybeSingle(),
   ])
 
-  // Chat mit Veranstalter/Dienstleistern ist für Solo-Paare ein Pro-Feature.
-  // Ohne Pro: bestehende Chats bleiben nutzbar (Bestandsschutz) und der
-  // Partner-Chat (brautpaar_solo untereinander) bleibt frei — neue Chats mit
-  // anderen Rollen sind nicht möglich (Mitgliederliste wird gefiltert).
-  let proLocked = false
-  if (ownMemberRes.data?.role === 'brautpaar_solo') {
-    const sub = await getSubscriptionState(eventId)
-    proLocked = sub.gated && !sub.isPro
-  }
-
   const membersRaw = (membersRes.data ?? [])
-    .filter(m => !proLocked || m.role === 'brautpaar_solo')
     .map(m => ({
       ...m,
       profiles: Array.isArray(m.profiles) ? (m.profiles[0] ?? null) : m.profiles,
@@ -84,30 +56,6 @@ export default async function NachrichtenPage({ params, searchParams }: Props) {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {proLocked && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap',
-          padding: '0.6rem 1rem', background: 'var(--bp-gold-pale, #F5F0E8)',
-          borderBottom: '1px solid var(--bp-gold-mist, #EDE8DC)',
-          fontSize: '0.8rem', color: 'var(--bp-ink-2, #5C534A)', flexShrink: 0,
-        }}>
-          <Sparkles size={14} style={{ color: 'var(--bp-gold-deep, #9C7F4F)', flexShrink: 0 }} />
-          <span>
-            Chats mit Veranstalter &amp; Dienstleistern sind Teil von <strong>Forevr Pro</strong> —
-            der Chat mit eurem Partner ist immer frei.
-          </span>
-          <Link
-            href={`/brautpaar/${eventId}/abo`}
-            style={{
-              color: 'var(--bp-gold-deep, #9C7F4F)', fontWeight: 700, textDecoration: 'none',
-              border: '1px solid var(--bp-gold, #B89968)', borderRadius: 999, padding: '0.18rem 0.8rem',
-              fontSize: '0.74rem', whiteSpace: 'nowrap',
-            }}
-          >
-            Upgrade
-          </Link>
-        </div>
-      )}
       <div style={{ flex: 1, minHeight: 0 }}>
         <ChatsClient
           eventId={eventId}

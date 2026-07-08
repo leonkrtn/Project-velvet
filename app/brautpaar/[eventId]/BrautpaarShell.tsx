@@ -202,8 +202,8 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
       })
   }, [eventId])
 
-  // Chat (Nachrichten) nur mit Forevr Pro; ungegatete Events behalten ihn.
-  const chatEnabled = !subscription || subscription.isPro
+  // Chat (Nachrichten) gehört fest zum Basis-Tarif — immer verfügbar.
+  const chatEnabled = true
   // Filter nav: uebersicht and allgemein always shown; others follow bp-* toggles
   const fullNav = buildNav(eventId, isSolo, chatEnabled)
   const nav = fullNav.map(group => ({
