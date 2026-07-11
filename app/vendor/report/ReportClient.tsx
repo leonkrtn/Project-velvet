@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { BarChart2, Download, FileSpreadsheet, FileText, Loader2, TrendingDown, TrendingUp, Minus } from 'lucide-react'
 import type { ReportData } from '@/lib/vendor/monthly-report'
+import { brandAccentVars } from '@/lib/vendor/brand'
 
 // ── Period helpers ─────────────────────────────────────────────────────────────
 
@@ -108,7 +109,7 @@ function Skeleton({ w, h }: { w?: string; h?: number }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function ReportClient() {
+export default function ReportClient({ brandColor }: { brandColor?: string | null } = {}) {
   const now = new Date()
   const [type, setType] = useState<'month' | 'quarter'>('month')
   const [year, setYear] = useState(now.getFullYear())
@@ -157,7 +158,7 @@ export default function ReportClient() {
   const compareLabel = compareMode === 'prev' ? 'Vorperiode' : 'Vorjahr'
 
   return (
-    <div className="vnd-page-outer" style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1, overflow: 'auto' }}>
+    <div className="vnd-page-outer" style={{ padding: '28px 24px 48px', background: 'var(--bg)', flex: 1, overflow: 'auto', ...brandAccentVars(brandColor) }}>
       <style>{`
         @keyframes rpt-pulse{0%,100%{opacity:1}50%{opacity:0.5}}
         @keyframes rpt-spin{to{transform:rotate(360deg)}}
