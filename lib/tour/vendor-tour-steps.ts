@@ -142,6 +142,27 @@ export const VENDOR_TOUR_STEPS: VendorTourStep[] = [
     body: 'Unter „Informationen" siehst du alle Eckdaten: Datum, Location, Kontaktpersonen und eine private Notizfläche — nur für dich sichtbar, ideal für interne Vermerke.',
   },
 
+  // ── Berichte ─────────────────────────────────────────────────────────────────
+  {
+    module: 'report',
+    title: 'Berichte',
+    body: 'Deine Auswertung auf einen Blick: Umsatz, Annahmequote, Antwortzeiten und die Entwicklung deiner Anfragen über die Zeit. So erkennst du, was funktioniert und wo du nachjustieren kannst.',
+  },
+
+  // ── CRM ──────────────────────────────────────────────────────────────────────
+  {
+    module: 'crm',
+    title: 'CRM — deine Kontakte',
+    body: 'Alle Brautpaare und Leads an einem Ort. Jeder Kontakt sammelt Anfragen, Angebote, Notizen und Aufgaben — so behältst du die Beziehung im Blick und lässt keine Nachfrage liegen.',
+  },
+
+  // ── Automatik ────────────────────────────────────────────────────────────────
+  {
+    module: 'automatik',
+    title: 'Automatik',
+    body: 'Automatisiere wiederkehrende Schritte: Erinnerungen vor Events, Bewertungs-Anfragen danach, Follow-ups zu offenen Angeboten und E-Mail-Benachrichtigungen bei neuen Anfragen. Einmal einstellen, dauerhaft profitieren.',
+  },
+
   // ── Listing ────────────────────────────────────────────────────────────────
   {
     module: 'listing',
