@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, MapPin, Globe, Phone, Mail, Star, Check, X, MessageSquare, Lock, BadgeCheck, ChevronDown, Flag, Camera, ShieldCheck } from 'lucide-react'
+import { ChevronLeft, MapPin, Globe, Phone, Mail, Star, Check, X, MessageSquare, BadgeCheck, ChevronDown, Flag, Camera, ShieldCheck } from 'lucide-react'
+import { trackVendorEvent } from '@/lib/marketplace/track'
 import { categoryLabel, PRICE_UNITS, SOCIAL_PLATFORMS } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 import RequestFlow from '@/components/marketplace/RequestFlow'
@@ -52,7 +53,10 @@ const REPORT_REASONS = [
   { key: 'spam', label: 'Spam' },
 ] as const
 
-export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, reviews, similar, reviewAvg, reviewCount, availability, contactUnlocked, canReview, existing }: Props) {
+export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, reviews, similar, reviewAvg, reviewCount, availability, canReview, existing }: Props) {
+  // Profilaufruf zählen (einmal pro Detailseiten-Aufruf).
+  useEffect(() => { trackVendorEvent(vendor.id, 'profile_view') }, [vendor.id])
+
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [sent, setSent] = useState<Existing | null>(existing)
   const [openFaq, setOpenFaq] = useState<string | null>(null)
@@ -407,28 +411,18 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
 
           <CoupleDataRequests eventId={eventId} />
 
-          {/* Kontakt — Website offen, Kontaktdaten erst nach Annahme */}
+          {/* Kontakt — immer sichtbar */}
           <div className="bp-card" style={{ padding: 18 }}>
             <h4 className="bp-font-heading" style={{ fontSize: '1.05rem', margin: '0 0 10px' }}>Kontakt</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13.5 }}>
-              {vendor.website && <a href={vendor.website} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-gold-deep)', textDecoration: 'none' }}><Globe size={14} /> Website</a>}
+              {vendor.website && <a href={vendor.website} target="_blank" rel="noreferrer" onClick={() => trackVendorEvent(vendor.id, 'website')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-gold-deep)', textDecoration: 'none' }}><Globe size={14} /> Website</a>}
               {socials.map(s => (
-                <a key={s.key} href={vendor.social_links[s.key]} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2)', textDecoration: 'none' }}>
+                <a key={s.key} href={vendor.social_links[s.key]} target="_blank" rel="noreferrer" onClick={() => trackVendorEvent(vendor.id, 'social', { platform: s.key })} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2)', textDecoration: 'none' }}>
                   <Globe size={14} /> {s.label}
                 </a>
               ))}
-              {contactUnlocked ? (
-                <>
-                  {vendor.phone && <a href={`tel:${vendor.phone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2)', textDecoration: 'none' }}><Phone size={14} /> {vendor.phone}</a>}
-                  {vendor.email && <a href={`mailto:${vendor.email}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2)', textDecoration: 'none' }}><Mail size={14} /> {vendor.email}</a>}
-                </>
-              ) : (
-                (vendor.phone || vendor.email) && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-3)', fontSize: 12.5 }}>
-                    <Lock size={13} /> Telefon & E-Mail nach Annahme der Anfrage sichtbar
-                  </span>
-                )
-              )}
+              {vendor.phone && <a href={`tel:${vendor.phone}`} onClick={() => trackVendorEvent(vendor.id, 'contact_phone')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2)', textDecoration: 'none' }}><Phone size={14} /> {vendor.phone}</a>}
+              {vendor.email && <a href={`mailto:${vendor.email}`} onClick={() => trackVendorEvent(vendor.id, 'contact_email')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2)', textDecoration: 'none' }}><Mail size={14} /> {vendor.email}</a>}
             </div>
           </div>
 

@@ -4,7 +4,7 @@
 // sie sieht. Wird in der Admin-Prüf-Lightbox verwendet (und ist bewusst frei von
 // interaktiven Formularen). Importiert das Brautpaar-Theme für identische Optik.
 import React, { useState } from 'react'
-import { MapPin, Globe, Phone, Mail, Star, Lock, BadgeCheck, ChevronDown } from 'lucide-react'
+import { MapPin, Globe, Phone, Mail, Star, BadgeCheck, ChevronDown } from 'lucide-react'
 import { categoryLabel, PRICE_UNITS, SOCIAL_PLATFORMS } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 import { brandGoldVars } from '@/lib/vendor/brand'
@@ -39,7 +39,7 @@ function Stars({ value, size = 15 }: { value: number; size?: number }) {
   </span>
 }
 
-export default function VendorMarketplacePreview({ vendor, packages, faqs, reviews, reviewAvg, reviewCount, availability, contactUnlocked = false, brandColor }: Props) {
+export default function VendorMarketplacePreview({ vendor, packages, faqs, reviews, reviewAvg, reviewCount, availability, brandColor }: Props) {
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [openFaq, setOpenFaq] = useState<string | null>(null)
 
@@ -193,11 +193,7 @@ export default function VendorMarketplacePreview({ vendor, packages, faqs, revie
             <h4 className="bp-font-heading" style={{ fontSize: '1.05rem', margin: '0 0 10px' }}>Kontakt</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13.5 }}>
               {socials.map(s => <span key={s.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2,#666)' }}><Globe size={14} /> {s.label}</span>)}
-              {contactUnlocked ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2,#666)' }}><Phone size={14} /> <Mail size={14} /> sichtbar</span>
-              ) : (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-3,#999)', fontSize: 12.5 }}><Lock size={13} /> Telefon & E-Mail erst nach Annahme</span>
-              )}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2,#666)' }}><Phone size={14} /> <Mail size={14} /> Telefon &amp; E-Mail sichtbar</span>
             </div>
           </div>
 
