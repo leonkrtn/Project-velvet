@@ -42,9 +42,9 @@ export default function DienstleisterSignupPage() {
 
       if (!signUpData.session) { setConfirmEmail(true); return }
 
-      // Session vorhanden → Profil sofort anlegen und ins Portal leiten.
+      // Session vorhanden → Profil sofort anlegen und in den Onboarding-Wizard leiten.
       await fetch('/api/vendor/marketplace/onboard', { method: 'POST' }).catch(() => {})
-      router.push('/vendor/listing')
+      router.push('/vendor/onboarding')
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
@@ -66,7 +66,7 @@ export default function DienstleisterSignupPage() {
             Bitte bestätige deine E-Mail-Adresse über den zugesandten Link. Danach kannst du dein
             Anbieter-Profil vervollständigen und zur Freischaltung einreichen.
           </p>
-          <a href="/login?next=/vendor/listing" className="bp-auth-link" style={{ display: 'inline-block', marginTop: 20 }}>Zur Anmeldung</a>
+          <a href="/login?next=/vendor/onboarding" className="bp-auth-link" style={{ display: 'inline-block', marginTop: 20 }}>Zur Anmeldung</a>
         </div>
       </div>
     )

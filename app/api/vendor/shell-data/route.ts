@@ -11,11 +11,11 @@ export async function GET() {
 
   const { data: link } = await admin
     .from('user_dienstleister')
-    .select('dienstleister_id, dienstleister_profiles(company_name)')
+    .select('dienstleister_id, dienstleister_profiles(company_name, moderation_status)')
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!link) return NextResponse.json({ companyName: '', pendingAnfragen: 0, unreadNachrichten: 0 })
+  if (!link) return NextResponse.json({ companyName: '', pendingAnfragen: 0, unreadNachrichten: 0, moderationStatus: null })
 
   const profile = Array.isArray(link.dienstleister_profiles) ? link.dienstleister_profiles[0] : link.dienstleister_profiles
 
@@ -47,5 +47,6 @@ export async function GET() {
     companyName: profile?.company_name ?? '',
     pendingAnfragen: pendingAnfragen ?? 0,
     unreadNachrichten,
+    moderationStatus: profile?.moderation_status ?? null,
   })
 }
