@@ -40,6 +40,9 @@ export async function POST() {
       is_marketplace: true,
       published: false,
       moderation_status: 'draft',
+      // Neue Dienstleister erhalten Anfragen standardmäßig auch per E-Mail
+      // (abschaltbar unter /vendor/automatisierungen). Bestehende bleiben unberührt.
+      notify_new_request_email: true,
     })
     .select('id')
     .single()

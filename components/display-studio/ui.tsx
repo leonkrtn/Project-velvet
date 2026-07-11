@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
-import { HelpCircle, RotateCcw } from 'lucide-react'
+import React from 'react'
+import { RotateCcw } from 'lucide-react'
+import { HelpTip } from '@/components/ui/HelpTooltip'
 
 // Gemeinsame, kompakte UI-Primitive für das Design-Studio (Optionen-Dialog-Stil).
 
@@ -13,34 +14,9 @@ export const chip: React.CSSProperties = {
 }
 export const chipActive: React.CSSProperties = { background: 'var(--bp-ink)', color: '#fff', borderColor: 'var(--bp-ink)' }
 
-// „?"-Hilfe pro Option: sauber ausgerichtet, öffnet ein kleines Popover.
+// „?"-Hilfe pro Option (nutzt jetzt die zentrale, hover-fähige Komponente).
 export function Help({ text }: { text: string }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLSpanElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [open])
-  return (
-    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-      <button type="button" aria-label="Hilfe" onClick={() => setOpen(o => !o)}
-        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none',
-          cursor: 'pointer', padding: 2, color: open ? 'var(--bp-gold-deep)' : 'var(--bp-ink-3)', lineHeight: 0 }}>
-        <HelpCircle size={14} />
-      </button>
-      {open && (
-        <span role="tooltip" style={{
-          position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50, width: 240,
-          background: 'var(--bp-ink)', color: '#fff', fontSize: 12.5, lineHeight: 1.5, fontWeight: 400,
-          padding: '10px 12px', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.22)', textAlign: 'left',
-        }}>
-          {text}
-        </span>
-      )}
-    </span>
-  )
+  return <HelpTip text={text} />
 }
 
 // Beschriftung mit optionaler Hilfe.

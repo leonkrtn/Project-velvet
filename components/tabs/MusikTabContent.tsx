@@ -6,6 +6,7 @@ import { useAutoSave } from '@/hooks/useAutoSave'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
+import ExternalEmbed from '@/components/consent/ExternalEmbed'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -760,6 +761,13 @@ const PLATFORM_LABELS: Record<Playlist['platform'], string> = {
   other:       'Link',
 }
 
+const PLATFORM_PRIVACY: Record<Playlist['platform'], string> = {
+  spotify:     'https://www.spotify.com/de/legal/privacy-policy/',
+  youtube:     'https://policies.google.com/privacy',
+  apple_music: 'https://www.apple.com/legal/privacy/',
+  other:       'https://policies.google.com/privacy',
+}
+
 const PLATFORM_COLORS: Record<Playlist['platform'], string> = {
   spotify:     '#1DB954',
   youtube:     '#FF0000',
@@ -831,13 +839,15 @@ function PlaylistCard({
       {embedUrl ? (
         <>
           <div style={{ padding: pl.platform === 'spotify' ? 0 : 8 }}>
-            <iframe
-              src={embedUrl}
-              style={{ border: 'none', borderRadius: pl.platform === 'spotify' ? 0 : 8, width: '100%', height, display: 'block' }}
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
-              title={pl.title || PLATFORM_LABELS[pl.platform]}
-            />
+            <ExternalEmbed provider={PLATFORM_LABELS[pl.platform]} privacyUrl={PLATFORM_PRIVACY[pl.platform]} minHeight={Math.max(120, Number(height) || 152)}>
+              <iframe
+                src={embedUrl}
+                style={{ border: 'none', borderRadius: pl.platform === 'spotify' ? 0 : 8, width: '100%', height, display: 'block' }}
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+                title={pl.title || PLATFORM_LABELS[pl.platform]}
+              />
+            </ExternalEmbed>
           </div>
           {/* Resize handle */}
           <div

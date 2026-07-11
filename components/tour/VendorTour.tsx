@@ -1,13 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, ChevronLeft, ChevronRight, Check } from 'lucide-react'
-import { VENDOR_TOUR_STEPS, VENDOR_TOUR_START_EVENT } from '@/lib/tour/vendor-tour-steps'
+import { VENDOR_TOUR_STEPS, VENDOR_TOUR_START_EVENT, type VendorTourStep } from '@/lib/tour/vendor-tour-steps'
 
 const CARD_W = 340
 const POLL_MS = 120
-const MAX_WAIT_MS = POLL_MS * 45   // ~5.4 s warten, bis ein Zielelement erscheint
+const MAX_WAIT_MS = POLL_MS * 18   // ~2.2 s warten, bis ein Zielelement erscheint
 
 // Vendor-Route-Karte: Modul-Schlüssel → Pfad
 const ROUTE_MAP: Record<string, string> = {
@@ -15,13 +15,35 @@ const ROUTE_MAP: Record<string, string> = {
   anfragen:         '/vendor/anfragen',
   angebote:         '/vendor/angebote',
   events:           '/vendor/dashboard',
+  kalender:         '/vendor/ubersicht',
+  report:           '/vendor/report',
+  crm:              '/vendor/crm',
+  automatik:        '/vendor/automatisierungen',
   listing:          '/vendor/listing',
   'anfrage-formular': '/vendor/anfrage-formular',
 }
 
-export default function VendorTour() {
+interface VendorTourProps {
+  /** Schritt-Liste; Default = ausführliche Tour. */
+  steps?: VendorTourStep[]
+  /** Start-Event-Name; Default = Hilfe-Button-Event der langen Tour. */
+  startEvent?: string
+  /** Wenn gesetzt: einmaliger Auto-Start (localStorage-Schlüssel), z. B. nach dem Onboarding. */
+  autoStartOnceKey?: string
+}
+
+export default function VendorTour({
+  steps: stepsProp,
+  startEvent = VENDOR_TOUR_START_EVENT,
+  autoStartOnceKey,
+}: VendorTourProps = {}) {
   const router = useRouter()
-  const steps = VENDOR_TOUR_STEPS
+  const baseSteps = stepsProp ?? VENDOR_TOUR_STEPS
+  const [areaFilter, setAreaFilter] = useState<string | null>(null)
+  const steps = useMemo(
+    () => (areaFilter ? baseSteps.filter(s => s.area === areaFilter) : baseSteps),
+    [baseSteps, areaFilter],
+  )
 
   const [mounted,    setMounted]    = useState(false)
   const [active,     setActive]     = useState(false)
@@ -30,6 +52,7 @@ export default function VendorTour() {
   // true, sobald Zielposition feststeht — erst dann wird die Karte gerendert.
   const [positioned, setPositioned] = useState(false)
   const [viewport,   setViewport]   = useState({ w: 0, h: 0 })
+  const [sidebarRect, setSidebarRect] = useState<DOMRect | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [measuredH, setMeasuredH] = useState(0)
 
@@ -53,7 +76,9 @@ export default function VendorTour() {
   const finish = useCallback(() => {
     setActive(false)
     setRect(null)
-  }, [])
+    setAreaFilter(null)
+    if (autoStartOnceKey) { try { localStorage.setItem(autoStartOnceKey, 'done') } catch { /* ignore */ } }
+  }, [autoStartOnceKey])
 
   const advance = useCallback(() => {
     setIndex(i => {
@@ -62,12 +87,30 @@ export default function VendorTour() {
     })
   }, [steps.length, finish])
 
-  // Nur manueller Start über den Hilfe-Button — kein Auto-Start.
+  // Manueller Start über das (konfigurierbare) Start-Event. Optional mit
+  // { area } im CustomEvent-Detail → nur die Schritte dieses Bereichs.
   useEffect(() => {
-    const onStart = () => start()
-    window.addEventListener(VENDOR_TOUR_START_EVENT, onStart)
-    return () => window.removeEventListener(VENDOR_TOUR_START_EVENT, onStart)
-  }, [start])
+    const onStart = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { area?: string } | undefined
+      setAreaFilter(detail?.area ?? null)
+      setIndex(0)
+      setActive(true)
+    }
+    window.addEventListener(startEvent, onStart)
+    return () => window.removeEventListener(startEvent, onStart)
+  }, [startEvent])
+
+  // Optionaler einmaliger Auto-Start (z. B. kurze Tour nach dem Onboarding).
+  useEffect(() => {
+    if (!autoStartOnceKey || steps.length === 0) return
+    try {
+      if (localStorage.getItem(autoStartOnceKey) === 'done') return
+      if (sessionStorage.getItem(`${autoStartOnceKey}:seen`)) return
+      sessionStorage.setItem(`${autoStartOnceKey}:seen`, '1')
+    } catch { /* ignore */ }
+    const t = window.setTimeout(() => start(), 700)
+    return () => window.clearTimeout(t)
+  }, [autoStartOnceKey, start, steps.length])
 
   // Position vor dem Paint zurücksetzen, damit die Karte nie kurz an der
   // alten Stelle aufblitzt.
@@ -83,6 +126,11 @@ export default function VendorTour() {
     let cancelled = false
     const timers: number[] = []
     const targetRoute = ROUTE_MAP[stepModule]
+
+    // Nächste Zielroute vorab laden → nächster Schritt erscheint deutlich schneller.
+    const nextModule = steps[index + 1]?.module
+    const nextRoute = nextModule ? ROUTE_MAP[nextModule] : undefined
+    if (nextRoute) { try { router.prefetch(nextRoute) } catch { /* ignore */ } }
 
     if (targetRoute) {
       const onRoute = () =>
@@ -108,7 +156,7 @@ export default function VendorTour() {
     }
 
     return () => { cancelled = true; timers.forEach(t => window.clearTimeout(t)) }
-  }, [active, index, stepModule, stepTarget, router])
+  }, [active, index, stepModule, stepTarget, router, steps])
 
   // Viewport-Maße aktuell halten.
   useEffect(() => {
@@ -117,6 +165,21 @@ export default function VendorTour() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [active])
+
+  // Sidebar-Rechteck messen — für zielfreie Schritte wird NUR die Sidebar
+  // abgedunkelt (Hauptinhalt bleibt hell).
+  useEffect(() => {
+    if (!active || stepTarget) { setSidebarRect(null); return }
+    const measure = () => {
+      const el = document.querySelector('.vdr-sidebar') as HTMLElement | null
+      const r = el && el.offsetParent !== null ? el.getBoundingClientRect() : null
+      setSidebarRect(r && r.width > 0 ? r : null)
+    }
+    measure()
+    const t = window.setTimeout(measure, 120)
+    window.addEventListener('resize', measure)
+    return () => { window.clearTimeout(t); window.removeEventListener('resize', measure) }
+  }, [active, index, stepTarget])
 
   // KERN: Ring + Abdunklung direkt auf das Zielelement legen (keine zweite Box).
   // Fallback nach MAX_WAIT_MS: zentrierte Karte, falls das Element nicht erscheint.
@@ -171,7 +234,7 @@ export default function VendorTour() {
           }
           node = el
           paint(el)
-          el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+          el.scrollIntoView({ block: 'center', behavior: 'auto' })
           setPositioned(true)
         } else if (el.style.boxShadow !== ring) {
           paint(el)
@@ -289,14 +352,25 @@ export default function VendorTour() {
           Bei normalen Schritten: Abdunklung kommt vom box-shadow am Zielelement,
           hier nur opaker Fänger ohne Abdunklung wenn rect gesetzt, sonst dunkler BG. */}
       {!isInteractive && (
-        <div
-          onClick={e => e.stopPropagation()}
-          style={{
-            position: 'fixed', inset: 0,
-            background: rect ? 'transparent' : 'rgba(31,26,22,0.55)',
-            pointerEvents: 'auto',
-          }}
-        />
+        <>
+          {/* Klick-Fänger — dunkelt bei zielfreien Schritten NICHT den Inhalt ab. */}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ position: 'fixed', inset: 0, background: 'transparent', pointerEvents: 'auto' }}
+          />
+          {/* Zielfreier (zentrierter) Schritt: nur die Sidebar abdunkeln. */}
+          {!rect && sidebarRect && (
+            <div
+              style={{
+                position: 'fixed',
+                top: sidebarRect.top, left: sidebarRect.left,
+                width: sidebarRect.width, height: sidebarRect.height,
+                background: 'rgba(31,26,22,0.55)', pointerEvents: 'none',
+                transition: 'opacity 0.2s ease',
+              }}
+            />
+          )}
+        </>
       )}
 
       {positioned && (

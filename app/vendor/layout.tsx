@@ -33,15 +33,23 @@ export default async function VendorLayout({ children }: { children: React.React
       if (link) {
         const { data: vendor } = await admin
           .from('dienstleister_profiles')
-          .select('name, company_name, category, logo_r2_key')
+          .select('name, company_name, category, logo_r2_key, pending_changes')
           .eq('id', link.dienstleister_id)
           .maybeSingle()
         if (vendor) {
-          companyName = ((vendor.company_name as string) || (vendor.name as string) || '').trim()
+          // Freigegebene Profile stagen Namens-/Kategorie-/Logo-Änderungen in
+          // pending_changes (öffentliches Listing bleibt bis zur Prüfung alt).
+          // Der interne Header soll aber sofort den neu eingegebenen Wert zeigen.
+          const pending = (vendor.pending_changes as Record<string, unknown> | null) ?? {}
+          const pendCompany = (pending.company_name as string | undefined)?.trim()
+          const pendCategory = (pending.category as string | undefined)?.trim()
+          const pendLogo = pending.logo_r2_key as string | undefined
+          companyName = (pendCompany || (vendor.company_name as string) || (vendor.name as string) || '').trim()
           companyInitials = initials(companyName || (vendor.name as string) || '')
-          category = (vendor.category as string) || ''
-          if (vendor.logo_r2_key) {
-            logoUrl = await requestDownloadUrl(vendor.logo_r2_key as string).catch(() => null)
+          category = pendCategory || (vendor.category as string) || ''
+          const logoKey = pendLogo ?? (vendor.logo_r2_key as string | null)
+          if (logoKey) {
+            logoUrl = await requestDownloadUrl(logoKey).catch(() => null)
           }
         }
       }

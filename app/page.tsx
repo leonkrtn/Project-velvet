@@ -1248,10 +1248,10 @@ export default function LandingPage() {
           <div>
             <p className="lp-footer-col-title">Rechtliches</p>
             <ul className="lp-footer-links">
-              <li><a href="#">Impressum</a></li>
-              <li><a href="#">Datenschutz</a></li>
-              <li><a href="#">AGB</a></li>
-              <li><a href="#">Cookie-Einstellungen</a></li>
+              <li><a href="/impressum">Impressum</a></li>
+              <li><a href="/datenschutz">Datenschutz</a></li>
+              <li><a href="/cookies">Cookie-Richtlinie</a></li>
+              <li><a href="#" onClick={e => { e.preventDefault(); window.dispatchEvent(new Event('forevr-open-cookie-settings')) }}>Cookie-Einstellungen</a></li>
             </ul>
           </div>
           <div>
@@ -1265,9 +1265,9 @@ export default function LandingPage() {
         <div className="lp-footer-bottom">
           <span className="lp-footer-copy">© 2026 Forevr. Alle Rechte vorbehalten. <a href="/signup/veranstalter" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Veranstalter</a></span>
           <div className="lp-footer-legal">
-            <a href="#">Impressum</a>
-            <a href="#">Datenschutz</a>
-            <a href="#">Cookies</a>
+            <a href="/impressum">Impressum</a>
+            <a href="/datenschutz">Datenschutz</a>
+            <a href="/cookies">Cookies</a>
           </div>
         </div>
       </footer>

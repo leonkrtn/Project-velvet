@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Loader2, Upload, Save, Send, CheckCircle2, AlertTriangle, Clock,
-  Plus, Trash2, ArrowUp, ArrowDown, Star, Building2, CalendarDays, X,
-  PlayCircle, Music2,
+  Plus, Trash2, ArrowUp, ArrowDown, Star, CalendarDays, X,
+  PlayCircle, Music2, Monitor, Smartphone, Eye,
 } from 'lucide-react'
 import {
   MARKETPLACE_CATEGORIES, PRICE_UNITS, SOCIAL_PLATFORMS,
@@ -12,6 +13,12 @@ import {
   MAX_VIDEO_URLS, youtubeVideoId, youtubeEmbedUrl,
 } from '@/lib/marketplace/types'
 import FragebogenBuilderClient from '@/app/vendor/anfrage-formular/FragebogenBuilderClient'
+import { HelpTip } from '@/components/ui/HelpTooltip'
+import { uploadVendorImage, UploadError } from '@/lib/marketplace/vendor-upload'
+import VendorMarketplacePreview, {
+  type PreviewVendor, type PreviewPackage, type PreviewFaq,
+} from '@/components/marketplace/VendorMarketplacePreview'
+import ExternalEmbed from '@/components/consent/ExternalEmbed'
 
 interface Vendor {
   id: string; name: string; company_name: string | null; category: string
@@ -60,6 +67,16 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase() || '?'
 }
 
+// Feld-Label mit optionalem Pflicht-Sternchen und „?"-Hilfe (Hover-Tooltip).
+function Lbl({ children, required, help }: { children: React.ReactNode; required?: boolean; help?: string }) {
+  return (
+    <label style={{ ...lbl, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span>{children}{required && <span aria-hidden="true" style={{ color: 'var(--accent)', marginLeft: 2 }}>*</span>}</span>
+      {help && <HelpTip text={help} />}
+    </label>
+  )
+}
+
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
   return (
     <button
@@ -86,7 +103,10 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
 type ListingTab = 'anzeige' | 'anfrageformular'
 
 export default function VendorListingClient() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<ListingTab>('anzeige')
+  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop')
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [vendor, setVendor] = useState<Vendor | null>(null)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
@@ -95,13 +115,14 @@ export default function VendorListingClient() {
   const [faqs, setFaqs] = useState<Faq[]>([])
   const [availability, setAvailability] = useState<Avail[]>([])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [photoPct, setPhotoPct] = useState<number | null>(null)
+  const [logoBusy, setLogoBusy] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
   const [confirmPhotoId, setConfirmPhotoId] = useState<string | null>(null)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
 
   const [f, setF] = useState({
     name: '', company_name: '', category: 'sonstiges', street: '', zip: '', city: '',
-    company_street: '', company_zip: '', company_city: '',
     description: '', email: '', phone: '', website: '', price_range: '',
     service_cities: '', service_radius_km: '', brand_color: '', audio_title: '',
   })
@@ -136,9 +157,6 @@ export default function VendorListingClient() {
       street: String(pick('street', v.street) ?? ''),
       zip: String(pick('zip', v.zip) ?? ''),
       city: String(pick('city', v.city) ?? ''),
-      company_street: v.company_street ?? '',
-      company_zip: v.company_zip ?? '',
-      company_city: v.company_city ?? '',
       description: v.description ?? '',
       email: v.email ?? '',
       phone: v.phone ?? '',
@@ -177,7 +195,6 @@ export default function VendorListingClient() {
     const payload = {
       name: f.name, company_name: f.company_name, category: f.category,
       street: f.street, zip: f.zip, city: f.city,
-      company_street: f.company_street, company_zip: f.company_zip, company_city: f.company_city,
       description: f.description, email: f.email, phone: f.phone, website: f.website,
       price_range: f.price_range,
       service_cities: f.service_cities.split(',').map(s => s.trim()).filter(Boolean),
@@ -198,6 +215,8 @@ export default function VendorListingClient() {
       } else {
         savedSnapshot.current = JSON.stringify({ f, social, videos })
         flash('ok', d.hasPendingChanges ? 'Gespeichert — sensible Änderungen gehen in die Prüfung.' : 'Gespeichert.')
+        // Server-Layout neu rendern, damit der Firmenname/Logo im Header sofort aktualisiert.
+        router.refresh()
       }
     } catch {
       flash('err', 'Speichern fehlgeschlagen')
@@ -246,40 +265,52 @@ export default function VendorListingClient() {
   const logoInput = useRef<HTMLInputElement>(null)
   const photoInput = useRef<HTMLInputElement>(null)
 
-  async function uploadImage(file: File, kind: 'logo' | 'photo'): Promise<string | null> {
-    const res = await fetch('/api/vendor/marketplace/upload', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind, contentType: file.type }),
-    })
-    if (!res.ok) { flash('err', 'Upload-URL fehlgeschlagen'); return null }
-    const { uploadUrl, key } = await res.json()
-    const put = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file })
-    if (!put.ok) { flash('err', 'Upload fehlgeschlagen'); return null }
-    return key
-  }
-
   async function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; if (!file) return
-    const key = await uploadImage(file, 'logo'); if (!key) return
-    const res = await fetch('/api/vendor/marketplace/profile', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logo_r2_key: key }),
-    })
-    const d = await res.json()
-    flash('ok', d.hasPendingChanges ? 'Logo hochgeladen — geht in die Prüfung.' : 'Logo aktualisiert.')
-    load(false)
+    const file = e.target.files?.[0]; e.target.value = ''; if (!file) return
+    setLogoBusy(true)
+    try {
+      const key = await uploadVendorImage(file, 'logo')
+      const res = await fetch('/api/vendor/marketplace/profile', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logo_r2_key: key }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) { flash('err', d.error ?? 'Logo konnte nicht gespeichert werden'); return }
+      // Sofort lokal anzeigen (Vorschau/Editor) statt vollem Reload; Header via refresh.
+      setLogoUrl(URL.createObjectURL(file))
+      flash('ok', d.hasPendingChanges ? 'Logo hochgeladen — geht in die Prüfung.' : 'Logo aktualisiert.')
+      router.refresh()
+    } catch (err) {
+      flash('err', err instanceof UploadError ? err.message : 'Upload fehlgeschlagen')
+    } finally {
+      setLogoBusy(false)
+    }
   }
 
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []); if (!files.length) return
+    const files = Array.from(e.target.files ?? []); e.target.value = ''; if (!files.length) return
     setUploadingPhoto(true)
+    let added = 0, failed = 0
     for (const file of files) {
-      const key = await uploadImage(file, 'photo'); if (!key) continue
-      await fetch('/api/vendor/marketplace/photos', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ r2_key: key }),
-      })
+      if (photos.length + added >= 15) { flash('err', 'Maximal 15 Fotos.'); break }
+      setPhotoPct(0)
+      try {
+        const key = await uploadVendorImage(file, 'photo', setPhotoPct)
+        const res = await fetch('/api/vendor/marketplace/photos', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ r2_key: key }),
+        })
+        const d = await res.json().catch(() => ({}))
+        if (!res.ok || !d.id) { failed++; continue }
+        // Lokal einfügen (mit Object-URL für sofortige Anzeige) statt vollem Reload.
+        setPhotos(p => [...p, { id: d.id as string, sort_order: p.length, url: URL.createObjectURL(file) }])
+        added++
+      } catch (err) {
+        failed++
+        if (err instanceof UploadError) flash('err', err.message)
+      }
     }
-    setUploadingPhoto(false)
-    flash('ok', 'Fotos hinzugefügt.'); load(false)
+    setPhotoPct(null); setUploadingPhoto(false)
+    if (added) flash('ok', `${added} Foto${added === 1 ? '' : 's'} hinzugefügt.`)
+    else if (!failed) flash('err', 'Kein Foto hochgeladen.')
   }
 
   const audioInput = useRef<HTMLInputElement>(null)
@@ -420,17 +451,50 @@ export default function VendorListingClient() {
 
   const hasPending = !!vendor.pending_changes && Object.keys(vendor.pending_changes).length > 0
   const status = vendor.moderation_status
+  const hasContact = !!f.phone.trim() || !!f.email.trim()
   const requirements = [
     { key: 'company', label: 'Firma / Anzeigename', ok: !!f.company_name.trim() },
     { key: 'desc', label: 'Beschreibung (mind. 30 Zeichen)', ok: f.description.trim().length >= 30 },
     { key: 'city', label: 'Stadt', ok: !!f.city.trim() },
     { key: 'photo', label: 'Mindestens 1 Foto', ok: photos.length >= 1 },
+    { key: 'logo', label: 'Logo', ok: !!logoUrl },
+    { key: 'contact', label: 'Kontakt (Telefon oder E-Mail)', ok: hasContact },
   ]
   const allRequirementsMet = requirements.every(r => r.ok)
   const showRequirements = status === 'draft' || status === 'rejected'
   const descLen = f.description.trim().length
 
   const categoryLabel = MARKETPLACE_CATEGORIES.find(c => c.key === f.category)?.label ?? f.category
+
+  // ── Live-Vorschau-Props (exakt die Brautpaar-Detailansicht), abgeleitet aus dem Formular ──
+  const previewVendor: PreviewVendor = {
+    company_name: f.company_name || null, name: f.name || null, category: f.category,
+    description: f.description || null, street: f.street || null, zip: f.zip || null, city: f.city || null,
+    price_range: f.price_range || null, verified: vendor.verified,
+    social_links: social,
+    service_cities: f.service_cities.split(',').map(s => s.trim()).filter(Boolean),
+    service_radius_km: f.service_radius_km ? Number(f.service_radius_km) : null,
+    logo_url: logoUrl,
+    photos: photos.filter(p => p.url).map(p => ({ id: p.id, url: p.url as string })),
+  }
+  const previewPackages: PreviewPackage[] = packages.map(p => ({
+    id: p.id, title: p.title, description: p.description, price_from: p.price_from, price_unit: p.price_unit,
+  }))
+  const previewFaqs: PreviewFaq[] = faqs.map(q => ({ id: q.id, question: q.question, answer: q.answer }))
+  const previewAvailability = availability.map(a => a.day)
+
+  const previewNode = (
+    <VendorMarketplacePreview
+      vendor={previewVendor}
+      packages={previewPackages}
+      faqs={previewFaqs}
+      reviews={[]}
+      reviewAvg={0}
+      reviewCount={0}
+      availability={previewAvailability}
+      brandColor={f.brand_color}
+    />
+  )
 
   return (
     <div className="vnd-page-outer" style={{ flex: 1, background: 'var(--bg)', padding: '28px 24px 48px', overflow: 'auto' }}>
@@ -482,14 +546,18 @@ export default function VendorListingClient() {
         </div>
 
         {activeTab === 'anzeige' ? (
-          <>
+          <div className="listing-split">
+            <div className="listing-form-col">
             {/* ── Status banner (zuerst — wichtigste Info) ── */}
             <StatusBanner status={status} hasPending={hasPending} verified={vendor.verified} published={vendor.published} reason={vendor.rejected_reason} />
 
             {/* ── Submit for review (draft/rejected) ── */}
             {showRequirements && (
               <div style={{ ...secCard, marginBottom: 16 }}>
-                <h2 style={h2s}>Zur Prüfung einreichen</h2>
+                <h2 style={{ ...h2s, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  Zur Prüfung einreichen
+                  <HelpTip text="Jedes Profil wird einmalig kurz geprüft, bevor es im Marktplatz erscheint. So stellen wir sicher, dass nur seriöse, vollständige Anbieter gelistet sind — das schafft Vertrauen bei den Brautpaaren und schützt deinen Auftritt. Die Prüfung dauert in der Regel unter 24 Stunden." />
+                </h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
                   {requirements.map(r => (
                     <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: r.ok ? '#15803D' : 'var(--text-dim)' }}>
@@ -514,8 +582,9 @@ export default function VendorListingClient() {
             {/* ── Main profile card ── */}
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 20, marginBottom: 16 }}>
 
+              <Lbl required help="Dein Firmenlogo erscheint auf deiner Marktplatz-Karte und in deinen Angebots-PDFs. Zum Hochladen auf das Feld klicken.">Logo</Lbl>
               {/* Avatar + company info */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20, marginTop: 8 }}>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                   <div
                     onClick={() => logoInput.current?.click()}
@@ -535,16 +604,19 @@ export default function VendorListingClient() {
                   </div>
                   <button
                     onClick={() => logoInput.current?.click()}
+                    disabled={logoBusy}
                     style={{
                       position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%)',
                       width: 22, height: 22, borderRadius: '50%', padding: 0,
                       background: 'var(--accent)', border: '2px solid var(--bg)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: logoBusy ? 'wait' : 'pointer',
                     }}
                   >
-                    <Upload size={11} color="#fff" />
+                    {logoBusy
+                      ? <Loader2 size={11} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
+                      : <Upload size={11} color="#fff" />}
                   </button>
-                  <input ref={logoInput} type="file" accept="image/*" hidden onChange={onLogo} />
+                  <input ref={logoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={onLogo} />
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -563,7 +635,7 @@ export default function VendorListingClient() {
 
               {/* Kurzbeschreibung */}
               <div style={{ marginBottom: 16 }}>
-                <label style={lbl}>Kurzbeschreibung</label>
+                <Lbl required help="Mindestens 30 Zeichen. Beschreibe Leistung und Stil kurz und prägnant — das sehen Brautpaare zuerst.">Kurzbeschreibung</Lbl>
                 <textarea
                   value={f.description}
                   onChange={set('description')}
@@ -577,7 +649,7 @@ export default function VendorListingClient() {
 
               {/* Markenfarbe */}
               <div style={{ marginBottom: 16 }}>
-                <label style={lbl}>Markenfarbe</label>
+                <Lbl help="Deine Akzentfarbe für Angebots-PDFs und die Mails ans Brautpaar. Leer lassen für den Forevr-Standard.">Markenfarbe</Lbl>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <input
                     type="color"
@@ -596,9 +668,6 @@ export default function VendorListingClient() {
                     <button onClick={() => setF(s => ({ ...s, brand_color: '' }))} style={{ ...btnGhost, padding: '0 12px' }}>Zurücksetzen</button>
                   )}
                 </div>
-                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '6px 0 0' }}>
-                  Akzentfarbe für deine Angebots-PDFs und die Mails an das Brautpaar.
-                </p>
               </div>
 
               {/* Kategorie + Ab-Preis */}
@@ -618,9 +687,9 @@ export default function VendorListingClient() {
 
             {/* ── Galerie ── */}
             <div data-tour="vdr-listing-gallery" style={secCard}>
-              <h2 style={h2s}>Galerie</h2>
+              <h2 style={h2s}>Galerie <span aria-hidden="true" style={{ color: 'var(--accent)' }}>*</span></h2>
               <p style={{ fontSize: 13, color: 'var(--text-dim)', margin: '0 0 12px' }}>
-                Erstes Bild = Titelbild. Max. 15 Fotos.
+                Mindestens 1 Foto. Erstes Bild = Titelbild. Max. 15 Fotos.
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
                 {photos.map((p, i) => (
@@ -642,12 +711,17 @@ export default function VendorListingClient() {
                   </div>
                 ))}
                 {photos.length < 15 && (
-                  <button onClick={() => photoInput.current?.click()} disabled={uploadingPhoto} style={{ width: 96, height: 72, borderRadius: 8, border: '1px dashed var(--border)', background: '#fff', cursor: uploadingPhoto ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
-                    {uploadingPhoto ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={20} />}
+                  <button onClick={() => photoInput.current?.click()} disabled={uploadingPhoto} style={{ width: 96, height: 72, borderRadius: 8, border: '1px dashed var(--border)', background: '#fff', cursor: uploadingPhoto ? 'wait' : 'pointer', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
+                    {uploadingPhoto
+                      ? <>
+                          <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
+                          {photoPct != null && <span style={{ fontSize: 10.5, fontWeight: 700 }}>{photoPct}%</span>}
+                        </>
+                      : <Plus size={20} />}
                   </button>
                 )}
               </div>
-              <input ref={photoInput} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
+              <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={onPhoto} />
             </div>
 
             {/* ── Videos & Hörprobe ── */}
@@ -685,14 +759,16 @@ export default function VendorListingClient() {
                       )}
                       {vid && (
                         <div style={{ marginTop: 8, width: 240, maxWidth: '100%', aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
-                          <iframe
-                            title={`Video ${i + 1}`}
-                            src={youtubeEmbedUrl(vid)}
-                            style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            loading="lazy"
-                          />
+                          <ExternalEmbed provider="YouTube" privacyUrl="https://policies.google.com/privacy" minHeight={135} style={{ borderRadius: 10, height: '100%' }}>
+                            <iframe
+                              title={`Video ${i + 1}`}
+                              src={youtubeEmbedUrl(vid)}
+                              style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              loading="lazy"
+                            />
+                          </ExternalEmbed>
                         </div>
                       )}
                     </div>
@@ -736,16 +812,19 @@ export default function VendorListingClient() {
 
             {/* ── Weitere Stammdaten ── */}
             <div style={secCard}>
-              <h2 style={h2s}>Weitere Angaben <SensitiveHint /></h2>
+              <h2 style={{ ...h2s, display: 'flex', alignItems: 'center', gap: 8 }}>
+                Weitere Angaben
+                <HelpTip text="Änderungen an Firmenname, Kategorie, Adresse und Logo werden vor der Veröffentlichung kurz geprüft." />
+              </h2>
               <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={lbl}>Firma / Anzeigename *</label><input style={inp} value={f.company_name} onChange={set('company_name')} placeholder="So erscheint ihr im Marktplatz" /></div>
-                <div><label style={lbl}>Ansprechpartner (intern)</label><input style={inp} value={f.name} onChange={set('name')} /></div>
-                <div><label style={lbl}>Straße</label><input style={inp} value={f.street} onChange={set('street')} /></div>
-                <div><label style={lbl}>PLZ</label><input style={inp} value={f.zip} onChange={set('zip')} /></div>
-                <div><label style={lbl}>Stadt *</label><input style={inp} value={f.city} onChange={set('city')} /></div>
-                <div><label style={lbl}>Website</label><input style={inp} value={f.website} onChange={set('website')} placeholder="https://" /></div>
-                <div><label style={lbl}>E-Mail (öffentlich nach Anfrage)</label><input style={inp} value={f.email} onChange={set('email')} /></div>
-                <div><label style={lbl}>Telefon (öffentlich nach Anfrage)</label><input style={inp} value={f.phone} onChange={set('phone')} /></div>
+                <div><Lbl required>Firma / Anzeigename</Lbl><input style={inp} value={f.company_name} onChange={set('company_name')} placeholder="So erscheint ihr im Marktplatz" /></div>
+                <div><Lbl help="Nur intern — dein Ansprechpartner. Erscheint nicht öffentlich im Marktplatz.">Ansprechpartner</Lbl><input style={inp} value={f.name} onChange={set('name')} /></div>
+                <div><Lbl help="Teil deiner Standort-Angabe. Öffentlich sichtbar ist nur die Stadt.">Straße</Lbl><input style={inp} value={f.street} onChange={set('street')} /></div>
+                <div><Lbl>PLZ</Lbl><input style={inp} value={f.zip} onChange={set('zip')} /></div>
+                <div><Lbl required help="Deine Stadt wird öffentlich auf deinem Profil angezeigt und für die Umkreissuche genutzt.">Stadt</Lbl><input style={inp} value={f.city} onChange={set('city')} /></div>
+                <div><Lbl>Website</Lbl><input style={inp} value={f.website} onChange={set('website')} placeholder="https://" /></div>
+                <div><Lbl required={!f.phone.trim()} help="Wird dem Brautpaar erst nach Annahme der Anfrage angezeigt (Schutz vor Spam). Telefon oder E-Mail ist Pflicht.">E-Mail</Lbl><input style={inp} value={f.email} onChange={set('email')} /></div>
+                <div><Lbl required={!f.email.trim()} help="Wird dem Brautpaar erst nach Annahme der Anfrage angezeigt (Schutz vor Spam). Telefon oder E-Mail ist Pflicht.">Telefon</Lbl><input style={inp} value={f.phone} onChange={set('phone')} /></div>
               </div>
             </div>
 
@@ -849,23 +928,6 @@ export default function VendorListingClient() {
               </div>
             </div>
 
-            {/* ── Allgemeine Firmenadresse (interne Stammdaten, NICHT Teil des Listings) ── */}
-            <div style={{ ...secCard, background: 'var(--bg)', border: '1px dashed var(--border)' }}>
-              <h2 style={{ ...h2s, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Building2 size={16} style={{ color: 'var(--text-dim)' }} />
-                Allgemeine Firmenadresse
-              </h2>
-              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 14px', lineHeight: 1.5 }}>
-                Interne Stammdaten (z. B. für Rechnungen) — <strong>nicht Teil deines Marktplatz-Listings</strong> und
-                geht nicht in die Prüfung. Wird nur angezeigt, wenn oben unter „Weitere Angaben“ keine Adresse hinterlegt ist.
-              </p>
-              <div className="listing-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div><label style={lbl}>Straße</label><input style={inp} value={f.company_street} onChange={set('company_street')} /></div>
-                <div><label style={lbl}>PLZ</label><input style={inp} value={f.company_zip} onChange={set('company_zip')} /></div>
-                <div><label style={lbl}>Ort</label><input style={inp} value={f.company_city} onChange={set('company_city')} /></div>
-              </div>
-            </div>
-
             <div style={{ height: 40 }} />
 
             {/* ── Schwebende Speichern-Leiste bei ungespeicherten Änderungen ── */}
@@ -901,9 +963,52 @@ export default function VendorListingClient() {
                 </div>
               </div>
             )}
-          </>
+            </div>{/* /listing-form-col */}
+
+            {/* ── Live-Vorschau (rechte Spalte) ── */}
+            <aside className="listing-preview-col">
+              <div className="listing-preview-head">
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700, color: 'var(--text-dim)' }}>
+                  <Eye size={14} /> Live-Vorschau
+                </span>
+                <div style={{ display: 'inline-flex', gap: 2, background: 'var(--border)', borderRadius: 8, padding: 2 }}>
+                  <button onClick={() => setPreviewDevice('desktop')} title="Desktop" aria-label="Desktop-Vorschau"
+                    style={{ ...prevDeviceBtn, background: previewDevice === 'desktop' ? 'var(--surface)' : 'transparent' }}>
+                    <Monitor size={15} />
+                  </button>
+                  <button onClick={() => setPreviewDevice('mobile')} title="Mobil" aria-label="Mobil-Vorschau"
+                    style={{ ...prevDeviceBtn, background: previewDevice === 'mobile' ? 'var(--surface)' : 'transparent' }}>
+                    <Smartphone size={15} />
+                  </button>
+                </div>
+              </div>
+              <div className="listing-preview-scroll">
+                <div className={`listing-preview-frame ${previewDevice}`}>
+                  {previewNode}
+                </div>
+              </div>
+            </aside>
+          </div>
         ) : (
           <FragebogenBuilderClient category={f.category} embedded />
+        )}
+
+        {/* ── Mobile: Vorschau-Button + Vollbild-Overlay ── */}
+        {activeTab === 'anzeige' && (
+          <button className="listing-preview-fab" onClick={() => setMobilePreviewOpen(true)}>
+            <Eye size={16} /> Vorschau
+          </button>
+        )}
+        {mobilePreviewOpen && (
+          <div className="listing-preview-modal">
+            <div className="listing-preview-modal-head">
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700 }}>
+                <Eye size={15} /> Live-Vorschau
+              </span>
+              <button onClick={() => setMobilePreviewOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', display: 'flex' }} aria-label="Schließen"><X size={20} /></button>
+            </div>
+            <div className="listing-preview-modal-body">{previewNode}</div>
+          </div>
         )}
       </div>
 
@@ -924,6 +1029,47 @@ export default function VendorListingClient() {
       <style>{`
         @keyframes spin{to{transform:rotate(360deg)}}
         @media(max-width:580px){.listing-two-col{grid-template-columns:1fr!important}}
+
+        /* Split-Pane: Formular links, Live-Vorschau rechts */
+        .listing-split{ display:flex; gap:24px; align-items:flex-start; }
+        .listing-form-col{ flex:1 1 0; min-width:0; max-width:640px; }
+        .listing-preview-col{
+          flex:1 1 0; min-width:0; position:sticky; top:16px; align-self:flex-start;
+          display:flex; flex-direction:column; max-height:calc(100dvh - 90px);
+          border:1px solid var(--border); border-radius:16px; background:var(--surface); overflow:hidden;
+        }
+        .listing-preview-head{
+          display:flex; align-items:center; justify-content:space-between; gap:10px;
+          padding:10px 14px; border-bottom:1px solid var(--border); flex-shrink:0;
+        }
+        .listing-preview-scroll{ flex:1; overflow:auto; padding:16px; background:#fff; }
+        .listing-preview-frame{ margin:0 auto; transition:max-width .25s ease; }
+        .listing-preview-frame.desktop{ max-width:100%; }
+        .listing-preview-frame.mobile{ max-width:400px; }
+
+        .listing-preview-fab{ display:none; }
+        .listing-preview-modal{ display:none; }
+
+        /* Unter 1100px: Vorschau-Spalte ausblenden, per Button als Vollbild öffnen */
+        @media(max-width:1100px){
+          .listing-preview-col{ display:none; }
+          .listing-form-col{ max-width:none; }
+          .listing-preview-fab{
+            position:fixed; right:16px; bottom:18px; z-index:65;
+            display:inline-flex; align-items:center; gap:6px; padding:11px 16px; border-radius:999px;
+            border:none; cursor:pointer; background:var(--accent); color:#fff; font-family:inherit;
+            font-size:13.5px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,0.22);
+          }
+          .listing-preview-modal{
+            position:fixed; inset:0; z-index:120; background:var(--bg);
+            display:flex; flex-direction:column;
+          }
+          .listing-preview-modal-head{
+            display:flex; align-items:center; justify-content:space-between; gap:10px;
+            padding:12px 16px; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--surface);
+          }
+          .listing-preview-modal-body{ flex:1; overflow:auto; padding:16px; background:#fff; }
+        }
       `}</style>
     </div>
   )
@@ -935,12 +1081,9 @@ const miniBtn: React.CSSProperties = {
   color: '#333', padding: 0,
 }
 
-function SensitiveHint() {
-  return (
-    <span title="Änderungen werden vor der Veröffentlichung geprüft" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-dim)', marginLeft: 6 }}>
-      · wird geprüft
-    </span>
-  )
+const prevDeviceBtn: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 26,
+  borderRadius: 6, border: 'none', cursor: 'pointer', color: 'var(--text)', padding: 0,
 }
 
 function StatusBanner({ status, hasPending, verified, published, reason }: {

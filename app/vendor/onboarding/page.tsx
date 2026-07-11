@@ -1,17 +1,17 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import VendorListingClient from './VendorListingClient'
+import OnboardingWizardClient from './OnboardingWizardClient'
 
 export const dynamic = 'force-dynamic'
 
-// Anbieter-Portal: Selbstverwaltung des eigenen Marktplatz-Listings.
+// Onboarding-Wizard: geführte Erst-Einrichtung des Marktplatz-Profils (<3 Min).
 // Stellt (idempotent) sicher, dass ein Marktplatz-Profil existiert — auch für
-// vormals nur per Event eingeladene Dienstleister.
-export default async function VendorListingPage() {
+// per E-Mail-Bestätigung erst später einsteigende Dienstleister.
+export default async function VendorOnboardingPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login?next=/vendor/listing')
+  if (!user) redirect('/login?next=/vendor/onboarding')
 
   const admin = createAdminClient()
   const { data: link } = await admin
@@ -40,13 +40,7 @@ export default async function VendorListingPage() {
     if (vendor) {
       await admin.from('user_dienstleister').insert({ user_id: user.id, dienstleister_id: vendor.id })
     }
-  } else {
-    await admin
-      .from('dienstleister_profiles')
-      .update({ is_marketplace: true })
-      .eq('id', link.dienstleister_id)
-      .eq('is_marketplace', false)
   }
 
-  return <VendorListingClient />
+  return <OnboardingWizardClient />
 }

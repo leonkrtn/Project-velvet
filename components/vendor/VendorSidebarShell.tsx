@@ -5,11 +5,13 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
   Calendar, BarChart2, User, LogOut, HelpCircle, Users, Menu, X, Zap,
+  Sparkles, ChevronRight,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
-import { VENDOR_TOUR_START_EVENT } from '@/lib/tour/vendor-tour-steps'
+import { VENDOR_QUICK_TOUR_STEPS, VENDOR_QUICK_TOUR_START_EVENT, VENDOR_QUICK_TOUR_DONE_KEY } from '@/lib/tour/vendor-quick-tour-steps'
 import VendorTour from '@/components/tour/VendorTour'
+import VendorHelpMenu from '@/components/vendor/VendorHelpMenu'
 
 interface Props {
   companyName: string
@@ -50,19 +52,21 @@ function activeKey(pathname: string): NavKey {
 export default function VendorSidebarShell({ companyName, companyInitials, category, logoUrl, children }: Props) {
   const pathname = usePathname()
   const [badges, setBadges] = useState<BadgeData>({ pendingAnfragen: 0 })
+  const [moderationStatus, setModerationStatus] = useState<string | null>(null)
   const [pageSubtitle, setPageSubtitle] = useState('')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [helpMenuOpen, setHelpMenuOpen] = useState(false)
   const active = activeKey(pathname)
   const isKommunikation = pathname.includes('/kommunikation')
 
-  const noShell = pathname.startsWith('/vendor/join') || pathname.startsWith('/vendor/signup')
+  const noShell = pathname.startsWith('/vendor/join') || pathname.startsWith('/vendor/signup') || pathname.startsWith('/vendor/onboarding')
 
   useEffect(() => {
     fetch('/api/vendor/shell-data')
       .then(r => r.ok ? r.json() : null)
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      .then(d => { if (d) setBadges({ pendingAnfragen: d.pendingAnfragen ?? 0 }) })
-  }, [])
+      .then(d => { if (d) { setBadges({ pendingAnfragen: d.pendingAnfragen ?? 0 }); setModerationStatus(d.moderationStatus ?? null) } })
+  }, [pathname])
 
   useEffect(() => {
     const handler = (e: Event) => setPageSubtitle((e as CustomEvent<string>).detail || '')
@@ -174,9 +178,9 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             <span className="vdr-nav-text">Anbieter-Profil</span>
           </Link>
           <button
-            onClick={() => window.dispatchEvent(new Event(VENDOR_TOUR_START_EVENT))}
+            onClick={() => setHelpMenuOpen(true)}
             className="vdr-help-btn"
-            title="Hilfe-Tour starten"
+            title="Hilfe & Erklärungen"
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '7px 10px', borderRadius: 8, width: '100%',
@@ -323,7 +327,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             </div>
           </Link>
           <button
-            onClick={() => { setMobileMenuOpen(false); window.dispatchEvent(new Event(VENDOR_TOUR_START_EVENT)) }}
+            onClick={() => { setMobileMenuOpen(false); setHelpMenuOpen(true) }}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 450, color: 'var(--text-secondary)', marginTop: 1 }}
           >
             <HelpCircle size={16} style={{ flexShrink: 0, opacity: 0.5 }} />
@@ -347,6 +351,18 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         display: 'flex', flexDirection: 'column',
         background: 'var(--bg)',
       }}>
+        {moderationStatus === 'draft' && !pathname.startsWith('/vendor/listing') && (
+          <Link href="/vendor/listing" style={{
+            display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+            padding: '10px 20px', textDecoration: 'none',
+            background: 'rgba(35,82,200,0.08)', borderBottom: '1px solid var(--border)',
+            color: 'var(--accent)', fontSize: 13.5, fontWeight: 600,
+          }}>
+            <Sparkles size={16} style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0 }}>Dein Profil ist noch nicht eingereicht — jetzt in wenigen Minuten fertigstellen.</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>Fortsetzen <ChevronRight size={15} /></span>
+          </Link>
+        )}
         {children}
       </div>
 
@@ -407,7 +423,12 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         }
       `}</style>
 
+      {/* Hilfe-Auswahl (kompletter Rundgang / einzelner Bereich / Hilfe-Seite) */}
+      <VendorHelpMenu open={helpMenuOpen} onClose={() => setHelpMenuOpen(false)} />
+      {/* Ausführliche Tour (über das Hilfe-Menü, optional bereichsgefiltert) */}
       <VendorTour />
+      {/* Kurze Onboarding-Tour: einmaliger Auto-Start nach dem Wizard */}
+      <VendorTour steps={VENDOR_QUICK_TOUR_STEPS} startEvent={VENDOR_QUICK_TOUR_START_EVENT} autoStartOnceKey={VENDOR_QUICK_TOUR_DONE_KEY} />
     </div>
   )
 }

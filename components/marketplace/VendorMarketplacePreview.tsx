@@ -7,6 +7,8 @@ import React, { useState } from 'react'
 import { MapPin, Globe, Phone, Mail, Star, Lock, BadgeCheck, ChevronDown } from 'lucide-react'
 import { categoryLabel, PRICE_UNITS, SOCIAL_PLATFORMS } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
+import { brandGoldVars } from '@/lib/vendor/brand'
+import ExternalEmbed from '@/components/consent/ExternalEmbed'
 import '@/app/brautpaar/brautpaar.css'
 
 export interface PreviewVendor {
@@ -26,6 +28,8 @@ interface Props {
   reviewAvg: number; reviewCount: number; availability: string[]
   /** Steuert, ob Telefon/E-Mail sichtbar wären (im Marktplatz erst nach Annahme). */
   contactUnlocked?: boolean
+  /** Markenfarbe (Hex) — färbt Akzente wie auf der echten Anbieterseite. */
+  brandColor?: string | null
 }
 
 function priceUnitLabel(key: string) { return PRICE_UNITS.find(u => u.key === key)?.label ?? '' }
@@ -35,19 +39,20 @@ function Stars({ value, size = 15 }: { value: number; size?: number }) {
   </span>
 }
 
-export default function VendorMarketplacePreview({ vendor, packages, faqs, reviews, reviewAvg, reviewCount, availability, contactUnlocked = false }: Props) {
+export default function VendorMarketplacePreview({ vendor, packages, faqs, reviews, reviewAvg, reviewCount, availability, contactUnlocked = false, brandColor }: Props) {
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [openFaq, setOpenFaq] = useState<string | null>(null)
 
   const displayName = vendor.company_name?.trim() || 'Anbieter'
   const addressParts = [vendor.street, [vendor.zip, vendor.city].filter(Boolean).join(' ')].filter(Boolean)
   const address = addressParts.join(', ')
-  const hero = vendor.photos[0]?.url ?? vendor.logo_url
+  // Logo ist ein Badge neben dem Namen — NICHT das Titelbild. Hero = nur Galerie.
+  const hero = vendor.photos[0]?.url ?? null
   const rest = vendor.photos.slice(1)
   const socials = SOCIAL_PLATFORMS.filter(s => vendor.social_links?.[s.key])
 
   return (
-    <div className="bp-page" style={{ padding: 0 }}>
+    <div className="bp-page mp-prev-root" style={{ padding: 0, background: '#fff', ...brandGoldVars(brandColor) }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 24, alignItems: 'start' }} className="mp-prev-grid">
         <div>
           <div style={{ aspectRatio: '16/9', borderRadius: 18, overflow: 'hidden', background: 'linear-gradient(135deg, var(--bp-gold-pale,#f3ecdd), var(--bp-ivory-2,#f2efe9))', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: hero ? 'zoom-in' : 'default' }}
@@ -75,7 +80,13 @@ export default function VendorMarketplacePreview({ vendor, packages, faqs, revie
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--bp-gold-deep,#8a6f3f)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
               <CategoryIcon category={vendor.category} size={14} /> {categoryLabel(vendor.category)}
             </div>
-            <h1 className="bp-font-heading" style={{ fontSize: '2rem', fontWeight: 600, margin: '6px 0 8px', color: 'var(--bp-ink)', lineHeight: 1.15, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <h1 className="bp-font-heading" style={{ fontSize: '2rem', fontWeight: 600, margin: '6px 0 8px', color: 'var(--bp-ink)', lineHeight: 1.15, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {vendor.logo_url && (
+                <span style={{ width: 44, height: 44, borderRadius: 12, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--bp-rule)', background: '#fff', display: 'inline-flex' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={vendor.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </span>
+              )}
               {displayName}
               {vendor.verified && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '3px 9px', borderRadius: 999 }}>
@@ -163,7 +174,9 @@ export default function VendorMarketplacePreview({ vendor, packages, faqs, revie
               <h3 className="bp-font-heading" style={{ fontSize: '1.2rem', margin: '0 0 10px' }}>Standort</h3>
               <p style={{ fontSize: 13.5, color: 'var(--bp-ink-2,#666)', margin: '0 0 10px', display: 'inline-flex', alignItems: 'center', gap: 6 }}><MapPin size={14} /> {address}</p>
               <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--bp-rule)' }}>
-                <iframe title="Standort" src={`https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`} style={{ width: '100%', height: 220, border: 0 }} loading="lazy" />
+                <ExternalEmbed provider="Google Maps" privacyUrl="https://policies.google.com/privacy" minHeight={220}>
+                  <iframe title="Standort" src={`https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`} style={{ width: '100%', height: 220, border: 0, display: 'block' }} loading="lazy" />
+                </ExternalEmbed>
               </div>
             </div>
           )}
@@ -199,7 +212,16 @@ export default function VendorMarketplacePreview({ vendor, packages, faqs, revie
         </aside>
       </div>
 
-      <style>{`@media (max-width: 720px){ .mp-prev-grid{ grid-template-columns:1fr !important; } }`}</style>
+      <style>{`
+        /* Container-Query: reflowt anhand der VORSCHAU-Breite (nicht des Viewports),
+           damit der schmale 'Mobil'-Rahmen echt einspaltig umbricht. */
+        .mp-prev-root{ container-type: inline-size; }
+        @container (max-width: 720px){ .mp-prev-grid{ grid-template-columns:1fr !important; } }
+        /* Fallback, falls Container-Queries nicht unterstützt werden */
+        @supports not (container-type: inline-size){
+          @media (max-width: 720px){ .mp-prev-grid{ grid-template-columns:1fr !important; } }
+        }
+      `}</style>
 
       {lightbox && (
         <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 6000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>

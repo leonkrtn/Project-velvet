@@ -9,6 +9,7 @@ import RequestFlow from '@/components/marketplace/RequestFlow'
 import CoupleOfferPanel from '@/components/marketplace/CoupleOfferPanel'
 import CoupleDataRequests from '@/components/marketplace/CoupleDataRequests'
 import { resolveVendorCity, formatVendorAddress } from '@/lib/vendor/location'
+import { brandGoldVars } from '@/lib/vendor/brand'
 import { VideoCarousel, AudioSamplePlayer } from '@/components/marketplace/VendorMediaSection'
 import { youtubeVideoId } from '@/lib/marketplace/types'
 
@@ -17,7 +18,7 @@ interface Vendor {
   email: string | null; phone: string | null; website: string | null; description: string | null
   street: string | null; zip: string | null; city: string | null
   company_street: string | null; company_zip: string | null; company_city: string | null
-  price_range: string | null
+  price_range: string | null; brand_color?: string | null
   verified: boolean; social_links: Record<string, string>; service_cities: string[]; service_radius_km: number | null
   logo_url: string | null; photos: { id: string; url: string }[]
   video_urls: string[]; audio_url: string | null; audio_title: string | null
@@ -114,7 +115,8 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
 
   const address = formatVendorAddress(vendor)
   const resolvedCity = resolveVendorCity(vendor)
-  const hero = vendor.photos[0]?.url ?? vendor.logo_url
+  // Logo ist ein Badge neben dem Namen — nicht das Titelbild. Hero = nur Galerie.
+  const hero = vendor.photos[0]?.url ?? null
   const rest = vendor.photos.slice(1)
   const hasVideos = vendor.video_urls.some(u => youtubeVideoId(u))
   const socials = SOCIAL_PLATFORMS.filter(s => vendor.social_links?.[s.key])
@@ -135,7 +137,7 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
   }
 
   return (
-    <div className="bp-page">
+    <div className="bp-page" style={brandGoldVars(vendor.brand_color)}>
       <Link href={`/brautpaar/${eventId}/dienstleister`} className="bp-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 16, width: 'fit-content' }}>
         <ChevronLeft size={16} /> Zurück zum Marktplatz
       </Link>
@@ -169,7 +171,13 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--bp-gold-deep)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
               <CategoryIcon category={vendor.category} size={14} /> {categoryLabel(vendor.category)}
             </div>
-            <h1 className="bp-font-heading" style={{ fontSize: '2.1rem', fontWeight: 600, margin: '6px 0 8px', color: 'var(--bp-ink)', lineHeight: 1.15, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <h1 className="bp-font-heading" style={{ fontSize: '2.1rem', fontWeight: 600, margin: '6px 0 8px', color: 'var(--bp-ink)', lineHeight: 1.15, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {vendor.logo_url && (
+                <span style={{ width: 48, height: 48, borderRadius: 12, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--bp-rule)', background: '#fff', display: 'inline-flex' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={vendor.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </span>
+              )}
               {vendor.company_name || 'Anbieter'}
               {vendor.verified && (
                 <span title="Von Forevr verifiziert" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 700, color: '#15803D', background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '3px 9px', borderRadius: 999 }}>

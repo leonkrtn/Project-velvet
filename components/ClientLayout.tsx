@@ -2,6 +2,9 @@
 import { usePathname } from 'next/navigation'
 import FrozenBanner from './FrozenBanner'
 import { EventProvider } from '@/lib/event-context'
+import { ConsentProvider } from '@/components/consent/ConsentProvider'
+import CookieConsent from '@/components/consent/CookieConsent'
+import AnalyticsGate from '@/components/consent/AnalyticsGate'
 
 // Hinweis: Das alte Brautpaar-Portal (AppHeader + BottomNav + EventProvider
 // auf /brautpaar-Routen) existiert nicht mehr — /brautpaar ist nur noch ein
@@ -19,14 +22,22 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     pathname === '/login' ||
     pathname === '/signup'
 
-  if (skipEventProvider) {
-    return <>{children}</>
-  }
+  const inner = skipEventProvider
+    ? <>{children}</>
+    : (
+        <EventProvider>
+          <FrozenBanner />
+          {children}
+        </EventProvider>
+      )
 
+  // Consent-Provider umschließt den GESAMTEN Baum (site-weit), damit das
+  // Cookie-Banner überall erscheint und gegatete Embeds den Status lesen können.
   return (
-    <EventProvider>
-      <FrozenBanner />
-      {children}
-    </EventProvider>
+    <ConsentProvider>
+      {inner}
+      <CookieConsent />
+      <AnalyticsGate />
+    </ConsentProvider>
   )
 }

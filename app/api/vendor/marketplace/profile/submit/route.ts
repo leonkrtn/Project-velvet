@@ -9,7 +9,7 @@ export async function POST() {
 
   const { data: v } = await admin
     .from('dienstleister_profiles')
-    .select('moderation_status, company_name, description, city')
+    .select('moderation_status, company_name, description, city, logo_r2_key, phone, email')
     .eq('id', vendorId)
     .single()
   if (!v) return NextResponse.json({ error: 'Profil nicht gefunden' }, { status: 404 })
@@ -29,6 +29,8 @@ export async function POST() {
   if (!v.description?.trim() || v.description.trim().length < 30) missing.push('Beschreibung (mind. 30 Zeichen)')
   if (!v.city?.trim()) missing.push('Stadt')
   if ((photoCount ?? 0) < 1) missing.push('mindestens 1 Foto')
+  if (!v.logo_r2_key) missing.push('Logo')
+  if (!v.phone?.trim() && !v.email?.trim()) missing.push('Kontakt (Telefon oder E-Mail)')
 
   if (missing.length > 0) {
     return NextResponse.json({ error: `Bitte zuerst ausfüllen: ${missing.join(', ')}`, missing }, { status: 400 })
