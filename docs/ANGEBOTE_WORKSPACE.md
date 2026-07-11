@@ -36,7 +36,7 @@ kein Supabase-SMTP/Edge-Function-Umweg mehr — die frühere Edge Function
 ```bash
 # Vercel Env Vars:
 RESEND_API_KEY=re_...
-EMAIL_FROM="Forevr <no-reply@forevrweddings.de>"   # optional, sonst Default
+EMAIL_FROM="Forevr <no-reply@mail.forevrweddings.de>"   # optional, sonst Default (verifizierte Resend-Subdomain)
 ```
 
 - Ohne gesetzten `RESEND_API_KEY` ist der Versand ein **No-Op** (Konsolen-

@@ -21,22 +21,25 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({})) as { key?: string; to?: string }
   const to = (body.to || '').trim()
+  // Erwartbare Fehl-Ergebnisse werden bewusst als 200 {ok:false, error} geliefert,
+  // damit der Browser keine 4xx/5xx-Ressourcenfehler in die Konsole loggt und die
+  // „Testen"-Seite die konkrete Ursache direkt anzeigen kann.
   if (!to || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
-    return NextResponse.json({ error: 'Bitte eine gültige Zieladresse angeben.' }, { status: 400 })
+    return NextResponse.json({ ok: false, error: 'Bitte eine gültige Zieladresse angeben.' })
   }
   const def = body.key ? testMailByKey(body.key) : undefined
-  if (!def) return NextResponse.json({ error: 'Unbekannte Mail.' }, { status: 404 })
+  if (!def) return NextResponse.json({ ok: false, error: 'Unbekannte Mail.' })
 
   if (!process.env.RESEND_API_KEY) {
-    return NextResponse.json({ error: 'RESEND_API_KEY ist nicht konfiguriert — es kann nichts versendet werden.' }, { status: 503 })
+    return NextResponse.json({ ok: false, error: 'RESEND_API_KEY ist nicht konfiguriert — es kann nichts versendet werden.' })
   }
 
   try {
     const built = await def.build()
     const result = await sendEmailChecked({ to, subject: built.subject, html: built.html, attachments: built.attachments })
-    if (!result.ok) return NextResponse.json({ error: result.error ?? 'Versand fehlgeschlagen.' }, { status: 502 })
+    if (!result.ok) return NextResponse.json({ ok: false, error: result.error ?? 'Versand fehlgeschlagen.' })
     return NextResponse.json({ ok: true })
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Versand fehlgeschlagen.' }, { status: 500 })
+    return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : 'Versand fehlgeschlagen.' })
   }
 }

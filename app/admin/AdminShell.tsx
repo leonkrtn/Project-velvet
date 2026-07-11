@@ -24,7 +24,7 @@ const NAV: { key: Section; label: string; icon: React.ElementType; badgeKey?: ke
   { key: 'veranstalter', label: 'Veranstalter', icon: Users },
   { key: 'promo',       label: 'Promo-Codes',  icon: Tag },
   { key: 'benachrichtigungen', label: 'Benachrichtigungen', icon: Bell },
-  { key: 'testen',      label: 'Testen',       icon: FlaskConical },
+  { key: 'testen',      label: 'Kontrolle',    icon: FlaskConical },
 ]
 
 const SB = {

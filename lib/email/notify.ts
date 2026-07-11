@@ -15,11 +15,43 @@ interface MailInput {
   to: string | string[]
   subject: string
   html: string
+  /** Optionaler Plaintext. Fehlt er, wird er aus dem HTML abgeleitet. */
+  text?: string
   replyTo?: string
   attachments?: MailAttachment[]
 }
 
-const EMAIL_FROM = process.env.EMAIL_FROM || 'Forevr <no-reply@forevrweddings.de>'
+// Deliverability: Spamfilter bewerten reine HTML-Mails ohne Text-Alternative
+// schlechter. Wir liefern daher immer eine lesbare multipart/alternative
+// Plaintext-Fassung mit. Grobe, aber robuste HTML→Text-Wandlung (Links bleiben
+// als "Text (URL)" erhalten).
+function htmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<head[\s\S]*?<\/head>/gi, ' ')
+    .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, href, txt) => {
+      const label = txt.replace(/<[^>]+>/g, '').trim()
+      return label && href && !label.includes(href) ? `${label} (${href})` : (label || href)
+    })
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|tr|h1|h2|h3|li|table)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&uuml;/g, 'ü').replace(/&Uuml;/g, 'Ü').replace(/&auml;/g, 'ä').replace(/&Auml;/g, 'Ä')
+    .replace(/&ouml;/g, 'ö').replace(/&Ouml;/g, 'Ö').replace(/&szlig;/g, 'ß').replace(/&euro;/gi, '€')
+    .replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"').replace(/&#34;/gi, '"').replace(/&#39;|&rsquo;|&lsquo;/gi, "'")
+    .replace(/&bdquo;|&ldquo;|&rdquo;/gi, '"')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+}
+
+// Absender-Domain muss in Resend verifiziert sein. Verifiziert ist die
+// Subdomain mail.forevrweddings.de (NICHT die Root-Domain) — daher ist der
+// Default no-reply@mail.forevrweddings.de. Über EMAIL_FROM überschreibbar.
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Forevr <no-reply@mail.forevrweddings.de>'
 const REPLY_TO_EMAIL = process.env.REPLY_TO_EMAIL || undefined
 
 let resendClient: Resend | null | undefined
@@ -48,6 +80,7 @@ export async function sendEmail(admin: SupabaseClient | null, input: MailInput):
       to: recipients,
       subject: input.subject,
       html: input.html,
+      text: input.text || htmlToText(input.html),
       replyTo: input.replyTo || REPLY_TO_EMAIL,
       attachments: input.attachments?.map(a => ({ filename: a.filename, content: a.content })),
     })
@@ -70,6 +103,7 @@ export async function sendEmailChecked(input: MailInput): Promise<{ ok: boolean;
       to: recipients,
       subject: input.subject,
       html: input.html,
+      text: input.text || htmlToText(input.html),
       replyTo: input.replyTo || REPLY_TO_EMAIL,
       attachments: input.attachments?.map(a => ({ filename: a.filename, content: a.content })),
     })
