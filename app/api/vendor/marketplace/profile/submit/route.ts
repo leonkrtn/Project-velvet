@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireVendorOwner } from '@/lib/marketplace/owner'
+import { notifyVendorSubmit } from '@/lib/admin/notify'
 
 // POST — Profil zur Erstprüfung einreichen (draft|rejected → pending).
 export async function POST() {
@@ -9,7 +10,7 @@ export async function POST() {
 
   const { data: v } = await admin
     .from('dienstleister_profiles')
-    .select('moderation_status, company_name, description, city, logo_r2_key, phone, email')
+    .select('moderation_status, company_name, name, category, description, city, logo_r2_key, phone, email')
     .eq('id', vendorId)
     .single()
   if (!v) return NextResponse.json({ error: 'Profil nicht gefunden' }, { status: 404 })
@@ -41,6 +42,9 @@ export async function POST() {
     .update({ moderation_status: 'pending', submitted_at: new Date().toISOString(), rejected_reason: null })
     .eq('id', vendorId)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Admins benachrichtigen (best effort). Erst-Einreichung, kein Änderungs-Review.
+  await notifyVendorSubmit(admin, { name: v.name, company_name: v.company_name, category: v.category }, false)
 
   return NextResponse.json({ success: true })
 }

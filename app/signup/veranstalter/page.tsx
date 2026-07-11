@@ -51,6 +51,12 @@ export default function VeranstalterSignupPage() {
       })
       if (signUpErr) throw signUpErr
 
+      // Admins über den neuen Veranstalter-Antrag informieren (best effort).
+      fetch('/api/notify/organizer-signup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      }).catch(() => {})
+
       if (!signUpData.session) {
         setConfirmEmail(true)
         return
