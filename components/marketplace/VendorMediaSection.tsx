@@ -7,6 +7,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Play, Pause, Music2 } from 'lucide-react'
 import { youtubeVideoId, youtubeEmbedUrl } from '@/lib/marketplace/types'
+import ExternalEmbed from '@/components/consent/ExternalEmbed'
 
 // ── Swipebarer YouTube-Player ────────────────────────────────────
 export function VideoCarousel({ urls }: { urls: string[] }) {
@@ -30,6 +31,7 @@ export function VideoCarousel({ urls }: { urls: string[] }) {
   if (ids.length === 0) return null
 
   return (
+    <ExternalEmbed provider="YouTube" privacyUrl="https://policies.google.com/privacy" minHeight={220} style={{ borderRadius: 18 }}>
     <div style={{ position: 'relative' }}>
       <div
         ref={trackRef}
@@ -83,6 +85,7 @@ export function VideoCarousel({ urls }: { urls: string[] }) {
         </>
       )}
     </div>
+    </ExternalEmbed>
   )
 }
 

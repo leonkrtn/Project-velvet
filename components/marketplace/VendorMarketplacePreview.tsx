@@ -8,6 +8,7 @@ import { MapPin, Globe, Phone, Mail, Star, Lock, BadgeCheck, ChevronDown } from 
 import { categoryLabel, PRICE_UNITS, SOCIAL_PLATFORMS } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 import { brandGoldVars } from '@/lib/vendor/brand'
+import ExternalEmbed from '@/components/consent/ExternalEmbed'
 import '@/app/brautpaar/brautpaar.css'
 
 export interface PreviewVendor {
@@ -173,7 +174,9 @@ export default function VendorMarketplacePreview({ vendor, packages, faqs, revie
               <h3 className="bp-font-heading" style={{ fontSize: '1.2rem', margin: '0 0 10px' }}>Standort</h3>
               <p style={{ fontSize: 13.5, color: 'var(--bp-ink-2,#666)', margin: '0 0 10px', display: 'inline-flex', alignItems: 'center', gap: 6 }}><MapPin size={14} /> {address}</p>
               <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--bp-rule)' }}>
-                <iframe title="Standort" src={`https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`} style={{ width: '100%', height: 220, border: 0 }} loading="lazy" />
+                <ExternalEmbed provider="Google Maps" privacyUrl="https://policies.google.com/privacy" minHeight={220}>
+                  <iframe title="Standort" src={`https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`} style={{ width: '100%', height: 220, border: 0, display: 'block' }} loading="lazy" />
+                </ExternalEmbed>
               </div>
             </div>
           )}

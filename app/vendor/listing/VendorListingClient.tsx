@@ -18,6 +18,7 @@ import { uploadVendorImage, UploadError } from '@/lib/marketplace/vendor-upload'
 import VendorMarketplacePreview, {
   type PreviewVendor, type PreviewPackage, type PreviewFaq,
 } from '@/components/marketplace/VendorMarketplacePreview'
+import ExternalEmbed from '@/components/consent/ExternalEmbed'
 
 interface Vendor {
   id: string; name: string; company_name: string | null; category: string
@@ -758,14 +759,16 @@ export default function VendorListingClient() {
                       )}
                       {vid && (
                         <div style={{ marginTop: 8, width: 240, maxWidth: '100%', aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }}>
-                          <iframe
-                            title={`Video ${i + 1}`}
-                            src={youtubeEmbedUrl(vid)}
-                            style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                            loading="lazy"
-                          />
+                          <ExternalEmbed provider="YouTube" privacyUrl="https://policies.google.com/privacy" minHeight={135} style={{ borderRadius: 10, height: '100%' }}>
+                            <iframe
+                              title={`Video ${i + 1}`}
+                              src={youtubeEmbedUrl(vid)}
+                              style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              loading="lazy"
+                            />
+                          </ExternalEmbed>
                         </div>
                       )}
                     </div>
