@@ -12,6 +12,8 @@ import SubscriptionsSection from './SubscriptionsSection'
 import PromoCodesSection from './PromoCodesSection'
 import MarketplaceAdminPanel from './MarketplaceAdminPanel'
 import AdminReportsSection from './AdminReportsSection'
+import AdminNotificationsSection from './AdminNotificationsSection'
+import AdminTestMailSection from './AdminTestMailSection'
 
 // ── Typen ─────────────────────────────────────────────────────────────────────
 
@@ -24,7 +26,7 @@ interface Organizer {
   eventCount: number; isAdmin: boolean; createdAt: string | null
 }
 
-type Section = 'ubersicht' | 'anbieter' | 'meldungen' | 'veranstalter' | 'promo'
+type Section = 'ubersicht' | 'anbieter' | 'meldungen' | 'veranstalter' | 'promo' | 'benachrichtigungen' | 'testen'
 
 // ── Design ────────────────────────────────────────────────────────────────────
 
@@ -480,6 +482,8 @@ export default function AdminClient({ adminName }: { adminName: string }) {
       {section === 'meldungen'   && <AdminReportsSection card={card} cardHeader={cardHeader} />}
       {section === 'veranstalter' && <VeranstalterSection adminName={adminName} />}
       {section === 'promo'       && <PromoSection />}
+      {section === 'benachrichtigungen' && <AdminNotificationsSection />}
+      {section === 'testen'      && <AdminTestMailSection />}
     </AdminShell>
   )
 }

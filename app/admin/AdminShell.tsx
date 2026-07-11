@@ -2,11 +2,11 @@
 
 import React, { useEffect, useState } from 'react'
 import {
-  LayoutDashboard, Store, Flag, Users, Tag, LogOut,
+  LayoutDashboard, Store, Flag, Users, Tag, LogOut, Bell, FlaskConical,
 } from 'lucide-react'
 import { performLogout } from '@/lib/logout'
 
-type Section = 'ubersicht' | 'anbieter' | 'meldungen' | 'veranstalter' | 'promo'
+type Section = 'ubersicht' | 'anbieter' | 'meldungen' | 'veranstalter' | 'promo' | 'benachrichtigungen' | 'testen'
 
 interface Props {
   adminName: string
@@ -23,6 +23,8 @@ const NAV: { key: Section; label: string; icon: React.ElementType; badgeKey?: ke
   { key: 'meldungen',   label: 'Meldungen',    icon: Flag,            badgeKey: 'meldungen' },
   { key: 'veranstalter', label: 'Veranstalter', icon: Users },
   { key: 'promo',       label: 'Promo-Codes',  icon: Tag },
+  { key: 'benachrichtigungen', label: 'Benachrichtigungen', icon: Bell },
+  { key: 'testen',      label: 'Testen',       icon: FlaskConical },
 ]
 
 const SB = {

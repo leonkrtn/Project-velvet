@@ -57,6 +57,29 @@ export async function sendEmail(admin: SupabaseClient | null, input: MailInput):
   }
 }
 
+// Wie sendEmail, aber mit Ergebnis-Rückgabe — für die Admin-„Testen"-Seite,
+// die dem Betreiber Erfolg/Fehler pro Mail anzeigen muss.
+export async function sendEmailChecked(input: MailInput): Promise<{ ok: boolean; error?: string }> {
+  const recipients = (Array.isArray(input.to) ? input.to : [input.to]).filter(Boolean)
+  if (recipients.length === 0) return { ok: false, error: 'Keine Empfänger.' }
+  const resend = getResend()
+  if (!resend) return { ok: false, error: 'RESEND_API_KEY ist nicht konfiguriert.' }
+  try {
+    const { error } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: recipients,
+      subject: input.subject,
+      html: input.html,
+      replyTo: input.replyTo || REPLY_TO_EMAIL,
+      attachments: input.attachments?.map(a => ({ filename: a.filename, content: a.content })),
+    })
+    if (error) return { ok: false, error: (error as { message?: string }).message || 'Resend-Fehler' }
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Unbekannter Fehler' }
+  }
+}
+
 const BRAND = '#B89968'
 
 /** Optionales Vendor-Branding fuer an das Brautpaar gerichtete Vendor-Mails. */
