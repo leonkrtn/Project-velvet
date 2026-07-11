@@ -5,7 +5,7 @@ import { Plus, Trash2, Eye, EyeOff, KeyRound, ImagePlus, X, Pencil, Check } from
 import { MARKETPLACE_CATEGORIES, PRICE_RANGES, categoryLabel } from '@/lib/marketplace/types'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
-interface Vendor {
+export interface Vendor {
   id: string
   name: string
   company_name: string | null
@@ -131,7 +131,7 @@ export default function MarketplaceVendorsSection() {
 }
 
 // ── Anlege-/Bearbeiten-Formular ───────────────────────────────────────────────
-function VendorForm({ vendor, onDone, onCancel }: { vendor?: Vendor; onDone: () => void; onCancel: () => void }) {
+export function VendorForm({ vendor, onDone, onCancel }: { vendor?: Vendor; onDone: () => void; onCancel: () => void }) {
   const editing = !!vendor
   const [f, setF] = useState({
     name: vendor?.name ?? '', email: vendor?.email ?? '', password: '',

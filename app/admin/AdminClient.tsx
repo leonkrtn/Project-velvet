@@ -10,8 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import AdminShell from './AdminShell'
 import SubscriptionsSection from './SubscriptionsSection'
 import PromoCodesSection from './PromoCodesSection'
-import MarketplaceVendorsSection from './MarketplaceVendorsSection'
-import MarketplaceModerationSection from './MarketplaceModerationSection'
+import MarketplaceAdminPanel from './MarketplaceAdminPanel'
 import AdminReportsSection from './AdminReportsSection'
 
 // ── Typen ─────────────────────────────────────────────────────────────────────
@@ -80,18 +79,7 @@ function UbersichtSection() {
 // ── Anbieter-Bereich (Moderation + Vendor-Liste) ──────────────────────────────
 
 function AnbieterSection() {
-  return (
-    <div style={{ padding: '28px 24px 64px' }}>
-      <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.02em', color: C.text }}>Anbieter</h1>
-          <p style={{ fontSize: 13.5, color: C.text2, margin: 0 }}>Marktplatz-Profile freigeben, prüfen und verwalten</p>
-        </div>
-        <MarketplaceModerationSection card={card} cardHeader={cardHeader} />
-        <MarketplaceVendorsSection />
-      </div>
-    </div>
-  )
+  return <MarketplaceAdminPanel />
 }
 
 // ── Veranstalter ──────────────────────────────────────────────────────────────
