@@ -33,13 +33,13 @@ export default function ExternalEmbed({
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         gap: 10, textAlign: 'center', padding: 20, minHeight,
-        background: '#F5F6F9', border: '1px dashed #C7D0DE', borderRadius: 12, color: '#4B5768',
+        background: '#FAF7F1', border: '1px dashed #D8D2C6', borderRadius: 12, color: '#5A5A5A',
         fontFamily: "'DM Sans', system-ui, sans-serif",
         ...style,
       }}
     >
-      <PlayCircle size={26} style={{ color: '#8A94A6' }} />
-      <div style={{ fontSize: 13.5, fontWeight: 600, color: '#111827' }}>
+      <PlayCircle size={26} style={{ color: '#B89968' }} />
+      <div style={{ fontSize: 13.5, fontWeight: 600, color: '#111111' }}>
         Externer Inhalt von {provider}
       </div>
       <p style={{ fontSize: 12.5, lineHeight: 1.5, margin: 0, maxWidth: 340 }}>
@@ -48,13 +48,13 @@ export default function ExternalEmbed({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
         <button
           onClick={() => grant('externalMedia')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 9, border: 'none', cursor: 'pointer', background: '#2352C8', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', borderRadius: 9, border: 'none', cursor: 'pointer', background: '#B89968', color: '#111111', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}
         >
           Inhalt laden & einwilligen
         </button>
         {privacyUrl && (
           <a href={privacyUrl} target="_blank" rel="noopener noreferrer"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#2352C8', fontWeight: 600, textDecoration: 'none' }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#8A6F3F', fontWeight: 600, textDecoration: 'none' }}>
             Datenschutz {provider} <ExternalLink size={12} />
           </a>
         )}

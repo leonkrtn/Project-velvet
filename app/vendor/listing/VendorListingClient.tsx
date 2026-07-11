@@ -476,6 +476,9 @@ export default function VendorListingClient() {
     service_radius_km: f.service_radius_km ? Number(f.service_radius_km) : null,
     logo_url: logoUrl,
     photos: photos.filter(p => p.url).map(p => ({ id: p.id, url: p.url as string })),
+    video_urls: videos.map(v => v.trim()).filter(Boolean),
+    audio_url: audioUrl,
+    audio_title: f.audio_title || null,
   }
   const previewPackages: PreviewPackage[] = packages.map(p => ({
     id: p.id, title: p.title, description: p.description, price_from: p.price_from, price_unit: p.price_unit,

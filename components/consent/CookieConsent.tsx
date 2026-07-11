@@ -125,7 +125,7 @@ function Row({ title, desc, checked, onChange, fixed }: {
         style={{
           width: 44, height: 26, borderRadius: 13, border: 'none', padding: 0, flexShrink: 0, position: 'relative',
           cursor: fixed ? 'default' : 'pointer', opacity: fixed ? 0.6 : 1,
-          background: checked ? ACCENT : '#CBD3E0', transition: 'background .15s',
+          background: checked ? ACCENT : '#D8D2C6', transition: 'background .15s',
         }}
       >
         <span style={{ position: 'absolute', top: 2, left: checked ? 20 : 2, width: 22, height: 22, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left .15s' }} />
@@ -134,20 +134,22 @@ function Row({ title, desc, checked, onChange, fixed }: {
   )
 }
 
-// Neutrale, theme-unabhängige Optik (funktioniert auf Landing + in allen Portalen).
-const ACCENT = '#2352C8'
-const INK = '#111827'
-const INK2 = '#4B5768'
-const LINE = '#E6EAF2'
+// FOREVR-Markenoptik: Gold als Akzent, weißer Hintergrund, schwarzer Text.
+// Theme-unabhängig (funktioniert auf Landing + in allen Portalen).
+const ACCENT = '#B89968'        // FOREVR-Gold (--gold)
+const ACCENT_DEEP = '#8A6F3F'   // dunkleres Gold für Text auf Gold-Flächen / Links
+const INK = '#111111'           // schwarzer Text
+const INK2 = '#5A5A5A'
+const LINE = '#E7E2D8'          // warme, zum Gold passende Trennlinie
 const card: React.CSSProperties = {
   background: '#fff', borderRadius: 16, border: `1px solid ${LINE}`,
-  boxShadow: '0 18px 50px rgba(20,22,26,0.28)', padding: '16px 18px',
+  boxShadow: '0 18px 50px rgba(28,24,16,0.22)', padding: '16px 18px',
   fontFamily: "'DM Sans', system-ui, sans-serif",
 }
-const link: React.CSSProperties = { color: ACCENT, textDecoration: 'underline', fontWeight: 600 }
+const link: React.CSSProperties = { color: ACCENT_DEEP, textDecoration: 'underline', fontWeight: 600 }
 const btnPrimary: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 6, height: 40, padding: '0 18px', borderRadius: 10,
-  fontSize: 13.5, fontWeight: 700, cursor: 'pointer', background: ACCENT, color: '#fff', border: 'none', fontFamily: 'inherit',
+  fontSize: 13.5, fontWeight: 700, cursor: 'pointer', background: ACCENT, color: '#111111', border: 'none', fontFamily: 'inherit',
 }
 const btnGhost: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 6, height: 40, padding: '0 16px', borderRadius: 10,

@@ -8,6 +8,8 @@ import { MapPin, Globe, Phone, Mail, Star, BadgeCheck, ChevronDown } from 'lucid
 import { categoryLabel, PRICE_UNITS, SOCIAL_PLATFORMS } from '@/lib/marketplace/types'
 import CategoryIcon from '@/components/marketplace/CategoryIcon'
 import { brandGoldVars } from '@/lib/vendor/brand'
+import { youtubeVideoId } from '@/lib/marketplace/types'
+import { VideoCarousel, AudioSamplePlayer } from '@/components/marketplace/VendorMediaSection'
 import ExternalEmbed from '@/components/consent/ExternalEmbed'
 import '@/app/brautpaar/brautpaar.css'
 
@@ -17,6 +19,7 @@ export interface PreviewVendor {
   price_range: string | null; verified: boolean
   social_links: Record<string, string>; service_cities: string[]; service_radius_km: number | null
   logo_url: string | null; photos: { id: string; url: string }[]
+  video_urls?: string[]; audio_url?: string | null; audio_title?: string | null
 }
 export interface PreviewPackage { id: string; title: string; description: string; price_from: number | null; price_unit: string }
 export interface PreviewFaq { id: string; question: string; answer: string }
@@ -46,6 +49,7 @@ export default function VendorMarketplacePreview({ vendor, packages, faqs, revie
   const displayName = vendor.company_name?.trim() || 'Anbieter'
   const addressParts = [vendor.street, [vendor.zip, vendor.city].filter(Boolean).join(' ')].filter(Boolean)
   const address = addressParts.join(', ')
+  const hasVideos = (vendor.video_urls ?? []).some(u => youtubeVideoId(u))
   // Logo ist ein Badge neben dem Namen — NICHT das Titelbild. Hero = nur Galerie.
   const hero = vendor.photos[0]?.url ?? null
   const rest = vendor.photos.slice(1)
@@ -107,6 +111,21 @@ export default function VendorMarketplacePreview({ vendor, packages, faqs, revie
           </div>
 
           {vendor.description && <p style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--bp-ink-2,#666)', margin: '18px 0 0' }}>{vendor.description}</p>}
+
+          {/* Videos + Hörprobe (Migration 0133) — wie auf der öffentlichen Anbieterseite */}
+          {(hasVideos || vendor.audio_url) && (
+            <div style={{ marginTop: 26 }}>
+              <h3 className="bp-font-heading" style={{ fontSize: '1.2rem', margin: '0 0 12px' }}>
+                {hasVideos && vendor.audio_url ? 'Videos & Hörprobe' : hasVideos ? 'Videos' : 'Hörprobe'}
+              </h3>
+              {hasVideos && <VideoCarousel urls={vendor.video_urls ?? []} />}
+              {vendor.audio_url && (
+                <div style={{ marginTop: hasVideos ? 14 : 0 }}>
+                  <AudioSamplePlayer url={vendor.audio_url} title={vendor.audio_title ?? null} vendorName={vendor.company_name} />
+                </div>
+              )}
+            </div>
+          )}
 
           {(vendor.service_cities.length > 0 || vendor.service_radius_km) && (
             <div style={{ marginTop: 22 }}>
