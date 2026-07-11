@@ -56,8 +56,11 @@ export default function AdminTestMailSection() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, to: to.trim() }),
       })
-      const json = await res.json()
-      if (!res.ok) { setResults(r => ({ ...r, [key]: { status: 'error', msg: json.error ?? 'Fehler' } })); return false }
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || json.ok === false) {
+        setResults(r => ({ ...r, [key]: { status: 'error', msg: json.error ?? `Fehler (${res.status})` } }))
+        return false
+      }
       setResults(r => ({ ...r, [key]: { status: 'ok', msg: 'Gesendet' } }))
       return true
     } catch {
@@ -133,18 +136,25 @@ export default function AdminTestMailSection() {
                     {list.map((m, i) => {
                       const r = results[m.key] ?? { status: 'idle' as const }
                       return (
-                        <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderTop: i > 0 ? `1px solid ${C.line}` : 'none' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, color: C.text, fontSize: 14 }}>{m.label}</div>
-                            <div style={{ fontSize: 12.5, color: C.text3 }}>{m.description}</div>
+                        <div key={m.key} style={{ padding: '12px 16px', borderTop: i > 0 ? `1px solid ${C.line}` : 'none' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, color: C.text, fontSize: 14 }}>{m.label}</div>
+                              <div style={{ fontSize: 12.5, color: C.text3 }}>{m.description}</div>
+                            </div>
+                            <div style={{ minWidth: 92, textAlign: 'right' }}>
+                              {r.status === 'ok' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: C.green }}><CheckCircle2 size={15} /> {r.msg}</span>}
+                              {r.status === 'error' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: C.red }}><XCircle size={15} /> Fehler</span>}
+                            </div>
+                            <button style={{ ...btn, opacity: validTo && r.status !== 'sending' ? 1 : 0.5 }} disabled={!validTo || r.status === 'sending'} onClick={() => sendOne(m.key)}>
+                              {r.status === 'sending' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />} Test senden
+                            </button>
                           </div>
-                          <div style={{ minWidth: 92, textAlign: 'right' }}>
-                            {r.status === 'ok' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: C.green }}><CheckCircle2 size={15} /> {r.msg}</span>}
-                            {r.status === 'error' && <span title={r.msg} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: C.red }}><XCircle size={15} /> Fehler</span>}
-                          </div>
-                          <button style={{ ...btn, opacity: validTo && r.status !== 'sending' ? 1 : 0.5 }} disabled={!validTo || r.status === 'sending'} onClick={() => sendOne(m.key)}>
-                            {r.status === 'sending' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={14} />} Test senden
-                          </button>
+                          {r.status === 'error' && r.msg && (
+                            <div style={{ marginTop: 8, background: C.redPale, border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 11px', fontSize: 12.5, color: C.red, wordBreak: 'break-word' }}>
+                              {r.msg}
+                            </div>
+                          )}
                         </div>
                       )
                     })}
@@ -156,8 +166,9 @@ export default function AdminTestMailSection() {
         )}
 
         {mails.some(m => results[m.key]?.status === 'error') && (
-          <p style={{ fontSize: 12.5, color: C.text3, marginTop: 16 }}>
-            Fehlermeldung wird beim Überfahren des Fehler-Hinweises angezeigt. Häufigste Ursache: <code>RESEND_API_KEY</code> nicht gesetzt.
+          <p style={{ fontSize: 12.5, color: C.text3, marginTop: 16, lineHeight: 1.6 }}>
+            Häufige Ursachen: <code>RESEND_API_KEY</code> nicht gesetzt · Absender-Domain in Resend nicht verifiziert ·
+            Resend-Sandbox (ohne verifizierte Domain sind nur Mails an die eigene Konto-Adresse erlaubt).
           </p>
         )}
       </div>
