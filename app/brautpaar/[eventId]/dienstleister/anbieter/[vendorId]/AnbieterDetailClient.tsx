@@ -125,6 +125,23 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
   const hasVideos = vendor.video_urls.some(u => youtubeVideoId(u))
   const socials = SOCIAL_PLATFORMS.filter(s => vendor.social_links?.[s.key])
 
+  // Vorausgefüllte Kontakt-Mail (kommt von Forevr, Anfrage-Text schon enthalten).
+  const mailSubject = `Anfrage über Forevr${vendor.company_name ? ` an ${vendor.company_name}` : ''}`
+  const mailBody =
+    `Hallo${vendor.company_name ? ` ${vendor.company_name}` : ''},\n\n` +
+    `wir sind über den Forevr-Hochzeitsmarktplatz auf euch aufmerksam geworden und interessieren uns ` +
+    `für eure Leistungen${vendor.category ? ` als ${categoryLabel(vendor.category)}` : ''}.\n\n` +
+    `Gerne würden wir Folgendes anfragen:\n` +
+    `• Datum unserer Feier: \n` +
+    `• Ort / Location: \n` +
+    `• Ungefähre Gästezahl: \n` +
+    `• Unsere Wünsche / Fragen: \n\n` +
+    `Über eine kurze Rückmeldung freuen wir uns sehr.\n\n` +
+    `Viele Grüße`
+  const mailtoHref = vendor.email
+    ? `mailto:${vendor.email}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}`
+    : undefined
+
   async function submitReview() {
     setRevErr(''); setRevBusy(true)
     try {
@@ -422,7 +439,7 @@ export default function AnbieterDetailClient({ eventId, vendor, packages, faqs, 
                 </a>
               ))}
               {vendor.phone && <a href={`tel:${vendor.phone}`} onClick={() => trackVendorEvent(vendor.id, 'contact_phone')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2)', textDecoration: 'none' }}><Phone size={14} /> {vendor.phone}</a>}
-              {vendor.email && <a href={`mailto:${vendor.email}`} onClick={() => trackVendorEvent(vendor.id, 'contact_email')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2)', textDecoration: 'none' }}><Mail size={14} /> {vendor.email}</a>}
+              {vendor.email && <a href={mailtoHref} onClick={() => trackVendorEvent(vendor.id, 'contact_email')} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--bp-ink-2)', textDecoration: 'none' }}><Mail size={14} /> {vendor.email}</a>}
             </div>
           </div>
 
