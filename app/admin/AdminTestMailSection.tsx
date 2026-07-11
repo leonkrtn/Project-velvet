@@ -84,7 +84,7 @@ export default function AdminTestMailSection() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
           <span style={{ width: 40, height: 40, borderRadius: 11, background: '#EFF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.accent, flexShrink: 0 }}><FlaskConical size={20} /></span>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: C.text }}>Testen</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: C.text }}>Kontrolle</h1>
             <p style={{ fontSize: 13.5, color: C.text2, margin: '2px 0 0' }}>Jede automatische Mail einmal auslösen, um Mailserver &amp; Vorlagen zu prüfen.</p>
           </div>
         </div>
