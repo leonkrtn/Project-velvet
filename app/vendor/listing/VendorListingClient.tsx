@@ -491,6 +491,7 @@ export default function VendorListingClient() {
       reviewAvg={0}
       reviewCount={0}
       availability={previewAvailability}
+      brandColor={f.brand_color}
     />
   )
 
@@ -552,7 +553,10 @@ export default function VendorListingClient() {
             {/* ── Submit for review (draft/rejected) ── */}
             {showRequirements && (
               <div style={{ ...secCard, marginBottom: 16 }}>
-                <h2 style={h2s}>Zur Prüfung einreichen</h2>
+                <h2 style={{ ...h2s, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  Zur Prüfung einreichen
+                  <HelpTip text="Jedes Profil wird einmalig kurz geprüft, bevor es im Marktplatz erscheint. So stellen wir sicher, dass nur seriöse, vollständige Anbieter gelistet sind — das schafft Vertrauen bei den Brautpaaren und schützt deinen Auftritt. Die Prüfung dauert in der Regel unter 24 Stunden." />
+                </h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
                   {requirements.map(r => (
                     <div key={r.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: r.ok ? '#15803D' : 'var(--text-dim)' }}>
@@ -1035,7 +1039,7 @@ export default function VendorListingClient() {
           display:flex; align-items:center; justify-content:space-between; gap:10px;
           padding:10px 14px; border-bottom:1px solid var(--border); flex-shrink:0;
         }
-        .listing-preview-scroll{ flex:1; overflow:auto; padding:16px; background:var(--bg); }
+        .listing-preview-scroll{ flex:1; overflow:auto; padding:16px; background:#fff; }
         .listing-preview-frame{ margin:0 auto; transition:max-width .25s ease; }
         .listing-preview-frame.desktop{ max-width:100%; }
         .listing-preview-frame.mobile{ max-width:400px; }
@@ -1061,7 +1065,7 @@ export default function VendorListingClient() {
             display:flex; align-items:center; justify-content:space-between; gap:10px;
             padding:12px 16px; border-bottom:1px solid var(--border); flex-shrink:0; background:var(--surface);
           }
-          .listing-preview-modal-body{ flex:1; overflow:auto; padding:16px; }
+          .listing-preview-modal-body{ flex:1; overflow:auto; padding:16px; background:#fff; }
         }
       `}</style>
     </div>

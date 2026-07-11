@@ -7,12 +7,33 @@ import { HelpCircle } from 'lucide-react'
 // (Touch- und Tastatur-tauglich). Dezentes Popover im bp-Theme.
 // Verwendung: <HelpTip text="Erklärung …" /> oder <FieldLabel required help="…">Feld</FieldLabel>.
 
-export function HelpTip({ text, size = 14, align = 'right' }: { text: string; size?: number; align?: 'left' | 'right' }) {
+const TIP_WIDTH = 240
+
+export function HelpTip({ text, size = 14 }: { text: string; size?: number; align?: 'left' | 'right' }) {
   const [hover, setHover] = useState(false)
   const [pinned, setPinned] = useState(false) // per Klick/Fokus offen gehalten
+  const [align, setAlign] = useState<'left' | 'right' | 'center'>('right')
   const ref = useRef<HTMLSpanElement>(null)
   const tipId = useId()
   const open = hover || pinned
+
+  // Ausrichtung so wählen, dass das Popover nie am Viewport-Rand abgeschnitten wird.
+  const positionTip = () => {
+    const el = ref.current
+    if (!el || typeof window === 'undefined') return
+    const r = el.getBoundingClientRect()
+    const vw = window.innerWidth
+    const margin = 8
+    // Bevorzugt rechtsbündig (Popover reicht nach links). Passt das nicht, linksbündig.
+    if (r.right - TIP_WIDTH < margin && r.left + TIP_WIDTH <= vw - margin) setAlign('left')
+    else if (r.right - TIP_WIDTH >= margin) setAlign('right')
+    else setAlign('center')
+  }
+
+  useEffect(() => {
+    if (!open) return
+    positionTip()
+  }, [open])
 
   useEffect(() => {
     if (!pinned) return
@@ -23,19 +44,24 @@ export function HelpTip({ text, size = 14, align = 'right' }: { text: string; si
     return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onEsc) }
   }, [pinned])
 
+  const alignStyle: React.CSSProperties =
+    align === 'right' ? { right: 0 }
+    : align === 'left' ? { left: 0 }
+    : { left: '50%', transform: 'translateX(-50%)' }
+
   return (
     <span
       ref={ref}
       style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}
-      onMouseEnter={() => setHover(true)}
+      onMouseEnter={() => { positionTip(); setHover(true) }}
       onMouseLeave={() => setHover(false)}
     >
       <button
         type="button"
         aria-label="Hilfe"
         aria-describedby={open ? tipId : undefined}
-        onClick={() => setPinned(p => !p)}
-        onFocus={() => setPinned(true)}
+        onClick={() => { positionTip(); setPinned(p => !p) }}
+        onFocus={() => { positionTip(); setPinned(true) }}
         onBlur={() => setPinned(false)}
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none',
@@ -49,8 +75,9 @@ export function HelpTip({ text, size = 14, align = 'right' }: { text: string; si
           id={tipId}
           role="tooltip"
           style={{
-            position: 'absolute', top: 'calc(100% + 6px)', zIndex: 60, width: 240,
-            ...(align === 'right' ? { right: 0 } : { left: 0 }),
+            position: 'absolute', top: 'calc(100% + 6px)', zIndex: 60,
+            width: TIP_WIDTH, maxWidth: 'calc(100vw - 16px)',
+            ...alignStyle,
             background: 'var(--bp-ink)', color: '#fff', fontSize: 12.5, lineHeight: 1.5, fontWeight: 400,
             padding: '10px 12px', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.22)', textAlign: 'left',
             fontFamily: "'DM Sans', system-ui, sans-serif",

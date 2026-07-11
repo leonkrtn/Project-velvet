@@ -196,7 +196,7 @@ export default function OnboardingWizardClient() {
     logo_url: logoUrl, photos: photos.filter(p => p.url).map(p => ({ id: p.id, url: p.url as string })),
   }
   const previewNode = (
-    <VendorMarketplacePreview vendor={previewVendor} packages={[]} faqs={[]} reviews={[]} reviewAvg={0} reviewCount={0} availability={[]} />
+    <VendorMarketplacePreview vendor={previewVendor} packages={[]} faqs={[]} reviews={[]} reviewAvg={0} reviewCount={0} availability={[]} brandColor={f.brand_color} />
   )
 
   if (loading) {
@@ -354,11 +354,16 @@ export default function OnboardingWizardClient() {
           </div>
 
           {/* Steuerung */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingTop: 18, flexShrink: 0 }}>
+          {!stepValid(step) && !isLast && (
+            <p style={{ fontSize: 12, color: '#94A3B8', margin: '14px 0 0', textAlign: 'right' }}>
+              Optional — du kannst diesen Schritt überspringen und später ausfüllen.
+            </p>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingTop: 12, flexShrink: 0 }}>
             <button onClick={() => setStep(v => Math.max(0, v - 1))} disabled={step === 0 || busy} style={{ ...btnGhost, opacity: step === 0 ? 0.4 : 1 }}>
               <ChevronLeft size={16} /> Zurück
             </button>
-            <button onClick={next} disabled={!stepValid(step) || busy} style={{ ...btnDark, opacity: stepValid(step) && !busy ? 1 : 0.5, cursor: stepValid(step) && !busy ? 'pointer' : 'not-allowed' }}>
+            <button onClick={next} disabled={busy} style={{ ...btnDark, opacity: busy ? 0.6 : 1 }}>
               {busy ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : isLast ? <><Check size={16} /> Fertig — zum Profil</> : <>Weiter <ChevronRight size={16} /></>}
             </button>
           </div>
@@ -369,7 +374,7 @@ export default function OnboardingWizardClient() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', borderBottom: '1px solid #d6ddea', fontSize: 12.5, fontWeight: 700, color: '#4B5768', flexShrink: 0 }}>
             <Eye size={14} /> So sehen Brautpaare dein Profil
           </div>
-          <div style={{ flex: 1, overflow: 'auto', padding: 16, background: '#F5F8FF' }}>{previewNode}</div>
+          <div style={{ flex: 1, overflow: 'auto', padding: 16, background: '#fff' }}>{previewNode}</div>
         </aside>
       </div>
 
