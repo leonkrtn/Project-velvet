@@ -629,7 +629,9 @@ Env vars (Vercel):
   FILE_WORKER_URL               https://velvet-file-service.leon-s-account.workers.dev
   FILE_WORKER_INTERNAL_SECRET   Shared secret (also set as Worker secret INTERNAL_SECRET)
   RESEND_API_KEY                Resend API-Key (E-Mail-Versand, siehe unten)
-  EMAIL_FROM                    Absender, z.B. "Forevr <no-reply@forevrweddings.de>" (optional, hat Default)
+  EMAIL_FROM                    Absender, z.B. "Forevr <no-reply@mail.forevrweddings.de>" (optional, hat Default)
+                                WICHTIG: Domain muss in Resend verifiziert sein — verifiziert ist die
+                                Subdomain mail.forevrweddings.de, NICHT die Root-Domain forevrweddings.de
   REPLY_TO_EMAIL                Default Reply-To für System-Mails (optional)
 
 Worker secrets (wrangler secret put):
@@ -642,7 +644,7 @@ Worker secrets (wrangler secret put):
 
 Transaktions-Mails laufen serverseitig direkt über die **Resend-API** (`lib/email/notify.ts`,
 `sendEmail()`/`emailLayout()`). Env: `RESEND_API_KEY`, `EMAIL_FROM` (Default
-`Forevr <no-reply@forevrweddings.de>`), optional `REPLY_TO_EMAIL`. Ohne `RESEND_API_KEY`
+`Forevr <no-reply@mail.forevrweddings.de>` — verifizierte Resend-Subdomain), optional `REPLY_TO_EMAIL`. Ohne `RESEND_API_KEY`
 ist der Versand ein No-Op (Konsolen-Warnung) — App-Flows werden nie blockiert.
 Die frühere Supabase-Edge-Function `notify-email` (SMTP-basiert) wurde entfernt.
 

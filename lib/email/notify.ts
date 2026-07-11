@@ -19,7 +19,10 @@ interface MailInput {
   attachments?: MailAttachment[]
 }
 
-const EMAIL_FROM = process.env.EMAIL_FROM || 'Forevr <no-reply@forevrweddings.de>'
+// Absender-Domain muss in Resend verifiziert sein. Verifiziert ist die
+// Subdomain mail.forevrweddings.de (NICHT die Root-Domain) — daher ist der
+// Default no-reply@mail.forevrweddings.de. Über EMAIL_FROM überschreibbar.
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Forevr <no-reply@mail.forevrweddings.de>'
 const REPLY_TO_EMAIL = process.env.REPLY_TO_EMAIL || undefined
 
 let resendClient: Resend | null | undefined
