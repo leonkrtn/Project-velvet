@@ -1,90 +1,110 @@
 'use client'
 
-import React, { useEffect, useId, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { HelpCircle } from 'lucide-react'
 
 // Zentrale, wiederverwendbare „?"-Hilfe. Öffnet bei Hover UND bei Klick/Fokus
-// (Touch- und Tastatur-tauglich). Dezentes Popover im bp-Theme.
-// Verwendung: <HelpTip text="Erklärung …" /> oder <FieldLabel required help="…">Feld</FieldLabel>.
+// (Touch- und Tastatur-tauglich). Das Popover wird per Portal direkt an
+// document.body gerendert (position: fixed, hoher z-index) — dadurch kann es
+// von KEINEM overflow-/stacking-Container (z. B. Sidebar, Scrollbereiche)
+// abgeschnitten oder überlagert werden.
 
-const TIP_WIDTH = 240
+const TIP_WIDTH = 260
+const MARGIN = 8
 
 export function HelpTip({ text, size = 14 }: { text: string; size?: number; align?: 'left' | 'right' }) {
   const [hover, setHover] = useState(false)
-  const [pinned, setPinned] = useState(false) // per Klick/Fokus offen gehalten
-  const [align, setAlign] = useState<'left' | 'right' | 'center'>('right')
-  const ref = useRef<HTMLSpanElement>(null)
+  const [pinned, setPinned] = useState(false)
+  const [coords, setCoords] = useState<{ top: number; left: number; below: boolean } | null>(null)
+  const wrapRef = useRef<HTMLSpanElement>(null)
+  const tipRef = useRef<HTMLSpanElement>(null)
   const tipId = useId()
   const open = hover || pinned
 
-  // Ausrichtung so wählen, dass das Popover nie am Viewport-Rand abgeschnitten wird.
-  const positionTip = () => {
-    const el = ref.current
+  const position = useCallback(() => {
+    const el = wrapRef.current
     if (!el || typeof window === 'undefined') return
     const r = el.getBoundingClientRect()
     const vw = window.innerWidth
-    const margin = 8
-    // Bevorzugt rechtsbündig (Popover reicht nach links). Passt das nicht, linksbündig.
-    if (r.right - TIP_WIDTH < margin && r.left + TIP_WIDTH <= vw - margin) setAlign('left')
-    else if (r.right - TIP_WIDTH >= margin) setAlign('right')
-    else setAlign('center')
-  }
+    const vh = window.innerHeight
+    const tipH = tipRef.current?.offsetHeight ?? 80
+    // Horizontal: an der Icon-Mitte ausrichten, im Viewport clampen.
+    let left = r.left + r.width / 2 - TIP_WIDTH / 2
+    left = Math.max(MARGIN, Math.min(left, vw - TIP_WIDTH - MARGIN))
+    // Vertikal: bevorzugt unter dem Icon; kein Platz → darüber.
+    const below = r.bottom + 6 + tipH <= vh - MARGIN || r.top - 6 - tipH < MARGIN
+    const top = below ? r.bottom + 6 : r.top - 6 - tipH
+    setCoords({ top, left, below })
+  }, [])
 
-  useEffect(() => {
-    if (!open) return
-    positionTip()
-  }, [open])
+  // Position vor dem Paint setzen und bei Scroll/Resize aktualisieren, solange offen.
+  useLayoutEffect(() => {
+    if (!open) { setCoords(null); return }
+    position()
+    const onMove = () => position()
+    window.addEventListener('scroll', onMove, true) // capture: auch Scroll in Containern
+    window.addEventListener('resize', onMove)
+    return () => {
+      window.removeEventListener('scroll', onMove, true)
+      window.removeEventListener('resize', onMove)
+    }
+  }, [open, position])
 
   useEffect(() => {
     if (!pinned) return
-    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setPinned(false) }
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current?.contains(e.target as Node)) return
+      if (tipRef.current?.contains(e.target as Node)) return
+      setPinned(false)
+    }
     const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setPinned(false) }
     document.addEventListener('mousedown', onDoc)
     document.addEventListener('keydown', onEsc)
     return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onEsc) }
   }, [pinned])
 
-  const alignStyle: React.CSSProperties =
-    align === 'right' ? { right: 0 }
-    : align === 'left' ? { left: 0 }
-    : { left: '50%', transform: 'translateX(-50%)' }
-
   return (
     <span
-      ref={ref}
-      style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}
-      onMouseEnter={() => { positionTip(); setHover(true) }}
+      ref={wrapRef}
+      style={{ display: 'inline-flex', flexShrink: 0 }}
+      onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
       <button
         type="button"
         aria-label="Hilfe"
         aria-describedby={open ? tipId : undefined}
-        onClick={() => { positionTip(); setPinned(p => !p) }}
-        onFocus={() => { positionTip(); setPinned(true) }}
+        onClick={() => setPinned(p => !p)}
+        onFocus={() => setPinned(true)}
         onBlur={() => setPinned(false)}
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'none',
-          cursor: 'pointer', padding: 2, color: open ? 'var(--bp-gold-deep)' : 'var(--bp-ink-3)', lineHeight: 0,
+          cursor: 'pointer', padding: 2, color: open ? 'var(--bp-gold-deep, #9C7F4F)' : 'var(--bp-ink-3, #94A3B8)', lineHeight: 0,
         }}
       >
         <HelpCircle size={size} />
       </button>
-      {open && (
+      {open && typeof document !== 'undefined' && createPortal(
         <span
+          ref={tipRef}
           id={tipId}
           role="tooltip"
           style={{
-            position: 'absolute', top: 'calc(100% + 6px)', zIndex: 60,
+            position: 'fixed',
+            top: coords?.top ?? -9999,
+            left: coords?.left ?? -9999,
             width: TIP_WIDTH, maxWidth: 'calc(100vw - 16px)',
-            ...alignStyle,
-            background: 'var(--bp-ink)', color: '#fff', fontSize: 12.5, lineHeight: 1.5, fontWeight: 400,
-            padding: '10px 12px', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.22)', textAlign: 'left',
-            fontFamily: "'DM Sans', system-ui, sans-serif",
+            zIndex: 10000,
+            visibility: coords ? 'visible' : 'hidden',
+            background: '#1f2430', color: '#fff', fontSize: 12.5, lineHeight: 1.5, fontWeight: 400,
+            padding: '10px 12px', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,0.28)', textAlign: 'left',
+            fontFamily: "'DM Sans', system-ui, sans-serif", pointerEvents: 'none',
           }}
         >
           {text}
-        </span>
+        </span>,
+        document.body,
       )}
     </span>
   )
