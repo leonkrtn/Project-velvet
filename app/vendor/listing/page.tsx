@@ -33,6 +33,7 @@ export default async function VendorListingPage() {
         is_marketplace: true,
         published: false,
         moderation_status: 'draft',
+        notify_new_request_email: true,
       })
       .select('id')
       .single()
