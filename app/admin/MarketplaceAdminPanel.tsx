@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Search, Plus, RefreshCw, Eye, EyeOff, Check, X, ShieldCheck, ShieldOff, Ban, RotateCcw,
   KeyRound, Trash2, Pencil, ChevronDown, Loader2, Store, Clock, CheckCircle2, AlertTriangle,
-  Users as UsersIcon,
+  Users as UsersIcon, Mail, Phone, Globe, Star,
 } from 'lucide-react'
 import { categoryLabel, moderationLabel, type ModerationStatus } from '@/lib/marketplace/types'
 import MarketplaceReviewLightbox from './MarketplaceReviewLightbox'
@@ -55,6 +55,7 @@ export default function MarketplaceAdminPanel() {
   const [editId, setEditId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [reviewing, setReviewing] = useState<string | null>(null)
+  const [detailId, setDetailId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setError('')
@@ -243,7 +244,12 @@ export default function MarketplaceAdminPanel() {
                               </div>
                               <div style={{ minWidth: 0 }}>
                                 <div style={{ fontWeight: 600, color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  {v.company_name || v.name}
+                                  <button onClick={() => setDetailId(v.id)} title="Detailansicht öffnen"
+                                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontWeight: 600, color: C.text, textAlign: 'left' }}
+                                    onMouseEnter={e => { e.currentTarget.style.color = C.accent; e.currentTarget.style.textDecoration = 'underline' }}
+                                    onMouseLeave={e => { e.currentTarget.style.color = C.text; e.currentTarget.style.textDecoration = 'none' }}>
+                                    {v.company_name || v.name}
+                                  </button>
                                   {v.verified && <ShieldCheck size={13} style={{ color: C.green }} />}
                                 </div>
                                 <div style={{ fontSize: 12, color: C.text3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>
@@ -324,6 +330,24 @@ export default function MarketplaceAdminPanel() {
           onModerate={(action, reason) => moderate(reviewing, action, reason)}
         />
       )}
+
+      {detailId && (() => {
+        const v = vendors.find(x => x.id === detailId)
+        if (!v) return null
+        return (
+          <VendorDetailDrawer
+            vendor={v}
+            hasPending={hasPending(v)}
+            onClose={() => setDetailId(null)}
+            onModerate={(action, reason) => moderate(v.id, action, reason)}
+            onTogglePublish={() => togglePublish(v)}
+            onPreview={() => setReviewing(v.id)}
+            onEdit={() => { setDetailId(null); setEditId(v.id); setExpanded(null) }}
+            onResetPassword={() => resetPassword(v)}
+            onRemove={() => { remove(v); setDetailId(null) }}
+          />
+        )
+      })()}
     </div>
   )
 }
@@ -345,5 +369,142 @@ function Num({ v, sub }: { v: number; sub: number }) {
       <div style={{ fontWeight: 700, color: C.text }}>{v.toLocaleString('de-DE')}</div>
       {sub > 0 && <div style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>+{sub} / 30 T.</div>}
     </td>
+  )
+}
+
+// ── Detailansicht pro Anbieter (Slide-over rechts, ausgeschriebene Aktionen) ──
+function VendorDetailDrawer({
+  vendor, hasPending, onClose, onModerate, onTogglePublish, onPreview, onEdit, onResetPassword, onRemove,
+}: {
+  vendor: AdminVendor
+  hasPending: boolean
+  onClose: () => void
+  onModerate: (action: string, reason?: string) => void
+  onTogglePublish: () => void
+  onPreview: () => void
+  onEdit: () => void
+  onResetPassword: () => void
+  onRemove: () => void
+}) {
+  const [stats, setStats] = useState<{ total: Counts; last30: Counts; series: DayPoint[] } | null>(null)
+  const v = vendor
+  const sm = STATUS_META[v.moderation_status] ?? STATUS_META.draft
+
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onEsc)
+    fetch(`/api/admin/marketplace/vendors/${v.id}/stats`).then(r => r.ok ? r.json() : null).then(d => { if (d) setStats(d) }).catch(() => {})
+    return () => document.removeEventListener('keydown', onEsc)
+  }, [v.id, onClose])
+
+  const created = v.created_at ? new Date(v.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'
+  const addr = [v.street, [v.zip, v.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+
+  const primary: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 700, fontFamily: 'inherit', width: '100%', justifyContent: 'flex-start' }
+  const line: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: C.text2 }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 5200, background: 'rgba(20,22,26,0.5)', display: 'flex', justifyContent: 'flex-end' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: '#fff', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' }}>
+        {/* Kopf */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '20px 22px', borderBottom: `1px solid ${C.border}`, position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 12, background: '#f0f2f5', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {v.logo_url
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={v.logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontSize: 18, fontWeight: 700, color: '#b6bdc9' }}>{(v.company_name || v.name).charAt(0)}</span>}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: C.text, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {v.company_name || v.name}
+              {v.verified && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11.5, fontWeight: 700, color: C.green }}><ShieldCheck size={13} /> Verifiziert</span>}
+            </div>
+            <div style={{ fontSize: 13, color: C.text3, marginTop: 2 }}>{categoryLabel(v.category)}{v.city ? ` · ${v.city}` : ''}</div>
+            <span style={{ display: 'inline-block', marginTop: 8, fontSize: 11.5, fontWeight: 700, color: sm.color, background: sm.bg, borderRadius: 999, padding: '3px 10px' }}>
+              {hasPending ? 'Änderungen in Prüfung' : sm.label}{v.published ? ' · online' : v.moderation_status === 'approved' ? ' · offline' : ''}
+            </span>
+          </div>
+          <button onClick={onClose} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.text3, display: 'flex' }}><X size={20} /></button>
+        </div>
+
+        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 22 }}>
+          {/* Stammdaten */}
+          <Section title="Stammdaten">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
+              <Meta label="Login / Ansprechpartner" value={v.login_email ?? v.name} />
+              <Meta label="Angelegt am" value={created} />
+              <Meta label="Kategorie" value={categoryLabel(v.category)} />
+              <Meta label="Preisklasse" value={v.price_range ?? '—'} />
+              <Meta label="Adresse" value={addr || '—'} />
+              <Meta label="Bewertungen" value={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Star size={13} style={{ color: '#B89968' }} /> {v.review_count}</span>} />
+            </div>
+          </Section>
+
+          {/* Kontakt */}
+          <Section title="Kontakt">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {v.email && <a href={`mailto:${v.email}`} style={line}><Mail size={14} style={{ color: C.text3 }} /> {v.email}</a>}
+              {v.phone && <a href={`tel:${v.phone}`} style={line}><Phone size={14} style={{ color: C.text3 }} /> {v.phone}</a>}
+              {v.website && <a href={v.website} target="_blank" rel="noopener noreferrer" style={{ ...line, color: C.accent }}><Globe size={14} /> {v.website}</a>}
+              {!v.email && !v.phone && !v.website && <span style={{ fontSize: 13, color: C.text3 }}>Keine Kontaktdaten hinterlegt.</span>}
+            </div>
+          </Section>
+
+          {/* Statistik */}
+          <Section title="Reichweite & Interaktionen">
+            {stats
+              ? <VendorStatsPanel total={stats.total} last30={stats.last30} series={stats.series} accent={C.accent} compact />
+              : <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite', color: C.text3 }} /></div>}
+          </Section>
+
+          {/* Aktionen — ausgeschrieben */}
+          <Section title="Aktionen">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {(v.moderation_status === 'pending' || hasPending) && (
+                <>
+                  <button style={{ ...primary, background: '#EFF4FF', color: C.accent }} onClick={onPreview}><Eye size={15} /> Profil in der Vorschau prüfen</button>
+                  <button style={{ ...primary, background: C.green, color: '#fff' }} onClick={() => onModerate('approve')}><Check size={15} /> {hasPending ? 'Änderungen übernehmen & freigeben' : 'Profil freigeben'}</button>
+                  <button style={{ ...primary, background: C.redPale, color: C.red }} onClick={() => { const r = hasPending ? undefined : (prompt('Ablehnungsgrund (für den Anbieter sichtbar):') ?? ''); if (!hasPending && r === '') return; onModerate('reject', r) }}><X size={15} /> {hasPending ? 'Änderungen verwerfen' : 'Profil ablehnen'}</button>
+                </>
+              )}
+              {v.moderation_status === 'approved' && (
+                <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={onTogglePublish}>
+                  {v.published ? <><EyeOff size={15} /> Offline nehmen (für Brautpaare verbergen)</> : <><Eye size={15} /> Online stellen (für Brautpaare sichtbar)</>}
+                </button>
+              )}
+              {v.moderation_status === 'approved' && (
+                v.verified
+                  ? <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={() => onModerate('unverify')}><ShieldOff size={15} /> Verifizierung entziehen</button>
+                  : <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={() => onModerate('verify')}><ShieldCheck size={15} /> Als verifiziert markieren</button>
+              )}
+              {v.moderation_status === 'suspended'
+                ? <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={() => onModerate('unsuspend')}><RotateCcw size={15} /> Sperre aufheben</button>
+                : v.moderation_status === 'approved' && <button style={{ ...primary, background: C.redPale, color: C.red }} onClick={() => onModerate('suspend')}><Ban size={15} /> Anbieter sperren</button>}
+              <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={onEdit}><Pencil size={15} /> Profil bearbeiten</button>
+              <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={onResetPassword}><KeyRound size={15} /> Passwort zurücksetzen</button>
+              <button style={{ ...primary, background: C.redPale, color: C.red }} onClick={onRemove}><Trash2 size={15} /> Anbieter endgültig löschen</button>
+            </div>
+          </Section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.text3, marginBottom: 10 }}>{title}</div>
+      {children}
+    </div>
+  )
+}
+
+function Meta({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11.5, color: C.text3, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 13.5, color: C.text, fontWeight: 500, wordBreak: 'break-word' }}>{value}</div>
+    </div>
   )
 }

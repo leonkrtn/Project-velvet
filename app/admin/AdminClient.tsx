@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import {
   Check, X, UserPlus, Users, Inbox, Trash2, ShieldOff, Loader2,
   AlertCircle, Eye, EyeOff, RefreshCw, LayoutDashboard,
-  ShieldCheck, Tag, Store, Flag,
+  ShieldCheck, Tag, Store, Flag, ChevronRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import AdminShell from './AdminShell'
@@ -51,27 +51,125 @@ function formatDate(iso: string | null) {
 
 // ── Übersicht ─────────────────────────────────────────────────────────────────
 
-function UbersichtSection() {
+interface Dash {
+  pendingVendors: number; openReports: number; pendingOrganizers: number
+  totalVendors: number; approvedVendors: number; totalOrganizers: number
+  reachViews: number; reachContacts: number; reachRequests: number
+}
+
+function UbersichtSection({ onNav }: { onNav: (s: Section) => void }) {
+  const [d, setD] = useState<Dash | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [shell, vend, org] = await Promise.all([
+          fetch('/api/admin/shell-data').then(r => r.ok ? r.json() : {}) as Promise<{ anbieter?: number; meldungen?: number }>,
+          fetch('/api/admin/marketplace/vendors').then(r => r.ok ? r.json() : {}) as Promise<{ vendors?: { moderation_status: string }[]; adminStats?: { last30?: Record<string, number> } }>,
+          fetch('/api/admin/organizers').then(r => r.ok ? r.json() : {}) as Promise<{ pending?: unknown[]; organizers?: unknown[] }>,
+        ])
+        const vendors = vend.vendors ?? []
+        const st = vend.adminStats?.last30 ?? {}
+        setD({
+          pendingVendors: shell.anbieter ?? 0,
+          openReports: shell.meldungen ?? 0,
+          pendingOrganizers: (org.pending ?? []).length,
+          totalVendors: vendors.length,
+          approvedVendors: vendors.filter(v => v.moderation_status === 'approved').length,
+          totalOrganizers: (org.organizers ?? []).length,
+          reachViews: st.profile_view ?? 0,
+          reachContacts: (st.contact_email ?? 0) + (st.contact_phone ?? 0),
+          reachRequests: st.request ?? 0,
+        })
+      } finally { setLoading(false) }
+    })()
+  }, [])
+
+  const todos = d ? [
+    d.pendingVendors > 0 && { n: d.pendingVendors, label: 'Anbieter warten auf Prüfung', cta: 'Zur Prüfung', icon: ShieldCheck, sec: 'anbieter' as Section, color: C.accent },
+    d.openReports > 0 && { n: d.openReports, label: 'offene Meldungen zu Anbietern', cta: 'Meldungen ansehen', icon: Flag, sec: 'meldungen' as Section, color: C.red },
+    d.pendingOrganizers > 0 && { n: d.pendingOrganizers, label: 'Veranstalter-Anfragen offen', cta: 'Freischalten', icon: Inbox, sec: 'veranstalter' as Section, color: C.accent },
+  ].filter(Boolean) as { n: number; label: string; cta: string; icon: React.ElementType; sec: Section; color: string }[] : []
+
   return (
     <div style={{ padding: '28px 24px 64px' }}>
-      <div style={{ maxWidth: 860, margin: '0 auto' }}>
+      <div style={{ maxWidth: 980, margin: '0 auto' }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.02em', color: C.text }}>Übersicht</h1>
-        <p style={{ fontSize: 13.5, color: C.text2, margin: '0 0 24px' }}>Forevr Admin-Portal</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
-          {[
-            { icon: Store, label: 'Anbieter', desc: 'Marktplatz-Profile verwalten' },
-            { icon: Flag, label: 'Meldungen', desc: 'Gemeldete Anbieter prüfen' },
-            { icon: Users, label: 'Veranstalter', desc: 'Accounts freischalten' },
-            { icon: Tag, label: 'Promo-Codes', desc: 'Rabattcodes für Brautpaare' },
-          ].map(({ icon: Icon, label, desc }) => (
-            <div key={label} style={{ ...card, padding: 18 }}>
-              <Icon size={20} style={{ color: C.accent, marginBottom: 10 }} />
-              <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: '0 0 4px' }}>{label}</p>
-              <p style={{ fontSize: 12.5, color: C.text2, margin: 0 }}>{desc}</p>
+        <p style={{ fontSize: 13.5, color: C.text2, margin: '0 0 24px' }}>Was heute deine Aufmerksamkeit braucht.</p>
+
+        {loading ? (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', color: C.text2, padding: '30px 0' }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Wird geladen…</div>
+        ) : d && (
+          <>
+            {/* Handlungsbedarf */}
+            {todos.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+                {todos.map((t, i) => {
+                  const Icon = t.icon
+                  return (
+                    <button key={i} onClick={() => onNav(t.sec)} className="adm-todo"
+                      style={{ display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', width: '100%', background: '#fff', border: `1px solid ${C.border}`, borderLeft: `4px solid ${t.color}`, borderRadius: 10, padding: '14px 18px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                      <Icon size={20} style={{ color: t.color, flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: 20, fontWeight: 800, color: C.text }}>{t.n}</span>
+                        <span style={{ fontSize: 14, color: C.text2, marginLeft: 8 }}>{t.label}</span>
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: t.color, display: 'inline-flex', alignItems: 'center', gap: 4 }}>{t.cta} <ChevronRight size={15} /></span>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <div style={{ ...card, padding: 18, marginBottom: 28, display: 'flex', alignItems: 'center', gap: 10, color: C.green }}>
+                <Check size={18} /> <span style={{ fontSize: 14, fontWeight: 600 }}>Alles erledigt — kein offener Handlungsbedarf.</span>
+              </div>
+            )}
+
+            {/* Bestandszahlen (klickbar) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 20 }}>
+              <StatCard icon={Store} label="Marktplatz-Anbieter" value={d.totalVendors} sub={`${d.approvedVendors} freigegeben`} onClick={() => onNav('anbieter')} />
+              <StatCard icon={Users} label="Veranstalter" value={d.totalOrganizers} sub="Accounts verwalten" onClick={() => onNav('veranstalter')} />
+              <StatCard icon={Tag} label="Promo-Codes" value={null} sub="Rabattcodes verwalten" onClick={() => onNav('promo')} />
             </div>
-          ))}
-        </div>
+
+            {/* Marktplatz-Reichweite (30 Tage) */}
+            <button onClick={() => onNav('anbieter')} style={{ display: 'block', width: '100%', textAlign: 'left', ...card, padding: 18, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Marktplatz-Reichweite · letzte 30 Tage</span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: C.accent, display: 'inline-flex', alignItems: 'center', gap: 4 }}>Details <ChevronRight size={14} /></span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                <Reach label="Profilaufrufe" value={d.reachViews} />
+                <Reach label="Kontaktklicks" value={d.reachContacts} />
+                <Reach label="Anfragen" value={d.reachRequests} />
+              </div>
+            </button>
+          </>
+        )}
       </div>
+    </div>
+  )
+}
+
+function StatCard({ icon: Icon, label, value, sub, onClick }: { icon: React.ElementType; label: string; value: number | null; sub: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{ ...card, padding: 18, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}>
+      <Icon size={20} style={{ color: C.accent, marginBottom: 10 }} />
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        {value !== null && <span style={{ fontSize: 24, fontWeight: 800, color: C.text }}>{value}</span>}
+        <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{label}</span>
+      </div>
+      <p style={{ fontSize: 12.5, color: C.text2, margin: '4px 0 0' }}>{sub}</p>
+    </button>
+  )
+}
+
+function Reach({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{ background: C.bg, borderRadius: 10, padding: '12px 14px' }}>
+      <div style={{ fontSize: 22, fontWeight: 800, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{value.toLocaleString('de-DE')}</div>
+      <div style={{ fontSize: 12, color: C.text2 }}>{label}</div>
     </div>
   )
 }
@@ -377,7 +475,7 @@ export default function AdminClient({ adminName }: { adminName: string }) {
     <AdminShell adminName={adminName} active={section} onNav={setSection}>
       <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
 
-      {section === 'ubersicht'    && <UbersichtSection />}
+      {section === 'ubersicht'    && <UbersichtSection onNav={setSection} />}
       {section === 'anbieter'    && <AnbieterSection />}
       {section === 'meldungen'   && <AdminReportsSection card={card} cardHeader={cardHeader} />}
       {section === 'veranstalter' && <VeranstalterSection adminName={adminName} />}
