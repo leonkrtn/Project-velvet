@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ensureQuestionnaire } from '@/lib/vendor/questionnaire-seed'
 
 // POST — legt (idempotent) das Marktplatz-Profil für den eingeloggten
 // Dienstleister an, der sich selbst registriert hat. Wird direkt nach dem
@@ -51,6 +52,9 @@ export async function POST() {
   }
 
   await admin.from('user_dienstleister').insert({ user_id: user.id, dienstleister_id: vendor.id })
+
+  // Anfrageformular garantiert anlegen (aus Kategorie-Vorlage, sofort aktiv).
+  await ensureQuestionnaire(admin, vendor.id, category)
 
   return NextResponse.json({ success: true, id: vendor.id, created: true })
 }
