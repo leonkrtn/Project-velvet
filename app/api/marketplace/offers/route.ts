@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     offers: rows.map(o => {
       const vendor = vendorById.get(o.dienstleister_id)
+      const items = Array.isArray(o.line_items) ? o.line_items : []
       return {
         id: o.id,
         request_id: o.request_id,
@@ -60,8 +61,15 @@ export async function GET(req: NextRequest) {
         vendor_name: vendor?.company_name || vendor?.name || 'Dienstleister',
         category: vendor?.category ?? null,
         status: o.status,
+        subtotal: o.subtotal,
+        tax_amount: o.tax_amount,
         total: o.total,
-        line_item_count: Array.isArray(o.line_items) ? o.line_items.length : 0,
+        line_item_count: items.length,
+        // Preislose Positions-Darstellung für die Gegenüberstellung (Label + Summe).
+        line_items: items.map((li: Record<string, unknown>) => ({
+          label: typeof li.label === 'string' ? li.label : '',
+          total: typeof li.total === 'number' ? li.total : null,
+        })),
         variant_count: variantCount.get(o.id) ?? 0,
         released_at: o.released_at,
         accepted_at: o.accepted_at,

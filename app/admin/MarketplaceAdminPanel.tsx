@@ -274,29 +274,34 @@ export default function MarketplaceAdminPanel() {
                           <Num v={v.stats.total.request} sub={v.stats.last30.request} />
                           <td style={{ padding: '10px 14px', textAlign: 'right', color: C.text2, fontVariantNumeric: 'tabular-nums' }}>{v.review_count}</td>
                           <td style={{ padding: '10px 14px' }}>
-                            <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                              {(v.moderation_status === 'pending' || pc) && (
-                                <>
-                                  <button style={{ ...btn, borderColor: C.accent, color: C.accent }} onClick={() => setReviewing(v.id)} title="Vorschau prüfen"><Eye size={14} /></button>
-                                  <button style={btnGreen} onClick={() => moderate(v.id, 'approve')} title={pc ? 'Änderungen übernehmen' : 'Freigeben'}><Check size={14} /></button>
-                                  <button style={btnRed} onClick={() => { const r = pc ? undefined : (prompt('Ablehnungsgrund (für den Anbieter sichtbar):') ?? ''); if (!pc && r === '') return; moderate(v.id, 'reject', r) }} title="Ablehnen"><X size={14} /></button>
-                                </>
-                              )}
-                              {v.moderation_status === 'approved' && (
-                                v.verified
-                                  ? <button style={iconBtn} onClick={() => moderate(v.id, 'unverify')} title="Verifizierung entziehen"><ShieldOff size={14} /></button>
-                                  : <button style={iconBtn} onClick={() => moderate(v.id, 'verify')} title="Verifizieren"><ShieldCheck size={14} /></button>
-                              )}
-                              {v.moderation_status === 'suspended'
-                                ? <button style={iconBtn} onClick={() => moderate(v.id, 'unsuspend')} title="Entsperren"><RotateCcw size={14} /></button>
-                                : v.moderation_status === 'approved' && <button style={{ ...iconBtn, color: C.red }} onClick={() => moderate(v.id, 'suspend')} title="Sperren"><Ban size={14} /></button>}
-                              <button style={iconBtn} onClick={() => { setEditId(editId === v.id ? null : v.id); setExpanded(null) }} title="Bearbeiten"><Pencil size={14} /></button>
-                              <button style={iconBtn} onClick={() => resetPassword(v)} title="Passwort zurücksetzen"><KeyRound size={14} /></button>
-                              <button style={{ ...iconBtn, color: C.red }} onClick={() => remove(v)} title="Löschen"><Trash2 size={14} /></button>
-                              <button style={iconBtn} onClick={() => { setExpanded(isOpen ? null : v.id); setEditId(null) }} title="Statistik">
-                                <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
-                              </button>
-                            </div>
+                            {(() => {
+                              // Aktionen nach Schwere/Farbe sortiert: Grün (0) → Neutral (1) → Rot (2).
+                              const acts: { sev: number; el: React.ReactNode }[] = []
+                              if (v.moderation_status === 'pending' || pc) {
+                                acts.push({ sev: 0, el: <button key="app" style={btnGreen} onClick={() => moderate(v.id, 'approve')} title={pc ? 'Änderungen übernehmen' : 'Freigeben'}><Check size={14} /></button> })
+                                acts.push({ sev: 1, el: <button key="prev" style={{ ...btn, borderColor: C.accent, color: C.accent }} onClick={() => setReviewing(v.id)} title="Vorschau prüfen"><Eye size={14} /></button> })
+                                acts.push({ sev: 2, el: <button key="rej" style={btnRed} onClick={() => { const r = pc ? undefined : (prompt('Ablehnungsgrund (für den Anbieter sichtbar):') ?? ''); if (!pc && r === '') return; moderate(v.id, 'reject', r) }} title="Ablehnen"><X size={14} /></button> })
+                              }
+                              if (v.moderation_status === 'approved') {
+                                acts.push(v.verified
+                                  ? { sev: 1, el: <button key="ver" style={iconBtn} onClick={() => moderate(v.id, 'unverify')} title="Verifizierung entziehen"><ShieldOff size={14} /></button> }
+                                  : { sev: 0, el: <button key="ver" style={{ ...iconBtn, color: C.green }} onClick={() => moderate(v.id, 'verify')} title="Verifizieren"><ShieldCheck size={14} /></button> })
+                              }
+                              if (v.moderation_status === 'suspended') acts.push({ sev: 0, el: <button key="uns" style={{ ...iconBtn, color: C.green }} onClick={() => moderate(v.id, 'unsuspend')} title="Entsperren"><RotateCcw size={14} /></button> })
+                              else if (v.moderation_status === 'approved') acts.push({ sev: 2, el: <button key="sus" style={{ ...iconBtn, color: C.red }} onClick={() => moderate(v.id, 'suspend')} title="Sperren"><Ban size={14} /></button> })
+                              acts.push({ sev: 1, el: <button key="edit" style={iconBtn} onClick={() => { setEditId(editId === v.id ? null : v.id); setExpanded(null) }} title="Bearbeiten"><Pencil size={14} /></button> })
+                              acts.push({ sev: 1, el: <button key="pw" style={iconBtn} onClick={() => resetPassword(v)} title="Passwort zurücksetzen"><KeyRound size={14} /></button> })
+                              acts.push({ sev: 2, el: <button key="del" style={{ ...iconBtn, color: C.red }} onClick={() => remove(v)} title="Löschen"><Trash2 size={14} /></button> })
+                              const sorted = acts.map((a, i) => ({ ...a, i })).sort((a, b) => a.sev - b.sev || a.i - b.i)
+                              return (
+                                <div style={{ display: 'flex', gap: 5, justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
+                                  {sorted.map(a => a.el)}
+                                  <button style={iconBtn} onClick={() => { setExpanded(isOpen ? null : v.id); setEditId(null) }} title="Statistik">
+                                    <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+                                  </button>
+                                </div>
+                              )
+                            })()}
                           </td>
                         </tr>
                         {isOpen && (
@@ -335,16 +340,16 @@ export default function MarketplaceAdminPanel() {
         const v = vendors.find(x => x.id === detailId)
         if (!v) return null
         return (
-          <VendorDetailDrawer
+          <VendorDetailLightbox
             vendor={v}
             hasPending={hasPending(v)}
             onClose={() => setDetailId(null)}
             onModerate={(action, reason) => moderate(v.id, action, reason)}
             onTogglePublish={() => togglePublish(v)}
             onPreview={() => setReviewing(v.id)}
-            onEdit={() => { setDetailId(null); setEditId(v.id); setExpanded(null) }}
             onResetPassword={() => resetPassword(v)}
             onRemove={() => { remove(v); setDetailId(null) }}
+            onReload={load}
           />
         )
       })()}
@@ -372,9 +377,12 @@ function Num({ v, sub }: { v: number; sub: number }) {
   )
 }
 
-// ── Detailansicht pro Anbieter (Slide-over rechts, ausgeschriebene Aktionen) ──
-function VendorDetailDrawer({
-  vendor, hasPending, onClose, onModerate, onTogglePublish, onPreview, onEdit, onResetPassword, onRemove,
+// ── Detailansicht pro Anbieter (zentrierte Lightbox, ~80% Bildschirm) ──
+// Zwei Spalten: links Stammdaten/Kontakt/Reichweite, rechts die nach Schwere
+// sortierten Aktionen (Grün → Neutral → Rot). „Bearbeiten" öffnet das Profil-
+// Formular direkt in der Lightbox (kein Kontextwechsel in die Tabelle).
+function VendorDetailLightbox({
+  vendor, hasPending, onClose, onModerate, onTogglePublish, onPreview, onResetPassword, onRemove, onReload,
 }: {
   vendor: AdminVendor
   hasPending: boolean
@@ -382,32 +390,54 @@ function VendorDetailDrawer({
   onModerate: (action: string, reason?: string) => void
   onTogglePublish: () => void
   onPreview: () => void
-  onEdit: () => void
   onResetPassword: () => void
   onRemove: () => void
+  onReload: () => void
 }) {
   const [stats, setStats] = useState<{ total: Counts; last30: Counts; series: DayPoint[] } | null>(null)
+  const [editing, setEditing] = useState(false)
   const v = vendor
   const sm = STATUS_META[v.moderation_status] ?? STATUS_META.draft
 
   useEffect(() => {
-    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') { if (editing) setEditing(false); else onClose() } }
     document.addEventListener('keydown', onEsc)
     fetch(`/api/admin/marketplace/vendors/${v.id}/stats`).then(r => r.ok ? r.json() : null).then(d => { if (d) setStats(d) }).catch(() => {})
     return () => document.removeEventListener('keydown', onEsc)
-  }, [v.id, onClose])
+  }, [v.id, onClose, editing])
 
   const created = v.created_at ? new Date(v.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'
   const addr = [v.street, [v.zip, v.city].filter(Boolean).join(' ')].filter(Boolean).join(', ')
 
   const primary: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 14px', borderRadius: 9, border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 700, fontFamily: 'inherit', width: '100%', justifyContent: 'flex-start' }
+  const neutral: React.CSSProperties = { ...primary, background: '#F4F5F7', color: C.text }
   const line: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: C.text2 }
 
+  // Aktionen als Deskriptoren sammeln und nach Schwere sortieren: Grün (0) → Neutral (1) → Rot (2).
+  const acts: { sev: number; el: React.ReactNode }[] = []
+  if (v.moderation_status === 'pending' || hasPending) {
+    acts.push({ sev: 0, el: <button key="app" style={{ ...primary, background: C.green, color: '#fff' }} onClick={() => onModerate('approve')}><Check size={15} /> {hasPending ? 'Änderungen übernehmen & freigeben' : 'Profil freigeben'}</button> })
+    acts.push({ sev: 1, el: <button key="prev" style={{ ...primary, background: '#EFF4FF', color: C.accent }} onClick={onPreview}><Eye size={15} /> Profil in der Vorschau prüfen</button> })
+    acts.push({ sev: 2, el: <button key="rej" style={{ ...primary, background: C.redPale, color: C.red }} onClick={() => { const r = hasPending ? undefined : (prompt('Ablehnungsgrund (für den Anbieter sichtbar):') ?? ''); if (!hasPending && r === '') return; onModerate('reject', r) }}><X size={15} /> {hasPending ? 'Änderungen verwerfen' : 'Profil ablehnen'}</button> })
+  }
+  if (v.moderation_status === 'approved') {
+    acts.push(v.verified
+      ? { sev: 1, el: <button key="ver" style={neutral} onClick={() => onModerate('unverify')}><ShieldOff size={15} /> Verifizierung entziehen</button> }
+      : { sev: 0, el: <button key="ver" style={{ ...primary, background: C.greenPale, color: C.green }} onClick={() => onModerate('verify')}><ShieldCheck size={15} /> Als verifiziert markieren</button> })
+    acts.push({ sev: 1, el: <button key="pub" style={neutral} onClick={onTogglePublish}>{v.published ? <><EyeOff size={15} /> Offline nehmen</> : <><Eye size={15} /> Online stellen</>}</button> })
+  }
+  if (v.moderation_status === 'suspended') acts.push({ sev: 0, el: <button key="uns" style={{ ...primary, background: C.greenPale, color: C.green }} onClick={() => onModerate('unsuspend')}><RotateCcw size={15} /> Sperre aufheben</button> })
+  else if (v.moderation_status === 'approved') acts.push({ sev: 2, el: <button key="sus" style={{ ...primary, background: C.redPale, color: C.red }} onClick={() => onModerate('suspend')}><Ban size={15} /> Anbieter sperren</button> })
+  acts.push({ sev: 1, el: <button key="edit" style={neutral} onClick={() => setEditing(true)}><Pencil size={15} /> Profil bearbeiten</button> })
+  acts.push({ sev: 1, el: <button key="pw" style={neutral} onClick={onResetPassword}><KeyRound size={15} /> Passwort zurücksetzen</button> })
+  acts.push({ sev: 2, el: <button key="del" style={{ ...primary, background: C.redPale, color: C.red }} onClick={onRemove}><Trash2 size={15} /> Anbieter endgültig löschen</button> })
+  const sortedActs = acts.map((a, i) => ({ ...a, i })).sort((a, b) => a.sev - b.sev || a.i - b.i)
+
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 5200, background: 'rgba(20,22,26,0.5)', display: 'flex', justifyContent: 'flex-end' }}>
-      <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 560, background: '#fff', height: '100%', overflowY: 'auto', boxShadow: '-8px 0 40px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 5200, background: 'rgba(20,22,26,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3vh 3vw' }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(1120px, 94vw)', height: 'min(880px, 90vh)', background: '#fff', borderRadius: 18, overflow: 'hidden', boxShadow: '0 30px 90px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column' }}>
         {/* Kopf */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '20px 22px', borderBottom: `1px solid ${C.border}`, position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '18px 24px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
           <div style={{ width: 52, height: 52, borderRadius: 12, background: '#f0f2f5', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {v.logo_url
               // eslint-disable-next-line @next/next/no-img-element
@@ -415,7 +445,7 @@ function VendorDetailDrawer({
               : <span style={{ fontSize: 18, fontWeight: 700, color: '#b6bdc9' }}>{(v.company_name || v.name).charAt(0)}</span>}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: C.text, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: C.text, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {v.company_name || v.name}
               {v.verified && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11.5, fontWeight: 700, color: C.green }}><ShieldCheck size={13} /> Verifiziert</span>}
             </div>
@@ -424,69 +454,60 @@ function VendorDetailDrawer({
               {hasPending ? 'Änderungen in Prüfung' : sm.label}{v.published ? ' · online' : v.moderation_status === 'approved' ? ' · offline' : ''}
             </span>
           </div>
-          <button onClick={onClose} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.text3, display: 'flex' }}><X size={20} /></button>
+          <button onClick={onClose} aria-label="Schließen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.text3, display: 'flex' }}><X size={22} /></button>
         </div>
 
-        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 22 }}>
-          {/* Stammdaten */}
-          <Section title="Stammdaten">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
-              <Meta label="Login / Ansprechpartner" value={v.login_email ?? v.name} />
-              <Meta label="Angelegt am" value={created} />
-              <Meta label="Kategorie" value={categoryLabel(v.category)} />
-              <Meta label="Preisklasse" value={v.price_range ?? '—'} />
-              <Meta label="Adresse" value={addr || '—'} />
-              <Meta label="Bewertungen" value={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Star size={13} style={{ color: '#B89968' }} /> {v.review_count}</span>} />
+        {editing ? (
+          <div style={{ flex: 1, overflowY: 'auto', background: '#FAFBFD' }}>
+            <div style={{ padding: '10px 24px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${C.line}`, background: '#fff' }}>
+              <button style={{ ...btn }} onClick={() => setEditing(false)}><ChevronDown size={14} style={{ transform: 'rotate(90deg)' }} /> Zurück zur Übersicht</button>
+              <span style={{ fontSize: 13, color: C.text2, fontWeight: 600 }}>Profil bearbeiten</span>
             </div>
-          </Section>
+            <VendorForm vendor={v} onDone={() => { setEditing(false); onReload() }} onCancel={() => setEditing(false)} />
+          </div>
+        ) : (
+          <div className="mkt-detail-body" style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 340px', gap: 0 }}>
+            {/* Linke Spalte: Infos */}
+            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 22, borderRight: `1px solid ${C.line}` }}>
+              <Section title="Stammdaten">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 18px' }}>
+                  <Meta label="Login / Ansprechpartner" value={v.login_email ?? v.name} />
+                  <Meta label="Angelegt am" value={created} />
+                  <Meta label="Kategorie" value={categoryLabel(v.category)} />
+                  <Meta label="Preisklasse" value={v.price_range ?? '—'} />
+                  <Meta label="Adresse" value={addr || '—'} />
+                  <Meta label="Bewertungen" value={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><Star size={13} style={{ color: '#B89968' }} /> {v.review_count}</span>} />
+                </div>
+              </Section>
 
-          {/* Kontakt */}
-          <Section title="Kontakt">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {v.email && <a href={`mailto:${v.email}`} style={line}><Mail size={14} style={{ color: C.text3 }} /> {v.email}</a>}
-              {v.phone && <a href={`tel:${v.phone}`} style={line}><Phone size={14} style={{ color: C.text3 }} /> {v.phone}</a>}
-              {v.website && <a href={v.website} target="_blank" rel="noopener noreferrer" style={{ ...line, color: C.accent }}><Globe size={14} /> {v.website}</a>}
-              {!v.email && !v.phone && !v.website && <span style={{ fontSize: 13, color: C.text3 }}>Keine Kontaktdaten hinterlegt.</span>}
+              <Section title="Kontakt">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {v.email && <a href={`mailto:${v.email}`} style={line}><Mail size={14} style={{ color: C.text3 }} /> {v.email}</a>}
+                  {v.phone && <a href={`tel:${v.phone}`} style={line}><Phone size={14} style={{ color: C.text3 }} /> {v.phone}</a>}
+                  {v.website && <a href={v.website} target="_blank" rel="noopener noreferrer" style={{ ...line, color: C.accent }}><Globe size={14} /> {v.website}</a>}
+                  {!v.email && !v.phone && !v.website && <span style={{ fontSize: 13, color: C.text3 }}>Keine Kontaktdaten hinterlegt.</span>}
+                </div>
+              </Section>
+
+              <Section title="Reichweite & Interaktionen">
+                {stats
+                  ? <VendorStatsPanel total={stats.total} last30={stats.last30} series={stats.series} accent={C.accent} compact />
+                  : <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite', color: C.text3 }} /></div>}
+              </Section>
             </div>
-          </Section>
 
-          {/* Statistik */}
-          <Section title="Reichweite & Interaktionen">
-            {stats
-              ? <VendorStatsPanel total={stats.total} last30={stats.last30} series={stats.series} accent={C.accent} compact />
-              : <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}><Loader2 size={16} style={{ animation: 'spin 1s linear infinite', color: C.text3 }} /></div>}
-          </Section>
-
-          {/* Aktionen — ausgeschrieben */}
-          <Section title="Aktionen">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {(v.moderation_status === 'pending' || hasPending) && (
-                <>
-                  <button style={{ ...primary, background: '#EFF4FF', color: C.accent }} onClick={onPreview}><Eye size={15} /> Profil in der Vorschau prüfen</button>
-                  <button style={{ ...primary, background: C.green, color: '#fff' }} onClick={() => onModerate('approve')}><Check size={15} /> {hasPending ? 'Änderungen übernehmen & freigeben' : 'Profil freigeben'}</button>
-                  <button style={{ ...primary, background: C.redPale, color: C.red }} onClick={() => { const r = hasPending ? undefined : (prompt('Ablehnungsgrund (für den Anbieter sichtbar):') ?? ''); if (!hasPending && r === '') return; onModerate('reject', r) }}><X size={15} /> {hasPending ? 'Änderungen verwerfen' : 'Profil ablehnen'}</button>
-                </>
-              )}
-              {v.moderation_status === 'approved' && (
-                <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={onTogglePublish}>
-                  {v.published ? <><EyeOff size={15} /> Offline nehmen (für Brautpaare verbergen)</> : <><Eye size={15} /> Online stellen (für Brautpaare sichtbar)</>}
-                </button>
-              )}
-              {v.moderation_status === 'approved' && (
-                v.verified
-                  ? <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={() => onModerate('unverify')}><ShieldOff size={15} /> Verifizierung entziehen</button>
-                  : <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={() => onModerate('verify')}><ShieldCheck size={15} /> Als verifiziert markieren</button>
-              )}
-              {v.moderation_status === 'suspended'
-                ? <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={() => onModerate('unsuspend')}><RotateCcw size={15} /> Sperre aufheben</button>
-                : v.moderation_status === 'approved' && <button style={{ ...primary, background: C.redPale, color: C.red }} onClick={() => onModerate('suspend')}><Ban size={15} /> Anbieter sperren</button>}
-              <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={onEdit}><Pencil size={15} /> Profil bearbeiten</button>
-              <button style={{ ...primary, background: '#F4F5F7', color: C.text }} onClick={onResetPassword}><KeyRound size={15} /> Passwort zurücksetzen</button>
-              <button style={{ ...primary, background: C.redPale, color: C.red }} onClick={onRemove}><Trash2 size={15} /> Anbieter endgültig löschen</button>
+            {/* Rechte Spalte: Aktionen (Grün → Neutral → Rot) */}
+            <div style={{ padding: 24, background: '#FAFBFD', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: C.text3, marginBottom: 12 }}>Aktionen</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {sortedActs.map(a => a.el)}
+              </div>
             </div>
-          </Section>
-        </div>
+          </div>
+        )}
       </div>
+
+      <style>{`@media (max-width: 860px){ .mkt-detail-body{ grid-template-columns: 1fr !important; } .mkt-detail-body > div:first-child{ border-right: none !important; } }`}</style>
     </div>
   )
 }
