@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { requireVendorOwner } from '@/lib/marketplace/owner'
+import { ensureQuestionnaire } from '@/lib/vendor/questionnaire-seed'
 import {
   DEFAULT_SETTINGS,
   type QQuestion, type QSection, type Questionnaire, type QuestionType, type TaxMode,
@@ -34,12 +35,17 @@ export async function GET() {
   if (!auth.ok) return auth.res
   const { admin, vendorId } = auth.ctx
 
-  const { data: row } = await admin
+  let { data: row } = await admin
     .from('vendor_questionnaires')
     .select('*')
     .eq('dienstleister_id', vendorId)
     .maybeSingle()
 
+  // Garantie: fehlt das Formular, aus der Kategorie-Vorlage anlegen und neu laden.
+  if (!row) {
+    await ensureQuestionnaire(admin, vendorId)
+    row = (await admin.from('vendor_questionnaires').select('*').eq('dienstleister_id', vendorId).maybeSingle()).data
+  }
   if (!row) {
     return NextResponse.json({ questionnaire: { ...DEFAULT_SETTINGS, id: null, dienstleister_id: vendorId, sections: [] } })
   }

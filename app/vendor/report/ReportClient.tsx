@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { BarChart2, Download, FileSpreadsheet, FileText, Loader2, TrendingDown, TrendingUp, Minus } from 'lucide-react'
 import type { ReportData } from '@/lib/vendor/monthly-report'
 import { brandAccentVars } from '@/lib/vendor/brand'
+import VendorStatsPanel from '@/components/marketplace/VendorStatsPanel'
+import type { StatsResult } from '@/lib/marketplace/stats'
 
 // ── Period helpers ─────────────────────────────────────────────────────────────
 
@@ -215,6 +217,9 @@ export default function ReportClient({ brandColor }: { brandColor?: string | nul
           </div>
         </div>
 
+        {/* ── Marktplatz-Statistik (Sichtbarkeit & Kontakte) ── */}
+        <MarketplaceStatsSection accent={brandColor && /^#[0-9a-fA-F]{6}$/.test(brandColor) ? brandColor : '#2352C8'} />
+
         {/* ── Controls ── */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
           {/* Type toggle */}
@@ -360,6 +365,34 @@ export default function ReportClient({ brandColor }: { brandColor?: string | nul
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── Marktplatz-Statistik (Sichtbarkeit & Kontakte) ───────────────────────────
+function MarketplaceStatsSection({ accent }: { accent: string }) {
+  const [stats, setStats] = useState<StatsResult | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let alive = true
+    fetch('/api/vendor/stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (alive && d) setStats(d as StatsResult) })
+      .finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [])
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <SectionTitle label="Sichtbarkeit & Kontakte (Marktplatz)" />
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}><Loader2 size={18} className="rpt-spin" /></div>
+      ) : stats ? (
+        <VendorStatsPanel total={stats.total} last30={stats.last30} series={stats.series} accent={accent} />
+      ) : (
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Noch keine Statistik verfügbar.</p>
+      )}
     </div>
   )
 }

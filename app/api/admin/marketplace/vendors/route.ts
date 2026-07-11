@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin/require-admin'
 import { requestDownloadUrl } from '@/lib/files/worker-client'
+import { loadAdminStats, type Counts } from '@/lib/marketplace/stats'
+
+const emptyCounts = (): Counts => ({ profile_view: 0, contact_email: 0, contact_phone: 0, website: 0, social: 0, request: 0 })
 
 // GET — Liste aller Marktplatz-Vendor-Profile (mit verknüpfter Login-E-Mail).
 export async function GET() {
@@ -34,14 +37,34 @@ export async function GET() {
     }
   }
 
+  // Tracking-Statistik (best effort — leer, falls Migration noch nicht angewandt).
+  let adminStats = { total: emptyCounts(), last30: emptyCounts(), series: [] as { day: string; counts: Counts }[], perVendor: {} as Record<string, { total: Counts; last30: Counts }> }
+  try { adminStats = await loadAdminStats(admin) } catch { /* leer lassen */ }
+
+  // Veröffentlichte Bewertungen pro Anbieter zählen.
+  const reviewByVendor: Record<string, number> = {}
+  if (ids.length) {
+    const { data: revs } = await admin
+      .from('marketplace_reviews')
+      .select('dienstleister_id')
+      .eq('status', 'published')
+      .in('dienstleister_id', ids)
+    for (const r of revs ?? []) reviewByVendor[r.dienstleister_id] = (reviewByVendor[r.dienstleister_id] ?? 0) + 1
+  }
+
   const result = await Promise.all((vendors ?? []).map(async v => ({
     ...v,
     login_email: linkByVendor[v.id]?.email ?? v.email ?? null,
     login_user_id: linkByVendor[v.id]?.user_id ?? null,
     logo_url: v.logo_r2_key ? await requestDownloadUrl(v.logo_r2_key).catch(() => null) : null,
+    stats: adminStats.perVendor[v.id] ?? { total: emptyCounts(), last30: emptyCounts() },
+    review_count: reviewByVendor[v.id] ?? 0,
   })))
 
-  return NextResponse.json({ vendors: result })
+  return NextResponse.json({
+    vendors: result,
+    adminStats: { total: adminStats.total, last30: adminStats.last30, series: adminStats.series },
+  })
 }
 
 // POST — neues Vendor-Profil + Login-Account anlegen.

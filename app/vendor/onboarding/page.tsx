@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ensureQuestionnaire } from '@/lib/vendor/questionnaire-seed'
 import OnboardingWizardClient from './OnboardingWizardClient'
 
 export const dynamic = 'force-dynamic'
@@ -39,7 +40,12 @@ export default async function VendorOnboardingPage() {
       .single()
     if (vendor) {
       await admin.from('user_dienstleister').insert({ user_id: user.id, dienstleister_id: vendor.id })
+      await ensureQuestionnaire(admin, vendor.id, (meta.category as string)?.trim() || 'sonstiges')
     }
+  } else {
+    // Bestehendes Profil: Formular garantiert nachziehen, falls es fehlt.
+    const { data: prof } = await admin.from('dienstleister_profiles').select('category').eq('id', link.dienstleister_id).maybeSingle()
+    await ensureQuestionnaire(admin, link.dienstleister_id, (prof?.category as string) ?? 'sonstiges')
   }
 
   return <OnboardingWizardClient />

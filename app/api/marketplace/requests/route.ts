@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { loadFullQuestionnaire, normalizeAnswers } from '@/lib/vendor/load'
 import { buildStandardInfo } from '@/lib/vendor/standard-info'
 import { computeOffer, type StandardInfo } from '@/lib/vendor/pricing'
+import { ensureQuestionnaire } from '@/lib/vendor/questionnaire-seed'
 import type { Answer } from '@/lib/vendor/questionnaire'
 import { buildRequestExcel } from '@/lib/vendor/request-excel'
 import { sendEmail, emailLayout } from '@/lib/email/notify'
@@ -149,8 +150,9 @@ export async function POST(req: NextRequest) {
   const budget = typeof budgetRaw === 'number' ? budgetRaw
     : (typeof budgetRaw === 'string' && budgetRaw.trim() ? parseFloat(budgetRaw) : null)
 
-  // Aktiven Fragebogen laden (falls vorhanden) und Antworten normalisieren.
-  // Ohne Fragebogen bleibt es bei der klassischen Freitext-Anfrage (Fallback).
+  // Garantie: fehlt dem Anbieter ein Formular, aus der Kategorie-Vorlage anlegen.
+  await ensureQuestionnaire(admin, dienstleisterId)
+  // Aktiven Fragebogen laden und Antworten normalisieren.
   const questionnaire = await loadFullQuestionnaire(admin, dienstleisterId)
   const hasQuestionnaire = !!questionnaire && questionnaire.is_active && questionnaire.sections.length > 0
 
@@ -179,6 +181,9 @@ export async function POST(req: NextRequest) {
     .select('id')
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Interaktion zählen (best effort, blockiert nie).
+  admin.from('marketplace_vendor_events').insert({ dienstleister_id: dienstleisterId, event_type: 'request', ref_id: data.id }).then(() => {}, () => {})
 
   const standardInfo = await buildStandardInfo(admin, eventId)
   if (budget != null && Number.isFinite(budget as number)) standardInfo.budget = budget as number

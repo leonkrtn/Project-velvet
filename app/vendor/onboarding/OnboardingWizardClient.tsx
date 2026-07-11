@@ -4,19 +4,15 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Loader2, Upload, Plus, Trash2, Check, ChevronLeft, ChevronRight,
-  Eye, X, Sparkles,
+  Eye, X,
 } from 'lucide-react'
 import { MARKETPLACE_CATEGORIES } from '@/lib/marketplace/types'
 import { HelpTip } from '@/components/ui/HelpTooltip'
 import { uploadVendorImage, UploadError } from '@/lib/marketplace/vendor-upload'
 import VendorMarketplacePreview, { type PreviewVendor } from '@/components/marketplace/VendorMarketplacePreview'
-import { templateForCategory } from '@/lib/vendor/questionnaire-templates'
-import { DEFAULT_SETTINGS } from '@/lib/vendor/questionnaire'
 import ForevrHeart from '@/components/ForevrHeart'
 
 interface Photo { id: string; url: string | null }
-
-const uid = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `id-${Math.random().toString(36).slice(2)}`)
 
 const ACCENT = '#2352C8'
 const inp: React.CSSProperties = {
@@ -34,7 +30,6 @@ const STEPS = [
   { key: 'fotos', title: 'Zeig deine Arbeit', sub: 'Mindestens 1 Foto — das erste ist dein Titelbild.' },
   { key: 'kontakt', title: 'Wie erreicht man dich?', sub: 'Telefon oder E-Mail — sichtbar erst nach Annahme einer Anfrage.' },
   { key: 'marke', title: 'Deine Markenfarbe (optional)', sub: 'Akzent für deine Angebots-PDFs und Mails ans Brautpaar.' },
-  { key: 'formular', title: 'Fast geschafft!', sub: 'Optional: Starte mit einer Formular-Vorlage für dein Gewerk.' },
 ] as const
 
 export default function OnboardingWizardClient() {
@@ -44,7 +39,6 @@ export default function OnboardingWizardClient() {
   const [busy, setBusy] = useState(false)
   const [logoBusy, setLogoBusy] = useState(false)
   const [photoBusy, setPhotoBusy] = useState(false)
-  const [tplLoaded, setTplLoaded] = useState(false)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [mobilePreview, setMobilePreview] = useState(false)
 
@@ -134,31 +128,6 @@ export default function OnboardingWizardClient() {
   async function deletePhoto(id: string) {
     const res = await fetch(`/api/vendor/marketplace/photos/${id}`, { method: 'DELETE' }).catch(() => null)
     if (res?.ok) setPhotos(p => p.filter(x => x.id !== id))
-  }
-
-  async function loadTemplate() {
-    setBusy(true)
-    try {
-      const tpl = templateForCategory(f.category)
-      const settings = { ...DEFAULT_SETTINGS, ...tpl.settings, is_active: false }
-      const sections = tpl.sections.map((sec, si) => {
-        const sid = uid()
-        return {
-          id: sid, title: sec.title, description: sec.description ?? '', sort_order: si,
-          questions: sec.questions.map((q, qi) => ({
-            id: uid(), section_id: sid, type: q.type, label: q.label, help_text: q.help_text ?? '',
-            required: !!q.required,
-            options: (q.options ?? []).map(o => ({ id: uid(), label: o.label, price: o.price ?? 0, perGuest: !!o.perGuest })),
-            pricing: q.pricing ?? {}, sort_order: qi,
-          })),
-        }
-      })
-      const res = await fetch('/api/vendor/questionnaire', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings, sections }),
-      })
-      if (res.ok) { setTplLoaded(true); flash('ok', 'Vorlage geladen — später im Anfrageformular anpassen.') }
-      else flash('err', 'Vorlage konnte nicht geladen werden')
-    } finally { setBusy(false) }
   }
 
   const stepValid = (i: number): boolean => {
@@ -335,25 +304,6 @@ export default function OnboardingWizardClient() {
               </div>
             )}
 
-            {s.key === 'formular' && (
-              <div style={{ background: '#fff', border: '1px solid #d6ddea', borderRadius: 14, padding: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <Sparkles size={18} style={{ color: ACCENT }} />
-                  <strong style={{ fontSize: 15.5, color: '#111827' }}>Anfrageformular vorbereiten</strong>
-                </div>
-                <p style={{ fontSize: 13.5, color: '#4B5768', lineHeight: 1.55, margin: '0 0 16px' }}>
-                  Brautpaare füllen dieses Formular vor einer Anfrage aus — daraus erstellt Forevr automatisch dein Angebot.
-                  Lade eine passende Vorlage für deine Kategorie und passe sie später im Anfrageformular an.
-                </p>
-                {tplLoaded ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 600, color: '#15803D' }}><Check size={16} /> Vorlage geladen</span>
-                ) : (
-                  <button onClick={loadTemplate} disabled={busy} style={{ ...btnDark }}>
-                    {busy ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={15} />} Vorlage laden
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Steuerung */}
