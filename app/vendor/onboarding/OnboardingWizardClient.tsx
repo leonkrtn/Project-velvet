@@ -12,6 +12,7 @@ import { uploadVendorImage, UploadError } from '@/lib/marketplace/vendor-upload'
 import VendorMarketplacePreview, { type PreviewVendor } from '@/components/marketplace/VendorMarketplacePreview'
 import { templateForCategory } from '@/lib/vendor/questionnaire-templates'
 import { DEFAULT_SETTINGS } from '@/lib/vendor/questionnaire'
+import ForevrHeart from '@/components/ForevrHeart'
 
 interface Photo { id: string; url: string | null }
 
@@ -211,7 +212,7 @@ export default function OnboardingWizardClient() {
     <div style={{ minHeight: '100dvh', background: '#F5F8FF', display: 'flex', flexDirection: 'column' }}>
       {/* Kopf */}
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', flexShrink: 0 }}>
-        <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#111827' }}>Forevr</span>
+        <ForevrHeart size={30} color={ACCENT} title="Forevr" />
         <button onClick={skip} disabled={busy} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, color: '#4B5768' }}>
           Später einrichten
         </button>
@@ -227,7 +228,9 @@ export default function OnboardingWizardClient() {
       <div className="ob-split" style={{ flex: 1, display: 'flex', gap: 24, padding: '0 24px 24px', minHeight: 0 }}>
         {/* Formular */}
         <div className="ob-form" style={{ flex: '1 1 0', minWidth: 0, maxWidth: 560, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          {/* Horizontaler Innenabstand: verhindert, dass der globale Fokus-Outline
+              (:focus-visible, 2px + 2px Offset) vom Scroll-Container abgeschnitten wird. */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '3px 6px' }}>
             <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT }}>Schritt {step + 1} von {STEPS.length}</span>
             <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.4px', margin: '8px 0 6px', color: '#111827' }}>{s.title}</h1>
             <p style={{ fontSize: 14.5, color: '#4B5768', margin: '0 0 22px', lineHeight: 1.5 }}>{s.sub}</p>
