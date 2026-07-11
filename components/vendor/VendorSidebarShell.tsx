@@ -9,9 +9,9 @@ import {
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
-import { VENDOR_TOUR_START_EVENT } from '@/lib/tour/vendor-tour-steps'
 import { VENDOR_QUICK_TOUR_STEPS, VENDOR_QUICK_TOUR_START_EVENT, VENDOR_QUICK_TOUR_DONE_KEY } from '@/lib/tour/vendor-quick-tour-steps'
 import VendorTour from '@/components/tour/VendorTour'
+import VendorHelpMenu from '@/components/vendor/VendorHelpMenu'
 
 interface Props {
   companyName: string
@@ -55,6 +55,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
   const [moderationStatus, setModerationStatus] = useState<string | null>(null)
   const [pageSubtitle, setPageSubtitle] = useState('')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [helpMenuOpen, setHelpMenuOpen] = useState(false)
   const active = activeKey(pathname)
   const isKommunikation = pathname.includes('/kommunikation')
 
@@ -177,9 +178,9 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             <span className="vdr-nav-text">Anbieter-Profil</span>
           </Link>
           <button
-            onClick={() => window.dispatchEvent(new Event(VENDOR_TOUR_START_EVENT))}
+            onClick={() => setHelpMenuOpen(true)}
             className="vdr-help-btn"
-            title="Hilfe-Tour starten"
+            title="Hilfe & Erklärungen"
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '7px 10px', borderRadius: 8, width: '100%',
@@ -326,7 +327,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             </div>
           </Link>
           <button
-            onClick={() => { setMobileMenuOpen(false); window.dispatchEvent(new Event(VENDOR_TOUR_START_EVENT)) }}
+            onClick={() => { setMobileMenuOpen(false); setHelpMenuOpen(true) }}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 450, color: 'var(--text-secondary)', marginTop: 1 }}
           >
             <HelpCircle size={16} style={{ flexShrink: 0, opacity: 0.5 }} />
@@ -351,7 +352,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         background: 'var(--bg)',
       }}>
         {moderationStatus === 'draft' && !pathname.startsWith('/vendor/listing') && (
-          <Link href="/vendor/onboarding" style={{
+          <Link href="/vendor/listing" style={{
             display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
             padding: '10px 20px', textDecoration: 'none',
             background: 'rgba(35,82,200,0.08)', borderBottom: '1px solid var(--border)',
@@ -422,7 +423,9 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         }
       `}</style>
 
-      {/* Ausführliche Tour (Hilfe-Button) */}
+      {/* Hilfe-Auswahl (kompletter Rundgang / einzelner Bereich / Hilfe-Seite) */}
+      <VendorHelpMenu open={helpMenuOpen} onClose={() => setHelpMenuOpen(false)} />
+      {/* Ausführliche Tour (über das Hilfe-Menü, optional bereichsgefiltert) */}
       <VendorTour />
       {/* Kurze Onboarding-Tour: einmaliger Auto-Start nach dem Wizard */}
       <VendorTour steps={VENDOR_QUICK_TOUR_STEPS} startEvent={VENDOR_QUICK_TOUR_START_EVENT} autoStartOnceKey={VENDOR_QUICK_TOUR_DONE_KEY} />

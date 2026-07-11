@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, ChevronLeft, ChevronRight, Check } from 'lucide-react'
 import { VENDOR_TOUR_STEPS, VENDOR_TOUR_START_EVENT, type VendorTourStep } from '@/lib/tour/vendor-tour-steps'
@@ -15,6 +15,7 @@ const ROUTE_MAP: Record<string, string> = {
   anfragen:         '/vendor/anfragen',
   angebote:         '/vendor/angebote',
   events:           '/vendor/dashboard',
+  kalender:         '/vendor/ubersicht',
   report:           '/vendor/report',
   crm:              '/vendor/crm',
   automatik:        '/vendor/automatisierungen',
@@ -37,7 +38,12 @@ export default function VendorTour({
   autoStartOnceKey,
 }: VendorTourProps = {}) {
   const router = useRouter()
-  const steps = stepsProp ?? VENDOR_TOUR_STEPS
+  const baseSteps = stepsProp ?? VENDOR_TOUR_STEPS
+  const [areaFilter, setAreaFilter] = useState<string | null>(null)
+  const steps = useMemo(
+    () => (areaFilter ? baseSteps.filter(s => s.area === areaFilter) : baseSteps),
+    [baseSteps, areaFilter],
+  )
 
   const [mounted,    setMounted]    = useState(false)
   const [active,     setActive]     = useState(false)
@@ -46,6 +52,7 @@ export default function VendorTour({
   // true, sobald Zielposition feststeht — erst dann wird die Karte gerendert.
   const [positioned, setPositioned] = useState(false)
   const [viewport,   setViewport]   = useState({ w: 0, h: 0 })
+  const [sidebarRect, setSidebarRect] = useState<DOMRect | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const [measuredH, setMeasuredH] = useState(0)
 
@@ -69,6 +76,7 @@ export default function VendorTour({
   const finish = useCallback(() => {
     setActive(false)
     setRect(null)
+    setAreaFilter(null)
     if (autoStartOnceKey) { try { localStorage.setItem(autoStartOnceKey, 'done') } catch { /* ignore */ } }
   }, [autoStartOnceKey])
 
@@ -79,12 +87,18 @@ export default function VendorTour({
     })
   }, [steps.length, finish])
 
-  // Manueller Start über das (konfigurierbare) Start-Event.
+  // Manueller Start über das (konfigurierbare) Start-Event. Optional mit
+  // { area } im CustomEvent-Detail → nur die Schritte dieses Bereichs.
   useEffect(() => {
-    const onStart = () => start()
+    const onStart = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { area?: string } | undefined
+      setAreaFilter(detail?.area ?? null)
+      setIndex(0)
+      setActive(true)
+    }
     window.addEventListener(startEvent, onStart)
     return () => window.removeEventListener(startEvent, onStart)
-  }, [start, startEvent])
+  }, [startEvent])
 
   // Optionaler einmaliger Auto-Start (z. B. kurze Tour nach dem Onboarding).
   useEffect(() => {
@@ -151,6 +165,21 @@ export default function VendorTour({
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [active])
+
+  // Sidebar-Rechteck messen — für zielfreie Schritte wird NUR die Sidebar
+  // abgedunkelt (Hauptinhalt bleibt hell).
+  useEffect(() => {
+    if (!active || stepTarget) { setSidebarRect(null); return }
+    const measure = () => {
+      const el = document.querySelector('.vdr-sidebar') as HTMLElement | null
+      const r = el && el.offsetParent !== null ? el.getBoundingClientRect() : null
+      setSidebarRect(r && r.width > 0 ? r : null)
+    }
+    measure()
+    const t = window.setTimeout(measure, 120)
+    window.addEventListener('resize', measure)
+    return () => { window.clearTimeout(t); window.removeEventListener('resize', measure) }
+  }, [active, index, stepTarget])
 
   // KERN: Ring + Abdunklung direkt auf das Zielelement legen (keine zweite Box).
   // Fallback nach MAX_WAIT_MS: zentrierte Karte, falls das Element nicht erscheint.
@@ -323,14 +352,25 @@ export default function VendorTour({
           Bei normalen Schritten: Abdunklung kommt vom box-shadow am Zielelement,
           hier nur opaker Fänger ohne Abdunklung wenn rect gesetzt, sonst dunkler BG. */}
       {!isInteractive && (
-        <div
-          onClick={e => e.stopPropagation()}
-          style={{
-            position: 'fixed', inset: 0,
-            background: rect ? 'transparent' : 'rgba(31,26,22,0.55)',
-            pointerEvents: 'auto',
-          }}
-        />
+        <>
+          {/* Klick-Fänger — dunkelt bei zielfreien Schritten NICHT den Inhalt ab. */}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ position: 'fixed', inset: 0, background: 'transparent', pointerEvents: 'auto' }}
+          />
+          {/* Zielfreier (zentrierter) Schritt: nur die Sidebar abdunkeln. */}
+          {!rect && sidebarRect && (
+            <div
+              style={{
+                position: 'fixed',
+                top: sidebarRect.top, left: sidebarRect.left,
+                width: sidebarRect.width, height: sidebarRect.height,
+                background: 'rgba(31,26,22,0.55)', pointerEvents: 'none',
+                transition: 'opacity 0.2s ease',
+              }}
+            />
+          )}
+        </>
       )}
 
       {positioned && (
