@@ -148,7 +148,7 @@ export default function MarketplaceAdminPanel() {
   ]
 
   return (
-    <div style={{ padding: '28px 24px 64px' }}>
+    <div style={{ padding: 'clamp(18px, 4vw, 28px) clamp(14px, 4vw, 24px) 64px' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
           <div>

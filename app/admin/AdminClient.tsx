@@ -95,7 +95,7 @@ function UbersichtSection({ onNav }: { onNav: (s: Section) => void }) {
   ].filter(Boolean) as { n: number; label: string; cta: string; icon: React.ElementType; sec: Section; color: string }[] : []
 
   return (
-    <div style={{ padding: '28px 24px 64px' }}>
+    <div style={{ padding: 'clamp(18px, 4vw, 28px) clamp(14px, 4vw, 24px) 64px' }}>
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.02em', color: C.text }}>Übersicht</h1>
         <p style={{ fontSize: 13.5, color: C.text2, margin: '0 0 24px' }}>Was heute deine Aufmerksamkeit braucht.</p>
@@ -264,7 +264,7 @@ function VeranstalterSection({ adminName }: { adminName: string }) {
   }
 
   return (
-    <div style={{ padding: '28px 24px 64px' }}>
+    <div style={{ padding: 'clamp(18px, 4vw, 28px) clamp(14px, 4vw, 24px) 64px' }}>
       <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div>
@@ -456,7 +456,7 @@ function VeranstalterSection({ adminName }: { adminName: string }) {
 
 function PromoSection() {
   return (
-    <div style={{ padding: '28px 24px 64px' }}>
+    <div style={{ padding: 'clamp(18px, 4vw, 28px) clamp(14px, 4vw, 24px) 64px' }}>
       <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px', letterSpacing: '-0.02em', color: C.text }}>Promo-Codes</h1>

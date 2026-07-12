@@ -79,7 +79,7 @@ export default function AdminTestMailSection() {
   const errCount = Object.values(results).filter(r => r.status === 'error').length
 
   return (
-    <div style={{ padding: '28px 24px 64px', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ padding: 'clamp(18px, 4vw, 28px) clamp(14px, 4vw, 24px) 64px', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1000, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
           <span style={{ width: 40, height: 40, borderRadius: 11, background: '#EFF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.accent, flexShrink: 0 }}><FlaskConical size={20} /></span>
@@ -137,8 +137,8 @@ export default function AdminTestMailSection() {
                       const r = results[m.key] ?? { status: 'idle' as const }
                       return (
                         <div key={m.key} style={{ padding: '12px 16px', borderTop: i > 0 ? `1px solid ${C.line}` : 'none' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', rowGap: 10 }}>
+                            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                               <div style={{ fontWeight: 600, color: C.text, fontSize: 14 }}>{m.label}</div>
                               <div style={{ fontSize: 12.5, color: C.text3 }}>{m.description}</div>
                             </div>

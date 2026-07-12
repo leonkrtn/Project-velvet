@@ -76,7 +76,7 @@ export default function AdminReportsSection({ card: cardStyle, cardHeader: cardH
   const openCount = reports.filter(r => r.status === 'open').length
 
   return (
-    <div style={{ padding: '28px 24px 64px' }}>
+    <div style={{ padding: 'clamp(18px, 4vw, 28px) clamp(14px, 4vw, 24px) 64px' }}>
       <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div>

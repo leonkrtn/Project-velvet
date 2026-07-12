@@ -88,7 +88,7 @@ export default function AdminNotificationsSection() {
   }
 
   return (
-    <div style={{ padding: '28px 24px 64px', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ padding: 'clamp(18px, 4vw, 28px) clamp(14px, 4vw, 24px) 64px', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
           <span style={{ width: 40, height: 40, borderRadius: 11, background: '#EFF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.accent, flexShrink: 0 }}><Bell size={20} /></span>
