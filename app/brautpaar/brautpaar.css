@@ -3004,3 +3004,62 @@
   border-radius: 20px;
   box-shadow: 0 1px 2px rgba(44,40,37,0.04), 0 8px 30px rgba(44,40,37,0.06);
 }
+
+
+/* ── Auth: echter Modus-Umschalter (zwei Gruppen, gleiches Design) ── */
+.bp-authx-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.4rem;
+}
+
+.bp-authx-toggle-group {
+  display: inline-flex;
+  gap: 4px;
+  background: var(--bp-ivory-2);
+  border: 1px solid var(--bp-rule);
+  border-radius: var(--bp-r-md);
+  padding: 4px;
+}
+
+.bp-authx-toggle-btn {
+  padding: 0.5rem 0.9rem;
+  border: none;
+  background: none;
+  border-radius: calc(var(--bp-r-md) - 4px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--bp-ink-3);
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background var(--bp-transition), color var(--bp-transition);
+}
+
+.bp-authx-toggle-btn.is-active {
+  background: var(--bp-paper);
+  color: var(--bp-gold-deep);
+  box-shadow: var(--bp-shadow-card);
+}
+
+.bp-authx-toggle-btn:not(.is-active):hover { color: var(--bp-ink); }
+
+@media (max-width: 560px) {
+  .bp-authx-toggle-row { gap: 0.4rem; }
+  .bp-authx-toggle-btn { padding: 0.45rem 0.65rem; font-size: 0.8125rem; }
+}
+
+/* Kompakteres Layout, damit die Karte auf normalen Screens nicht scrollt */
+@media (min-width: 900px) {
+  .bp-authx-main { padding: 1.5rem 2rem; }
+}
+.bp-authx-heading { margin-bottom: 1rem; }
+.bp-authx-2col { gap: 1rem 1.75rem; }
+.bp-authx-col { gap: 0.7rem; }
+
+/* Einspaltige Modi (Code / Dienstleister) in der breiten Karte zentrieren */
+.bp-authx-narrow {
+  max-width: 440px;
+  margin: 0 auto;
+}

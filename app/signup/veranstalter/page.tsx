@@ -138,7 +138,7 @@ export default function VeranstalterSignupPage() {
           </p>
           <p>
             Deine Hochzeit selbst planen?{' '}
-            <a href="/signup/brautpaar" className="bp-auth-link">Als Brautpaar registrieren</a>
+            <a href="/signup" className="bp-auth-link">Als Brautpaar registrieren</a>
           </p>
         </div>
       </div>

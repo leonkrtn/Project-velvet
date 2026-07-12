@@ -8,7 +8,7 @@ import ForevrHeart from '@/components/ForevrHeart'
 import { BILLING_ENABLED } from '@/lib/billing'
 import './landing.css'
 
-const SIGNUP_URL = '/signup/brautpaar'
+const SIGNUP_URL = '/signup'
 // Gratis-Phase: keine Preis-/Tarif-Kommunikation, kostenloser Einstieg.
 const CTA_LABEL = BILLING_ENABLED ? '14 Tage kostenlos testen' : 'Kostenlos starten'
 
@@ -1238,7 +1238,7 @@ export default function LandingPage() {
               {BILLING_ENABLED && <li><a href="#lp-pricing">Preise</a></li>}
               <li><a href="#lp-funktionen">Funktionen</a></li>
               <li><a href="#lp-faq">FAQ</a></li>
-              <li><a href="/signup/brautpaar">{CTA_LABEL}</a></li>
+              <li><a href="/signup">{CTA_LABEL}</a></li>
               <li><a href="/login">Anmelden</a></li>
             </ul>
           </div>

@@ -25,7 +25,7 @@ export default function AuthFooter({
       )}
       {registerPrompt && (
         <p className="bp-authx-foot-primary">
-          Noch kein Konto? <a href="/signup/brautpaar" className="bp-auth-link">Registrieren</a>
+          Noch kein Konto? <a href="/signup" className="bp-auth-link">Registrieren</a>
         </p>
       )}
       {alts.length > 0 && (

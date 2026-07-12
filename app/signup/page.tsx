@@ -2,79 +2,111 @@
 
 export const dynamic = 'force-dynamic'
 
-import React, { useState, Suspense } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Check, Eye, EyeOff } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
 import VerifyStep from '@/components/auth/VerifyStep'
-import SignupModeTabs from '@/components/auth/SignupModeTabs'
+import SignupModeToggle, { type SignupMode } from '@/components/auth/SignupModeToggle'
 import AuthFooter from '@/components/auth/AuthFooter'
 import { createClient } from '@/lib/supabase/client'
 import { startSignup, EmailTakenError, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
+import { ensureSoloEvent } from '@/lib/brautpaar-solo'
+import { MARKETPLACE_CATEGORIES } from '@/lib/marketplace/types'
 import '@/app/brautpaar/brautpaar.css'
 
-type CodeType = 'event' | 'vendor' | null
-
-type EventPreview = {
-  event_id: string
-  role: string
-  expires_at: string
+const HEADINGS: Record<SignupMode, string> = {
+  brautpaar: 'Kostenlos starten',
+  code: 'Mit Einladungscode registrieren',
+  dienstleister: 'Als Dienstleister registrieren',
 }
 
 function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const initialCode = searchParams.get('code') ?? ''
+  const modeParam = searchParams.get('mode')
+  const initialMode: SignupMode = initialCode
+    ? 'code'
+    : (modeParam === 'dienstleister' || modeParam === 'code' ? modeParam : 'brautpaar')
 
-  const [inviteCode, setInviteCode]   = useState(searchParams.get('code') ?? '')
-  const [codeType, setCodeType]       = useState<CodeType>(null)
-  const [eventPreview, setEventPreview] = useState<EventPreview | null>(null)
-  const [name, setName]               = useState('')
-  const [email, setEmail]             = useState('')
-  const [password, setPassword]       = useState('')
+  const [mode, setMode] = useState<SignupMode>(initialMode)
+
+  // ── Shared ──
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading]         = useState(false)
-  const [error, setError]             = useState('')
-  const [previewLoading, setPreviewLoading] = useState(false)
-  const [success, setSuccess]         = useState(false)
-
-  // After successful signUp but before redeem — lets user retry redeem only
-  const [pendingRedeem, setPendingRedeem] = useState(false)
-  const [pendingCode, setPendingCode] = useState('')
-  // E-Mail-Verifizierung als Zwischenschritt (kein Auto-Confirm)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [awaitingCode, setAwaitingCode] = useState(false)
 
-  const getSupabase = () => createClient()
+  // ── Brautpaar (Solo) ──
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName]   = useState('')
+  const [phone, setPhone]         = useState('')
+  const [street, setStreet]       = useState('')
+  const [postalCode, setPostalCode] = useState('')
+  const [city, setCity]           = useState('')
+  const [p2FirstName, setP2FirstName] = useState('')
+  const [p2LastName, setP2LastName]   = useState('')
+  const [p2Email, setP2Email]         = useState('')
+  const [p2Phone, setP2Phone]         = useState('')
+  const [weddingDate, setWeddingDate] = useState('')
 
-  const handleCodeBlur = async () => {
-    const code = inviteCode.trim()
-    if (!code) { setCodeType(null); setEventPreview(null); return }
-    setPreviewLoading(true)
-    setCodeType(null)
-    setEventPreview(null)
+  // ── Einladungscode (nur Paar-/Event-Codes) ──
+  const [inviteCode, setInviteCode] = useState(initialCode)
+  const [codeValid, setCodeValid]   = useState<boolean | null>(null)
+  const [eventRole, setEventRole]   = useState('')
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [pendingRedeem, setPendingRedeem]   = useState(false)
+  const [pendingCode, setPendingCode]       = useState('')
+
+  // ── Name (Code + Dienstleister) ──
+  const [name, setName] = useState('')
+
+  // ── Dienstleister ──
+  const [company, setCompany]   = useState('')
+  const [category, setCategory] = useState('fotograf')
+
+  const switchMode = (m: SignupMode) => { setMode(m); setError('') }
+
+  // Code-Vorschau (nur Event-/Paar-Einladung)
+  const checkCode = async (code: string) => {
+    const c = code.trim()
+    if (!c) { setCodeValid(null); setEventRole(''); return }
+    setPreviewLoading(true); setCodeValid(null); setEventRole('')
     try {
-      const supabase = getSupabase()
-      // Try vendor code first
-      const { data: vendorData } = await supabase.rpc('preview_vendor_signup_code', { p_code: code })
-      if (vendorData && !vendorData.error) {
-        setCodeType('vendor')
-        setPreviewLoading(false)
-        return
-      }
-      // Fall back to event invite code
-      const { data: eventData } = await supabase.rpc('get_invite_preview', { p_code: code })
-      if (eventData?.[0]) {
-        setCodeType('event')
-        setEventPreview(eventData[0])
-      }
-    } catch {
-      // ignore
-    } finally {
-      setPreviewLoading(false)
-    }
+      const supabase = createClient()
+      const { data } = await supabase.rpc('get_invite_preview', { p_code: c })
+      if (data?.[0]) { setCodeValid(true); setEventRole(data[0].role ?? '') }
+      else setCodeValid(false)
+    } catch { setCodeValid(false) }
+    finally { setPreviewLoading(false) }
   }
 
+  // Prefill-Code beim Laden prüfen
+  useEffect(() => { if (initialCode) checkCode(initialCode) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const buildBrautpaarMeta = () => ({
+    name: `${firstName.trim()} ${lastName.trim()}`,
+    partner_name: `${p2FirstName.trim()} ${p2LastName.trim()}`,
+    wedding_date: weddingDate || undefined,
+    signup_role: 'brautpaar_solo' as const,
+    first_name: firstName.trim(),
+    last_name: lastName.trim(),
+    phone: phone.trim(),
+    street: street.trim(),
+    postal_code: postalCode.trim(),
+    city: city.trim(),
+    partner_first_name: p2FirstName.trim(),
+    partner_last_name: p2LastName.trim(),
+    partner_email: p2Email.trim(),
+    partner_phone: p2Phone.trim(),
+  })
+
   const doRedeem = async (code: string): Promise<string> => {
-    const supabase = getSupabase()
+    const supabase = createClient()
     const result = await supabase.rpc('redeem_invite_code', { p_code: code })
     if (result.error) throw new Error(result.error.message)
     const data = result.data as { success: boolean; error?: string; event_id?: string }
@@ -82,20 +114,6 @@ function SignupForm() {
     return data.event_id!
   }
 
-  const handleRetryRedeem = async () => {
-    setLoading(true); setError('')
-    try {
-      const eventId = await doRedeem(pendingCode)
-      router.push(`/dashboard?event=${eventId}`)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Code konnte nicht eingelöst werden.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Löst nach bestätigter Registrierung den Einladungscode ein und leitet weiter.
-  // Schlägt das Einlösen fehl, bleibt das Konto bestehen ("Erneut versuchen").
   const finishRedeem = async (code: string) => {
     try {
       const eventId = await doRedeem(code)
@@ -106,215 +124,235 @@ function SignupForm() {
       setAwaitingCode(false)
       setError(
         (redeemErr instanceof Error ? redeemErr.message : 'Unbekannter Fehler') +
-        ' — Konto wurde erstellt. Klicke "Erneut versuchen" um den Code einzulösen.'
+        ' — Konto wurde erstellt. Klicke „Erneut versuchen", um den Code einzulösen.'
       )
+    }
+  }
+
+  const handleRetryRedeem = async () => {
+    setLoading(true); setError('')
+    try {
+      const eventId = await doRedeem(pendingCode)
+      router.push(`/dashboard?event=${eventId}`)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Code konnte nicht eingelöst werden.')
+    } finally { setLoading(false) }
+  }
+
+  // Nach bestätigter E-Mail: modusabhängige Weiterleitung
+  const onVerified = async (supabase: SupabaseClient) => {
+    if (mode === 'brautpaar') {
+      const meta = buildBrautpaarMeta()
+      const eventId = await ensureSoloEvent(supabase, meta)
+      await fetch('/api/brautpaar/sync-profile', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, meta }),
+      }).catch(() => {})
+      router.push(`/brautpaar/${eventId}/uebersicht`)
+      router.refresh()
+    } else if (mode === 'dienstleister') {
+      await fetch('/api/vendor/marketplace/onboard', { method: 'POST' }).catch(() => {})
+      router.push('/vendor/onboarding')
+      router.refresh()
+    } else {
+      await finishRedeem(pendingCode || inviteCode.trim())
     }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (password.length < 8) { setError('Passwort muss mindestens 8 Zeichen haben.'); return }
-    const code = inviteCode.trim()
-    if (!code) { setError('Einladungscode ist erforderlich.'); return }
-    setLoading(true); setError('')
 
-    // Vendor code flow — server-side account creation
-    if (codeType === 'vendor') {
-      const res = await fetch('/api/vendor/signup', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ code, name: name.trim(), email: email.trim(), password }),
-      })
-      const data = await res.json()
-      setLoading(false)
-      if (!res.ok || data.error) {
-        setError(data.error ?? 'Registrierung fehlgeschlagen.')
-        return
-      }
-      setSuccess(true)
-      setTimeout(() => router.push('/login'), 2500)
-      return
+    let metadata: Record<string, unknown>
+    if (mode === 'brautpaar') {
+      if (!firstName.trim() || !lastName.trim()) { setError('Vor- und Nachname sind erforderlich.'); return }
+      if (!p2FirstName.trim() || !p2LastName.trim()) { setError('Name der zweiten Person ist erforderlich.'); return }
+      metadata = buildBrautpaarMeta()
+    } else if (mode === 'dienstleister') {
+      if (!name.trim()) { setError('Bitte gib deinen Namen ein.'); return }
+      if (!company.trim()) { setError('Bitte gib deinen Unternehmensnamen an.'); return }
+      metadata = { name: name.trim(), company_name: company.trim(), category, signup_role: 'dienstleister' }
+    } else {
+      if (!inviteCode.trim()) { setError('Einladungscode ist erforderlich.'); return }
+      if (!name.trim()) { setError('Bitte gib deinen Namen ein.'); return }
+      metadata = { name: name.trim() }
     }
 
-    // Event invite code flow — Account anlegen + Code versenden.
+    setLoading(true); setError('')
     try {
-      await startSignup({ email: email.trim(), password, metadata: { name } })
-      setPendingCode(code)
+      await startSignup({ email: email.trim(), password, metadata })
+      if (mode === 'code') setPendingCode(inviteCode.trim())
       setAwaitingCode(true)
     } catch (err: unknown) {
       if (err instanceof EmailTakenError) setError(EMAIL_TAKEN_MESSAGE)
       else setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
-  if (success) {
-    return (
-      <AuthLayout tagline="Konto erstellen">
-        <div className="bp-authx-card" style={{ textAlign: 'center' }}>
-          <h2 className="bp-authx-heading">Account erstellt!</h2>
-          <p className="bp-authx-sub" style={{ marginBottom: 0 }}>Du wirst zum Login weitergeleitet…</p>
-        </div>
-      </AuthLayout>
-    )
-  }
-
+  // ── Verify-Zwischenschritt ──
   if (awaitingCode) {
     return (
-      <AuthLayout tagline="Konto erstellen" wide>
+      <AuthLayout tagline="Euer schönster Tag.">
         <VerifyStep
-          supabase={getSupabase()}
+          supabase={createClient()}
           email={email.trim()}
           password={password}
-          onVerified={() => finishRedeem(pendingCode)}
+          onVerified={onVerified}
           onBack={() => { setAwaitingCode(false); setLoading(false) }}
-          note="Nach der Bestätigung wird deine Einladung automatisch eingelöst."
         />
       </AuthLayout>
     )
   }
 
+  // Gemeinsames Passwortfeld
+  const passwordField = (
+    <div>
+      <label className="bp-label-text">Passwort (mind. 8 Zeichen) <span className="bp-text-gold-deep">*</span></label>
+      <div className="bp-input-wrap">
+        <input
+          type={showPassword ? 'text' : 'password'} required autoComplete="new-password"
+          className="bp-input"
+          value={password} onChange={e => setPassword(e.target.value)}
+          placeholder="••••••••"
+        />
+        <button type="button" className="bp-input-eye" onClick={() => setShowPassword(v => !v)}
+          aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}>
+          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      </div>
+    </div>
+  )
+
+  const field = (
+    label: string, value: string, onChange: (v: string) => void,
+    opts?: { required?: boolean; type?: string; placeholder?: string; autoComplete?: string },
+  ) => (
+    <div>
+      <label className="bp-label-text">
+        {label}{opts?.required !== false && <span className="bp-text-gold-deep"> *</span>}
+      </label>
+      <input
+        type={opts?.type ?? 'text'} required={opts?.required !== false}
+        autoComplete={opts?.autoComplete} className="bp-input"
+        value={value} onChange={e => onChange(e.target.value)}
+        placeholder={opts?.placeholder ?? ''}
+      />
+    </div>
+  )
+
   return (
-    <AuthLayout tagline="Konto erstellen" wide>
-        <div className="bp-authx-card">
-          <SignupModeTabs active="code" />
-          <h1 className="bp-authx-heading">Mit Code registrieren</h1>
-          <p className="bp-authx-sub">Löse deinen Einladungscode ein und leg direkt los.</p>
+    <AuthLayout tagline="Euer schönster Tag." xwide>
+      <div className="bp-authx-card">
+        <SignupModeToggle mode={mode} onChange={switchMode} />
+        <h1 className="bp-authx-heading">{HEADINGS[mode]}</h1>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            {/* Invite Code */}
-            <div>
-              <label className="bp-label-text">
-                Einladungscode <span className="bp-text-gold-deep">*</span>
-              </label>
-              <input
-                required
-                className="bp-input"
-                value={inviteCode}
-                onChange={e => { setInviteCode(e.target.value); setCodeType(null); setEventPreview(null) }}
-                onBlur={handleCodeBlur}
-                placeholder="Dein Einladungscode"
-              />
-              {previewLoading && (
-                <p className="bp-caption" style={{ marginTop: 5 }}>Prüfe Code …</p>
-              )}
-              {codeType === 'vendor' && (
-                <p className="bp-caption" style={{ marginTop: 5, fontWeight: 600, color: 'var(--bp-gold-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Check size={13} /> Dienstleister-Code gültig
-                </p>
-              )}
-              {codeType === 'event' && eventPreview && (
-                <p className="bp-caption" style={{ marginTop: 5, fontWeight: 600, color: 'var(--bp-gold-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Check size={13} /> Einladung gefunden · Rolle: {eventPreview.role}
-                </p>
-              )}
-              {!previewLoading && inviteCode.trim() && !codeType && (
-                <p className="bp-caption" style={{ marginTop: 5 }}>Code nicht gefunden oder abgelaufen</p>
-              )}
-            </div>
-
-            {/* Name */}
-            <div>
-              <label className="bp-label-text">
-                Dein Name <span className="bp-text-gold-deep">*</span>
-              </label>
-              <input
-                required
-                autoComplete="name"
-                className="bp-input"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Max Mustermann"
-              />
-            </div>
-
-            {/* Email */}
-            <div>
-              <label className="bp-label-text">
-                E-Mail-Adresse <span className="bp-text-gold-deep">*</span>
-              </label>
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                className="bp-input"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="deine@email.de"
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="bp-label-text">
-                Passwort (mind. 8 Zeichen) <span className="bp-text-gold-deep">*</span>
-              </label>
-              <div className="bp-input-wrap">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  autoComplete="new-password"
-                  className="bp-input"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  className="bp-input-eye"
-                  onClick={() => setShowPassword(v => !v)}
-                  aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+          {/* ══ BRAUTPAAR (zweispaltig) ══ */}
+          {mode === 'brautpaar' && (
+            <div className="bp-authx-2col">
+              <div className="bp-authx-col">
+                <p className="bp-authx-section-title">Deine Angaben</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  {field('Vorname', firstName, setFirstName, { placeholder: 'Anna', autoComplete: 'given-name' })}
+                  {field('Nachname', lastName, setLastName, { placeholder: 'Beispiel', autoComplete: 'family-name' })}
+                </div>
+                {field('E-Mail-Adresse', email, setEmail, { type: 'email', placeholder: 'deine@email.de', autoComplete: 'email' })}
+                {passwordField}
+                {field('Telefonnummer', phone, setPhone, { placeholder: '+49 151 00000000', autoComplete: 'tel' })}
+                {field('Straße und Hausnummer', street, setStreet, { placeholder: 'Musterstraße 1', autoComplete: 'street-address' })}
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12 }}>
+                  {field('PLZ', postalCode, setPostalCode, { placeholder: '10115', autoComplete: 'postal-code' })}
+                  {field('Stadt', city, setCity, { placeholder: 'Berlin', autoComplete: 'address-level2' })}
+                </div>
+              </div>
+              <div className="bp-authx-col">
+                <p className="bp-authx-section-title">Partnerin / Partner</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  {field('Vorname', p2FirstName, setP2FirstName, { placeholder: 'Max' })}
+                  {field('Nachname', p2LastName, setP2LastName, { placeholder: 'Beispiel' })}
+                </div>
+                {field('E-Mail (optional)', p2Email, setP2Email, { required: false, type: 'email', placeholder: 'partner@email.de' })}
+                {field('Telefon (optional)', p2Phone, setP2Phone, { required: false, placeholder: '+49 151 00000000' })}
+                <div>
+                  <label className="bp-label-text">Hochzeitsdatum (falls schon bekannt)</label>
+                  <input type="date" className="bp-input" value={weddingDate} onChange={e => setWeddingDate(e.target.value)} />
+                </div>
               </div>
             </div>
+          )}
 
-            {error && (
-              <div className="bp-auth-error">
-                <p style={{ margin: 0 }}>{error}</p>
-                {pendingRedeem && (
-                  <button
-                    type="button"
-                    onClick={handleRetryRedeem}
-                    disabled={loading}
-                    className="bp-btn bp-btn-danger bp-btn-sm"
-                    style={{ marginTop: 10 }}
-                  >
-                    {loading ? 'Wird versucht …' : 'Erneut versuchen'}
-                  </button>
+          {/* ══ EINLADUNGSCODE ══ */}
+          {mode === 'code' && (
+            <div className="bp-authx-narrow" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label className="bp-label-text">Einladungscode <span className="bp-text-gold-deep">*</span></label>
+                <input
+                  required className="bp-input"
+                  value={inviteCode}
+                  onChange={e => { setInviteCode(e.target.value); setCodeValid(null); setEventRole('') }}
+                  onBlur={() => checkCode(inviteCode)}
+                  placeholder="Dein Einladungscode"
+                />
+                {previewLoading && <p className="bp-caption" style={{ marginTop: 5 }}>Prüfe Code …</p>}
+                {codeValid === true && (
+                  <p className="bp-caption" style={{ marginTop: 5, fontWeight: 600, color: 'var(--bp-gold-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Check size={13} /> Einladung gefunden{eventRole ? ` · Rolle: ${eventRole}` : ''}
+                  </p>
+                )}
+                {codeValid === false && inviteCode.trim() && !previewLoading && (
+                  <p className="bp-caption" style={{ marginTop: 5 }}>Code nicht gefunden oder abgelaufen</p>
                 )}
               </div>
-            )}
+              {field('Dein Name', name, setName, { placeholder: 'Max Mustermann', autoComplete: 'name' })}
+              {field('E-Mail-Adresse', email, setEmail, { type: 'email', placeholder: 'deine@email.de', autoComplete: 'email' })}
+              {passwordField}
+            </div>
+          )}
 
-            {!pendingRedeem && (
-              <button type="submit" disabled={loading} className="bp-btn bp-btn-primary bp-btn-lg" style={{ width: '100%' }}>
-                {loading ? 'Wird erstellt …' : 'Konto erstellen'}
-              </button>
-            )}
-          </form>
+          {/* ══ DIENSTLEISTER ══ */}
+          {mode === 'dienstleister' && (
+            <div className="bp-authx-narrow" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {field('Dein Name', name, setName, { placeholder: 'Max Beispiel', autoComplete: 'name' })}
+              {field('Unternehmensname', company, setCompany, { placeholder: 'Beispiel Fotografie GmbH', autoComplete: 'organization' })}
+              <div>
+                <label className="bp-label-text">Kategorie <span className="bp-text-gold-deep">*</span></label>
+                <select className="bp-input" value={category} onChange={e => setCategory(e.target.value)}>
+                  {MARKETPLACE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                </select>
+              </div>
+              {field('E-Mail-Adresse', email, setEmail, { type: 'email', placeholder: 'kontakt@firma.de', autoComplete: 'email' })}
+              {passwordField}
+            </div>
+          )}
 
-          <AuthFooter
-            loginPrompt
-            alts={[{ label: 'Als Dienstleister listen', href: '/signup/dienstleister' }]}
-          />
-        </div>
+          {error && (
+            <div className="bp-auth-error">
+              <p style={{ margin: 0 }}>{error}</p>
+              {pendingRedeem && (
+                <button type="button" onClick={handleRetryRedeem} disabled={loading} className="bp-btn bp-btn-danger bp-btn-sm" style={{ marginTop: 10 }}>
+                  {loading ? 'Wird versucht …' : 'Erneut versuchen'}
+                </button>
+              )}
+            </div>
+          )}
 
-        {/* Hidden admin link */}
-        <a
-          href="/admin/create-organizer"
-          style={{ display: 'block', width: 8, height: 8, position: 'fixed', bottom: 12, right: 12, opacity: 0.15 }}
-          aria-hidden="true"
-        />
+          {!pendingRedeem && (
+            <button type="submit" disabled={loading} className="bp-btn bp-btn-primary bp-btn-lg" style={{ width: '100%' }}>
+              {loading ? 'Wird erstellt …' : mode === 'brautpaar' ? 'Kostenlos starten' : 'Konto erstellen'}
+            </button>
+          )}
+        </form>
+
+        <AuthFooter loginPrompt />
+      </div>
     </AuthLayout>
   )
 }
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="bp-auth" />}>
+    <Suspense fallback={<div className="bp-authx" />}>
       <SignupForm />
     </Suspense>
   )

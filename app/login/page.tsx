@@ -86,7 +86,7 @@ function LoginForm() {
             }).catch(() => {})
             dest = `/brautpaar/${eventId}/uebersicht`
           } catch {
-            dest = '/signup/brautpaar'
+            dest = '/signup'
           }
         } else {
           // Fallback: check organizer_staff table directly (covers cases where
@@ -179,7 +179,7 @@ function LoginForm() {
 
           <div className="bp-authx-foot">
             <p className="bp-authx-foot-primary">
-              Noch kein Konto? <a href="/signup/brautpaar" className="bp-auth-link">Registrieren</a>
+              Noch kein Konto? <a href="/signup" className="bp-auth-link">Registrieren</a>
             </p>
           </div>
         </div>
