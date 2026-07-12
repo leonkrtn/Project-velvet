@@ -5,6 +5,7 @@ import { EventProvider } from '@/lib/event-context'
 import { ConsentProvider } from '@/components/consent/ConsentProvider'
 import CookieConsent from '@/components/consent/CookieConsent'
 import AnalyticsGate from '@/components/consent/AnalyticsGate'
+import ChunkReloadGuard from '@/components/ChunkReloadGuard'
 
 // Hinweis: Das alte Brautpaar-Portal (AppHeader + BottomNav + EventProvider
 // auf /brautpaar-Routen) existiert nicht mehr — /brautpaar ist nur noch ein
@@ -35,6 +36,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   // Cookie-Banner überall erscheint und gegatete Embeds den Status lesen können.
   return (
     <ConsentProvider>
+      <ChunkReloadGuard />
       {inner}
       <CookieConsent />
       <AnalyticsGate />
