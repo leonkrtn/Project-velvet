@@ -571,13 +571,13 @@ function ContactPanel({
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(20,25,45,0.45)', backdropFilter: 'blur(2px)' }} />
       <div className="crm-lb" style={{
         position: 'relative', zIndex: 1, width: '80vw', height: '85vh',
-        maxWidth: 1200, maxHeight: 920,
+        maxWidth: 1040, maxHeight: 900,
         background: 'var(--surface)', borderRadius: 18, overflow: 'hidden',
         boxShadow: '0 24px 80px rgba(20,25,45,0.35)',
         display: 'flex', flexDirection: 'column',
       }}>
         {/* ── Header ── */}
-        <div style={{ padding: '18px 22px 0', flexShrink: 0 }}>
+        <div style={{ padding: '20px 28px 0', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
             <div style={{
               width: 48, height: 48, borderRadius: 13, flexShrink: 0,
@@ -701,8 +701,7 @@ function ContactPanel({
         </div>
 
         {/* ── Tab Content ── */}
-        <div className="crm-lb-content" style={{ flex: 1, overflowY: 'auto', padding: '22px 22px 32px' }}>
-         <div style={{ maxWidth: 880, margin: '0 auto' }}>
+        <div className="crm-lb-content" style={{ flex: 1, overflowY: 'auto', padding: '24px 28px 32px' }}>
 
           {/* ── INFO TAB ── */}
           {tab === 'info' && (
@@ -1070,7 +1069,6 @@ function ContactPanel({
               ))}
             </div>
           )}
-         </div>
         </div>
         <style>{`
           .crm-lb-overlay { animation: crm-lb-fade 140ms ease; }
