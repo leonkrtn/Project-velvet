@@ -73,7 +73,17 @@ export default function VendorTour({
     setActive(true)
   }, [steps.length])
 
+  // „Beenden" — nur für jetzt schließen. Der einmalige Auto-Start (autoStartOnceKey)
+  // bleibt in dieser Sitzung durch den sessionStorage-„seen"-Marker unterdrückt.
   const finish = useCallback(() => {
+    setActive(false)
+    setRect(null)
+    setAreaFilter(null)
+  }, [])
+
+  // „Nicht mehr anzeigen" bzw. vollständig durchlaufen — Auto-Start dauerhaft
+  // deaktivieren (nur relevant, wenn ein autoStartOnceKey gesetzt ist).
+  const dismissForever = useCallback(() => {
     setActive(false)
     setRect(null)
     setAreaFilter(null)
@@ -82,10 +92,10 @@ export default function VendorTour({
 
   const advance = useCallback(() => {
     setIndex(i => {
-      if (i >= steps.length - 1) { finish(); return i }
+      if (i >= steps.length - 1) { dismissForever(); return i }
       return i + 1
     })
-  }, [steps.length, finish])
+  }, [steps.length, dismissForever])
 
   // Manueller Start über das (konfigurierbare) Start-Event. Optional mit
   // { area } im CustomEvent-Detail → nur die Schritte dieses Bereichs.
@@ -299,7 +309,7 @@ export default function VendorTour({
   if (!mounted || !active || !step) return null
 
   const isLast = index === steps.length - 1
-  const next = () => { if (isLast) finish(); else setIndex(i => i + 1) }
+  const next = () => { if (isLast) dismissForever(); else setIndex(i => i + 1) }
   const back = () => setIndex(i => Math.max(0, i - 1))
 
   const { w: vw, h: vh } = viewport
@@ -437,13 +447,26 @@ export default function VendorTour({
 
           {/* Steuerung */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <button
-              type="button"
-              onClick={finish}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit', padding: '6px 2px' }}
-            >
-              Tour beenden
-            </button>
+            {/* „Beenden" schließt nur für jetzt; „Nicht mehr anzeigen" deaktiviert den
+                automatischen Start dauerhaft (nur bei Auto-Start-Touren sinnvoll). */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                type="button"
+                onClick={finish}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit', padding: '6px 2px' }}
+              >
+                Beenden
+              </button>
+              {autoStartOnceKey && (
+                <button
+                  type="button"
+                  onClick={dismissForever}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-dim, var(--text-secondary))', fontFamily: 'inherit', padding: '6px 2px' }}
+                >
+                  Nicht mehr anzeigen
+                </button>
+              )}
+            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {index > 0 && (
                 <button

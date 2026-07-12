@@ -18,11 +18,46 @@ function memoryLock<R>(name: string, _acquireTimeout: number, fn: () => Promise<
   return run
 }
 
+// ── „Angemeldet bleiben" clientseitig durchsetzen ────────────────────────────
+// @supabase/ssr schreibt die sb-*-Auth-Cookies im Browser-Client OHNE max-age —
+// also als Session-Cookies, die der Browser beim Schliessen loescht. Dadurch war
+// man trotz „30 Tage angemeldet bleiben" nach dem Browser-Neustart abgemeldet:
+// die Middleware stempelt die Cookies zwar server-seitig persistent nach, aber
+// supabase-js ueberschreibt sie clientseitig beim naechsten Token-Refresh wieder
+// als Session-Cookies — und dieser letzte Stand zaehlt beim Schliessen.
+//
+// Fix: dem Browser-Client eine explizite Cookie-Lebensdauer geben, abgeleitet aus
+// der beim Login gesetzten Praeferenz (fv_pref, siehe lib/auth-persistence.ts):
+//   • 'r:<expiry>' → persistente Cookies mit Restlaufzeit (bis zu 30 Tage)
+//   • 's' / fehlt  → kein max-age → Session-Cookie (nur diese Sitzung)
+const DEFAULT_REMEMBER_MAX_AGE = 30 * 24 * 60 * 60
+function rememberCookieMaxAge(): number | undefined {
+  if (typeof document === 'undefined') return undefined
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)fv_pref=([^;]+)/)
+    if (!match) return undefined
+    const value = decodeURIComponent(match[1])
+    if (!value.startsWith('r:')) return undefined   // 's' → Session-Cookie
+    const expiry = Number(value.slice(2))
+    if (!expiry) return DEFAULT_REMEMBER_MAX_AGE
+    const seconds = Math.floor((expiry - Date.now()) / 1000)
+    return seconds > 0 ? seconds : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  const options = { auth: { lock: memoryLock } }
+  const maxAge = rememberCookieMaxAge()
+  const options = {
+    auth: { lock: memoryLock },
+    // Nur setzen, wenn „angemeldet bleiben" gewaehlt wurde. Ohne cookieOptions
+    // bleibt das Default-Verhalten (Session-Cookie) fuer „nur diese Sitzung".
+    ...(maxAge ? { cookieOptions: { maxAge } } : {}),
+  }
 
   // Während Build/Prerender (Server, kein window) ohne gesetzte Env-Variablen
   // Platzhalter verwenden, statt hart zu werfen — der Client wird in diesem

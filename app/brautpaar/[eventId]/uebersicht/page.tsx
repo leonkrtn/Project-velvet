@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { requestDownloadUrl } from '@/lib/files/worker-client'
+import { coupleDisplayName } from '@/lib/couple-name'
 import BrautpaarUebersicht from './BrautpaarUebersicht'
 
 interface Props {
@@ -130,7 +131,7 @@ export default async function UebersichtPage({ params }: Props) {
       monogram={monogram}
       eventTitle={event.title ?? ''}
       eventDate={event.date ?? null}
-      coupleName={event.couple_name ?? ''}
+      coupleName={coupleDisplayName(event.couple_name)}
       venueName={event.venue ?? ''}
       daysLeft={daysLeft}
       guestTotal={guestTotal}

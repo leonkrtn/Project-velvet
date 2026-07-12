@@ -1206,6 +1206,16 @@
   gap: 1rem;
 }
 
+/* Innerhalb der Grid-Layouts steuert allein der Grid-`gap` die Abstände.
+   Das margin-bottom von .bp-field würde sich sonst mit dem Grid-`gap`
+   addieren und die Zeilen (z. B. im Allgemein-Formular) zu weit auseinander
+   ziehen. */
+.bp-grid-2 .bp-field,
+.bp-grid-3 .bp-field,
+.bp-grid-zip .bp-field {
+  margin-bottom: 0;
+}
+
 .bp-grid-3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
