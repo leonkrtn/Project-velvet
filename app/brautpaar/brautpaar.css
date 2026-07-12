@@ -2607,3 +2607,266 @@
 /* Tabelle, die nur am Desktop eine Mindestbreite braucht (Spalten via bp-hide-mobile reduziert) */
 .bp-table-min-560 { min-width: 560px; }
 @media (max-width: 640px) { .bp-table-min-560 { min-width: 0; } }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Auth — Split-Screen Redesign (Login / Signup / Verifizierung)
+   Klassen: .bp-authx-* — koexistiert mit dem älteren .bp-auth (Join/Reset).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bp-authx {
+  display: flex;
+  min-height: 100dvh;
+  background: var(--bp-ivory);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--bp-ink);
+}
+
+/* ── Marken-Panel (links, ab Desktop sichtbar) ── */
+.bp-authx-brand {
+  position: relative;
+  flex: 0 0 42%;
+  max-width: 560px;
+  display: none;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.bp-authx-brand-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(44, 40, 37, 0.15) 0%, rgba(44, 40, 37, 0.55) 100%),
+    linear-gradient(120deg, rgba(156, 127, 79, 0.55) 0%, rgba(44, 40, 37, 0.35) 100%);
+}
+
+.bp-authx-brand-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3rem 3rem 3.25rem;
+  color: #fff;
+}
+
+.bp-authx-brand-top { text-align: left; }
+
+.bp-authx-brand-wordmark {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 2.75rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  margin: 1rem 0 0;
+  color: #fff;
+}
+
+.bp-authx-brand-tagline {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 1.375rem;
+  margin: 0.5rem 0 0;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.bp-authx-brand-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.bp-authx-brand-features li {
+  position: relative;
+  padding-left: 1.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.bp-authx-brand-features li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--bp-gold);
+  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.3);
+}
+
+/* ── Formular-Bereich (rechts) ── */
+.bp-authx-main {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  overflow-y: auto;
+}
+
+.bp-authx-panel {
+  width: 100%;
+  max-width: 400px;
+}
+
+.bp-authx-panel-wide { max-width: 460px; }
+
+/* Kompaktes Logo über dem Formular (v.a. Mobile, aber auch Desktop-Konsistenz) */
+.bp-authx-logo {
+  text-align: center;
+  margin-bottom: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bp-authx-logo-wordmark {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.9rem;
+  font-weight: 500;
+  color: var(--bp-gold-deep);
+  letter-spacing: 0.16em;
+  line-height: 1;
+  margin: 0.5rem 0 0;
+}
+
+.bp-authx-logo-tagline {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--bp-ink-2);
+  margin: 0.25rem 0 0;
+}
+
+.bp-authx-card {
+  background: var(--bp-paper);
+  border: 1px solid var(--bp-rule);
+  border-radius: var(--bp-r-lg);
+  padding: 1.75rem;
+  box-shadow: var(--bp-shadow-card);
+}
+
+.bp-authx-heading {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--bp-ink);
+  text-align: center;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.375rem;
+}
+
+.bp-authx-sub {
+  font-size: 0.875rem;
+  color: var(--bp-ink-3);
+  text-align: center;
+  margin: 0 0 1.5rem;
+  line-height: 1.5;
+}
+
+.bp-authx-sub strong { color: var(--bp-ink); font-weight: 600; }
+
+/* Auf großen Screens Brand-Panel zeigen, kompaktes Logo ausblenden */
+@media (min-width: 900px) {
+  .bp-authx-brand { display: block; }
+  .bp-authx-logo { display: none; }
+  .bp-authx-main { padding: 2.5rem 2rem; }
+}
+
+@media (max-width: 480px) {
+  .bp-authx-main { padding: 1.5rem 1.15rem; }
+  .bp-authx-card { padding: 1.5rem 1.25rem; }
+}
+
+
+/* ── Segmentierte Code-Eingabe ── */
+.bp-otp {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.bp-otp-box {
+  width: 100%;
+  max-width: 3rem;
+  aspect-ratio: 3 / 4;
+  text-align: center;
+  font-size: 1.375rem;
+  font-weight: 600;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: var(--bp-ink);
+  background: var(--bp-paper);
+  border: 1.5px solid var(--bp-rule);
+  border-radius: var(--bp-r-sm);
+  outline: none;
+  transition: border-color var(--bp-transition), box-shadow var(--bp-transition);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.bp-otp-box:focus {
+  border-color: var(--bp-gold);
+  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.18);
+}
+
+.bp-otp-box:disabled {
+  background: var(--bp-ivory-2);
+  color: var(--bp-ink-3);
+}
+
+@media (max-width: 380px) {
+  .bp-otp { gap: 0.35rem; }
+  .bp-otp-box { font-size: 1.125rem; }
+}
+
+/* Resend-Zeile unter dem Code */
+.bp-otp-resend {
+  font-size: 0.8125rem;
+  color: var(--bp-ink-3);
+  text-align: center;
+  margin: 0;
+}
+
+.bp-otp-resend button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--bp-gold-deep);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bp-otp-resend button:disabled {
+  color: var(--bp-ink-3);
+  cursor: default;
+}
+
+.bp-authx-success {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin: 0 auto 1rem;
+  border-radius: 999px;
+  background: var(--bp-green-pale);
+  color: var(--bp-green);
+}
+
+.bp-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--bp-gold-deep);
+  font-weight: 600;
+  cursor: pointer;
+}
+.bp-link-btn:hover { color: var(--bp-gold); }

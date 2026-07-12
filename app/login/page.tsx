@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 import React, { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
-import ForevrHeart from '@/components/ForevrHeart'
+import AuthLayout from '@/components/auth/AuthLayout'
 import { createClient } from '@/lib/supabase/client'
 import { ensureSoloEvent, isSoloSignup } from '@/lib/brautpaar-solo'
 import { setLoginPersistence, REMEMBER_DAYS } from '@/lib/auth-persistence'
@@ -124,17 +124,10 @@ function LoginForm() {
   }
 
   return (
-    <div className="bp-auth">
-      <div className="bp-auth-inner">
-
-        <div className="bp-auth-logo">
-          <ForevrHeart size={40} color="#9C7F4F" style={{ marginBottom: 10 }} />
-          <p className="bp-auth-wordmark">FOREVR</p>
-          <p className="bp-auth-tagline">Euer schönster Tag.</p>
-        </div>
-
-        <div className="bp-auth-card">
-          <h1 className="bp-auth-title">Anmelden</h1>
+    <AuthLayout tagline="Euer schönster Tag.">
+        <div className="bp-authx-card">
+          <h1 className="bp-authx-heading">Willkommen zurück</h1>
+          <p className="bp-authx-sub">Melde dich an, um weiterzuplanen.</p>
 
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
@@ -191,8 +184,7 @@ function LoginForm() {
             </p>
           </div>
         </div>
-      </div>
-    </div>
+    </AuthLayout>
   )
 }
 

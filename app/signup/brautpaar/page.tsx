@@ -3,9 +3,11 @@
 export const dynamic = 'force-dynamic'
 
 import React, { useState } from 'react'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
-import ForevrHeart from '@/components/ForevrHeart'
 import { Eye, EyeOff } from 'lucide-react'
+import AuthLayout from '@/components/auth/AuthLayout'
+import VerifyStep from '@/components/auth/VerifyStep'
 import { createClient } from '@/lib/supabase/client'
 import { ensureSoloEvent } from '@/lib/brautpaar-solo'
 import '@/app/brautpaar/brautpaar.css'
@@ -34,7 +36,21 @@ export default function BrautpaarSignupPage() {
   const [weddingDate, setWeddingDate] = useState('')
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState('')
-  const [confirmEmail, setConfirmEmail] = useState(false)
+  // Verifizierungs-Zwischenschritt: Metadaten der Registrierung merken, bis der
+  // E-Mail-Code eingegeben wurde.
+  const [pendingMeta, setPendingMeta] = useState<Record<string, unknown> | null>(null)
+
+  // Legt nach bestätigter Registrierung Event + Profil an und leitet weiter.
+  const completeOnboarding = async (supabase: SupabaseClient, meta: Record<string, unknown>) => {
+    const eventId = await ensureSoloEvent(supabase, meta)
+    await fetch('/api/brautpaar/sync-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId, meta }),
+    }).catch(() => {})
+    router.push(`/brautpaar/${eventId}/uebersicht`)
+    router.refresh()
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,22 +88,14 @@ export default function BrautpaarSignupPage() {
       })
       if (signUpErr) throw signUpErr
 
+      // Keine Session → E-Mail muss per Code verifiziert werden (Zwischenschritt).
       if (!signUpData.session) {
-        setConfirmEmail(true)
+        setPendingMeta(meta)
         return
       }
 
-      const eventId = await ensureSoloEvent(supabase, meta)
-
-      // Sync extended profile + partner info to DB
-      await fetch('/api/brautpaar/sync-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId, meta }),
-      })
-
-      router.push(`/brautpaar/${eventId}/uebersicht`)
-      router.refresh()
+      // Auto-Confirm aktiv (Session sofort vorhanden) → direkt weiter.
+      await completeOnboarding(supabase, meta)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
     } finally {
@@ -95,22 +103,17 @@ export default function BrautpaarSignupPage() {
     }
   }
 
-  if (confirmEmail) {
+  if (pendingMeta) {
     return (
-      <div className="bp-auth">
-        <div className="bp-auth-inner" style={{ textAlign: 'center' }}>
-          <div style={{ marginBottom: 24, textAlign: 'center' }}>
-            <ForevrHeart size={36} color="#9C7F4F" style={{ marginBottom: 8 }} />
-            <p className="bp-auth-wordmark" style={{ margin: 0 }}>FOREVR</p>
-          </div>
-          <h2 className="bp-h2" style={{ marginBottom: 8 }}>Fast geschafft!</h2>
-          <p className="bp-body">
-            Bitte bestätigt eure E-Mail-Adresse über den Link, den wir euch geschickt haben.
-            Nach der Anmeldung wird euer Hochzeits-Event automatisch erstellt.
-          </p>
-          <a href="/login" className="bp-auth-link" style={{ display: 'inline-block', marginTop: 20 }}>Zur Anmeldung</a>
-        </div>
-      </div>
+      <AuthLayout tagline="Eure Hochzeit, selbst geplant." wide>
+        <VerifyStep
+          supabase={createClient()}
+          email={email.trim()}
+          onVerified={supabase => completeOnboarding(supabase, pendingMeta)}
+          onBack={() => { setPendingMeta(null); setLoading(false) }}
+          note="Nach der Bestätigung wird euer Hochzeits-Event automatisch erstellt."
+        />
+      </AuthLayout>
     )
   }
 
@@ -137,16 +140,11 @@ export default function BrautpaarSignupPage() {
   )
 
   return (
-    <div className="bp-auth">
-      <div className="bp-auth-inner bp-auth-inner-wide">
+    <AuthLayout tagline="Eure Hochzeit, selbst geplant." wide>
+        <div className="bp-authx-card">
+          <h1 className="bp-authx-heading">Kostenlos starten</h1>
+          <p className="bp-authx-sub">Erstellt euer gemeinsames Hochzeitskonto in wenigen Minuten.</p>
 
-        <div className="bp-auth-logo">
-          <ForevrHeart size={40} color="#9C7F4F" style={{ marginBottom: 10 }} />
-          <p className="bp-auth-wordmark">FOREVR</p>
-          <p className="bp-auth-tagline">Eure Hochzeit, selbst geplant.</p>
-        </div>
-
-        <div className="bp-auth-card">
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* ── Person 1 ── */}
@@ -226,7 +224,6 @@ export default function BrautpaarSignupPage() {
             </p>
           </div>
         </div>
-      </div>
-    </div>
+    </AuthLayout>
   )
 }
