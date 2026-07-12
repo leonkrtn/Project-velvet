@@ -83,40 +83,37 @@ In den AGB des Dienstleisters (und ggf. der Forevr-Plattform-AGB) muss explizit 
 
 ---
 
-## ⚠️ E-Mail-Verifizierung bei Registrierung (8-stelliger Code / Supabase-OTP)
+## ⚠️ E-Mail-Verifizierung bei Registrierung (eigener 4-stelliger Code, KEIN Supabase-OTP)
 
-Alle Signup-Flows (`/signup/brautpaar`, `/signup/veranstalter`, `/signup` mit Einladungscode)
-zeigen nach `supabase.auth.signUp` einen **Zwischenschritt** zur Eingabe eines **6-stelligen**
-Codes, den Supabase per E-Mail verschickt (`components/auth/VerifyStep.tsx` +
-`components/auth/OtpCodeInput.tsx`, Länge zentral über `OTP_CODE_LENGTH` in `lib/auth-otp.ts`,
-Verifizierung über `verifySignupOtp` = `verifyOtp` mit `type:'signup'`, Fallback `type:'email'`).
-Erst nach erfolgreicher Verifizierung läuft die jeweilige Post-Signup-Logik (Solo-Event anlegen /
-`/veranstalter/pending` / Invite-Code einlösen).
+Die Registrierung nutzt ein **eigenes Code-System** (nicht Supabase-OTP, das min. 6 Stellen
+erzwingt). Länge frei wählbar über `OTP_CODE_LENGTH` (`lib/auth-otp.ts`, aktuell **4**) bzw.
+`SIGNUP_CODE_LENGTH` (`lib/auth/signup-code.ts`, Server — muss übereinstimmen).
 
-**Bereits registrierte E-Mail wird abgewiesen:** Nach `signUp` prüfen alle Flows
-`isExistingUserSignup(data)` (`lib/auth-otp.ts`) — Supabase liefert für eine schon vorhandene
-Adresse (bei aktivem „Confirm email") keinen Fehler, sondern einen User mit leerem
-`identities`-Array. In dem Fall wird der Flow mit `EMAIL_TAKEN_MESSAGE` abgebrochen (kein
-Verify-Schritt, keine Admin-Benachrichtigung).
+**Flow** (alle Signups: `/signup/brautpaar`, `/signup/veranstalter`, `/signup` mit Einladungscode):
+1. `startSignup()` → `POST /api/auth/signup-start`: legt per **Admin-API** einen *unbestätigten*
+   Auth-User an (`email_confirm:false`), speichert Code + Ablauf (15 Min) + Versuche in dessen
+   `app_metadata` und verschickt den Code **direkt über Resend** (`lib/auth/signup-code.ts`,
+   `sendSignupCodeEmail`). **Kein** Supabase-„Send Email"-Hook für Signup nötig.
+2. Zwischenschritt `components/auth/VerifyStep.tsx` (+ `OtpCodeInput.tsx`): Code-Eingabe →
+   `verifySignupCode()` → `POST /api/auth/signup-verify` prüft Code/Ablauf/Versuche (max. 6) und
+   bestätigt die E-Mail per Admin-API (`email_confirm:true`).
+3. VerifyStep loggt danach per `signInWithPassword` ein und ruft `onVerified` → die jeweilige
+   Post-Signup-Logik (Solo-Event anlegen / `/veranstalter/pending` / Invite-Code einlösen).
+4. Erneut senden: `POST /api/auth/signup-resend`.
 
-**Robust gegen Auto-Confirm:** Liefert `signUp` sofort eine Session (Auto-Confirm in Supabase),
-wird der Code-Schritt übersprungen und direkt weitergeleitet — die Verifizierung greift nur,
-wenn `!data.session`.
+**Bereits registrierte E-Mail wird abgewiesen:** `signup-start` sucht den User über
+`public.profiles.email` (+ Admin-`getUserById`). Ist die Adresse **bestätigt**, kommt `409 EMAIL_TAKEN`
+→ Client zeigt `EMAIL_TAKEN_MESSAGE`, kein Code, keine Admin-Benachrichtigung. Ist sie **unbestätigt**
+(abgebrochene Registrierung), wird derselbe User idempotent wiederverwendet und ein neuer Code gesendet.
 
-**Versand über Resend (Auth „Send Email" Hook):** Der Code-Versand läuft über unser
-Resend-Setup (`lib/email/notify.ts`), nicht über Supabase-SMTP. Dafür verarbeitet
-`app/api/auth/send-email/route.ts` den Supabase-Auth-Hook „Send Email" (Standard-Webhooks-
-Signaturprüfung via `SEND_EMAIL_HOOK_SECRET`) und schickt für `signup`/`email` den
-6-stelligen Code als vollständig gebrandete Forevr-Mail; für `recovery`/`invite` wird ein
-Link (`/auth/v1/verify`) gesendet, damit Passwort-Reset & Einladungen weiter funktionieren.
-Ist der Hook nicht eingerichtet, wird die Route nie aufgerufen — Verhalten bleibt unverändert.
+**Voraussetzungen:** `SUPABASE_SERVICE_ROLE_KEY` (Admin-API) + `RESEND_API_KEY` (Versand) müssen
+in **derselben** Umgebung gesetzt sein, in der die App läuft. Zusätzlich muss in Supabase
+**„Confirm email" aktiviert** sein — sonst könnten unbestätigte User den Code umgehen und sich
+direkt per Passwort einloggen.
 
-**Erforderliche Supabase-Dashboard-Konfiguration (nicht im Code!):**
-1. Authentication → Providers → Email → **„Confirm email" aktiviert** (sonst Auto-Confirm, kein Code).
-2. Authentication → Hooks → **„Send Email" HTTPS-Hook** auf `…/api/auth/send-email`; das
-   generierte Secret als Env-Var **`SEND_EMAIL_HOOK_SECRET`** (Format `v1,whsec_…`) hinterlegen.
-   (Alternativ ohne Hook: E-Mail-Template „Confirm signup" mit `{{ .Token }}` — dann versendet
-   aber Supabase-SMTP statt Resend.) Der Code ist 6-stellig (Supabase-Standard).
+Der Supabase-Auth-„Send Email"-Hook (`app/api/auth/send-email/route.ts`, `SEND_EMAIL_HOOK_SECRET`)
+wird für die Registrierung **nicht mehr** gebraucht; er bleibt nur für **Passwort-Reset/Invite**
+relevant (dort weiterhin Link-basiert über Resend, falls der Hook eingerichtet ist).
 
 Die Auth-Seiten (`/login` + alle Signups) nutzen das gemeinsame Split-Screen-Layout
 `components/auth/AuthLayout.tsx` (Marken-Panel mit Bild links, Formular rechts; CSS `.bp-authx-*`

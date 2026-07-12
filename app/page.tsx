@@ -857,11 +857,8 @@ function VeranstalterSection() {
             Als Veranstalter steuert ihr mit Forevr mehrere Hochzeiten parallel — gemeinsam mit
             euren Paaren und Dienstleistern, in einer eleganten Oberfläche.
           </p>
-          <a href="/signup/veranstalter" className="lp-btn-primary" style={{ marginTop: '28px', display: 'inline-block' }}>
-            Als Veranstalter registrieren
-          </a>
           <p className="lp-veranstalter-note">
-            Nach der Registrierung schalten wir euren Zugang frei und melden uns bei euch.
+            Ihr plant beruflich? Meldet euch bei uns — wir schalten euren Zugang persönlich frei.
           </p>
         </div>
         <div className="lp-veranstalter-grid">
@@ -1263,7 +1260,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="lp-footer-bottom">
-          <span className="lp-footer-copy">© 2026 Forevr. Alle Rechte vorbehalten. <a href="/signup/veranstalter" style={{ color: 'var(--gold)', fontWeight: 600, textDecoration: 'none' }}>Veranstalter</a></span>
+          <span className="lp-footer-copy">© 2026 Forevr. Alle Rechte vorbehalten.</span>
           <div className="lp-footer-legal">
             <a href="/impressum">Impressum</a>
             <a href="/datenschutz">Datenschutz</a>

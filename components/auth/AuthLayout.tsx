@@ -7,6 +7,8 @@ type Props = {
   tagline?: string
   /** Breiteres Formular für mehrspaltige Signups */
   wide?: boolean
+  /** Extra breites Formular (zweispaltig, z. B. Brautpaar-Signup) */
+  xwide?: boolean
   /** Hintergrundbild des Brand-Panels (aus /public) */
   brandImage?: string
 }
@@ -26,8 +28,10 @@ export default function AuthLayout({
   children,
   tagline = 'Euer schönster Tag.',
   wide = false,
+  xwide = false,
   brandImage = '/landing/hero.jpg',
 }: Props) {
+  const panelClass = xwide ? ' bp-authx-panel-xl' : wide ? ' bp-authx-panel-wide' : ''
   return (
     <div className="bp-authx">
       <aside
@@ -50,7 +54,7 @@ export default function AuthLayout({
       </aside>
 
       <main className="bp-authx-main">
-        <div className={`bp-authx-panel${wide ? ' bp-authx-panel-wide' : ''}`}>
+        <div className={`bp-authx-panel${panelClass}`}>
           <div className="bp-authx-logo">
             <ForevrHeart size={34} color="#9C7F4F" />
             <p className="bp-authx-logo-wordmark">FOREVR</p>

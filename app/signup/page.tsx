@@ -10,7 +10,7 @@ import VerifyStep from '@/components/auth/VerifyStep'
 import SignupModeTabs from '@/components/auth/SignupModeTabs'
 import AuthFooter from '@/components/auth/AuthFooter'
 import { createClient } from '@/lib/supabase/client'
-import { isExistingUserSignup, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
+import { startSignup, EmailTakenError, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
 import '@/app/brautpaar/brautpaar.css'
 
 type CodeType = 'event' | 'vendor' | null
@@ -136,32 +136,14 @@ function SignupForm() {
       return
     }
 
-    // Event invite code flow
+    // Event invite code flow — Account anlegen + Code versenden.
     try {
-      const supabase = getSupabase()
-      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { name } },
-      })
-      if (signUpErr) throw signUpErr
-
-      // Bereits registrierte E-Mail → Flow abbrechen (kein Verify-Schritt).
-      if (isExistingUserSignup(signUpData)) {
-        setError(EMAIL_TAKEN_MESSAGE)
-        return
-      }
-
-      // Keine Session → E-Mail muss per Code verifiziert werden (Zwischenschritt).
-      if (!signUpData.session) {
-        setPendingCode(code)
-        setAwaitingCode(true)
-        return
-      }
-
-      await finishRedeem(code)
+      await startSignup({ email: email.trim(), password, metadata: { name } })
+      setPendingCode(code)
+      setAwaitingCode(true)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
+      if (err instanceof EmailTakenError) setError(EMAIL_TAKEN_MESSAGE)
+      else setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
     } finally {
       setLoading(false)
     }
@@ -184,6 +166,7 @@ function SignupForm() {
         <VerifyStep
           supabase={getSupabase()}
           email={email.trim()}
+          password={password}
           onVerified={() => finishRedeem(pendingCode)}
           onBack={() => { setAwaitingCode(false); setLoading(false) }}
           note="Nach der Bestätigung wird deine Einladung automatisch eingelöst."
@@ -315,10 +298,7 @@ function SignupForm() {
 
           <AuthFooter
             loginPrompt
-            alts={[
-              { label: 'Als Veranstalter registrieren', href: '/signup/veranstalter' },
-              { label: 'Als Dienstleister listen', href: '/signup/dienstleister' },
-            ]}
+            alts={[{ label: 'Als Dienstleister listen', href: '/signup/dienstleister' }]}
           />
         </div>
 

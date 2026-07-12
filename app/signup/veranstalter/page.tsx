@@ -9,7 +9,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
 import VerifyStep from '@/components/auth/VerifyStep'
 import { createClient } from '@/lib/supabase/client'
-import { isExistingUserSignup, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
+import { startSignup, EmailTakenError, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
 import '@/app/brautpaar/brautpaar.css'
 
 // Signup für Veranstalter: Selbstregistrierung ohne Einladungscode.
@@ -39,43 +39,29 @@ export default function VeranstalterSignupPage() {
     setLoading(true); setError('')
 
     try {
-      const supabase = createClient()
       const meta = {
         name: name.trim(),
         signup_role: 'veranstalter' as const,
       }
 
-      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { data: meta },
-      })
-      if (signUpErr) throw signUpErr
-
-      // Bereits registrierte E-Mail → Flow abbrechen (keine Admin-Info, kein Verify).
-      if (isExistingUserSignup(signUpData)) {
-        setError(EMAIL_TAKEN_MESSAGE)
-        return
-      }
-
-      // Admins über den neuen Veranstalter-Antrag informieren (best effort).
-      fetch('/api/notify/organizer-signup', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      }).catch(() => {})
-
-      // Keine Session → E-Mail muss per Code verifiziert werden (Zwischenschritt).
-      if (!signUpData.session) {
-        setAwaitingCode(true)
-        return
-      }
-
-      goToPending()
+      // Account anlegen + Code versenden. Bereits vergebene E-Mail → Abbruch.
+      await startSignup({ email: email.trim(), password, metadata: meta })
+      setAwaitingCode(true)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
+      if (err instanceof EmailTakenError) setError(EMAIL_TAKEN_MESSAGE)
+      else setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
     } finally {
       setLoading(false)
     }
+  }
+
+  // Läuft nach bestätigter E-Mail: Admins informieren und zur Warteseite leiten.
+  const afterVerified = async () => {
+    fetch('/api/notify/organizer-signup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim() }),
+    }).catch(() => {})
+    goToPending()
   }
 
   if (awaitingCode) {
@@ -84,7 +70,8 @@ export default function VeranstalterSignupPage() {
         <VerifyStep
           supabase={createClient()}
           email={email.trim()}
-          onVerified={async (_supabase: SupabaseClient) => goToPending()}
+          password={password}
+          onVerified={async (_supabase: SupabaseClient) => afterVerified()}
           onBack={() => { setAwaitingCode(false); setLoading(false) }}
           note="Nach der Bestätigung schaltet unser Team dein Veranstalter-Konto frei."
         />
