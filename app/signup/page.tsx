@@ -4,8 +4,9 @@ export const dynamic = 'force-dynamic'
 
 import React, { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import ForevrHeart from '@/components/ForevrHeart'
 import { Check, Eye, EyeOff } from 'lucide-react'
+import AuthLayout from '@/components/auth/AuthLayout'
+import VerifyStep from '@/components/auth/VerifyStep'
 import { createClient } from '@/lib/supabase/client'
 import '@/app/brautpaar/brautpaar.css'
 
@@ -36,6 +37,8 @@ function SignupForm() {
   // After successful signUp but before redeem — lets user retry redeem only
   const [pendingRedeem, setPendingRedeem] = useState(false)
   const [pendingCode, setPendingCode] = useState('')
+  // E-Mail-Verifizierung als Zwischenschritt (kein Auto-Confirm)
+  const [awaitingCode, setAwaitingCode] = useState(false)
 
   const getSupabase = () => createClient()
 
@@ -88,6 +91,23 @@ function SignupForm() {
     }
   }
 
+  // Löst nach bestätigter Registrierung den Einladungscode ein und leitet weiter.
+  // Schlägt das Einlösen fehl, bleibt das Konto bestehen ("Erneut versuchen").
+  const finishRedeem = async (code: string) => {
+    try {
+      const eventId = await doRedeem(code)
+      router.push(`/dashboard?event=${eventId}`)
+    } catch (redeemErr: unknown) {
+      setPendingCode(code)
+      setPendingRedeem(true)
+      setAwaitingCode(false)
+      setError(
+        (redeemErr instanceof Error ? redeemErr.message : 'Unbekannter Fehler') +
+        ' — Konto wurde erstellt. Klicke "Erneut versuchen" um den Code einzulösen.'
+      )
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (password.length < 8) { setError('Passwort muss mindestens 8 Zeichen haben.'); return }
@@ -116,24 +136,21 @@ function SignupForm() {
     // Event invite code flow
     try {
       const supabase = getSupabase()
-      const { error: signUpErr } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
         email,
         password,
         options: { data: { name } },
       })
       if (signUpErr) throw signUpErr
 
-      try {
-        const eventId = await doRedeem(code)
-        router.push(`/dashboard?event=${eventId}`)
-      } catch (redeemErr: unknown) {
+      // Keine Session → E-Mail muss per Code verifiziert werden (Zwischenschritt).
+      if (!signUpData.session) {
         setPendingCode(code)
-        setPendingRedeem(true)
-        setError(
-          (redeemErr instanceof Error ? redeemErr.message : 'Unbekannter Fehler') +
-          ' — Konto wurde erstellt. Klicke "Erneut versuchen" um den Code einzulösen.'
-        )
+        setAwaitingCode(true)
+        return
       }
+
+      await finishRedeem(code)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
     } finally {
@@ -143,30 +160,34 @@ function SignupForm() {
 
   if (success) {
     return (
-      <div className="bp-auth">
-        <div className="bp-auth-inner" style={{ textAlign: 'center' }}>
-          <div style={{ marginBottom: 24, textAlign: 'center' }}>
-            <ForevrHeart size={36} color="#9C7F4F" style={{ marginBottom: 8 }} />
-            <p className="bp-auth-wordmark" style={{ margin: 0 }}>FOREVR</p>
-          </div>
-          <h2 className="bp-h2" style={{ marginBottom: 8 }}>Account erstellt!</h2>
-          <p className="bp-body">Du wirst zum Login weitergeleitet…</p>
+      <AuthLayout tagline="Konto erstellen">
+        <div className="bp-authx-card" style={{ textAlign: 'center' }}>
+          <h2 className="bp-authx-heading">Account erstellt!</h2>
+          <p className="bp-authx-sub" style={{ marginBottom: 0 }}>Du wirst zum Login weitergeleitet…</p>
         </div>
-      </div>
+      </AuthLayout>
+    )
+  }
+
+  if (awaitingCode) {
+    return (
+      <AuthLayout tagline="Konto erstellen" wide>
+        <VerifyStep
+          supabase={getSupabase()}
+          email={email.trim()}
+          onVerified={() => finishRedeem(pendingCode)}
+          onBack={() => { setAwaitingCode(false); setLoading(false) }}
+          note="Nach der Bestätigung wird deine Einladung automatisch eingelöst."
+        />
+      </AuthLayout>
     )
   }
 
   return (
-    <div className="bp-auth">
-      <div className="bp-auth-inner bp-auth-inner-wide">
-
-        <div className="bp-auth-logo">
-          <ForevrHeart size={40} color="#9C7F4F" style={{ marginBottom: 10 }} />
-          <p className="bp-auth-wordmark">FOREVR</p>
-          <p className="bp-auth-tagline">Konto erstellen</p>
-        </div>
-
-        <div className="bp-auth-card">
+    <AuthLayout tagline="Konto erstellen" wide>
+        <div className="bp-authx-card">
+          <h1 className="bp-authx-heading">Mit Code registrieren</h1>
+          <p className="bp-authx-sub">Löse deinen Einladungscode ein und leg direkt los.</p>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -304,8 +325,7 @@ function SignupForm() {
           style={{ display: 'block', width: 8, height: 8, position: 'fixed', bottom: 12, right: 12, opacity: 0.15 }}
           aria-hidden="true"
         />
-      </div>
-    </div>
+    </AuthLayout>
   )
 }
 

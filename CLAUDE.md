@@ -83,6 +83,32 @@ In den AGB des Dienstleisters (und ggf. der Forevr-Plattform-AGB) muss explizit 
 
 ---
 
+## ⚠️ E-Mail-Verifizierung bei Registrierung (8-stelliger Code / Supabase-OTP)
+
+Alle Signup-Flows (`/signup/brautpaar`, `/signup/veranstalter`, `/signup` mit Einladungscode)
+zeigen nach `supabase.auth.signUp` einen **Zwischenschritt** zur Eingabe eines 8-stelligen
+Codes, den Supabase per E-Mail verschickt (`components/auth/VerifyStep.tsx` +
+`components/auth/OtpCodeInput.tsx`, Verifizierung über `lib/auth-otp.ts`
+`verifySignupOtp` = `verifyOtp` mit `type:'signup'`, Fallback `type:'email'`). Erst nach
+erfolgreicher Verifizierung läuft die jeweilige Post-Signup-Logik (Solo-Event anlegen /
+`/veranstalter/pending` / Invite-Code einlösen).
+
+**Robust gegen Auto-Confirm:** Liefert `signUp` sofort eine Session (Auto-Confirm in Supabase),
+wird der Code-Schritt übersprungen und direkt weitergeleitet — die Verifizierung greift nur,
+wenn `!data.session`.
+
+**Erforderliche Supabase-Dashboard-Konfiguration (nicht im Code!):**
+1. Authentication → Providers → Email → **„Confirm email" aktiviert** (sonst Auto-Confirm, kein Code).
+2. **Email OTP Length = 8** (Standard ist 6).
+3. E-Mail-Template **„Confirm signup"** muss `{{ .Token }}` enthalten (der Code) — sonst kommt
+   nur der Bestätigungs-Link ohne Code an.
+
+Die Auth-Seiten (`/login` + alle Signups) nutzen das gemeinsame Split-Screen-Layout
+`components/auth/AuthLayout.tsx` (Marken-Panel mit Bild links, Formular rechts; CSS `.bp-authx-*`
+in `app/brautpaar/brautpaar.css`).
+
+---
+
 ## ⚠️ Billing / Gratis-Phase (globaler Schalter `lib/billing.ts`)
 
 Forevr startet aktuell **kostenlos**. Ein einziger Schalter steuert das gesamte
