@@ -5,6 +5,7 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail, emailLayout } from '@/lib/email/notify'
 import { formatMoney } from './questionnaire'
+import { buildVendorEmail } from './email-config'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -70,20 +71,20 @@ export async function notifyOfferReleased(admin: SupabaseClient, offer: OfferLik
   const contacts = await coupleContacts(admin, offer.event_id)
   const emails = contacts.map(c => c.email).filter((e): e is string => !!e)
   if (emails.length) {
-    await sendEmail(admin, {
-      to: emails,
-      replyTo: vendor.email ?? undefined,
-      subject: `Neues Angebot von ${vendor.name}`,
-      html: emailLayout({
-        brand: { color: vendor.brandColor, name: vendor.name },
-        heading: 'Ihr habt ein neues Angebot erhalten',
-        bodyHtml: `
-          <tr><td style="padding:4px 0">${vendor.name} hat euch das Angebot <strong>„${offer.title}"</strong> über <strong>${formatMoney(offer.total, offer.currency)}</strong> bereitgestellt.</td></tr>
-          <tr><td style="padding:8px 0 12px;color:#666">Im Portal könnt ihr es prüfen, als PDF speichern und verbindlich annehmen.</td></tr>`,
-        ctaLabel: 'Angebot ansehen',
-        ctaUrl: `${APP_URL}/brautpaar/${offer.event_id}/angebote`,
-      }),
+    // Anpassbare Vendor-Vorlage (Fallback = eingebauter Standardtext).
+    const mail = await buildVendorEmail(admin, offer.dienstleister_id, 'offer_released', {
+      eventId: offer.event_id,
+      values: {
+        firma: vendor.name,
+        angebot: offer.title,
+        betrag: formatMoney(offer.total, offer.currency),
+        brautpaar: contacts.find(c => c.name)?.name || undefined,
+      },
+      ctaUrl: `${APP_URL}/brautpaar/${offer.event_id}/angebote`,
     })
+    if (mail) {
+      await sendEmail(admin, { to: emails, replyTo: mail.replyTo ?? undefined, subject: mail.subject, html: mail.html })
+    }
   }
 }
 
