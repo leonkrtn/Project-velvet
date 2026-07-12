@@ -1,73 +1,63 @@
-import type { SupabaseClient, AuthResponse } from '@supabase/supabase-js'
+// Client-seitige Helfer für die Registrierungs-Verifizierung. Der eigentliche
+// Code wird serverseitig erzeugt/geprüft (siehe app/api/auth/signup-*), damit
+// die Länge frei wählbar ist (Supabase-OTP erzwingt min. 6 Stellen).
 
-// Länge des E-Mail-Verifizierungscodes. Muss mit der in Supabase konfigurierten
-// OTP-Länge übereinstimmen (Dashboard → Authentication → Providers → Email →
-// „Email OTP Length"). Supabase-Standard ist 6 — daher keine Dashboard-Änderung nötig.
-export const OTP_CODE_LENGTH = 6
+// Länge des E-Mail-Verifizierungscodes (muss zu SIGNUP_CODE_LENGTH im Server passen).
+export const OTP_CODE_LENGTH = 4
 
-// Fehlermeldung, wenn versucht wird, sich mit einer bereits registrierten
-// E-Mail-Adresse zu registrieren.
 export const EMAIL_TAKEN_MESSAGE =
   'Diese E-Mail-Adresse ist bereits registriert. Bitte melde dich an oder nutze „Passwort vergessen".'
 
-/**
- * Erkennt, ob `supabase.auth.signUp` für eine BEREITS registrierte E-Mail
- * aufgerufen wurde. Supabase gibt aus Sicherheitsgründen keinen Fehler zurück,
- * sondern einen User mit leerem `identities`-Array (nur wenn „Confirm email"
- * aktiv ist). Genau dann darf der Registrierungs-Flow nicht fortgesetzt werden.
- */
-export function isExistingUserSignup(data: AuthResponse['data']): boolean {
-  return !data.session && !!data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0
+export class EmailTakenError extends Error {
+  constructor() { super(EMAIL_TAKEN_MESSAGE) }
+}
+
+export interface StartSignupInput {
+  email: string
+  password: string
+  metadata?: Record<string, unknown>
 }
 
 /**
- * Verifiziert den 8-stelligen Bestätigungscode, den Supabase nach `auth.signUp`
- * per E-Mail verschickt (E-Mail-Template „Confirm signup" muss `{{ .Token }}`
- * enthalten). Bei Erfolg wird eine Session gesetzt.
- *
- * Wir probieren zuerst `type: 'signup'` (frische Registrierung) und fallen auf
- * `type: 'email'` zurück, damit die Verifizierung unabhängig davon funktioniert,
- * wie der Token serverseitig ausgestellt wurde.
+ * Startet die Registrierung: legt den (unbestätigten) Account an und löst den
+ * Code-Versand aus. Wirft `EmailTakenError`, wenn die Adresse bereits vergeben ist.
  */
-export async function verifySignupOtp(
-  supabase: SupabaseClient,
-  email: string,
-  token: string,
-) {
-  const cleanEmail = email.trim().toLowerCase()
-  const cleanToken = token.replace(/\s+/g, '')
-
-  const first = await supabase.auth.verifyOtp({
-    email: cleanEmail,
-    token: cleanToken,
-    type: 'signup',
+export async function startSignup(input: StartSignupInput): Promise<void> {
+  const res = await fetch('/api/auth/signup-start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: input.email.trim(),
+      password: input.password,
+      metadata: input.metadata ?? {},
+    }),
   })
-  if (!first.error) return first
-
-  // Fallback für generische E-Mail-OTPs
-  const second = await supabase.auth.verifyOtp({
-    email: cleanEmail,
-    token: cleanToken,
-    type: 'email',
-  })
-  return second
+  const data = await res.json().catch(() => ({}))
+  if (res.status === 409 || data.error === 'EMAIL_TAKEN') throw new EmailTakenError()
+  if (!res.ok || data.error) throw new Error(data.message || 'Registrierung fehlgeschlagen.')
 }
 
-/**
- * Sendet den Bestätigungscode erneut an dieselbe E-Mail-Adresse.
- */
-export async function resendSignupOtp(supabase: SupabaseClient, email: string) {
-  return supabase.auth.resend({
-    type: 'signup',
-    email: email.trim().toLowerCase(),
+/** Prüft den eingegebenen Code. Wirft mit verständlicher Meldung bei Fehlern. */
+export async function verifySignupCode(email: string, code: string): Promise<void> {
+  const res = await fetch('/api/auth/signup-verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.trim(), code: code.replace(/\s+/g, '') }),
   })
+  const data = await res.json().catch(() => ({}))
+  if (res.ok && data.ok) return
+  switch (data.error) {
+    case 'EXPIRED': throw new Error('Der Code ist abgelaufen. Fordere einen neuen an.')
+    case 'TOO_MANY': throw new Error('Zu viele Versuche. Fordere einen neuen Code an.')
+    default: throw new Error('Der Code ist ungültig. Bitte prüfe deine Eingabe.')
+  }
 }
 
-/** Übersetzt technische Supabase-Fehler in verständliche deutsche Meldungen. */
-export function otpErrorMessage(message: string): string {
-  const m = message.toLowerCase()
-  if (m.includes('expired')) return 'Der Code ist abgelaufen. Fordere einen neuen an.'
-  if (m.includes('invalid') || m.includes('incorrect') || m.includes('token'))
-    return 'Der Code ist ungültig. Bitte prüfe deine Eingabe.'
-  return message
+/** Sendet den Code erneut (best effort). */
+export async function resendSignupCode(email: string): Promise<void> {
+  await fetch('/api/auth/signup-resend', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.trim() }),
+  }).catch(() => {})
 }

@@ -4,30 +4,27 @@ import React, { useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { MailCheck } from 'lucide-react'
 import OtpCodeInput from '@/components/auth/OtpCodeInput'
-import {
-  verifySignupOtp,
-  resendSignupOtp,
-  otpErrorMessage,
-  OTP_CODE_LENGTH,
-} from '@/lib/auth-otp'
+import { verifySignupCode, resendSignupCode, OTP_CODE_LENGTH } from '@/lib/auth-otp'
 
 type Props = {
   supabase: SupabaseClient
   email: string
-  /** Läuft nach erfolgreicher Verifizierung (Session ist gesetzt). */
+  /** Passwort aus dem Formular — wird nach Bestätigung für den Login genutzt. */
+  password: string
+  /** Läuft nach erfolgreicher Verifizierung + Login (Session ist gesetzt). */
   onVerified: (supabase: SupabaseClient) => void | Promise<void>
   /** Zurück zum Formular (z. B. „Andere E-Mail-Adresse"). */
   onBack?: () => void
-  /** Optionaler Zusatzhinweis unter dem Erfolgsschritt. */
+  /** Optionaler Zusatzhinweis. */
   note?: string
 }
 
 /**
- * Zwischenschritt der Registrierung: Eingabe des 8-stelligen Codes, den Supabase
- * per E-Mail verschickt hat. Bei Erfolg wird `onVerified` mit dem eingeloggten
- * Supabase-Client aufgerufen (die Session ist dann bereits gesetzt).
+ * Zwischenschritt der Registrierung: Eingabe des Codes, den wir per E-Mail
+ * verschickt haben. Nach erfolgreicher Prüfung wird die E-Mail bestätigt, der
+ * Client per Passwort eingeloggt und `onVerified` mit der aktiven Session aufgerufen.
  */
-export default function VerifyStep({ supabase, email, onVerified, onBack, note }: Props) {
+export default function VerifyStep({ supabase, email, password, onVerified, onBack, note }: Props) {
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -42,11 +39,12 @@ export default function VerifyStep({ supabase, email, onVerified, onBack, note }
     }
     setLoading(true); setError('')
     try {
-      const { error: vErr } = await verifySignupOtp(supabase, email, token)
-      if (vErr) throw vErr
+      await verifySignupCode(email, token)
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+      if (signInErr) throw signInErr
       await onVerified(supabase)
     } catch (err: unknown) {
-      setError(otpErrorMessage(err instanceof Error ? err.message : 'Verifizierung fehlgeschlagen.'))
+      setError(err instanceof Error ? err.message : 'Verifizierung fehlgeschlagen.')
       setLoading(false)
     }
   }
@@ -54,12 +52,11 @@ export default function VerifyStep({ supabase, email, onVerified, onBack, note }
   const resend = async () => {
     setResending(true); setError('')
     try {
-      const { error: rErr } = await resendSignupOtp(supabase, email)
-      if (rErr) throw rErr
+      await resendSignupCode(email)
       setResentAt(Date.now())
       setCode('')
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Code konnte nicht erneut gesendet werden.')
+    } catch {
+      setError('Code konnte nicht erneut gesendet werden.')
     } finally {
       setResending(false)
     }

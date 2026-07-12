@@ -11,7 +11,7 @@ import VerifyStep from '@/components/auth/VerifyStep'
 import SignupModeTabs from '@/components/auth/SignupModeTabs'
 import AuthFooter from '@/components/auth/AuthFooter'
 import { createClient } from '@/lib/supabase/client'
-import { isExistingUserSignup, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
+import { startSignup, EmailTakenError, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
 import { ensureSoloEvent } from '@/lib/brautpaar-solo'
 import '@/app/brautpaar/brautpaar.css'
 
@@ -63,7 +63,6 @@ export default function BrautpaarSignupPage() {
     setLoading(true); setError('')
 
     try {
-      const supabase = createClient()
       const fullName = `${firstName.trim()} ${lastName.trim()}`
       const partnerFullName = `${p2FirstName.trim()} ${p2LastName.trim()}`
 
@@ -84,29 +83,12 @@ export default function BrautpaarSignupPage() {
         partner_phone: p2Phone.trim(),
       }
 
-      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { data: meta },
-      })
-      if (signUpErr) throw signUpErr
-
-      // Bereits registrierte E-Mail → Flow abbrechen (kein Verify-Schritt).
-      if (isExistingUserSignup(signUpData)) {
-        setError(EMAIL_TAKEN_MESSAGE)
-        return
-      }
-
-      // Keine Session → E-Mail muss per Code verifiziert werden (Zwischenschritt).
-      if (!signUpData.session) {
-        setPendingMeta(meta)
-        return
-      }
-
-      // Auto-Confirm aktiv (Session sofort vorhanden) → direkt weiter.
-      await completeOnboarding(supabase, meta)
+      // Account anlegen + Code versenden. Bereits vergebene E-Mail → Abbruch.
+      await startSignup({ email: email.trim(), password, metadata: meta })
+      setPendingMeta(meta)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
+      if (err instanceof EmailTakenError) setError(EMAIL_TAKEN_MESSAGE)
+      else setError(err instanceof Error ? err.message : 'Registrierung fehlgeschlagen.')
     } finally {
       setLoading(false)
     }
@@ -118,6 +100,7 @@ export default function BrautpaarSignupPage() {
         <VerifyStep
           supabase={createClient()}
           email={email.trim()}
+          password={password}
           onVerified={supabase => completeOnboarding(supabase, pendingMeta)}
           onBack={() => { setPendingMeta(null); setLoading(false) }}
           note="Nach der Bestätigung wird euer Hochzeits-Event automatisch erstellt."
