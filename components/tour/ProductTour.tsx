@@ -31,9 +31,15 @@ export default function ProductTour({ eventId, available }: Props) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
+  // Bereichsfilter für „einzelnen Bereich erklären" (aus der Hilfe-Seite via
+  // CustomEvent-Detail { area }). null = kompletter Rundgang.
+  const [areaFilter, setAreaFilter] = useState<string | null>(null)
+
   const steps = useMemo(
-    () => SOLO_TOUR_STEPS.filter(s => available[s.module] === true),
-    [available],
+    () => SOLO_TOUR_STEPS.filter(
+      s => available[s.module] === true && (!areaFilter || s.area === areaFilter),
+    ),
+    [available, areaFilter],
   )
 
   const doneKey = `fv-solo-tour:${eventId}`
@@ -70,28 +76,45 @@ export default function ProductTour({ eventId, available }: Props) {
     setViewport({ w: window.innerWidth, h: window.innerHeight })
   }, [])
 
-  const start = useCallback(() => {
-    if (steps.length === 0) return
+  const start = useCallback((area?: string | null) => {
+    setAreaFilter(area ?? null)
     setIndex(0)
     setActive(true)
-  }, [steps.length])
+  }, [])
 
+  // „Beenden" — Tour für JETZT schließen (nur diese Sitzung). Der sessionStorage-
+  // „seen"-Marker verhindert einen erneuten Auto-Start in dieser Sitzung; in einer
+  // neuen Browser-Sitzung kann die Tour wieder erscheinen.
   const finish = useCallback(() => {
     setActive(false)
     setRect(null)
+    setAreaFilter(null)
+  }, [])
+
+  // „Nicht mehr anzeigen" bzw. vollständig durchlaufen — dauerhaft merken, dass
+  // die Tour erledigt ist (kein Auto-Start mehr). Manuell über die Hilfe bleibt
+  // sie jederzeit startbar.
+  const dismissForever = useCallback(() => {
+    setActive(false)
+    setRect(null)
+    setAreaFilter(null)
     try { localStorage.setItem(doneKey, 'done') } catch { /* ignore */ }
   }, [doneKey])
 
   const advance = useCallback(() => {
     setIndex(i => {
-      if (i >= steps.length - 1) { finish(); return i }
+      if (i >= steps.length - 1) { dismissForever(); return i }
       return i + 1
     })
-  }, [steps.length, finish])
+  }, [steps.length, dismissForever])
 
-  // Manueller Start über die Hilfe-Schaltfläche.
+  // Manueller Start über die Hilfe-Seite. Optional mit { area } im Detail →
+  // nur die Schritte dieses Bereichs (sonst kompletter Rundgang).
   useEffect(() => {
-    const onStart = () => start()
+    const onStart = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { area?: string } | undefined
+      start(detail?.area ?? null)
+    }
     window.addEventListener(TOUR_START_EVENT, onStart)
     return () => window.removeEventListener(TOUR_START_EVENT, onStart)
   }, [start])
@@ -338,7 +361,7 @@ export default function ProductTour({ eventId, available }: Props) {
 
   const isLast = index === steps.length - 1
   const actionSatisfied = actionState === 'pre' || actionState === 'new'
-  const next = () => { if (isLast) finish(); else setIndex(i => i + 1) }
+  const next = () => { if (isLast) dismissForever(); else setIndex(i => i + 1) }
   const back = () => setIndex(i => Math.max(0, i - 1))
 
   const { w: vw, h: vh } = viewport
@@ -472,14 +495,26 @@ export default function ProductTour({ eventId, available }: Props) {
           ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-          <button
-            type="button"
-            onClick={selfDrives ? advance : finish}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-3, #9b9085)', fontFamily: 'inherit', padding: '6px 2px' }}
-          >
-            {selfDrives ? 'Überspringen' : 'Tour beenden'}
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+          {/* Zwei getrennte Abschluss-Optionen:
+              • „Beenden" schließt die Tour nur für jetzt (kann später wieder starten).
+              • „Nicht mehr anzeigen" merkt dauerhaft, dass die Tour erledigt ist. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              type="button"
+              onClick={finish}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-2, #5d564d)', fontFamily: 'inherit', padding: '6px 2px' }}
+            >
+              Beenden
+            </button>
+            <button
+              type="button"
+              onClick={dismissForever}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-3, #9b9085)', fontFamily: 'inherit', padding: '6px 2px' }}
+            >
+              Nicht mehr anzeigen
+            </button>
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
             {index > 0 && (
               <button
@@ -490,9 +525,17 @@ export default function ProductTour({ eventId, available }: Props) {
                 <ChevronLeft size={15} /> Zurück
               </button>
             )}
-            {/* „Weiter" entfällt bei rein DOM-getriebenen Schritten (advanceOnAppear/
-                Disappear) — dort treibt die echte Aktion den Fortschritt. */}
-            {(!selfDrives || isAction) && (
+            {/* Bei rein DOM-getriebenen Schritten (advanceOnAppear/Disappear) treibt
+                die echte Aktion den Fortschritt — dann statt „Weiter" nur „Überspringen". */}
+            {selfDrives && !isAction ? (
+              <button
+                type="button"
+                onClick={advance}
+                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 999, border: '1px solid var(--bp-line, #e7e0d6)', background: '#fff', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-2, #5d564d)', fontFamily: 'inherit' }}
+              >
+                Überspringen <ChevronRight size={15} />
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={next}

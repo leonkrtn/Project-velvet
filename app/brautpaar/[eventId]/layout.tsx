@@ -4,6 +4,7 @@ import { getSubscriptionState } from '@/lib/subscription'
 import BrautpaarShell, { type ShellSubscription } from './BrautpaarShell'
 import DisplayTheme from '@/components/brautpaar/DisplayTheme'
 import { normalizeSettings, DEFAULT_DISPLAY_SETTINGS } from '@/lib/display-settings'
+import { coupleDisplayName } from '@/lib/couple-name'
 import '@/app/brautpaar/brautpaar.css'
 
 interface Props {
@@ -69,7 +70,7 @@ export default async function BrautpaarLayout({ children, params }: Props) {
       <DisplayTheme settings={displaySettings} />
       <BrautpaarShell
         eventId={eventId}
-        eventTitle={event.couple_name ?? event.title ?? ''}
+        eventTitle={coupleDisplayName(event.couple_name) || event.title || ''}
         eventDate={event.date ?? null}
         userId={user.id}
         showWelcome={showWelcome}
