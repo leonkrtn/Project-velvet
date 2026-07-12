@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
   Calendar, BarChart2, User, LogOut, HelpCircle, Users, Menu, X, Zap,
-  Sparkles, ChevronRight,
+  Sparkles, ChevronRight, Mail,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
@@ -33,6 +33,7 @@ const NAV = [
   { key: 'report',     label: 'Berichte',     href: '/vendor/report',      icon: BarChart2 },
   { key: 'crm',        label: 'CRM',          href: '/vendor/crm',         icon: Users },
   { key: 'automatik',  label: 'Automatik',    href: '/vendor/automatisierungen', icon: Zap },
+  { key: 'emails',     label: 'E-Mails',      href: '/vendor/e-mails',     icon: Mail },
 ] as const
 
 type NavKey = (typeof NAV)[number]['key'] | 'listing'
@@ -45,6 +46,7 @@ function activeKey(pathname: string): NavKey {
   if (pathname.startsWith('/vendor/report'))     return 'report'
   if (pathname.startsWith('/vendor/crm'))        return 'crm'
   if (pathname.startsWith('/vendor/automatisierungen')) return 'automatik'
+  if (pathname.startsWith('/vendor/e-mails'))    return 'emails'
   if (pathname.startsWith('/vendor/dashboard'))  return 'events'
   return 'ubersicht'
 }

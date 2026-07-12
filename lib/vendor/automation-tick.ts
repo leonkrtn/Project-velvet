@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendEmail, emailLayout } from '@/lib/email/notify'
 import { formatMoney } from './questionnaire'
+import { buildVendorEmail } from './email-config'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -158,16 +159,13 @@ export async function runAutomationTick(admin: SupabaseClient): Promise<TickResu
         const meta = await vendorMeta(admin, r.dienstleister_id, metaCache)
         const emails = await coupleEmails(admin, o.event_id)
         if (emails.length) {
-          await sendEmail(admin, {
-            to: emails, replyTo: meta.email ?? undefined,
-            subject: `Habt ihr noch Fragen zu eurem Angebot?`,
-            html: emailLayout({
-              brand: { color: meta.brandColor, name: meta.name },
-              heading: 'Kurze Nachfrage zu eurem Angebot',
-              bodyHtml: `<tr><td style="padding:4px 0">wir wollten uns kurz melden: Habt ihr Fragen zu unserem Angebot${o.total ? ` über <strong>${formatMoney(Number(o.total), o.currency || 'EUR')}</strong>` : ''}? Wir helfen gern weiter.</td></tr>`,
-              ctaLabel: 'Angebot ansehen', ctaUrl: `${APP_URL}/brautpaar/${o.event_id}/angebote`,
-            }),
+          // Anpassbare Vendor-Vorlage (Fallback = eingebauter Standardtext).
+          const mail = await buildVendorEmail(admin, r.dienstleister_id, 'followup_offer', {
+            eventId: o.event_id,
+            values: { firma: meta.name, betrag: o.total ? formatMoney(Number(o.total), o.currency || 'EUR') : undefined },
+            ctaUrl: `${APP_URL}/brautpaar/${o.event_id}/angebote`,
           })
+          if (mail) await sendEmail(admin, { to: emails, replyTo: mail.replyTo ?? undefined, subject: mail.subject, html: mail.html })
         }
         // Vendor-To-do (Kalender)
         const uid = await vendorUserId(admin, r.dienstleister_id, uidCache)
@@ -229,16 +227,11 @@ export async function sendReviewInvite(admin: SupabaseClient, dlId: string, even
   })
   if (error) return false
   if (emails.length) {
-    await sendEmail(admin, {
-      to: emails, replyTo: meta.email ?? undefined,
-      subject: `Wie war eure Erfahrung mit ${meta.name}?`,
-      html: emailLayout({
-        brand: { color: meta.brandColor, name: meta.name },
-        heading: 'Wir freuen uns über eure Bewertung',
-        bodyHtml: `<tr><td style="padding:4px 0">vielen Dank für die schöne Zusammenarbeit! Eure Rückmeldung hilft uns sehr — es dauert nur eine Minute.</td></tr>`,
-        ctaLabel: 'Jetzt bewerten', ctaUrl: `${APP_URL}/review/${tk}`,
-      }),
+    // Anpassbare Vendor-Vorlage (Fallback = eingebauter Standardtext).
+    const mail = await buildVendorEmail(admin, dlId, 'review_request', {
+      eventId, values: { firma: meta.name }, ctaUrl: `${APP_URL}/review/${tk}`,
     })
+    if (mail) await sendEmail(admin, { to: emails, replyTo: mail.replyTo ?? undefined, subject: mail.subject, html: mail.html })
   }
   return true
 }

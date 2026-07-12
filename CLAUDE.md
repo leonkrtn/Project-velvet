@@ -486,6 +486,24 @@ supabase/migrations/
 # Manuelle Bewertungsanfrage: /api/vendor/reviews/request. Token-Review oeffentlich:
 # /review/[token] + /api/reviews/[token] (kein Login). Nav-Eintrag "Automatik" in VendorSidebarShell.
 
+  0138_vendor_email_templates.sql      Anpassbare Vorlagen fuer die 3 Mails, die Forevr IM NAMEN des
+                                       Dienstleisters an das Brautpaar sendet: vendor_email_templates
+                                       (template_key offer_released|followup_offer|review_request; subject/
+                                       heading/body/cta_label; UNIQUE je Vendor+Typ). Zentrale Anrede+Signatur:
+                                       dienstleister_profiles.email_greeting/email_signature. RLS: nur Eigentuemer.
+# ── Anpassbare Brautpaar-Mails (Migration 0138) ──────────────────────────────
+# Editor unter /vendor/e-mails (EmailsClient), Nav-Eintrag "E-Mails" in VendorSidebarShell,
+# beidseitig mit /vendor/automatisierungen verlinkt. Genau 3 anpassbare Typen (couple-facing,
+# vendor-branded): offer_released (offer-notify.ts, bei Freigabe), followup_offer + review_request
+# (automation-tick.ts). Reminder/followup_lead gehen an den VENDOR selbst -> NICHT anpassbar.
+# lib/vendor/email-templates.ts (ISOMORPH, kein server-only): Keys, DEFAULT_TEMPLATES, PLACEHOLDERS
+# ({firma}/{brautpaar}/{betrag}/{angebot}/{datum}), Markdown-lite renderRichText (**fett**/*kursiv*/
+# [Text](url)/- Liste, HTML-escaped) + renderVendorEmailHtml -> exakt dieselbe HTML fuer Live-Vorschau
+# (iframe) UND Versand. lib/vendor/email-config.ts (server): loadVendorEmailConfig + buildVendorEmail
+# (Vorlage+Profil+Platzhalter, Fallback auf Standardtext bei fehlender/leerer Zeile). API:
+# GET/PUT/DELETE /api/vendor/email-templates (Autosave; DELETE = 1 Vorlage auf Standard).
+# Anrede+Signatur zentral (alle 3 Mails), Text je Mail. CTA-Ziel ist fix (nur Label editierbar).
+
   0125_vendor_data_requests.sql        Strukturierte Daten-Anfrage (A3): vendor_data_requests
                                        (event_id, dienstleister_id, conversation_id, fields JSONB [{key,label,value}],
                                        status open|answered). RLS aktiv ohne User-Policy (nur Service-Role-APIs).

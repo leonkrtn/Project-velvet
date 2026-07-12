@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check, FileSpreadsheet } from 'lucide-react'
+import Link from 'next/link'
+import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check, FileSpreadsheet, Mail, ChevronRight } from 'lucide-react'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 
@@ -118,6 +119,10 @@ export default function AutomationsClient() {
         <span style={{ flexShrink: 0 }}><SaveStatus status={saveState} /></span>
       </div>
 
+      <Link href="/vendor/e-mails" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: C.gold, textDecoration: 'none', marginBottom: 18 }}>
+        <Mail size={14} /> Wie die versendeten E-Mails aussehen, bearbeitest du unter „E-Mails" <ChevronRight size={14} />
+      </Link>
+
       <h3 style={{ ...sectionHead, marginTop: 0 }}>Automatische Regeln</h3>
       {KINDS.map(group => {
         const groupRules = rules.map((r, i) => ({ r, i })).filter(x => x.r.kind === group.kind)
@@ -146,6 +151,11 @@ export default function AutomationsClient() {
                   </span>
                 </div>
                 <p style={{ fontSize: 12.5, color: C.dim, margin: '3px 0 0', lineHeight: 1.5 }}>{group.desc}</p>
+                {(group.kind === 'review_request' || group.kind === 'followup_offer') && (
+                  <Link href="/vendor/e-mails" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: C.gold, textDecoration: 'none', marginTop: 6 }}>
+                    <Mail size={13} /> E-Mail-Text bearbeiten <ChevronRight size={12} />
+                  </Link>
+                )}
               </div>
             </div>
 
