@@ -2935,3 +2935,62 @@
 }
 
 .bp-authx-foot-alt:hover { color: var(--bp-gold-deep); }
+
+
+/* ── Auth: extra breites (zweispaltiges) Formular ── */
+.bp-authx-panel-xl { max-width: 760px; }
+
+.bp-authx-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem 1.75rem;
+  align-items: start;
+}
+
+.bp-authx-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+/* Trennlinie zwischen den Spalten (nur Desktop) */
+.bp-authx-2col > .bp-authx-col + .bp-authx-col {
+  position: relative;
+}
+.bp-authx-2col > .bp-authx-col + .bp-authx-col::before {
+  content: '';
+  position: absolute;
+  left: -0.875rem;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  width: 1px;
+  background: var(--bp-rule);
+}
+
+.bp-authx-section-title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--bp-ink);
+  margin: 0 0 0.15rem;
+  letter-spacing: -0.005em;
+}
+
+.bp-authx-section-hint {
+  font-size: 0.75rem;
+  color: var(--bp-ink-3);
+  margin: 0 0 0.35rem;
+}
+
+@media (max-width: 720px) {
+  .bp-authx-2col { grid-template-columns: 1fr; gap: 1.5rem; }
+  .bp-authx-2col > .bp-authx-col + .bp-authx-col::before {
+    left: 0; right: 0; top: -0.75rem; bottom: auto; width: auto; height: 1px;
+  }
+}
+
+/* Etwas weichere Auth-Karte (smoother) */
+.bp-authx-card {
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(44,40,37,0.04), 0 8px 30px rgba(44,40,37,0.06);
+}

@@ -132,71 +132,74 @@ export default function BrautpaarSignupPage() {
   )
 
   return (
-    <AuthLayout tagline="Eure Hochzeit, selbst geplant." wide>
+    <AuthLayout tagline="Eure Hochzeit, selbst geplant." xwide>
         <div className="bp-authx-card">
           <SignupModeTabs active="brautpaar" />
           <h1 className="bp-authx-heading">Kostenlos starten</h1>
           <p className="bp-authx-sub">Erstellt euer gemeinsames Hochzeitskonto in wenigen Minuten.</p>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-            {/* ── Person 1 ── */}
-            <p className="bp-label-text" style={{ fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', marginBottom: -4 }}>
-              Deine Angaben
-            </p>
+            <div className="bp-authx-2col">
+              {/* ── Spalte 1: Deine Angaben ── */}
+              <div className="bp-authx-col">
+                <div>
+                  <p className="bp-authx-section-title">Deine Angaben</p>
+                  <p className="bp-authx-section-hint">Diese Person verwaltet das Konto.</p>
+                </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              {field('Vorname', firstName, setFirstName, { placeholder: 'Anna', autoComplete: 'given-name' })}
-              {field('Nachname', lastName, setLastName, { placeholder: 'Beispiel', autoComplete: 'family-name' })}
-            </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  {field('Vorname', firstName, setFirstName, { placeholder: 'Anna', autoComplete: 'given-name' })}
+                  {field('Nachname', lastName, setLastName, { placeholder: 'Beispiel', autoComplete: 'family-name' })}
+                </div>
 
-            {field('E-Mail-Adresse', email, setEmail, { type: 'email', placeholder: 'deine@email.de', autoComplete: 'email' })}
+                {field('E-Mail-Adresse', email, setEmail, { type: 'email', placeholder: 'deine@email.de', autoComplete: 'email' })}
 
-            <div>
-              <label className="bp-label-text">Passwort (mind. 8 Zeichen) <span className="bp-text-gold-deep">*</span></label>
-              <div className="bp-input-wrap">
-                <input
-                  type={showPassword ? 'text' : 'password'} required autoComplete="new-password"
-                  className="bp-input"
-                  value={password} onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                />
-                <button type="button" className="bp-input-eye" onClick={() => setShowPassword(v => !v)}
-                  aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}>
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+                <div>
+                  <label className="bp-label-text">Passwort (mind. 8 Zeichen) <span className="bp-text-gold-deep">*</span></label>
+                  <div className="bp-input-wrap">
+                    <input
+                      type={showPassword ? 'text' : 'password'} required autoComplete="new-password"
+                      className="bp-input"
+                      value={password} onChange={e => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                    />
+                    <button type="button" className="bp-input-eye" onClick={() => setShowPassword(v => !v)}
+                      aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}>
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                {field('Telefonnummer', phone, setPhone, { placeholder: '+49 151 00000000', autoComplete: 'tel' })}
+
+                {field('Straße und Hausnummer', street, setStreet, { placeholder: 'Musterstraße 1', autoComplete: 'street-address' })}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12 }}>
+                  {field('PLZ', postalCode, setPostalCode, { placeholder: '10115', autoComplete: 'postal-code' })}
+                  {field('Stadt', city, setCity, { placeholder: 'Berlin', autoComplete: 'address-level2' })}
+                </div>
               </div>
-            </div>
 
-            {field('Telefonnummer', phone, setPhone, { placeholder: '+49 151 00000000', autoComplete: 'tel' })}
+              {/* ── Spalte 2: Partner:in + Hochzeit ── */}
+              <div className="bp-authx-col">
+                <div>
+                  <p className="bp-authx-section-title">Partnerin / Partner</p>
+                  <p className="bp-authx-section-hint">Ihr könnt euch später gegenseitig einladen.</p>
+                </div>
 
-            {field('Straße und Hausnummer', street, setStreet, { placeholder: 'Musterstraße 1', autoComplete: 'street-address' })}
-
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12 }}>
-              {field('PLZ', postalCode, setPostalCode, { placeholder: '10115', autoComplete: 'postal-code' })}
-              {field('Stadt', city, setCity, { placeholder: 'Berlin', autoComplete: 'address-level2' })}
-            </div>
-
-            {/* ── Person 2 ── */}
-            <div style={{ borderTop: '1px solid var(--border, #e5e5e5)', paddingTop: 12, marginTop: 4 }}>
-              <p className="bp-label-text" style={{ fontWeight: 700, color: 'var(--text-primary, #1a1a1a)', marginBottom: 12 }}>
-                Angaben zu deiner Partnerin / deinem Partner
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   {field('Vorname', p2FirstName, setP2FirstName, { placeholder: 'Max' })}
                   {field('Nachname', p2LastName, setP2LastName, { placeholder: 'Beispiel' })}
                 </div>
                 {field('E-Mail (optional)', p2Email, setP2Email, { required: false, type: 'email', placeholder: 'partner@email.de' })}
                 {field('Telefon (optional)', p2Phone, setP2Phone, { required: false, placeholder: '+49 151 00000000' })}
-              </div>
-            </div>
 
-            {/* ── Hochzeitsdatum ── */}
-            <div>
-              <label className="bp-label-text">Hochzeitsdatum (falls schon bekannt)</label>
-              <input type="date" className="bp-input" value={weddingDate} onChange={e => setWeddingDate(e.target.value)} />
+                <div>
+                  <label className="bp-label-text">Hochzeitsdatum (falls schon bekannt)</label>
+                  <input type="date" className="bp-input" value={weddingDate} onChange={e => setWeddingDate(e.target.value)} />
+                </div>
+              </div>
             </div>
 
             {error && <p className="bp-auth-error">{error}</p>}
@@ -208,10 +211,7 @@ export default function BrautpaarSignupPage() {
 
           <AuthFooter
             loginPrompt
-            alts={[
-              { label: 'Als Veranstalter registrieren', href: '/signup/veranstalter' },
-              { label: 'Als Dienstleister listen', href: '/signup/dienstleister' },
-            ]}
+            alts={[{ label: 'Als Dienstleister listen', href: '/signup/dienstleister' }]}
           />
         </div>
     </AuthLayout>

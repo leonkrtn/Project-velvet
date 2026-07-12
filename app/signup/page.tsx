@@ -298,10 +298,7 @@ function SignupForm() {
 
           <AuthFooter
             loginPrompt
-            alts={[
-              { label: 'Als Veranstalter registrieren', href: '/signup/veranstalter' },
-              { label: 'Als Dienstleister listen', href: '/signup/dienstleister' },
-            ]}
+            alts={[{ label: 'Als Dienstleister listen', href: '/signup/dienstleister' }]}
           />
         </div>
 
