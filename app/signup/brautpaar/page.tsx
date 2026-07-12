@@ -8,7 +8,10 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
 import VerifyStep from '@/components/auth/VerifyStep'
+import SignupModeTabs from '@/components/auth/SignupModeTabs'
+import AuthFooter from '@/components/auth/AuthFooter'
 import { createClient } from '@/lib/supabase/client'
+import { isExistingUserSignup, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
 import { ensureSoloEvent } from '@/lib/brautpaar-solo'
 import '@/app/brautpaar/brautpaar.css'
 
@@ -88,6 +91,12 @@ export default function BrautpaarSignupPage() {
       })
       if (signUpErr) throw signUpErr
 
+      // Bereits registrierte E-Mail → Flow abbrechen (kein Verify-Schritt).
+      if (isExistingUserSignup(signUpData)) {
+        setError(EMAIL_TAKEN_MESSAGE)
+        return
+      }
+
       // Keine Session → E-Mail muss per Code verifiziert werden (Zwischenschritt).
       if (!signUpData.session) {
         setPendingMeta(meta)
@@ -142,6 +151,7 @@ export default function BrautpaarSignupPage() {
   return (
     <AuthLayout tagline="Eure Hochzeit, selbst geplant." wide>
         <div className="bp-authx-card">
+          <SignupModeTabs active="brautpaar" />
           <h1 className="bp-authx-heading">Kostenlos starten</h1>
           <p className="bp-authx-sub">Erstellt euer gemeinsames Hochzeitskonto in wenigen Minuten.</p>
 
@@ -213,16 +223,13 @@ export default function BrautpaarSignupPage() {
             </button>
           </form>
 
-          <div className="bp-auth-footer">
-            <p>
-              Du hast einen Einladungscode?{' '}
-              <a href="/signup" className="bp-auth-link">Mit Code registrieren</a>
-            </p>
-            <p>
-              Bereits registriert?{' '}
-              <a href="/login" className="bp-auth-link">Anmelden</a>
-            </p>
-          </div>
+          <AuthFooter
+            loginPrompt
+            alts={[
+              { label: 'Als Veranstalter registrieren', href: '/signup/veranstalter' },
+              { label: 'Als Dienstleister listen', href: '/signup/dienstleister' },
+            ]}
+          />
         </div>
     </AuthLayout>
   )

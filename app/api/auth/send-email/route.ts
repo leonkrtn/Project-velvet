@@ -5,7 +5,7 @@ import { sendEmail, emailLayout } from '@/lib/email/notify'
 // ─────────────────────────────────────────────────────────────────────────────
 // Supabase Auth "Send Email" Hook → Versand über Resend
 //
-// Damit laufen ALLE Auth-Mails (inkl. des 8-stelligen Registrierungs-Codes) über
+// Damit laufen ALLE Auth-Mails (inkl. des Registrierungs-Codes) über
 // unser Resend-Setup (lib/email/notify.ts) statt über den Supabase-SMTP.
 //
 // Einrichtung (Supabase-Dashboard, einmalig):
@@ -13,7 +13,7 @@ import { sendEmail, emailLayout } from '@/lib/email/notify'
 //     https://<deine-domain>/api/auth/send-email
 //   Das generierte Secret (Format "v1,whsec_…") als Env-Var
 //   SEND_EMAIL_HOOK_SECRET hinterlegen (Vercel).
-//   Zusätzlich: Email OTP Length = 8 setzen (für den 8-stelligen Code).
+//   Der Code ist 6-stellig (Supabase-Standard, keine OTP-Length-Änderung nötig).
 //
 // Ist der Hook nicht eingerichtet, wird diese Route nie aufgerufen — das
 // bestehende Verhalten bleibt unverändert.

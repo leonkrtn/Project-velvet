@@ -9,6 +9,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
 import VerifyStep from '@/components/auth/VerifyStep'
 import { createClient } from '@/lib/supabase/client'
+import { isExistingUserSignup, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
 import '@/app/brautpaar/brautpaar.css'
 
 // Signup für Veranstalter: Selbstregistrierung ohne Einladungscode.
@@ -50,6 +51,12 @@ export default function VeranstalterSignupPage() {
         options: { data: meta },
       })
       if (signUpErr) throw signUpErr
+
+      // Bereits registrierte E-Mail → Flow abbrechen (keine Admin-Info, kein Verify).
+      if (isExistingUserSignup(signUpData)) {
+        setError(EMAIL_TAKEN_MESSAGE)
+        return
+      }
 
       // Admins über den neuen Veranstalter-Antrag informieren (best effort).
       fetch('/api/notify/organizer-signup', {

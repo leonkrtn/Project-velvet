@@ -2870,3 +2870,68 @@
   cursor: pointer;
 }
 .bp-link-btn:hover { color: var(--bp-gold); }
+
+
+/* ── Auth: Registrierungsart-Umschalter (Segmented) ── */
+.bp-authx-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bp-ivory-2);
+  border: 1px solid var(--bp-rule);
+  border-radius: var(--bp-r-md);
+  padding: 4px;
+  margin-bottom: 1.5rem;
+}
+
+.bp-authx-tab {
+  flex: 1 1 0;
+  text-align: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: calc(var(--bp-r-md) - 4px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--bp-ink-3);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--bp-transition), color var(--bp-transition);
+}
+
+.bp-authx-tab.is-active {
+  background: var(--bp-paper);
+  color: var(--bp-gold-deep);
+  box-shadow: var(--bp-shadow-card);
+}
+
+.bp-authx-tab:not(.is-active):hover { color: var(--bp-ink); }
+
+
+/* ── Auth: aufgeräumter Karten-Fuß ── */
+.bp-authx-foot {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--bp-rule);
+  text-align: center;
+}
+
+.bp-authx-foot-primary {
+  font-size: 0.9375rem;
+  color: var(--bp-ink-2);
+  margin: 0;
+}
+
+.bp-authx-foot-alts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.25rem;
+  margin-top: 0.875rem;
+}
+
+.bp-authx-foot-alt {
+  font-size: 0.8125rem;
+  color: var(--bp-ink-3);
+  text-decoration: none;
+  transition: color var(--bp-transition);
+}
+
+.bp-authx-foot-alt:hover { color: var(--bp-gold-deep); }

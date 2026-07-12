@@ -7,7 +7,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Check, Eye, EyeOff } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
 import VerifyStep from '@/components/auth/VerifyStep'
+import SignupModeTabs from '@/components/auth/SignupModeTabs'
+import AuthFooter from '@/components/auth/AuthFooter'
 import { createClient } from '@/lib/supabase/client'
+import { isExistingUserSignup, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
 import '@/app/brautpaar/brautpaar.css'
 
 type CodeType = 'event' | 'vendor' | null
@@ -143,6 +146,12 @@ function SignupForm() {
       })
       if (signUpErr) throw signUpErr
 
+      // Bereits registrierte E-Mail → Flow abbrechen (kein Verify-Schritt).
+      if (isExistingUserSignup(signUpData)) {
+        setError(EMAIL_TAKEN_MESSAGE)
+        return
+      }
+
       // Keine Session → E-Mail muss per Code verifiziert werden (Zwischenschritt).
       if (!signUpData.session) {
         setPendingCode(code)
@@ -186,6 +195,7 @@ function SignupForm() {
   return (
     <AuthLayout tagline="Konto erstellen" wide>
         <div className="bp-authx-card">
+          <SignupModeTabs active="code" />
           <h1 className="bp-authx-heading">Mit Code registrieren</h1>
           <p className="bp-authx-sub">Löse deinen Einladungscode ein und leg direkt los.</p>
 
@@ -303,20 +313,13 @@ function SignupForm() {
             )}
           </form>
 
-          <div className="bp-auth-footer">
-            <p>
-              Keinen Code? Plant eure Hochzeit selbst:{' '}
-              <a href="/signup/brautpaar" className="bp-auth-link">Als Brautpaar starten</a>
-            </p>
-            <p>
-              Dienstleister?{' '}
-              <a href="/signup/dienstleister" className="bp-auth-link">Im Marktplatz listen</a>
-            </p>
-            <p>
-              Bereits registriert?{' '}
-              <a href="/login" className="bp-auth-link">Anmelden</a>
-            </p>
-          </div>
+          <AuthFooter
+            loginPrompt
+            alts={[
+              { label: 'Als Veranstalter registrieren', href: '/signup/veranstalter' },
+              { label: 'Als Dienstleister listen', href: '/signup/dienstleister' },
+            ]}
+          />
         </div>
 
         {/* Hidden admin link */}

@@ -177,10 +177,9 @@ function LoginForm() {
             </button>
           </form>
 
-          <div className="bp-auth-footer">
-            <p>
-              Noch kein Konto?{' '}
-              <a href="/signup" className="bp-auth-link">Registrieren</a>
+          <div className="bp-authx-foot">
+            <p className="bp-authx-foot-primary">
+              Noch kein Konto? <a href="/signup/brautpaar" className="bp-auth-link">Registrieren</a>
             </p>
           </div>
         </div>
