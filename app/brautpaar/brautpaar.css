@@ -3046,8 +3046,18 @@
 .bp-authx-toggle-btn:not(.is-active):hover { color: var(--bp-ink); }
 
 @media (max-width: 560px) {
-  .bp-authx-toggle-row { gap: 0.4rem; }
-  .bp-authx-toggle-btn { padding: 0.45rem 0.65rem; font-size: 0.8125rem; }
+  /* Gruppen untereinander, Buttons füllen die Breite und dürfen umbrechen —
+     verhindert Überlauf des langen Labels auf schmalen Handys. */
+  .bp-authx-toggle-row { flex-direction: column; gap: 0.5rem; }
+  .bp-authx-toggle-group { width: 100%; }
+  .bp-authx-toggle-btn {
+    flex: 1 1 0;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.8125rem;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
+  }
 }
 
 /* Kompakteres Layout, damit die Karte auf normalen Screens nicht scrollt */
