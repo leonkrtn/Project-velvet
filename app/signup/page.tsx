@@ -10,6 +10,7 @@ import VerifyStep from '@/components/auth/VerifyStep'
 import SignupModeTabs from '@/components/auth/SignupModeTabs'
 import AuthFooter from '@/components/auth/AuthFooter'
 import { createClient } from '@/lib/supabase/client'
+import { isExistingUserSignup, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
 import '@/app/brautpaar/brautpaar.css'
 
 type CodeType = 'event' | 'vendor' | null
@@ -144,6 +145,12 @@ function SignupForm() {
         options: { data: { name } },
       })
       if (signUpErr) throw signUpErr
+
+      // Bereits registrierte E-Mail → Flow abbrechen (kein Verify-Schritt).
+      if (isExistingUserSignup(signUpData)) {
+        setError(EMAIL_TAKEN_MESSAGE)
+        return
+      }
 
       // Keine Session → E-Mail muss per Code verifiziert werden (Zwischenschritt).
       if (!signUpData.session) {
