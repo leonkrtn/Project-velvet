@@ -97,11 +97,21 @@ erfolgreicher Verifizierung läuft die jeweilige Post-Signup-Logik (Solo-Event a
 wird der Code-Schritt übersprungen und direkt weitergeleitet — die Verifizierung greift nur,
 wenn `!data.session`.
 
+**Versand über Resend (Auth „Send Email" Hook):** Der Code-Versand läuft über unser
+Resend-Setup (`lib/email/notify.ts`), nicht über Supabase-SMTP. Dafür verarbeitet
+`app/api/auth/send-email/route.ts` den Supabase-Auth-Hook „Send Email" (Standard-Webhooks-
+Signaturprüfung via `SEND_EMAIL_HOOK_SECRET`) und schickt für `signup`/`email` den
+8-stelligen Code als vollständig gebrandete Forevr-Mail; für `recovery`/`invite` wird ein
+Link (`/auth/v1/verify`) gesendet, damit Passwort-Reset & Einladungen weiter funktionieren.
+Ist der Hook nicht eingerichtet, wird die Route nie aufgerufen — Verhalten bleibt unverändert.
+
 **Erforderliche Supabase-Dashboard-Konfiguration (nicht im Code!):**
 1. Authentication → Providers → Email → **„Confirm email" aktiviert** (sonst Auto-Confirm, kein Code).
 2. **Email OTP Length = 8** (Standard ist 6).
-3. E-Mail-Template **„Confirm signup"** muss `{{ .Token }}` enthalten (der Code) — sonst kommt
-   nur der Bestätigungs-Link ohne Code an.
+3. Authentication → Hooks → **„Send Email" HTTPS-Hook** auf `…/api/auth/send-email`; das
+   generierte Secret als Env-Var **`SEND_EMAIL_HOOK_SECRET`** (Format `v1,whsec_…`) hinterlegen.
+   (Alternativ ohne Hook: E-Mail-Template „Confirm signup" mit `{{ .Token }}` — dann versendet
+   aber Supabase-SMTP statt Resend.)
 
 Die Auth-Seiten (`/login` + alle Signups) nutzen das gemeinsame Split-Screen-Layout
 `components/auth/AuthLayout.tsx` (Marken-Panel mit Bild links, Formular rechts; CSS `.bp-authx-*`

@@ -9,7 +9,7 @@ import {
   Pencil, Trash2, CheckSquare, Square, Clock,
   Heart, Briefcase, PartyPopper, HelpCircle,
   MapPin, MessageSquare, User, Circle, ChevronDown, ChevronUp, ArrowUpDown,
-  LayoutGrid, List, ListChecks,
+  LayoutGrid, List, ListChecks, Copy, MessageCircle, UserPlus,
 } from 'lucide-react'
 import CrmImportDialog from '@/components/vendor/CrmImportDialog'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
@@ -190,6 +190,29 @@ function InfoCell({ label, value, href }: { label: string; value: string | null 
         ? <a href={href} style={{ fontSize: 13, color: 'var(--accent)', textDecoration: 'none' }}>{value}</a>
         : <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>{value}</p>
       }
+    </div>
+  )
+}
+
+// ── Person card (couple / additional persons) ──────────────────
+function PersonView({ name, role, email, phone, accent }: { name: string; role: string; email: string; phone: string; accent?: boolean }) {
+  return (
+    <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '9px 11px', borderRadius: 10, background: 'var(--bg)', border: '1px solid var(--border)' }}>
+      <div style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, background: accent ? 'var(--accent)' : 'var(--surface)', border: accent ? 'none' : '1px solid var(--border2)', color: accent ? '#fff' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
+        {initials(name || '?')}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name || '—'}</p>
+          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', background: 'var(--surface)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: 100, flexShrink: 0 }}>{role}</span>
+        </div>
+        {(email || phone) && (
+          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '2px 0 0', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {email && <a href={`mailto:${email}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>{email}</a>}
+            {phone && <a href={`tel:${phone}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>{phone}</a>}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -406,37 +429,61 @@ function ContactPanel({
   const [newTask, setNewTask] = useState<{ title: string; due_at: string } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-
-  useEffect(() => { setForm({ ...contact }) }, [contact])
+  const [persons, setPersons] = useState<Omit<ContactPerson, 'id'>[]>(
+    (contact.crm_contact_persons ?? []).map(p => ({ name: p.name, email: p.email, phone: p.phone, role: p.role }))
+  )
+  const [copied, setCopied] = useState<string | null>(null)
 
   useEffect(() => {
-    if (tab === 'aktivitaeten') {
-      setLoadingActs(true)
-      fetch(`/api/vendor/crm/activities?contactId=${contact.id}`)
-        .then(r => r.json())
-        .then(d => { setActivities(d.activities ?? []); setLoadingActs(false) })
-    }
-    if (tab === 'aufgaben') {
-      fetch(`/api/vendor/crm/tasks?contactId=${contact.id}&done=true`)
-        .then(r => r.json())
-        .then(d => setTasks(d.tasks ?? []))
-    }
-  }, [tab, contact.id])
+    setForm({ ...contact })
+    setPersons((contact.crm_contact_persons ?? []).map(p => ({ name: p.name, email: p.email, phone: p.phone, role: p.role })))
+  }, [contact])
+
+  // Aktivitäten und Aufgaben beide direkt laden (für Tab-Zähler + schnellen Wechsel)
+  useEffect(() => {
+    setLoadingActs(true)
+    fetch(`/api/vendor/crm/activities?contactId=${contact.id}`)
+      .then(r => r.json())
+      .then(d => { setActivities(d.activities ?? []); setLoadingActs(false) })
+      .catch(() => setLoadingActs(false))
+    fetch(`/api/vendor/crm/tasks?contactId=${contact.id}&done=true`)
+      .then(r => r.json())
+      .then(d => setTasks(d.tasks ?? []))
+      .catch(() => {})
+  }, [contact.id])
 
   async function save() {
     setSaving(true)
+    const cleanPersons = persons.filter(p => p.name.trim() || p.email.trim() || p.phone.trim())
     const res = await fetch(`/api/vendor/crm/contacts/${contact.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...form,
         deal_value: form.deal_value ? Number(form.deal_value) : null,
+        couple_budget: form.couple_budget ? Number(form.couple_budget) : null,
+        guest_count: form.guest_count ? Number(form.guest_count) : null,
         wedding_date: form.wedding_date || null,
+        additional_persons: cleanPersons,
       }),
     })
     const json = await res.json()
-    if (json.contact) { onUpdated({ ...contact, ...json.contact }); setEditing(false) }
+    if (json.contact) {
+      onUpdated({ ...contact, ...json.contact, crm_contact_persons: cleanPersons.map((p, i) => ({ id: `tmp-${i}`, ...p })) })
+      setEditing(false)
+    }
     setSaving(false)
+  }
+
+  function addPerson() { setPersons(ps => [...ps, { name: '', email: '', phone: '', role: 'partner' }]) }
+  function updatePerson(i: number, patch: Partial<Omit<ContactPerson, 'id'>>) { setPersons(ps => ps.map((p, idx) => idx === i ? { ...p, ...patch } : p)) }
+  function removePerson(i: number) { setPersons(ps => ps.filter((_, idx) => idx !== i)) }
+  async function copyToClipboard(text: string, key: string) {
+    try { await navigator.clipboard.writeText(text); setCopied(key); setTimeout(() => setCopied(c => (c === key ? null : c)), 1400) } catch { /* ignore */ }
+  }
+  function roleLabel(role: string): string {
+    const map: Record<string, string> = { partner: 'Partner/in', additional: 'Weitere Person', planner: 'Planer/in', trauzeuge: 'Trauzeuge/in', family: 'Familie' }
+    return map[role] ?? (role || 'Person')
   }
 
   async function quickChangeStage(newStage: LifecycleStage) {
@@ -514,20 +561,23 @@ function ContactPanel({
     )
   }
 
+  const selStyle: React.CSSProperties = { width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }
+  const miniInput: React.CSSProperties = { padding: '7px 9px', borderRadius: 7, border: '1px solid var(--border2)', background: 'var(--surface)', fontSize: 12, fontFamily: 'inherit', boxSizing: 'border-box', width: '100%' }
+
   const anniv = contact.anniversary_remind && contact.wedding_date ? daysUntilAnniversary(contact.wedding_date) : null
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'stretch', justifyContent: 'flex-end' }}>
-      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.22)' }} />
-      <div style={{
-        position: 'relative', zIndex: 1, width: '100%', maxWidth: 520,
-        height: '100dvh', overflowY: 'auto',
-        background: 'var(--surface)',
-        boxShadow: '-4px 0 32px rgba(35,82,200,0.14)',
+    <div className="crm-lb-overlay" style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(20,25,45,0.45)', backdropFilter: 'blur(2px)' }} />
+      <div className="crm-lb" style={{
+        position: 'relative', zIndex: 1, width: '80vw', height: '85vh',
+        maxWidth: 1200, maxHeight: 920,
+        background: 'var(--surface)', borderRadius: 18, overflow: 'hidden',
+        boxShadow: '0 24px 80px rgba(20,25,45,0.35)',
         display: 'flex', flexDirection: 'column',
       }}>
         {/* ── Header ── */}
-        <div style={{ padding: '18px 20px 0', flexShrink: 0 }}>
+        <div style={{ padding: '18px 22px 0', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
             <div style={{
               width: 48, height: 48, borderRadius: 13, flexShrink: 0,
@@ -537,10 +587,16 @@ function ContactPanel({
             }}>{initials(contact.name)}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{contact.name}</h2>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{contact.name}</h2>
                 {contact.priority === 'vip' && <Star size={13} style={{ color: '#F59E0B' }} />}
                 {contact.priority === 'grosskunde' && <Building2 size={13} style={{ color: '#6366F1' }} />}
               </div>
+              {(contact.crm_contact_persons?.length ?? 0) > 0 && (
+                <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', margin: '3px 0 0', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Heart size={11} style={{ color: '#E84393', flexShrink: 0 }} />
+                  {[contact.name, ...(contact.crm_contact_persons ?? []).map(p => p.name)].filter(Boolean).join('  &  ')}
+                </p>
+              )}
               <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 {(() => {
                   const st = stageFor(contact.lifecycle_stage)
@@ -587,14 +643,27 @@ function ContactPanel({
           {!editing && (contact.email || contact.phone) && (
             <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
               {contact.email && (
-                <a href={`mailto:${contact.email}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', textDecoration: 'none', fontSize: 13, color: 'var(--text-secondary)' }}>
-                  <Mail size={13} /> {contact.email}
-                </a>
+                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border2)', borderRadius: 8, background: 'var(--bg)', overflow: 'hidden' }}>
+                  <a href={`mailto:${contact.email}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 11px', textDecoration: 'none', fontSize: 13, color: 'var(--text-secondary)' }}>
+                    <Mail size={13} /> {contact.email}
+                  </a>
+                  <button onClick={() => copyToClipboard(contact.email, 'h-email')} title="E-Mail kopieren" style={{ padding: '7px 9px', border: 'none', borderLeft: '1px solid var(--border2)', background: 'none', cursor: 'pointer', color: copied === 'h-email' ? '#1E7E34' : 'var(--text-tertiary)', display: 'flex' }}>
+                    {copied === 'h-email' ? <Check size={13} /> : <Copy size={13} />}
+                  </button>
+                </div>
               )}
               {contact.phone && (
-                <a href={`tel:${contact.phone}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', textDecoration: 'none', fontSize: 13, color: 'var(--text-secondary)' }}>
-                  <Phone size={13} /> {contact.phone}
-                </a>
+                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border2)', borderRadius: 8, background: 'var(--bg)', overflow: 'hidden' }}>
+                  <a href={`tel:${contact.phone}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 11px', textDecoration: 'none', fontSize: 13, color: 'var(--text-secondary)' }}>
+                    <Phone size={13} /> {contact.phone}
+                  </a>
+                  <a href={`https://wa.me/${contact.phone.replace(/[^0-9]/g, '')}`} target="_blank" rel="noreferrer" title="WhatsApp" style={{ padding: '7px 9px', borderLeft: '1px solid var(--border2)', color: '#1E7E34', display: 'flex' }}>
+                    <MessageCircle size={13} />
+                  </a>
+                  <button onClick={() => copyToClipboard(contact.phone, 'h-phone')} title="Telefon kopieren" style={{ padding: '7px 9px', border: 'none', borderLeft: '1px solid var(--border2)', background: 'none', cursor: 'pointer', color: copied === 'h-phone' ? '#1E7E34' : 'var(--text-tertiary)', display: 'flex' }}>
+                    {copied === 'h-phone' ? <Check size={13} /> : <Copy size={13} />}
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -608,22 +677,32 @@ function ContactPanel({
           )}
 
           {/* Tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', gap: 0, marginTop: 2 }}>
-            {(['info', 'aktivitaeten', 'aufgaben'] as const).map(t => (
-              <button key={t} onClick={() => setTab(t)} style={{
-                flex: 1, padding: '9px 4px', border: 'none', background: 'none', cursor: 'pointer',
-                fontFamily: 'inherit', fontSize: 13, fontWeight: tab === t ? 600 : 450,
-                color: tab === t ? 'var(--accent)' : 'var(--text-secondary)',
-                borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
-              }}>
-                {t === 'info' ? 'Info' : t === 'aktivitaeten' ? 'Aktivitäten' : 'Aufgaben'}
-              </button>
-            ))}
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', gap: 4, marginTop: 2 }}>
+            {(['info', 'aktivitaeten', 'aufgaben'] as const).map(t => {
+              const openTasks = tasks.filter(x => !x.done).length
+              const count = t === 'aktivitaeten' ? activities.length : t === 'aufgaben' ? openTasks : 0
+              const label = t === 'info' ? 'Info' : t === 'aktivitaeten' ? 'Aktivitäten' : 'Aufgaben'
+              return (
+                <button key={t} onClick={() => setTab(t)} style={{
+                  flex: '0 0 auto', padding: '9px 18px', border: 'none', background: 'none', cursor: 'pointer',
+                  fontFamily: 'inherit', fontSize: 13.5, fontWeight: tab === t ? 700 : 500,
+                  color: tab === t ? 'var(--accent)' : 'var(--text-secondary)',
+                  borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  {label}
+                  {count > 0 && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, background: tab === t ? 'var(--accent)' : 'var(--border)', color: tab === t ? '#fff' : 'var(--text-secondary)', padding: '0 6px', borderRadius: 100, minWidth: 16, textAlign: 'center' }}>{count}</span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </div>
 
         {/* ── Tab Content ── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px 30px' }}>
+        <div className="crm-lb-content" style={{ flex: 1, overflowY: 'auto', padding: '22px 22px 32px' }}>
+         <div style={{ maxWidth: 880, margin: '0 auto' }}>
 
           {/* ── INFO TAB ── */}
           {tab === 'info' && (
@@ -662,6 +741,53 @@ function ContactPanel({
                   {SI('Umsatz (€)', 'deal_value', 'number')}
                 </div>
                 {SI('Geburtstag', 'birthday', 'date')}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{ marginBottom: 12 }}>
+                    <FieldLabel>Quelle</FieldLabel>
+                    <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value as Source }))} style={selStyle}>
+                      {Object.entries(SOURCE_LABELS).filter(([k]) => k !== 'custom').map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <FieldLabel>Event-Typ</FieldLabel>
+                    <select value={form.event_type} onChange={e => setForm(f => ({ ...f, event_type: e.target.value as EventType }))} style={selStyle}>
+                      {Object.entries(EVENT_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {SI('Veranstaltungsort', 'location')}
+                {SI('Event-Titel', 'event_title')}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {SI('Gästeanzahl', 'guest_count', 'number')}
+                  {SI('Paar-Budget (€)', 'couple_budget', 'number')}
+                </div>
+
+                {/* ── Personen / Brautpaar bearbeiten ── */}
+                <div style={{ marginBottom: 12, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <FieldLabel>Weitere Personen (Partner/in etc.)</FieldLabel>
+                    <button type="button" onClick={addPerson} style={{ display: 'flex', alignItems: 'center', gap: 4, border: '1px solid var(--border2)', background: 'var(--bg)', borderRadius: 7, padding: '4px 9px', fontSize: 12, cursor: 'pointer', color: 'var(--text-secondary)', fontFamily: 'inherit' }}>
+                      <UserPlus size={12} /> Person
+                    </button>
+                  </div>
+                  {persons.length === 0 && <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '0 0 6px' }}>Noch keine weiteren Personen erfasst.</p>}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {persons.map((p, i) => (
+                      <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 10, background: 'var(--bg)' }}>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                          <input placeholder="Name" value={p.name} onChange={e => updatePerson(i, { name: e.target.value })} style={{ ...miniInput, flex: 1 }} />
+                          <input placeholder="Rolle" value={p.role} onChange={e => updatePerson(i, { role: e.target.value })} style={{ ...miniInput, width: 120 }} />
+                          <button type="button" onClick={() => removePerson(i)} title="Entfernen" style={{ border: '1px solid var(--border2)', background: 'var(--surface)', borderRadius: 7, padding: '0 9px', cursor: 'pointer', color: '#C5221F', flexShrink: 0 }}><Trash2 size={13} /></button>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                          <input placeholder="E-Mail" value={p.email} onChange={e => updatePerson(i, { email: e.target.value })} style={miniInput} />
+                          <input placeholder="Telefon" value={p.phone} onChange={e => updatePerson(i, { phone: e.target.value })} style={miniInput} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div style={{ marginBottom: 12 }}>
                   <FieldLabel>Notizen</FieldLabel>
                   <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3}
@@ -717,24 +843,31 @@ function ContactPanel({
                     </div>
                   )}
 
-                  {/* Weitere Personen */}
-                  {(contact.crm_contact_persons?.length ?? 0) > 0 && (
-                    <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-                      <FieldLabel>Weitere Personen</FieldLabel>
-                      {contact.crm_contact_persons!.map(p => (
-                        <div key={p.id} style={{ display: 'flex', gap: 10, marginTop: 8, alignItems: 'center' }}>
-                          <div style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, background: 'var(--bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)' }}>
-                            {initials(p.name)}
-                          </div>
-                          <div>
-                            <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{p.name}</p>
-                            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: 0 }}>
-                              {[p.email && <a key="e" href={`mailto:${p.email}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>{p.email}</a>, p.phone && <a key="p" href={`tel:${p.phone}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>{p.phone}</a>].filter(Boolean).reduce((a: React.ReactNode[], b, i) => i === 0 ? [b] : [...a, ' · ', b], [])}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                </section>
+
+                {/* ── Personen / Brautpaar ── */}
+                <section style={{ marginBottom: 22, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+                      {contact.event_type === 'hochzeit' ? 'Brautpaar / Personen' : 'Personen'}
+                    </p>
+                    {!editing && (
+                      <button onClick={() => setEditing(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--accent)', fontFamily: 'inherit', fontWeight: 600 }}>
+                        <Pencil size={11} /> Bearbeiten
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+                    {/* Person 1 = Hauptkontakt */}
+                    <PersonView name={contact.name} role="Hauptkontakt" email={contact.email} phone={contact.phone} accent />
+                    {(contact.crm_contact_persons ?? []).map(p => (
+                      <PersonView key={p.id} name={p.name} role={roleLabel(p.role)} email={p.email} phone={p.phone} />
+                    ))}
+                  </div>
+                  {(contact.crm_contact_persons?.length ?? 0) === 0 && (
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '10px 0 0' }}>
+                      Nur der Hauptkontakt ist erfasst. Über &bdquo;Bearbeiten&ldquo; kannst du Partner/in und weitere Personen mit eigenen Namen &amp; Kontaktdaten ergänzen.
+                    </p>
                   )}
                 </section>
 
@@ -937,7 +1070,17 @@ function ContactPanel({
               ))}
             </div>
           )}
+         </div>
         </div>
+        <style>{`
+          .crm-lb-overlay { animation: crm-lb-fade 140ms ease; }
+          @keyframes crm-lb-fade { from { opacity: 0 } to { opacity: 1 } }
+          @media (max-width: 760px) {
+            .crm-lb-overlay { padding: 0 !important; }
+            .crm-lb { width: 100vw !important; height: 100dvh !important; border-radius: 0 !important; max-width: none !important; max-height: none !important; }
+            .crm-lb-content { padding-left: 16px !important; padding-right: 16px !important; }
+          }
+        `}</style>
       </div>
     </div>
   )
