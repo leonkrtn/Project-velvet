@@ -7,8 +7,8 @@ import {
   Check, Loader2, Trash2, X,
 } from 'lucide-react'
 import { performLogout } from '@/lib/logout'
-import { VENDOR_TOUR_START_EVENT } from '@/lib/tour/vendor-tour-steps'
 import { ACCOUNT_DELETE_GRACE_DAYS } from '@/lib/account/delete-grace'
+import VendorHelpMenu from '@/components/vendor/VendorHelpMenu'
 
 const C = {
   bg: 'var(--bg)', surface: 'var(--surface)', border: 'var(--border)',
@@ -35,6 +35,7 @@ export default function VendorProfilClient({ initialName, initialEmail }: { init
 
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   async function patchProfile(body: Record<string, string>) {
     const res = await fetch('/api/veranstalter/profile', {
@@ -142,10 +143,10 @@ export default function VendorProfilClient({ initialName, initialEmail }: { init
             <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><ExternalLink size={16} style={{ color: C.dim }} /> Anbieter-Profil (Marktplatz-Auftritt)</span>
           </Link>
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent(VENDOR_TOUR_START_EVENT, { detail: {} }))}
+            onClick={() => setHelpOpen(true)}
             style={{ ...rowLinkStyle, border: 'none', background: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}
           >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><HelpCircle size={16} style={{ color: C.dim }} /> Hilfe-Tour starten</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}><HelpCircle size={16} style={{ color: C.dim }} /> Hilfe &amp; Erklärungen</span>
           </button>
           <button
             onClick={() => performLogout()}
@@ -188,6 +189,8 @@ export default function VendorProfilClient({ initialName, initialEmail }: { init
           </div>
         </div>
       )}
+
+      <VendorHelpMenu open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       <style>{`.vp-spin{animation:vpspin 1s linear infinite}@keyframes vpspin{to{transform:rotate(360deg)}}`}</style>
     </div>

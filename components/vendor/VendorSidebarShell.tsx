@@ -4,14 +4,13 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
-  Calendar, BarChart2, User, LogOut, HelpCircle, Users, Menu, X, Zap,
+  Calendar, BarChart2, User, LogOut, Users, Menu, X, Zap,
   Sparkles, ChevronRight, Mail, Settings,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
 import { VENDOR_QUICK_TOUR_STEPS, VENDOR_QUICK_TOUR_START_EVENT, VENDOR_QUICK_TOUR_DONE_KEY } from '@/lib/tour/vendor-quick-tour-steps'
 import VendorTour from '@/components/tour/VendorTour'
-import VendorHelpMenu from '@/components/vendor/VendorHelpMenu'
 
 interface Props {
   companyName: string
@@ -65,7 +64,6 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
   const [badges, setBadges] = useState<BadgeData>({ pendingAnfragen: 0 })
   const [moderationStatus, setModerationStatus] = useState<string | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [helpMenuOpen, setHelpMenuOpen] = useState(false)
   // null = noch nicht vom Server geladen — Quick-Tour erst rendern, wenn klar ist,
   // dass sie für diesen Account noch nicht abgeschlossen wurde (verhindert Re-Start
   // bei jeder neuen Anmeldung auf einem anderen Gerät/Browser).
@@ -182,21 +180,6 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             <User size={16} style={{ flexShrink: 0, opacity: active === 'listing' ? 1 : 0.45 }} />
             <span className="vdr-nav-text">Anbieter-Profil</span>
           </Link>
-          <button
-            onClick={() => setHelpMenuOpen(true)}
-            className="vdr-help-btn"
-            title="Hilfe & Erklärungen"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '7px 10px', borderRadius: 8, width: '100%',
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontFamily: 'inherit', fontSize: 14, fontWeight: 450,
-              color: 'var(--text-secondary)', marginTop: 1,
-            }}
-          >
-            <HelpCircle size={16} style={{ flexShrink: 0, opacity: 0.5 }} />
-            <span className="vdr-nav-text">Hilfe</span>
-          </button>
           <button
             onClick={() => performLogout()}
             className="vdr-logout-btn"
@@ -339,13 +322,6 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             </div>
           </Link>
           <button
-            onClick={() => { setMobileMenuOpen(false); setHelpMenuOpen(true) }}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 450, color: 'var(--text-secondary)', marginTop: 1 }}
-          >
-            <HelpCircle size={16} style={{ flexShrink: 0, opacity: 0.5 }} />
-            <span>Hilfe</span>
-          </button>
-          <button
             onClick={() => performLogout()}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', borderRadius: 8, width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 450, color: 'var(--text-secondary)', marginTop: 1 }}
           >
@@ -399,8 +375,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         .vdr-shell a:hover { opacity: 1 !important; }
         .vdr-shell button:hover:not(:disabled) { filter: none !important; opacity: 1 !important; }
 
-        .vdr-logout-btn:hover,
-        .vdr-help-btn:hover { background: rgba(35,82,200,0.06) !important; }
+        .vdr-logout-btn:hover { background: rgba(35,82,200,0.06) !important; }
 
         .vdr-nav-link:hover,
         .vdr-drawer-link:hover { background: rgba(35,82,200,0.08) !important; }
@@ -419,9 +394,7 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
           .vdr-badge { display: none !important; }
           .vdr-sidebar-bottom { padding: 6px 6px 12px !important; }
           .vdr-logout-btn { justify-content: center !important; padding: 10px !important; gap: 0 !important; }
-          .vdr-help-btn { justify-content: center !important; padding: 10px !important; gap: 0 !important; }
-          .vdr-logout-btn span,
-          .vdr-help-btn span { display: none !important; }
+          .vdr-logout-btn span { display: none !important; }
         }
 
         /* Mobile: burger menu */
@@ -435,8 +408,8 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         }
       `}</style>
 
-      {/* Hilfe-Auswahl (kompletter Rundgang / einzelner Bereich / Hilfe-Seite) */}
-      <VendorHelpMenu open={helpMenuOpen} onClose={() => setHelpMenuOpen(false)} />
+      {/* Hilfe-Auswahl (kompletter Rundgang / einzelner Bereich / Hilfe-Seite) lebt
+          jetzt im Profil (/vendor/profil) statt als eigener Sidebar-Button. */}
       {/* Ausführliche Tour (über das Hilfe-Menü, optional bereichsgefiltert) */}
       <VendorTour />
       {/* Kurze Onboarding-Tour: einmaliger Auto-Start nach dem Wizard.

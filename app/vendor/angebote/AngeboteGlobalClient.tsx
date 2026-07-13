@@ -187,6 +187,12 @@ export default function AngeboteGlobalClient() {
     const d = await res.json().catch(() => ({}))
     setCreating(false)
     if (d.id) {
+      // Erstellungs-Panel schon jetzt schließen (nicht erst beim Zurücknavigieren) —
+      // sonst zeigt Next.js' Router-Cache beim nächsten Aufruf von "Angebote" im
+      // Side-Menü kurz wieder diese Maske statt der Liste, weil der React-Zustand
+      // der Seite über die clientseitige Navigation hinweg erhalten bleibt.
+      setCreateOpen(false)
+      setPickedEvent(null)
       if (isStandalone) {
         router.push(`/vendor/angebote/${d.id}`)
       } else {

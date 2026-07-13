@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Loader2, Plus, Trash2, RefreshCw, Save, Check, X, ChevronLeft,
+  Loader2, Plus, Trash2, RefreshCw, Save, Check, X,
   ReceiptText, Layers, BookmarkPlus, MessageSquare, Copy, AlertTriangle, CalendarPlus, Download,
 } from 'lucide-react'
 import {
@@ -266,10 +266,6 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
 
   return (
     <div className="ofe-outer" style={{ paddingBottom: 40 }}>
-      <Link href={eventId ? `/vendor/dashboard/${eventId}/angebote` : '/vendor/angebote'} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: '#111111', background: '#ffffff', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', textDecoration: 'none', marginBottom: 16 }}>
-        <ChevronLeft size={15} /> Alle Angebote
-      </Link>
-
       <div
         ref={splitRef}
         className="ofe-grid"
