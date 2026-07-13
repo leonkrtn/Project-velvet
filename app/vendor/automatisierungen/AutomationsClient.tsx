@@ -6,6 +6,7 @@ import ToggleSwitch from '@/components/ui/ToggleSwitch'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import EmailsClient from '@/app/vendor/e-mails/EmailsClient'
 import SegmentedToggle from '@/components/vendor/SegmentedToggle'
+import type { EmailTemplateKey } from '@/lib/vendor/email-templates'
 
 type PageTab = 'regeln' | 'emails'
 const PAGE_TABS: { key: PageTab; label: string; icon: React.ReactNode }[] = [
@@ -65,7 +66,15 @@ export default function AutomationsClient() {
   const [rules, setRules] = useState<Rule[]>([])
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [tab, setTab] = useState<PageTab>('regeln')
+  const [emailKey, setEmailKey] = useState<EmailTemplateKey>('offer_released')
   const loadedRef = useRef(false)
+
+  // Von einer Regel aus direkt in den passenden E-Mail-Reiter springen.
+  function openEmail(kind: Kind) {
+    if (kind === 'review_request') setEmailKey('review_request')
+    else if (kind === 'followup_offer') setEmailKey('followup_offer')
+    setTab('emails')
+  }
 
   const load = useCallback(async () => {
     const r = await fetch('/api/vendor/automations')
@@ -122,11 +131,11 @@ export default function AutomationsClient() {
       <SegmentedToggle
         style={{ display: 'inline-flex', marginBottom: 20 }}
         value={tab}
-        onChange={setTab}
+        onChange={(v: PageTab) => { if (v === 'emails') setEmailKey('offer_released'); setTab(v) }}
         options={PAGE_TABS.map(t => ({ key: t.key, label: <>{t.icon}{t.label}</> }))}
       />
 
-      {tab === 'emails' && <EmailsClient embedded />}
+      {tab === 'emails' && <EmailsClient embedded initialKey={emailKey} />}
 
       {tab === 'regeln' && (<>
       <h3 style={{ ...sectionHead, marginTop: 0 }}>Automatische Regeln</h3>
@@ -158,7 +167,7 @@ export default function AutomationsClient() {
                 </div>
                 <p style={{ fontSize: 12.5, color: C.dim, margin: '3px 0 0', lineHeight: 1.5 }}>{group.desc}</p>
                 {(group.kind === 'review_request' || group.kind === 'followup_offer') && (
-                  <button onClick={() => setTab('emails')} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: C.gold, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', marginTop: 6 }}>
+                  <button onClick={() => openEmail(group.kind)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: C.gold, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', marginTop: 6 }}>
                     <Mail size={13} /> E-Mail-Text bearbeiten
                   </button>
                 )}

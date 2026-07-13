@@ -30,16 +30,18 @@ interface Loaded {
   greeting: string
   signature: string
   brand: { color: string | null; name: string | null }
+  imprint: string[]
 }
 
-export default function EmailsClient({ embedded }: { embedded?: boolean } = {}) {
+export default function EmailsClient({ embedded, initialKey }: { embedded?: boolean; initialKey?: EmailTemplateKey } = {}) {
   const [loading, setLoading] = useState(true)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [templates, setTemplates] = useState<Record<EmailTemplateKey, EmailTemplate>>(DEFAULT_TEMPLATES)
   const [greeting, setGreeting] = useState(DEFAULT_GREETING)
   const [signature, setSignature] = useState(DEFAULT_SIGNATURE)
   const [brand, setBrand] = useState<{ color: string | null; name: string | null }>({ color: null, name: null })
-  const [active, setActive] = useState<EmailTemplateKey>('offer_released')
+  const [imprint, setImprint] = useState<string[]>([])
+  const [active, setActive] = useState<EmailTemplateKey>(initialKey ?? 'offer_released')
   const loadedRef = useRef(false)
 
   const load = useCallback(async () => {
@@ -49,6 +51,7 @@ export default function EmailsClient({ embedded }: { embedded?: boolean } = {}) 
     if (typeof d.greeting === 'string') setGreeting(d.greeting)
     if (typeof d.signature === 'string') setSignature(d.signature)
     if (d.brand) setBrand(d.brand)
+    if (Array.isArray(d.imprint)) setImprint(d.imprint)
     setLoading(false)
     loadedRef.current = true
   }, [])
@@ -79,13 +82,20 @@ export default function EmailsClient({ embedded }: { embedded?: boolean } = {}) 
     setTemplates(ts => ({ ...ts, [active]: { ...DEFAULT_TEMPLATES[active] } }))
   }
 
+  // In der Vorschau echten Firmennamen fuer {firma} zeigen (statt Beispielwert),
+  // damit die Vorschau exakt dem entspricht, was das Brautpaar spaeter erhaelt.
+  const previewValues = useMemo(
+    () => ({ ...SAMPLE_VALUES, ...(brand.name ? { firma: brand.name } : {}) }),
+    [brand.name],
+  )
+
   const previewHtml = useMemo(() => renderVendorEmailHtml({
-    template: templates[active], greeting, signature, brand, values: SAMPLE_VALUES, ctaUrl: '#',
-  }).html, [templates, active, greeting, signature, brand])
+    template: templates[active], greeting, signature, brand, imprint, values: previewValues, ctaUrl: '#',
+  }).html, [templates, active, greeting, signature, brand, imprint, previewValues])
 
   const previewSubject = useMemo(() => renderVendorEmailHtml({
-    template: templates[active], greeting, signature, brand, values: SAMPLE_VALUES,
-  }).subject, [templates, active, greeting, signature, brand])
+    template: templates[active], greeting, signature, brand, imprint, values: previewValues,
+  }).subject, [templates, active, greeting, signature, brand, imprint, previewValues])
 
   if (loading) return <div style={{ minHeight: '60dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="bp-spin" /></div>
 
