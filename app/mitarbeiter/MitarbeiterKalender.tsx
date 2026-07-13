@@ -104,12 +104,12 @@ export default function MitarbeiterKalender({
       >
         {/* Header */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8,
           padding: '14px 18px', borderBottom: '1px solid #F3F4F6', flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button onClick={prevMonth} style={navBtnStyle}><ChevronLeft size={16} /></button>
-            <span style={{ fontSize: 15, fontWeight: 600, color: '#111827', minWidth: 160, textAlign: 'center' }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#111827', minWidth: 120, textAlign: 'center' }}>
               {MONTHS[month]} {year}
             </span>
             <button onClick={nextMonth} style={navBtnStyle}><ChevronRight size={16} /></button>

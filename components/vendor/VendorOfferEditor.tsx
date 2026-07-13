@@ -25,8 +25,6 @@ const inp: React.CSSProperties = { height: 32, padding: '0 9px', fontSize: 13, b
 const btn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid transparent' }
 const btnGhost: React.CSSProperties = { ...btn, background: C.surface, color: C.text, border: `1px solid ${C.border}` }
 
-type View = 'antworten' | 'angebot'
-
 interface Props {
   requestId: string
   eventId: string
@@ -42,7 +40,6 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
   const [validUntil, setValidUntil] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState('')
-  const [view, setView] = useState<View>('antworten')
   const [pdfPreview, setPdfPreview] = useState(false)
 
   const load = useCallback(async () => {
@@ -127,36 +124,32 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
     return null
   }
 
+  const hasAnswers = (offer.answers ?? []).length > 0
+
   return (
     <div data-tour="vdr-offer-editor">
-      {/* Segmented toggle (Design wie Aufgaben & Notizen) */}
-      <div data-tour="vdr-offer-tabs" style={{ display: 'inline-flex', gap: 4, padding: 4, marginBottom: 16, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
-        {([['antworten', 'Antworten', <ClipboardList key="a" size={15} />], ['angebot', 'Angebot', <ReceiptText key="o" size={15} />]] as [View, string, React.ReactNode][]).map(([key, label, icon]) => {
-          const active = view === key
-          return (
-            <button key={key} onClick={() => setView(key)} style={{
-              display: 'flex', alignItems: 'center', gap: 7, padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
-              background: active ? C.surface : 'transparent', boxShadow: active ? 'var(--shadow-sm)' : 'none',
-              color: active ? C.text : C.dim, fontSize: 13.5, fontWeight: active ? 600 : 450, fontFamily: 'inherit', transition: 'background 0.12s',
-            }}>
-              {icon}{label}
-            </button>
-          )
-        })}
-      </div>
-
       {err && <p style={{ color: C.red, fontSize: 12.5, margin: '0 0 8px' }}>{err}</p>}
 
-      {view === 'antworten' ? (
-        <AnswersView answers={offer.answers ?? []} info={offer.standard_info ?? {}} />
-      ) : (
-        <OfferBody
-          offer={offer} items={items} editable={!!editable} totals={totals}
-          notes={notes} setNotes={setNotes} validUntil={validUntil} setValidUntil={setValidUntil}
-          setItem={setItem} addItem={addItem} removeItem={removeItem}
-          busy={busy} onRecompute={recompute}
-        />
+      {/* Beantwortete Fragen des Anfrageformulars — immer direkt sichtbar,
+          nicht mehr hinter einem Tab versteckt. */}
+      {hasAnswers && (
+        <div data-tour="vdr-offer-answers" style={{ marginBottom: 20 }}>
+          <h4 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.dim, margin: '0 0 10px' }}>
+            <ClipboardList size={14} /> Antworten aus dem Anfrageformular
+          </h4>
+          <AnswersView answers={offer.answers ?? []} info={offer.standard_info ?? {}} />
+        </div>
       )}
+
+      <h4 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.dim, margin: '0 0 10px' }}>
+        <ReceiptText size={14} /> Angebot
+      </h4>
+      <OfferBody
+        offer={offer} items={items} editable={!!editable} totals={totals}
+        notes={notes} setNotes={setNotes} validUntil={validUntil} setValidUntil={setValidUntil}
+        setItem={setItem} addItem={addItem} removeItem={removeItem}
+        busy={busy} onRecompute={recompute}
+      />
 
       {/* Aktionen (immer sichtbar) */}
       <div data-tour="vdr-offer-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16, flexWrap: 'wrap' }}>
@@ -287,8 +280,8 @@ function VariantsManager({ requestId, editable, currency }: { requestId: string;
                     </>
                   ) : (
                     <>
-                      <span style={{ flex: 1, fontSize: 12.5 }}>{li.label}</span>
-                      <span style={{ width: 80, textAlign: 'right', fontSize: 12.5 }}>{formatMoney(li.total, currency)}</span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, wordBreak: 'break-word' }}>{li.label}</span>
+                      <span style={{ width: 80, flexShrink: 0, textAlign: 'right', fontSize: 12.5 }}>{formatMoney(li.total, currency)}</span>
                     </>
                   )}
                 </div>
@@ -302,8 +295,8 @@ function VariantsManager({ requestId, editable, currency }: { requestId: string;
               </div>
 
               {editable && (
-                <button onClick={() => saveVariant(v)} disabled={busy === v.id} style={{ ...btnGhost, marginTop: 8, padding: '6px 12px', fontSize: 12.5 }}>
-                  {busy === v.id ? <Loader2 size={13} className="anf-spin" /> : <Save size={13} />} Variante speichern
+                <button onClick={() => saveVariant(v)} disabled={busy === v.id} style={{ ...btnGhost, marginTop: 8 }}>
+                  {busy === v.id ? <Loader2 size={15} className="anf-spin" /> : <Save size={15} />} Variante speichern
                 </button>
               )}
             </div>
@@ -398,29 +391,29 @@ function OfferBody({ offer, items, editable, totals, notes, setNotes, validUntil
       {/* Positionen */}
       <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
         <div style={{ display: 'flex', fontSize: 10.5, fontWeight: 700, color: C.dim, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '8px 10px', background: C.bg }}>
-          <span style={{ flex: 1 }}>Position</span>
-          <span style={{ width: 50, textAlign: 'right' }}>Menge</span>
-          <span style={{ width: 80, textAlign: 'right' }}>Einzel</span>
-          <span style={{ width: 84, textAlign: 'right' }}>Summe</span>
-          {editable && <span style={{ width: 28 }} />}
+          <span style={{ flex: 1, minWidth: 0 }}>Position</span>
+          <span style={{ width: 50, flexShrink: 0, textAlign: 'right' }}>Menge</span>
+          <span style={{ width: 80, flexShrink: 0, textAlign: 'right' }}>Einzel</span>
+          <span style={{ width: 84, flexShrink: 0, textAlign: 'right' }}>Summe</span>
+          {editable && <span style={{ width: 28, flexShrink: 0 }} />}
         </div>
         {items.length === 0 && <div style={{ padding: '10px', fontSize: 13, color: C.dim }}>Keine Positionen.</div>}
         {items.map((li, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderTop: `1px solid ${C.border}` }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderTop: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
             {editable ? (
               <>
-                <input style={{ ...inp, flex: 1, minWidth: 0 }} value={li.label} onChange={e => setItem(i, { label: e.target.value })} placeholder="Bezeichnung" />
-                <input style={{ ...inp, width: 50, textAlign: 'right' }} type="number" value={li.qty} onChange={e => setItem(i, { qty: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
-                <input style={{ ...inp, width: 80, textAlign: 'right' }} type="number" value={li.unitPrice} onChange={e => setItem(i, { unitPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
-                <span style={{ width: 84, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.total, totals.cur)}</span>
-                <button onClick={() => removeItem(i)} style={{ width: 28, background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex', justifyContent: 'center' }}><Trash2 size={14} /></button>
+                <input style={{ ...inp, flex: 1, minWidth: 90 }} value={li.label} onChange={e => setItem(i, { label: e.target.value })} placeholder="Bezeichnung" />
+                <input style={{ ...inp, width: 50, flexShrink: 0, textAlign: 'right' }} type="number" value={li.qty} onChange={e => setItem(i, { qty: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
+                <input style={{ ...inp, width: 80, flexShrink: 0, textAlign: 'right' }} type="number" value={li.unitPrice} onChange={e => setItem(i, { unitPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
+                <span style={{ width: 84, flexShrink: 0, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.total, totals.cur)}</span>
+                <button onClick={() => removeItem(i)} style={{ width: 28, flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex', justifyContent: 'center' }}><Trash2 size={14} /></button>
               </>
             ) : (
               <>
-                <span style={{ flex: 1, fontSize: 13 }}>{li.label}</span>
-                <span style={{ width: 50, textAlign: 'right', fontSize: 13 }}>{li.qty}</span>
-                <span style={{ width: 80, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.unitPrice, totals.cur)}</span>
-                <span style={{ width: 84, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.total, totals.cur)}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13, wordBreak: 'break-word' }}>{li.label}</span>
+                <span style={{ width: 50, flexShrink: 0, textAlign: 'right', fontSize: 13 }}>{li.qty}</span>
+                <span style={{ width: 80, flexShrink: 0, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.unitPrice, totals.cur)}</span>
+                <span style={{ width: 84, flexShrink: 0, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.total, totals.cur)}</span>
               </>
             )}
           </div>
@@ -431,7 +424,7 @@ function OfferBody({ offer, items, editable, totals, notes, setNotes, validUntil
       </div>
 
       {/* Summen */}
-      <div style={{ marginLeft: 'auto', width: 240, marginTop: 10 }}>
+      <div style={{ marginLeft: 'auto', width: '100%', maxWidth: 240, marginTop: 10 }}>
         <Row label="Zwischensumme" value={formatMoney(totals.subtotal, totals.cur)} />
         {offer.tax_mode === 'regular' && <Row label={`zzgl. USt. (${totals.rate}%)`} value={formatMoney(totals.tax, totals.cur)} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${C.text}`, marginTop: 4, paddingTop: 6 }}>
@@ -442,7 +435,7 @@ function OfferBody({ offer, items, editable, totals, notes, setNotes, validUntil
       </div>
 
       {editable && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 10, marginTop: 14 }}>
+        <div className="vof-notes-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 10, marginTop: 14 }}>
           <div>
             <label style={{ fontSize: 11.5, fontWeight: 600, color: C.dim, display: 'block', marginBottom: 5 }}>Anmerkungen ans Brautpaar</label>
             <textarea style={{ ...inp, height: 'auto', padding: '7px 9px', width: '100%', minHeight: 54, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} />

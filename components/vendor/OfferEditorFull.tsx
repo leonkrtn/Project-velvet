@@ -273,7 +273,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
 
   return (
     <div className="ofe-outer" style={{ paddingBottom: 40 }}>
-      <Link href={eventId ? `/vendor/dashboard/${eventId}/angebote` : '/vendor/angebote'} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: C.dim, textDecoration: 'none', marginBottom: 16 }}>
+      <Link href={eventId ? `/vendor/dashboard/${eventId}/angebote` : '/vendor/angebote'} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: '#111111', background: '#ffffff', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', textDecoration: 'none', marginBottom: 16 }}>
         <ChevronLeft size={15} /> Alle Angebote
       </Link>
 

@@ -103,7 +103,6 @@ export default function AutomationsClient() {
 
   return (
     <div className="vnd-page-outer" style={{ background: C.bg, flex: 1, minHeight: '100dvh', padding: '28px 24px 48px', overflow: 'auto', boxSizing: 'border-box' }}>
-      <div className="vnd-page-card" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '24px 28px' }}>
 
       {/* Header (Muster wie Angebote/Anfragen/Report) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -166,32 +165,39 @@ export default function AutomationsClient() {
                     key={i}
                     className="auto-rule"
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-                      padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.border}`,
+                      padding: '12px 14px', borderRadius: 10, border: `1px solid ${C.border}`,
                       background: C.bg, opacity: r.enabled ? 1 : 0.55, transition: 'opacity 0.15s',
                     }}
                   >
-                    <ToggleSwitch checked={r.enabled} onChange={v => setRule(i, { enabled: v })} size="sm" aria-label="Regel aktiv" />
-                    <span className="auto-sentence" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13, color: C.text }}>
-                      {group.before}
+                    {/* Zeile 1: Ein/Aus + Kernsatz + Löschen — immer zusammen, egal wie schmal */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <ToggleSwitch checked={r.enabled} onChange={v => setRule(i, { enabled: v })} size="sm" aria-label="Regel aktiv" />
+                      <span className="auto-sentence" style={{ flex: 1, minWidth: 0, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13, color: C.text }}>
+                        {group.before}
+                        <input
+                          style={{ ...inp, width: 58, textAlign: 'right' }} type="number" min={0} value={r.offset_days}
+                          onChange={e => setRule(i, { offset_days: Math.max(0, e.target.value === '' ? 0 : parseInt(e.target.value, 10) || 0) })}
+                        />
+                        {group.after}
+                      </span>
+                      <button onClick={() => removeRule(i)} aria-label="Regel entfernen" title="Regel entfernen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex', flexShrink: 0, padding: 4 }}><Trash2 size={15} /></button>
+                    </div>
+
+                    {/* Zeile 2: Nebenbedingungen — visuell abgesetzt vom Kernsatz */}
+                    <div className="auto-rule-meta" style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: C.dim }}>
+                        Gilt für
+                        <select className="auto-select" style={{ ...inp, width: 'auto', maxWidth: 180 }} value={r.event_type} onChange={e => setRule(i, { event_type: e.target.value })}>
+                          {EVENT_TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
+                        </select>
+                      </label>
                       <input
-                        style={{ ...inp, width: 58, textAlign: 'right' }} type="number" min={0} value={r.offset_days}
-                        onChange={e => setRule(i, { offset_days: Math.max(0, e.target.value === '' ? 0 : parseInt(e.target.value, 10) || 0) })}
+                        className="auto-label"
+                        style={{ ...inp, flex: '1 1 180px', minWidth: 140 }}
+                        value={r.label} placeholder="Interne Bezeichnung (optional)"
+                        onChange={e => setRule(i, { label: e.target.value })}
                       />
-                      {group.after}
-                      <span style={{ color: C.dim }}>·</span>
-                      <span style={{ color: C.dim }}>gilt für</span>
-                      <select className="auto-select" style={{ ...inp, width: 'auto', maxWidth: 180 }} value={r.event_type} onChange={e => setRule(i, { event_type: e.target.value })}>
-                        {EVENT_TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
-                      </select>
-                    </span>
-                    <input
-                      className="auto-label"
-                      style={{ ...inp, flex: '1 1 150px', minWidth: 110, marginLeft: 'auto' }}
-                      value={r.label} placeholder="Interne Bezeichnung (optional)"
-                      onChange={e => setRule(i, { label: e.target.value })}
-                    />
-                    <button onClick={() => removeRule(i)} aria-label="Regel entfernen" title="Regel entfernen" style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex', flexShrink: 0, padding: 4 }}><Trash2 size={15} /></button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -211,12 +217,11 @@ export default function AutomationsClient() {
       <h3 style={sectionHead}>Manuelle Aktionen</h3>
       <ManualReviewSection />
 
-      </div>
-
       <style>{`
-        @media (max-width: 640px) {
-          .auto-rule { align-items: flex-start !important; }
-          .auto-rule .auto-label { flex: 1 1 100% !important; margin-left: 0 !important; }
+        @media (max-width: 480px) {
+          .auto-rule-meta { flex-direction: column !important; align-items: stretch !important; }
+          .auto-rule-meta label { justify-content: space-between !important; }
+          .auto-rule-meta .auto-select { flex: 1 1 auto !important; max-width: none !important; }
         }
       `}</style>
     </div>
@@ -266,10 +271,15 @@ function NewRequestEmailSection() {
           als Excel-Anhang — praktisch, um außerhalb von Forevr zu kalkulieren.
         </p>
       </div>
-      <span style={{ flexShrink: 0, paddingTop: 4 }}>
-        {loading
-          ? <Loader2 size={15} className="bp-spin" style={{ color: C.dim }} />
-          : <ToggleSwitch checked={enabled} onChange={toggle} size="sm" aria-label="Neue Anfragen per E-Mail" disabled={saving} />}
+      <span style={{ flexShrink: 0, paddingTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+        {loading ? (
+          <Loader2 size={15} className="bp-spin" style={{ color: C.dim }} />
+        ) : (
+          <>
+            <span style={{ fontSize: 12, fontWeight: 700, color: enabled ? C.gold : C.dim }}>{enabled ? 'An' : 'Aus'}</span>
+            <ToggleSwitch checked={enabled} onChange={toggle} size="sm" aria-label="Neue Anfragen per E-Mail" disabled={saving} />
+          </>
+        )}
       </span>
     </div>
   )

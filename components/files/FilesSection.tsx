@@ -313,6 +313,7 @@ function UploadPanel({
       <div style={{
         background: 'var(--surface, #fff)', borderRadius: 16,
         padding: '28px 28px 24px', maxWidth: 480, width: '100%',
+        maxHeight: '92vh', overflowY: 'auto',
         boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>

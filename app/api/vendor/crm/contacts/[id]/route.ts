@@ -55,6 +55,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     'birthday',
   ]
 
+  // Felder, die beide Partner gleichermaßen betreffen (Event-Kontext) — werden
+  // bei Bearbeitung automatisch an den verknüpften Partner-Kontakt weitergegeben.
+  // Individuelle Felder (Name, E-Mail, Telefon, Adresse, Notizen …) bleiben pro Person.
+  const SHARED_FIELDS = new Set([
+    'lifecycle_stage', 'source', 'event_type', 'wedding_date', 'deal_value',
+    'offer_id', 'event_id', 'request_id', 'anniversary_remind', 'guest_count',
+    'location', 'event_title', 'request_message', 'pending_offer_value', 'couple_budget',
+  ])
+
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   for (const key of ALLOWED) {
     if (key in body) patch[key] = body[key]
@@ -91,6 +100,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Geteilte Felder an den verknüpften Partner-Kontakt weitergeben.
+  if (data?.partner_contact_id) {
+    const sharedPatch: Record<string, unknown> = {}
+    for (const key of Object.keys(patch)) {
+      if (SHARED_FIELDS.has(key)) sharedPatch[key] = patch[key]
+    }
+    if (Object.keys(sharedPatch).length > 0) {
+      sharedPatch.updated_at = new Date().toISOString()
+      await admin.from('crm_contacts').update(sharedPatch).eq('id', data.partner_contact_id).eq('dienstleister_id', dlId)
+    }
+  }
 
   // Handle additional_persons update
   if (body.additional_persons !== undefined) {

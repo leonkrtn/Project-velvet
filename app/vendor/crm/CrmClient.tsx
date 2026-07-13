@@ -223,18 +223,16 @@ function ContactRow({ contact, selected, onClick, onStageChange }: {
   onStageChange?: (stage: LifecycleStage) => void
 }) {
   const s = stageFor(contact.lifecycle_stage)
-  const ETypeIcon = EVENT_TYPE_ICONS[contact.event_type] ?? HelpCircle
-  const openTasks = contact.crm_tasks?.filter(t => !t.done).length ?? 0
+  const eventLine = contact.event_title || EVENT_TYPE_LABELS[contact.event_type]
 
   return (
     <div
       onClick={onClick}
       style={{
-        display: 'grid',
-        gridTemplateColumns: '36px 1fr 160px 120px 100px 90px',
+        display: 'flex',
         alignItems: 'center',
         gap: 12,
-        padding: '11px 16px',
+        padding: '12px 16px',
         borderBottom: '1px solid var(--border)',
         cursor: 'pointer',
         background: selected ? 'var(--accent-light)' : 'transparent',
@@ -252,75 +250,20 @@ function ContactRow({ contact, selected, onClick, onStageChange }: {
         fontSize: 12, fontWeight: 700,
       }}>{initials(contact.name)}</div>
 
-      {/* Name + contact info */}
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {contact.name}
-          </span>
-          {contact.priority === 'vip' && <Star size={11} style={{ color: '#F59E0B', flexShrink: 0 }} />}
-          {contact.priority === 'grosskunde' && <Building2 size={11} style={{ color: '#6366F1', flexShrink: 0 }} />}
-          {openTasks > 0 && (
-            <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(35,82,200,0.12)', color: 'var(--accent)', padding: '1px 5px', borderRadius: 100, flexShrink: 0 }}>
-              {openTasks}T
-            </span>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
-          {contact.email && (
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{contact.email}</span>
-          )}
-          {contact.phone && !contact.email && (
-            <span>{contact.phone}</span>
-          )}
-          {!contact.email && !contact.phone && (
-            <span style={{ color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Keine Kontaktdaten</span>
-          )}
-        </div>
-      </div>
-
-      {/* Event info */}
-      <div style={{ minWidth: 0 }}>
-        {(contact.event_title || contact.wedding_date) ? (
-          <>
-            {contact.event_title && (
-              <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {contact.event_title}
-              </p>
-            )}
-            {contact.wedding_date && (
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0, display: 'flex', alignItems: 'center', gap: 3 }}>
-                <Calendar size={10} style={{ flexShrink: 0 }} />
-                {formatDateShort(contact.wedding_date)}
-              </p>
-            )}
-          </>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-tertiary)', fontSize: 12 }}>
-            <ETypeIcon size={11} />
-            <span>{EVENT_TYPE_LABELS[contact.event_type]}</span>
-          </div>
+      {/* Name (fett) + Event (klein, darf abgeschnitten werden) — alles andere in der Detailansicht */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {contact.name}
+        </p>
+        {eventLine && (
+          <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {eventLine}
+          </p>
         )}
-      </div>
-
-      {/* Value — only final revenue, or pending offer hint */}
-      <div style={{ textAlign: 'right' }}>
-        {contact.deal_value != null ? (
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{formatEur(contact.deal_value)}</span>
-        ) : contact.pending_offer_value != null ? (
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic' }}>Angebot: {formatEur(contact.pending_offer_value)}</span>
-        ) : (
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>—</span>
-        )}
-      </div>
-
-      {/* Source */}
-      <div style={{ textAlign: 'center' }}>
-        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{SOURCE_LABELS[contact.source]}</span>
       </div>
 
       {/* Stage */}
-      <div style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+      <div style={{ flexShrink: 0 }} onClick={e => e.stopPropagation()}>
         {onStageChange ? (
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <select
@@ -708,7 +651,7 @@ function ContactPanel({
             editing ? (
               <div>
                 {SI('Name', 'name')}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {SI('E-Mail', 'email', 'email')}
                   {SI('Telefon', 'phone', 'tel')}
                 </div>
@@ -719,7 +662,7 @@ function ContactPanel({
                   {SI('Wohn-PLZ', 'home_postal_code')}
                   {SI('Wohnort', 'home_city')}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div style={{ marginBottom: 12 }}>
                     <FieldLabel>Status</FieldLabel>
                     <select value={form.lifecycle_stage} onChange={e => setForm(f => ({ ...f, lifecycle_stage: e.target.value as LifecycleStage }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 13, fontFamily: 'inherit' }}>
@@ -735,12 +678,12 @@ function ContactPanel({
                     </select>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {SI('Hochzeitsdatum', 'wedding_date', 'date')}
                   {SI('Umsatz (€)', 'deal_value', 'number')}
                 </div>
                 {SI('Geburtstag', 'birthday', 'date')}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div style={{ marginBottom: 12 }}>
                     <FieldLabel>Quelle</FieldLabel>
                     <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value as Source }))} style={selStyle}>
@@ -756,7 +699,7 @@ function ContactPanel({
                 </div>
                 {SI('Veranstaltungsort', 'location')}
                 {SI('Event-Titel', 'event_title')}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {SI('Gästeanzahl', 'guest_count', 'number')}
                   {SI('Paar-Budget (€)', 'couple_budget', 'number')}
                 </div>
@@ -807,42 +750,40 @@ function ContactPanel({
               </div>
             ) : (
               <div>
-                {/* ── Kontaktdaten ── */}
-                <section style={{ marginBottom: 22 }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Kontaktdaten</p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    <InfoCell label="E-Mail" value={contact.email} href={contact.email ? `mailto:${contact.email}` : undefined} />
-                    <InfoCell label="Telefon" value={contact.phone} href={contact.phone ? `tel:${contact.phone}` : undefined} />
-                    {contact.home_city && (
-                      <div style={{ gridColumn: '1/-1' }}>
-                        <FieldLabel>Wohnadresse</FieldLabel>
-                        <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>
-                          {[contact.home_street, [contact.home_postal_code, contact.home_city].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
-                        </p>
-                      </div>
-                    )}
-                    {!contact.home_city && (contact.address_line1 || contact.address_line2) && (
-                      <div style={{ gridColumn: '1/-1' }}>
-                        <FieldLabel>Adresse</FieldLabel>
-                        <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>
-                          {[contact.address_line1, contact.address_line2].filter(Boolean).join(', ')}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Birthday */}
-                  {contact.birthday && (
-                    <div style={{ gridColumn: '1/-1' }}>
-                      <FieldLabel>Geburtstag</FieldLabel>
-                      <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>
-                        {formatDate(contact.birthday)}
-                        {(() => { const d = daysUntilBirthday(contact.birthday); return d != null && d <= 14 ? <span style={{ marginLeft: 8, fontSize: 11, color: '#D97706', fontWeight: 600 }}> — in {d} Tagen</span> : null })()}
-                      </p>
+                {/* ── Adresse & Geburtstag — E-Mail/Telefon stehen bereits oben in den
+                     Schnellaktionen, daher hier nicht nochmal doppelt. ── */}
+                {(contact.home_city || contact.address_line1 || contact.address_line2 || contact.birthday) && (
+                  <section style={{ marginBottom: 22 }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 12 }}>Adresse &amp; Geburtstag</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      {contact.home_city && (
+                        <div style={{ gridColumn: '1/-1' }}>
+                          <FieldLabel>Wohnadresse</FieldLabel>
+                          <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>
+                            {[contact.home_street, [contact.home_postal_code, contact.home_city].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
+                          </p>
+                        </div>
+                      )}
+                      {!contact.home_city && (contact.address_line1 || contact.address_line2) && (
+                        <div style={{ gridColumn: '1/-1' }}>
+                          <FieldLabel>Adresse</FieldLabel>
+                          <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>
+                            {[contact.address_line1, contact.address_line2].filter(Boolean).join(', ')}
+                          </p>
+                        </div>
+                      )}
+                      {contact.birthday && (
+                        <div style={{ gridColumn: '1/-1' }}>
+                          <FieldLabel>Geburtstag</FieldLabel>
+                          <p style={{ fontSize: 13, color: 'var(--text-primary)', margin: 0 }}>
+                            {formatDate(contact.birthday)}
+                            {(() => { const d = daysUntilBirthday(contact.birthday); return d != null && d <= 14 ? <span style={{ marginLeft: 8, fontSize: 11, color: '#D97706', fontWeight: 600 }}> — in {d} Tagen</span> : null })()}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  )}
-
-                </section>
+                  </section>
+                )}
 
                 {/* ── Personen / Brautpaar ── */}
                 <section style={{ marginBottom: 22, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
@@ -1121,13 +1062,13 @@ function NewContactModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={18} /></button>
         </div>
         {F('Name *', 'name')}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {F('E-Mail', 'email', 'email')}
           {F('Telefon', 'phone', 'tel')}
         </div>
         {F('Straße & Nr.', 'address_line1')}
         {F('PLZ & Ort', 'address_line2')}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Status</label>
             <select value={form.lifecycle_stage} onChange={e => setForm(f => ({ ...f, lifecycle_stage: e.target.value as LifecycleStage }))} style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 14, fontFamily: 'inherit' }}>
@@ -1141,7 +1082,7 @@ function NewContactModal({ onClose, onCreated }: { onClose: () => void; onCreate
             </select>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {F('Hochzeitsdatum', 'wedding_date', 'date')}
           {F('Budget / Umsatz (€)', 'deal_value', 'number')}
         </div>
@@ -1465,26 +1406,18 @@ export default function CrmClient() {
         {/* ── Content ── */}
         {loading ? (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 160px 120px 100px 90px', gap: 12, padding: '10px 16px', background: 'var(--bg)', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
-              <div />
-              {[120, 100, 80, 60, 60].map((w, i) => (
-                <div key={i} className="skeleton" style={{ height: 12, width: w, borderRadius: 4 }} />
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ width: 36, flexShrink: 0 }} />
+              <div className="skeleton" style={{ height: 12, width: 120, borderRadius: 4 }} />
             </div>
             {[1,2,3,4,5,6].map(i => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '36px 1fr 160px 120px 100px 90px', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)', alignItems: 'center' }}>
-                <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 9 }} />
-                <div>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="skeleton" style={{ height: 14, width: 160, marginBottom: 7, borderRadius: 5 }} />
                   <div className="skeleton" style={{ height: 12, width: 120, borderRadius: 4 }} />
                 </div>
-                <div>
-                  <div className="skeleton" style={{ height: 13, width: 100, marginBottom: 6, borderRadius: 4 }} />
-                  <div className="skeleton" style={{ height: 11, width: 70, borderRadius: 4 }} />
-                </div>
-                <div className="skeleton" style={{ height: 14, width: 70, borderRadius: 4, marginLeft: 'auto' }} />
-                <div className="skeleton" style={{ height: 12, width: 55, borderRadius: 4, margin: '0 auto' }} />
-                <div className="skeleton" style={{ height: 20, width: 62, borderRadius: 100, marginLeft: 'auto' }} />
+                <div className="skeleton" style={{ height: 20, width: 62, borderRadius: 100, flexShrink: 0 }} />
               </div>
             ))}
           </>
@@ -1511,7 +1444,7 @@ export default function CrmClient() {
             )}
           </div>
         ) : view === 'list' ? (
-          <>
+          <div>
             {/* List header */}
             {(() => {
               function SortHeader({ col, label, align }: { col: typeof sortCol; label: string; align?: string }) {
@@ -1525,13 +1458,10 @@ export default function CrmClient() {
                 )
               }
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 160px 120px 100px 90px', gap: 12, padding: '8px 16px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-                  <div />
-                  <SortHeader col="name" label="Kontakt" />
-                  <SortHeader col="wedding_date" label="Veranstaltung" />
-                  <SortHeader col="deal_value" label="Wert" align="right" />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>Quelle</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'right' }}>Status</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ width: 36, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}><SortHeader col="name" label="Kontakt" /></div>
+                  <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</span>
                 </div>
               )
             })()}
@@ -1542,7 +1472,7 @@ export default function CrmClient() {
                 await fetch(`/api/vendor/crm/contacts/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lifecycle_stage: stage }) })
               }} />
             ))}
-          </>
+          </div>
         ) : (
           /* Kanban */
           <div style={{ padding: '20px 20px' }}>

@@ -426,7 +426,8 @@ export default function ZeiterfassungSection({ eventId }: Props) {
                           {shift.task} · {fmtHour(shift.start_hour)} – {fmtHour(shift.end_hour)}
                         </span>
                       </div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                      <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse' }}>
                         <thead>
                           <tr style={{ borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.015)' }}>
                             <th style={{ ...labelStyle, padding: '7px 10px', textAlign: 'left', fontWeight: 700 }}>Einstempel-Zeit</th>
@@ -455,6 +456,7 @@ export default function ZeiterfassungSection({ eventId }: Props) {
                           />
                         </tbody>
                       </table>
+                      </div>
                     </div>
                   )
                 })}

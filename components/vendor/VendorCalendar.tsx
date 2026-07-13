@@ -318,6 +318,8 @@ export default function VendorCalendar() {
           .vc-calendar-header{padding:10px 12px!important;gap:8px!important}
           .vc-view-switcher button{padding:5px 8px!important;font-size:12px!important}
           .vc-day{min-height:52px!important;padding:3px 2px!important}
+          .vc-agenda-date{width:52px!important;padding:10px 6px!important}
+          .vc-agenda-events{padding:10px 10px!important}
         }
       `}</style>
     </div>
@@ -565,7 +567,7 @@ function AgendaView({ cursor, entries, onEntryClick, onAdd }: {
         return (
           <div key={dateKey} style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.border}` }}>
             {/* Date column */}
-            <div style={{
+            <div className="vc-agenda-date" style={{
               width: 80, flexShrink: 0, padding: '14px 12px',
               borderRight: `1px solid ${C.border}`, textAlign: 'right',
             }}>
@@ -581,13 +583,13 @@ function AgendaView({ cursor, entries, onEntryClick, onAdd }: {
             </div>
 
             {/* Events column */}
-            <div style={{ flex: 1, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div className="vc-agenda-events" style={{ flex: 1, minWidth: 0, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {dayEntries.map(e => (
                 <div
                   key={e.id}
                   onClick={() => onEntryClick(e)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
+                    display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
                     cursor: (e.editable || e.href) ? 'pointer' : 'default',
                     padding: '8px 12px', borderRadius: 10,
                     background: e.color + '14', border: `1px solid ${e.color}30`,
@@ -597,7 +599,7 @@ function AgendaView({ cursor, entries, onEntryClick, onAdd }: {
                   onMouseLeave={el => (el.currentTarget.style.filter = '')}
                 >
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: e.color, flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: 1, minWidth: 80 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
                     {e.description && (
                       <div style={{ fontSize: 12, color: C.dim, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.description}</div>

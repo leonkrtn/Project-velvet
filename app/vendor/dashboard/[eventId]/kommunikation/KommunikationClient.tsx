@@ -363,7 +363,7 @@ export default function KommunikationClient({ eventId, userId }: { eventId: stri
         <>
           <div style={{ padding: isMobile ? '10px 12px' : '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             {isMobile && (
-              <button onClick={() => setMobileShowChat(false)} aria-label="Zurück" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', flexShrink: 0, padding: 2 }}><ArrowLeft size={22} /></button>
+              <button onClick={() => setMobileShowChat(false)} aria-label="Zurück" style={{ background: '#ffffff', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: '#111111', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: 32, height: 32, padding: 0 }}><ArrowLeft size={20} /></button>
             )}
             <Avatar small group={convIsGroup(activeConv)} text={initials(convName(activeConv))} />
             <div style={{ flex: 1, minWidth: 0 }}>

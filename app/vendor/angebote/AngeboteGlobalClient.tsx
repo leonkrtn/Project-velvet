@@ -417,7 +417,7 @@ export default function AngeboteGlobalClient() {
       />
 
       {/* Filter & Sort Flyout */}
-      <aside style={{
+      <aside className="ang-filter-flyout" style={{
         position: 'fixed', top: 0, right: 0, bottom: 0, width: 340,
         background: 'var(--surface)',
         borderLeft: '1px solid rgba(35,82,200,0.18)',
@@ -645,7 +645,7 @@ export default function AngeboteGlobalClient() {
         .ang-skel{background:linear-gradient(90deg,var(--bg) 25%,var(--border) 50%,var(--bg) 75%);background-size:200% 100%;animation:ang-shimmer 1.4s ease infinite}
         @keyframes ang-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
         .ang-spin{animation:angspin 1s linear infinite}@keyframes angspin{to{transform:rotate(360deg)}}
-        @media(max-width:480px){aside[style*="width: 340"]{width:100%!important}}
+        @media(max-width:480px){.ang-filter-flyout{width:100%!important}}
       `}</style>
     </>
   )

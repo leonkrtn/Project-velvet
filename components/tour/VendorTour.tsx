@@ -30,12 +30,16 @@ interface VendorTourProps {
   startEvent?: string
   /** Wenn gesetzt: einmaliger Auto-Start (localStorage-Schlüssel), z. B. nach dem Onboarding. */
   autoStartOnceKey?: string
+  /** Wird zusätzlich zum localStorage-Flag aufgerufen, wenn die Tour dauerhaft
+   *  beendet wird — z.B. um den Abschluss serverseitig zu speichern. */
+  onDismissForever?: () => void
 }
 
 export default function VendorTour({
   steps: stepsProp,
   startEvent = VENDOR_TOUR_START_EVENT,
   autoStartOnceKey,
+  onDismissForever,
 }: VendorTourProps = {}) {
   const router = useRouter()
   const baseSteps = stepsProp ?? VENDOR_TOUR_STEPS
@@ -88,7 +92,8 @@ export default function VendorTour({
     setRect(null)
     setAreaFilter(null)
     if (autoStartOnceKey) { try { localStorage.setItem(autoStartOnceKey, 'done') } catch { /* ignore */ } }
-  }, [autoStartOnceKey])
+    onDismissForever?.()
+  }, [autoStartOnceKey, onDismissForever])
 
   const advance = useCallback(() => {
     setIndex(i => {

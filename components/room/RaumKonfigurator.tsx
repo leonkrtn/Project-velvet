@@ -915,7 +915,7 @@ export default function RaumKonfigurator({
     <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
 
       {/* Step bar */}
-      <div style={{ display:'flex', alignItems:'center', background:'#fff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:10, padding:4, width:'fit-content', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+      <div style={{ display:'flex', alignItems:'center', background:'#fff', border:'1px solid rgba(0,0,0,0.08)', borderRadius:10, padding:4, width:'fit-content', maxWidth:'100%', overflowX:'auto', WebkitOverflowScrolling:'touch', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
         {[{n:1,label:'Grundriss'},{n:2,label:'Raumdetails'},{n:3,label:'Tische'},{n:4,label:'Platzieren'}].map((s,i) => (
           <React.Fragment key={s.n}>
             {i>0 && <div style={{width:1,height:20,background:'rgba(0,0,0,0.08)',margin:'0 2px'}}/>}

@@ -241,9 +241,9 @@ function KeyValueBlock({ block }: { block: Extract<SnapshotBlock, { kind: 'keyva
       <Heading text={block.heading} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 12, border: '1px solid var(--border, #e5e0d8)', overflow: 'hidden' }}>
         {block.items.map((it, i) => (
-          <div key={i} style={{ display: 'flex', gap: 12, fontSize: 13.5, lineHeight: 1.4, padding: '10px 14px', background: i % 2 ? 'var(--bg, #FAFAFA)' : 'var(--surface, #fff)' }}>
-            <span style={{ color: 'var(--text-secondary, #555)', fontWeight: 600, minWidth: 150, flexShrink: 0 }}>{it.label}</span>
-            <span style={{ color: 'var(--text-primary, #1d1d1f)', whiteSpace: 'pre-wrap' }}>{it.value}</span>
+          <div key={i} style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: 13.5, lineHeight: 1.4, padding: '10px 14px', background: i % 2 ? 'var(--bg, #FAFAFA)' : 'var(--surface, #fff)' }}>
+            <span style={{ color: 'var(--text-secondary, #555)', fontWeight: 600, minWidth: 110, flexShrink: 0 }}>{it.label}</span>
+            <span style={{ color: 'var(--text-primary, #1d1d1f)', whiteSpace: 'pre-wrap', minWidth: 0, flex: 1 }}>{it.value}</span>
           </div>
         ))}
       </div>

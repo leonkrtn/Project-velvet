@@ -77,7 +77,7 @@ export default function VendorsPage() {
   return (
     <PageShell title="Dienstleister" back="/dashboard">
       {/* Summary */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(90px,1fr))',gap:8,marginBottom:16}}>
         {[
           {v:event.vendors.length, l:'Gesamt'},
           {v:confirmed,            l:'Bestätigt'},

@@ -4,6 +4,52 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+interface PersonInput {
+  name: string
+  email: string
+  phone: string
+  home_street?: string
+  home_postal_code?: string
+  home_city?: string
+}
+
+// Legt eine Einzelperson als eigenen, individuell auffindbaren CRM-Kontakt an
+// (oder aktualisiert sie per E-Mail-Abgleich) — nie als kombinierter
+// "Vorname & Vorname"-String. `shared` enthält alle Felder, die beide
+// Partner gleichermaßen betreffen (Event, Status, Wert, Quelle …).
+async function upsertPerson(
+  admin: any, dlId: string, person: PersonInput,
+  shared: Record<string, unknown>, emailToContactId: Map<string, string>,
+): Promise<string | null> {
+  const email = person.email?.trim() ?? ''
+  const payload = {
+    dienstleister_id: dlId,
+    name: person.name?.trim() || 'Unbekannt',
+    email,
+    phone: person.phone?.trim() ?? '',
+    home_street: person.home_street ?? '',
+    home_postal_code: person.home_postal_code ?? '',
+    home_city: person.home_city ?? '',
+    ...shared,
+    updated_at: new Date().toISOString(),
+  }
+  const existingId = email ? emailToContactId.get(email) : undefined
+  if (existingId) {
+    await admin.from('crm_contacts').update(payload).eq('id', existingId)
+    return existingId
+  }
+  const { data } = await admin.from('crm_contacts').insert(payload).select('id').single()
+  if (data && email) emailToContactId.set(email, data.id)
+  return data?.id ?? null
+}
+
+// Verlinkt zwei CRM-Kontakte beidseitig als Partner (partner_contact_id).
+async function linkPartners(admin: any, aId: string, bId: string) {
+  if (aId === bId) return
+  await admin.from('crm_contacts').update({ partner_contact_id: bId }).eq('id', aId)
+  await admin.from('crm_contacts').update({ partner_contact_id: aId }).eq('id', bId)
+}
+
 export async function POST() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -100,27 +146,18 @@ export async function POST() {
     const ev = (Array.isArray(req.events) ? req.events[0] : req.events) ?? {}
     const requester = (Array.isArray(req.requester) ? req.requester[0] : req.requester) ?? {}
     const coupleContacts = coupleByEvent[req.event_id] ?? []
-    const primary = coupleContacts[0] ?? requester
-    const email = primary?.email ?? ''
 
     const offer = offerByRequest[req.id]
     const dealValue = offer?.status === 'accepted' ? (offer?.total ?? null) : null
     const pendingOfferValue = offer && offer.status !== 'accepted' ? (offer?.total ?? null) : null
 
-    const name = ev.couple_name || primary?.name || 'Unbekannt'
     const location = ev.venue
       ? [ev.venue, ev.venue_address].filter(Boolean).join(', ')
       : [ev.location_name, ev.location_city].filter(Boolean).join(', ')
     const stage = req.status === 'accepted' ? 'gebucht' : 'anfrage'
 
-    const contactData = {
-      dienstleister_id:    dlId,
-      name,
-      email,
-      phone:               primary?.phone ?? '',
-      home_street:         primary?.street ?? '',
-      home_postal_code:    primary?.postal_code ?? '',
-      home_city:           primary?.city ?? '',
+    // Felder, die für BEIDE Partner gleichermaßen gelten (Event-Kontext).
+    const shared = {
       lifecycle_stage:     stage,
       source:              'marktplatz',
       event_type:          ev.event_type ?? 'hochzeit',
@@ -135,52 +172,44 @@ export async function POST() {
       guest_count:         null,
       request_message:     req.message ?? '',
       anniversary_remind:  !!ev.date,
-      updated_at:          new Date().toISOString(),
     }
 
-    // Update if email already exists, otherwise insert
-    const existingId = email ? emailToContactId.get(email) : null
-    if (existingId || usedRequestIds.has(req.id)) {
-      const updateId = existingId ?? (existing ?? []).find(r => r.request_id === req.id)?.id
-      if (updateId) {
-        await admin.from('crm_contacts').update(contactData).eq('id', updateId)
-        usedRequestIds.add(req.id)
-        continue
-      }
+    // Beide Brautpaar-Mitglieder als eigene, individuell auffindbare Kontakte —
+    // niemals der kombinierte couple_name als Personenname. Fallback, wenn noch
+    // kein Brautpaar-Mitglied verknüpft ist: die anfragende Person.
+    const people: PersonInput[] = coupleContacts.length > 0
+      ? coupleContacts.slice(0, 2).map((p: any) => ({
+          name: `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || p.name || 'Unbekannt',
+          email: p.email ?? '', phone: p.phone ?? '',
+          home_street: p.street, home_postal_code: p.postal_code, home_city: p.city,
+        }))
+      : [{ name: requester.name || 'Unbekannt', email: requester.email ?? '', phone: requester.phone ?? '' }]
+
+    const alreadyHandled = usedRequestIds.has(req.id)
+
+    const primaryId = await upsertPerson(admin, dlId, people[0], shared, emailToContactId)
+    if (!primaryId) continue
+
+    let partnerId: string | null = null
+    if (people[1]) {
+      partnerId = await upsertPerson(admin, dlId, people[1], shared, emailToContactId)
+      if (partnerId) await linkPartners(admin, primaryId, partnerId)
     }
 
-    const { data: contact } = await admin
-      .from('crm_contacts')
-      .insert(contactData)
-      .select('id')
-      .single()
-
-    if (contact) {
-      const additional = coupleContacts.slice(1)
-      if (additional.length) {
-        await admin.from('crm_contact_persons').upsert(
-          additional.map((p: any) => ({
-            contact_id: contact.id,
-            name: `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || p.name,
-            email: p.email ?? '',
-            phone: p.phone ?? '',
-            role: 'partner',
-          })),
-          { onConflict: 'contact_id,email', ignoreDuplicates: true }
-        )
-      }
-      await admin.from('crm_activities').insert({
-        contact_id:     contact.id,
+    if (!alreadyHandled) {
+      const activityRows = [primaryId, ...(partnerId ? [partnerId] : [])].map(cid => ({
+        contact_id:     cid,
         dienstleister_id: dlId,
-        activity_type:  'imported',
+        activity_type:  'imported' as const,
         title:          `Via Marktplatz-Anfrage importiert (${req.status === 'accepted' ? 'angenommen' : 'offen'})`,
         body:           req.message ? req.message.slice(0, 200) : '',
         auto_generated: true,
-      })
-      if (email) emailToContactId.set(email, contact.id)
-      usedRequestIds.add(req.id)
-      imported++
+      }))
+      await admin.from('crm_activities').insert(activityRows)
+      imported += activityRows.length
     }
+
+    usedRequestIds.add(req.id)
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -312,9 +341,15 @@ export async function POST() {
 
     for (const membership of (eventMemberships ?? []) as any[]) {
       const eventId = membership.event_id
+      const evRaw = membership.events
+      const ev = (Array.isArray(evRaw) ? evRaw[0] : evRaw) as any
+      if (!ev) continue
+
+      const contacts = coupleForEvent[eventId] ?? []
+      const partnerProfile = partnerForEvent[eventId] ?? (contacts.length > 1 ? contacts[1] : null)
+
       if (usedEventIds.has(eventId)) {
-        // Update existing contact with latest profile data
-        const contacts = coupleForEvent[eventId] ?? []
+        // Bereits importiert — nur die individuellen Profildaten auffrischen.
         const primary = contacts[0]
         if (primary?.email && emailToContactId.has(primary.email)) {
           await admin.from('crm_contacts').update({
@@ -329,14 +364,8 @@ export async function POST() {
         continue
       }
 
-      const evRaw = membership.events
-      const ev = (Array.isArray(evRaw) ? evRaw[0] : evRaw) as any
-      if (!ev) continue
-
-      const contacts = coupleForEvent[eventId] ?? []
       const primary = contacts[0]
       const email = primary?.email ?? ''
-
       if (email && emailToContactId.has(email)) {
         usedEventIds.add(eventId)
         continue
@@ -346,98 +375,57 @@ export async function POST() {
         ? [ev.venue, ev.venue_address].filter(Boolean).join(', ')
         : [ev.location_name, ev.location_city].filter(Boolean).join(', ')
 
-      const { data: contact } = await admin
-        .from('crm_contacts')
-        .insert({
-          dienstleister_id: dlId,
-          name:             ev.couple_name || `${primary?.first_name ?? ''} ${primary?.last_name ?? ''}`.trim() || primary?.name || ev.title || 'Unbekannt',
-          email,
-          phone:            primary?.phone ?? '',
-          home_street:      primary?.street ?? '',
-          home_postal_code: primary?.postal_code ?? '',
-          home_city:        primary?.city ?? '',
-          lifecycle_stage:  'gebucht',
-          source:           'sonstige',
-          event_type:       ev.event_type ?? 'hochzeit',
-          wedding_date:     ev.date ? ev.date.slice(0, 10) : null,
-          event_id:         eventId,
-          event_title:      ev.title ?? '',
-          location,
-          guest_count:      gcByEvent[eventId] ?? null,
-          anniversary_remind: !!ev.date,
-        })
-        .select('id')
-        .single()
-
-      if (contact) {
-        if (email) emailToContactId.set(email, contact.id)
-
-        // Import partner as separate CRM contact and cross-link
-        const partner = partnerForEvent[eventId] ?? (contacts.length > 1 ? contacts[1] : null)
-        if (partner && (partner.email || partner.first_name)) {
-          const partnerEmail = partner.email ?? ''
-          const partnerExistingId = partnerEmail ? emailToContactId.get(partnerEmail) : null
-
-          let partnerContactId: string | null = partnerExistingId ?? null
-
-          if (!partnerExistingId) {
-            const { data: partnerContact } = await admin
-              .from('crm_contacts')
-              .insert({
-                dienstleister_id:  dlId,
-                name:              `${partner.first_name ?? ''} ${partner.last_name ?? ''}`.trim() || partner.name || 'Partner',
-                email:             partnerEmail,
-                phone:             partner.phone ?? '',
-                lifecycle_stage:   'gebucht',
-                source:            'sonstige',
-                event_type:        ev.event_type ?? 'hochzeit',
-                wedding_date:      ev.date ? ev.date.slice(0, 10) : null,
-                event_id:          eventId,
-                event_title:       ev.title ?? '',
-                location,
-                partner_contact_id: contact.id,
-                anniversary_remind: !!ev.date,
-              })
-              .select('id')
-              .single()
-
-            if (partnerContact) {
-              partnerContactId = partnerContact.id
-              if (partnerEmail) emailToContactId.set(partnerEmail, partnerContact.id)
-              imported++
-            }
-          }
-
-          // Cross-link the primary contact to the partner
-          if (partnerContactId) {
-            await admin.from('crm_contacts')
-              .update({ partner_contact_id: partnerContactId })
-              .eq('id', contact.id)
-          }
-        } else if (contacts.length > 1) {
-          await admin.from('crm_contact_persons').insert(
-            contacts.slice(1).map((p: any) => ({
-              contact_id: contact.id,
-              name: (`${p.first_name ?? ''} ${p.last_name ?? ''}`.trim() || p.name) ?? '',
-              email: p.email ?? '',
-              phone: p.phone ?? '',
-              role: 'partner',
-            }))
-          )
-        }
-
-        await admin.from('crm_activities').insert({
-          contact_id:     contact.id,
-          dienstleister_id: dlId,
-          activity_type:  'imported',
-          title:          `Via Event importiert: ${ev.title || ev.couple_name || 'Veranstaltung'}`,
-          body:           '',
-          auto_generated: true,
-        })
-
-        usedEventIds.add(eventId)
-        imported++
+      // Felder, die für BEIDE Partner gleichermaßen gelten (Event-Kontext).
+      const shared = {
+        lifecycle_stage:  'gebucht',
+        source:           'sonstige',
+        event_type:       ev.event_type ?? 'hochzeit',
+        wedding_date:     ev.date ? ev.date.slice(0, 10) : null,
+        event_id:         eventId,
+        event_title:      ev.title ?? '',
+        location,
+        guest_count:      gcByEvent[eventId] ?? null,
+        anniversary_remind: !!ev.date,
       }
+
+      // Beide Brautpaar-Mitglieder als eigene, individuell auffindbare Kontakte —
+      // niemals der kombinierte couple_name als Personenname.
+      const people: PersonInput[] = [
+        {
+          name: `${primary?.first_name ?? ''} ${primary?.last_name ?? ''}`.trim() || primary?.name || ev.title || 'Unbekannt',
+          email, phone: primary?.phone ?? '',
+          home_street: primary?.street, home_postal_code: primary?.postal_code, home_city: primary?.city,
+        },
+      ]
+      if (partnerProfile && (partnerProfile.email || partnerProfile.first_name || partnerProfile.name)) {
+        people.push({
+          name: `${partnerProfile.first_name ?? ''} ${partnerProfile.last_name ?? ''}`.trim() || partnerProfile.name || 'Partner',
+          email: partnerProfile.email ?? '', phone: partnerProfile.phone ?? '',
+          home_street: partnerProfile.street, home_postal_code: partnerProfile.postal_code, home_city: partnerProfile.city,
+        })
+      }
+
+      const primaryId = await upsertPerson(admin, dlId, people[0], shared, emailToContactId)
+      if (!primaryId) continue
+
+      let partnerId: string | null = null
+      if (people[1]) {
+        partnerId = await upsertPerson(admin, dlId, people[1], shared, emailToContactId)
+        if (partnerId) await linkPartners(admin, primaryId, partnerId)
+      }
+
+      const activityRows = [primaryId, ...(partnerId ? [partnerId] : [])].map(cid => ({
+        contact_id:     cid,
+        dienstleister_id: dlId,
+        activity_type:  'imported' as const,
+        title:          `Via Event importiert: ${ev.title || 'Veranstaltung'}`,
+        body:           '',
+        auto_generated: true,
+      }))
+      await admin.from('crm_activities').insert(activityRows)
+
+      usedEventIds.add(eventId)
+      imported += activityRows.length
     }
   }
 

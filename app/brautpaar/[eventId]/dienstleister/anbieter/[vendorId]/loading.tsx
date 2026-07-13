@@ -10,7 +10,10 @@ export default function Loading() {
   )
   return (
     <div className="bp-page">
-      <style>{`@keyframes bpShimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}`}</style>
+      <style>{`
+        @keyframes bpShimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+        @media (max-width: 880px){ .mp-prev-grid{ grid-template-columns: 1fr !important; } }
+      `}</style>
       {box({ width: 150, height: 34, marginBottom: 16 })}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 320px', gap: 24, alignItems: 'start' }} className="mp-prev-grid">
         <div>
