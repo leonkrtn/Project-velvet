@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -125,10 +125,9 @@ function matchesDate(eventDate: string | null, range: string): boolean {
 
 interface EventOption { id: string; title: string | null; date: string | null; couple_name: string | null }
 
-export default function AngeboteGlobalClient() {
+export default function AngeboteGlobalClient({ initialOffers }: { initialOffers: OfferRow[] }) {
   const router = useRouter()
-  const [offers, setOffers] = useState<OfferRow[]>([])
-  const [loading, setLoading] = useState(true)
+  const [offers] = useState<OfferRow[]>(initialOffers)
   const [search, setSearch] = useState('')
   const [panelOpen, setPanelOpen] = useState(false)
   const [applied, setApplied] = useState<FilterState>(DEFAULT_FILTER)
@@ -147,15 +146,6 @@ export default function AngeboteGlobalClient() {
     setApplied(saved)
     setPending(saved)
   }, [])
-
-  const load = useCallback(async () => {
-    const res = await fetch('/api/vendor/global-offers')
-    const d = await res.json().catch(() => ({}))
-    setOffers(d.offers ?? [])
-    setLoading(false)
-  }, [])
-
-  useEffect(() => { load() }, [load])
 
   useEffect(() => {
     if (!panelOpen && !createOpen) return
@@ -322,7 +312,7 @@ export default function AngeboteGlobalClient() {
           </div>
 
           {/* Search + Filter trigger */}
-          {!loading && hasAny && (
+          {hasAny && (
             <div data-tour="vdr-angebote-search" style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
@@ -361,7 +351,7 @@ export default function AngeboteGlobalClient() {
           )}
 
           {/* Result counter + reset */}
-          {!loading && hasAny && (
+          {hasAny && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, minHeight: 20 }}>
               {(search.trim() || hasActiveFilter) ? (
                 <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0 }}>
@@ -381,9 +371,7 @@ export default function AngeboteGlobalClient() {
           )}
 
           {/* Content */}
-          {loading ? (
-            <SkeletonList />
-          ) : !hasAny ? (
+          {!hasAny ? (
             <EmptyState />
           ) : result.length === 0 ? (
             <div style={{ padding: '40px 0', textAlign: 'center' }}>
@@ -711,32 +699,6 @@ function RadioList({ options, value, onChange }: {
           </button>
         )
       })}
-    </div>
-  )
-}
-
-function SkeletonList() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 8 }}>
-      {[3, 2].map((count, gi) => (
-        <section key={gi}>
-          <div className="ang-skel" style={{ height: 11, width: 90, borderRadius: 4, margin: '0 0 10px' }} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {Array.from({ length: count }).map((_, i) => (
-              <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 13, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, minHeight: 76 }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                    <div className="ang-skel" style={{ height: 15, width: `${120 + (i * 41) % 80}px`, borderRadius: 6 }} />
-                    <div className="ang-skel" style={{ height: 16, width: 70, borderRadius: 100 }} />
-                  </div>
-                  <div className="ang-skel" style={{ height: 12, width: `${150 + (i * 57) % 90}px`, marginTop: 6, borderRadius: 4 }} />
-                </div>
-                <div className="ang-skel" style={{ height: 15, width: 64, borderRadius: 6, flexShrink: 0 }} />
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
     </div>
   )
 }

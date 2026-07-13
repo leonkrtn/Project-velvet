@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import Link from 'next/link'
-import { Inbox, Loader2 } from 'lucide-react'
+import { Inbox } from 'lucide-react'
 import VendorCalendar from '@/components/vendor/VendorCalendar'
 
 interface Stats {
@@ -69,25 +69,8 @@ const EMPTY_STATS: Stats = {
   pipelineAngeboteCount: 0, pipelineAngeboteValue: 0,
 }
 
-export default function UbersichtClient() {
-  const [data, setData] = useState<Data | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch('/api/vendor/ubersicht')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setData(d); setLoading(false) })
-      .catch(() => setLoading(false))
-  }, [])
-
-  if (loading) {
-    return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <Loader2 size={20} className="ub-spin" style={{ color: 'var(--text-tertiary)' }} />
-        <style>{`.ub-spin{animation:ubspin 1s linear infinite}@keyframes ubspin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    )
-  }
+export default function UbersichtClient({ initialData }: { initialData: Data }) {
+  const data = initialData
 
   const s = data?.stats ?? EMPTY_STATS
   const vendorName = data?.vendorName ?? ''

@@ -15,7 +15,7 @@ export default async function AufgabenNotizenPage({ params, searchParams }: Prop
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [tasksRes, eventRes] = await Promise.all([
+  const [tasksRes, eventRes, notesRes] = await Promise.all([
     supabase
       .from('brautpaar_tasks')
       .select('*')
@@ -27,6 +27,13 @@ export default async function AufgabenNotizenPage({ params, searchParams }: Prop
       .select('date')
       .eq('id', eventId)
       .single(),
+    supabase
+      .from('brautpaar_notes')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('category')
+      .order('sort_order')
+      .order('created_at'),
   ])
 
   return (
@@ -34,6 +41,7 @@ export default async function AufgabenNotizenPage({ params, searchParams }: Prop
       eventId={eventId}
       userId={user.id}
       initialTasks={tasksRes.data ?? []}
+      initialNotes={notesRes.data ?? []}
       weddingDate={eventRes.data?.date ?? null}
       initialTab={tab === 'notizen' ? 'notizen' : 'aufgaben'}
     />

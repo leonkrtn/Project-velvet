@@ -17,6 +17,9 @@ interface Task {
   done_at: string | null
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Note = any
+
 type Tab = 'aufgaben' | 'notizen'
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
@@ -28,11 +31,12 @@ interface Props {
   eventId: string
   userId: string
   initialTasks: Task[]
+  initialNotes: Note[]
   weddingDate: string | null
   initialTab: Tab
 }
 
-export default function AufgabenNotizenClient({ eventId, userId, initialTasks, weddingDate, initialTab }: Props) {
+export default function AufgabenNotizenClient({ eventId, userId, initialTasks, initialNotes, weddingDate, initialTab }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
 
   return (
@@ -67,7 +71,7 @@ export default function AufgabenNotizenClient({ eventId, userId, initialTasks, w
           />
         )}
         {activeTab === 'notizen' && (
-          <BrautpaarNotizen eventId={eventId} embedded />
+          <BrautpaarNotizen eventId={eventId} initialNotes={initialNotes} embedded />
         )}
       </div>
     </div>
