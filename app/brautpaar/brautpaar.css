@@ -2715,9 +2715,9 @@
 .bp-authx-main {
   flex: 1 1 auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 2rem 1.5rem;
+  padding: 4rem 1.5rem 2rem;
   overflow-y: auto;
 }
 

@@ -29,7 +29,7 @@ export const VENDOR_AREAS: VendorAreaMeta[] = [
   { key: 'berichte',         label: 'Berichte' },
   { key: 'crm',              label: 'CRM' },
   { key: 'automatik',        label: 'Automatik' },
-  { key: 'listing',          label: 'Anbieter-Profil' },
+  { key: 'listing',          label: 'Marktplatz-Auftritt' },
   { key: 'anfrage-formular', label: 'Anfrageformular' },
 ]
 

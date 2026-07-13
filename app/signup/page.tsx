@@ -192,7 +192,7 @@ function SignupForm() {
   // ── Verify-Zwischenschritt ──
   if (awaitingCode) {
     return (
-      <AuthLayout tagline="Euer schönster Tag.">
+      <AuthLayout tagline="Euer schönster Tag." xwide>
         <VerifyStep
           supabase={createClient()}
           email={email.trim()}

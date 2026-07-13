@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Loader2, Mail, Bold, Italic, Link2, RotateCcw, Zap, ChevronRight, Info } from 'lucide-react'
 import { SaveStatus } from '@/components/ui/SaveStatus'
+import SegmentedToggle from '@/components/vendor/SegmentedToggle'
 import {
   EMAIL_TEMPLATE_KEYS, EMAIL_TEMPLATE_META, PLACEHOLDERS, DEFAULT_TEMPLATES,
   DEFAULT_GREETING, DEFAULT_SIGNATURE, renderVendorEmailHtml,
@@ -148,21 +149,12 @@ export default function EmailsClient({ embedded }: { embedded?: boolean } = {}) 
         </div>
 
         {/* Mail-Auswahl */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-          {EMAIL_TEMPLATE_KEYS.map(k => {
-            const on = k === active
-            return (
-              <button key={k} onClick={() => setActive(k)} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 9,
-                fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                border: `1px solid ${on ? C.accent : C.border}`,
-                background: on ? C.accent : '#fff', color: on ? '#fff' : C.text,
-              }}>
-                {EMAIL_TEMPLATE_META[k].title}
-              </button>
-            )
-          })}
-        </div>
+        <SegmentedToggle
+          style={{ display: 'inline-flex', marginBottom: 14, flexWrap: 'wrap' }}
+          value={active}
+          onChange={setActive}
+          options={EMAIL_TEMPLATE_KEYS.map(k => ({ key: k, label: EMAIL_TEMPLATE_META[k].title }))}
+        />
 
         {/* Editor + Vorschau */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 16, alignItems: 'start' }} className="eml-grid">

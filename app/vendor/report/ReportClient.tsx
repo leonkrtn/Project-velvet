@@ -6,6 +6,7 @@ import type { ReportData } from '@/lib/vendor/monthly-report'
 import { brandAccentVars } from '@/lib/vendor/brand'
 import VendorStatsPanel from '@/components/marketplace/VendorStatsPanel'
 import type { StatsResult } from '@/lib/marketplace/stats'
+import SegmentedToggle from '@/components/vendor/SegmentedToggle'
 
 // ── Period helpers ─────────────────────────────────────────────────────────────
 
@@ -229,21 +230,14 @@ export default function ReportClient({ brandColor, initialData }: { brandColor?:
         {/* ── Controls ── */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
           {/* Type toggle */}
-          <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 9, padding: 3, gap: 2 }}>
-            {(['month', 'quarter'] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => { setType(t); setValue(t === 'month' ? now.getMonth() + 1 : Math.floor(now.getMonth() / 3) + 1) }}
-                style={{
-                  padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
-                  background: type === t ? 'var(--accent)' : 'transparent',
-                  color: type === t ? '#fff' : 'var(--text-secondary)',
-                }}
-              >
-                {t === 'month' ? 'Monat' : 'Quartal'}
-              </button>
-            ))}
-          </div>
+          <SegmentedToggle
+            value={type}
+            onChange={t => { setType(t); setValue(t === 'month' ? now.getMonth() + 1 : Math.floor(now.getMonth() / 3) + 1) }}
+            options={[
+              { key: 'month', label: 'Monat' },
+              { key: 'quarter', label: 'Quartal' },
+            ]}
+          />
 
           {/* Period select */}
           <select
@@ -257,22 +251,17 @@ export default function ReportClient({ brandColor, initialData }: { brandColor?:
           </select>
 
           {/* Compare mode */}
-          <div className="rpt-compare-toggle" style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 9, padding: 3, gap: 2, marginLeft: 'auto' }}>
-            {([['prev', 'vs. Vorperiode'], ['lastyear', 'vs. Vorjahr']] as const).map(([k, lbl]) => (
-              <button
-                key={k}
-                onClick={() => setCompareMode(k)}
-                style={{
-                  padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
-                  background: compareMode === k ? 'var(--surface)' : 'transparent',
-                  boxShadow: compareMode === k ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  color: compareMode === k ? 'var(--text-primary)' : 'var(--text-secondary)',
-                }}
-              >
-                {lbl}
-              </button>
-            ))}
-          </div>
+          <SegmentedToggle
+            className="rpt-compare-toggle"
+            style={{ marginLeft: 'auto' }}
+            size="sm"
+            value={compareMode}
+            onChange={setCompareMode}
+            options={[
+              { key: 'prev', label: 'vs. Vorperiode' },
+              { key: 'lastyear', label: 'vs. Vorjahr' },
+            ]}
+          />
         </div>
 
         {loading && (

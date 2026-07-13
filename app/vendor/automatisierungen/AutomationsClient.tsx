@@ -5,6 +5,7 @@ import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calend
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import EmailsClient from '@/app/vendor/e-mails/EmailsClient'
+import SegmentedToggle from '@/components/vendor/SegmentedToggle'
 
 type PageTab = 'regeln' | 'emails'
 const PAGE_TABS: { key: PageTab; label: string; icon: React.ReactNode }[] = [
@@ -126,20 +127,12 @@ export default function AutomationsClient() {
       </div>
 
       {/* Tabs: Regeln / E-Mail-Texte */}
-      <div style={{ display: 'inline-flex', gap: 4, padding: 4, marginBottom: 20, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
-        {PAGE_TABS.map(t => {
-          const on = tab === t.key
-          return (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{
-              display: 'flex', alignItems: 'center', gap: 7, padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
-              background: on ? C.surface : 'transparent', boxShadow: on ? 'var(--shadow-sm)' : 'none',
-              color: on ? C.text : C.dim, fontSize: 13.5, fontWeight: on ? 600 : 450, fontFamily: 'inherit', transition: 'background 0.12s',
-            }}>
-              {t.icon}{t.label}
-            </button>
-          )
-        })}
-      </div>
+      <SegmentedToggle
+        style={{ display: 'inline-flex', marginBottom: 20 }}
+        value={tab}
+        onChange={setTab}
+        options={PAGE_TABS.map(t => ({ key: t.key, label: <>{t.icon}{t.label}</> }))}
+      />
 
       {tab === 'emails' && <EmailsClient embedded />}
 
