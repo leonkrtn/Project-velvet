@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, Plus, X, Trash2, Loader2,
-  Download, Link2, Calendar, AlignLeft, LayoutGrid,
+  Download, Link2, AlignLeft, LayoutGrid,
 } from 'lucide-react'
 
 export interface CalendarEntry {
@@ -229,7 +229,6 @@ export default function VendorCalendar() {
         {/* View switcher */}
         <div className="vc-view-switcher" style={{ display: 'flex', background: C.bg, borderRadius: 9, padding: 3, gap: 2, flex: '0 0 auto' }}>
           <button style={viewBtnStyle('month')} onClick={() => setView('month')}><LayoutGrid size={14} />Monat</button>
-          <button style={viewBtnStyle('week')} onClick={() => setView('week')}><Calendar size={14} />Woche</button>
           <button style={viewBtnStyle('agenda')} onClick={() => setView('agenda')}><AlignLeft size={14} />Agenda</button>
         </div>
 
@@ -343,14 +342,17 @@ function MonthView({ cursor, entries, onDayClick, onEntryClick, isMobile, onDayD
   return (
     <div>
       {/* Weekday headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', borderBottom: `1px solid ${C.border}` }}>
         {WEEKDAYS.map(d => (
-          <div key={d} style={{ padding: '8px 4px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: C.dim, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d}</div>
+          <div key={d} style={{ padding: '8px 4px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: C.dim, textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d}</div>
         ))}
       </div>
 
-      {/* Day cells grid (6 rows) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+      {/* Day cells grid (6 rows) — minmax(0,1fr) statt 1fr: sonst kann ein
+          langer Termin-Titel in einer Zelle die ganze Spalte breiter ziehen
+          als die anderen. Feste Höhe + overflow:hidden statt minHeight, damit
+          alle Kacheln unabhängig von der Anzahl der Termine gleich groß bleiben. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))' }}>
         {cells.map((day, i) => {
           const isToday = sameDay(day, today)
           const isCurrentMonth = day.getMonth() === currentMonth
@@ -370,13 +372,16 @@ function MonthView({ cursor, entries, onDayClick, onEntryClick, isMobile, onDayD
               className="vc-day"
               onClick={handleDayClick}
               style={{
-                minHeight: isMobile ? 48 : 90,
+                height: isMobile ? 48 : 90,
+                minWidth: 0,
                 padding: isMobile ? '4px 2px' : '5px 4px',
                 cursor: 'pointer',
+                overflow: 'hidden',
                 borderRight: i % 7 !== 6 ? `1px solid ${C.border}` : 'none',
                 borderBottom: i < 35 ? `1px solid ${C.border}` : 'none',
                 background: isToday ? 'rgba(35,82,200,0.04)' : 'transparent',
                 position: 'relative',
+                boxSizing: 'border-box',
               }}
             >
               {/* Date number */}
