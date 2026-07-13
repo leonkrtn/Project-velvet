@@ -228,8 +228,8 @@ export default function VendorCalendar() {
 
         {/* View switcher */}
         <div className="vc-view-switcher" style={{ display: 'flex', background: C.bg, borderRadius: 9, padding: 3, gap: 2, flex: '0 0 auto' }}>
-          <button style={viewBtnStyle('month')} onClick={() => setView('month')}><LayoutGrid size={14} />Monat</button>
-          <button style={viewBtnStyle('agenda')} onClick={() => setView('agenda')}><AlignLeft size={14} />Agenda</button>
+          <button className="vc-view-btn" data-active={view === 'month' ? 'true' : undefined} style={viewBtnStyle('month')} onClick={() => setView('month')}><LayoutGrid size={14} />Monat</button>
+          <button className="vc-view-btn" data-active={view === 'agenda' ? 'true' : undefined} style={viewBtnStyle('agenda')} onClick={() => setView('agenda')}><AlignLeft size={14} />Agenda</button>
         </div>
 
         {/* Navigation */}
@@ -310,6 +310,7 @@ export default function VendorCalendar() {
         @keyframes vcspin{to{transform:rotate(360deg)}}
         .vc-chip{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:500;padding:2px 6px;border-radius:4px;cursor:pointer;line-height:1.4;max-width:100%}
         .vc-chip:hover{filter:brightness(.9)}
+        .vc-view-btn:not([data-active="true"]):hover{background:rgba(35,82,200,0.12)!important;color:${C.accent}!important}
         .vc-day:hover .vc-day-add{opacity:1!important}
         @media(max-width:700px){.vc-week-grid{grid-template-columns:repeat(7,1fr)!important;font-size:11px}}
         @media(max-width:540px){
