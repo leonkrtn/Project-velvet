@@ -33,8 +33,8 @@ function markQuickTourDone() {
 }
 
 const NAV = [
-  { key: 'listing',    label: 'Anbieter-Profil', href: '/vendor/listing',    icon: User },
   { key: 'ubersicht',   label: 'Übersicht',    href: '/vendor/ubersicht',   icon: LayoutDashboard },
+  { key: 'listing',    label: 'Anbieter-Profil', href: '/vendor/listing',    icon: User },
   { key: 'anfragen',    label: 'Anfragen',     href: '/vendor/anfragen',    icon: Inbox,         badgeKey: 'pendingAnfragen' as const },
   { key: 'angebote',   label: 'Angebote',     href: '/vendor/angebote',    icon: ReceiptText },
   { key: 'events',     label: 'Events',       href: '/vendor/dashboard',   icon: Calendar },
