@@ -184,7 +184,7 @@ export default function AutomationsClient() {
                     </div>
 
                     {/* Zeile 2: Nebenbedingungen — visuell abgesetzt vom Kernsatz */}
-                    <div className="auto-rule-meta" style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+                    <div className="auto-rule-meta" style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: C.dim }}>
                         Gilt für
                         <select className="auto-select" style={{ ...inp, width: 'auto', maxWidth: 180 }} value={r.event_type} onChange={e => setRule(i, { event_type: e.target.value })}>
@@ -193,7 +193,7 @@ export default function AutomationsClient() {
                       </label>
                       <input
                         className="auto-label"
-                        style={{ ...inp, flex: '1 1 180px', minWidth: 140 }}
+                        style={{ ...inp, flex: '1 1 180px', minWidth: 140, height: 34, maxHeight: 34, lineHeight: '32px', paddingTop: 0, paddingBottom: 0 }}
                         value={r.label} placeholder="Interne Bezeichnung (optional)"
                         onChange={e => setRule(i, { label: e.target.value })}
                       />
