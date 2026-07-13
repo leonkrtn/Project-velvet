@@ -99,13 +99,6 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
   const [paymentTerms, setPaymentTerms] = useState('')
   const [agbText, setAgbText] = useState('')
   const [agbRequired, setAgbRequired] = useState(true)
-  // Broadcast title to sidebar via custom event
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('vendor-page-subtitle', { detail: title }))
-  }, [title])
-  useEffect(() => () => {
-    window.dispatchEvent(new CustomEvent('vendor-page-subtitle', { detail: '' }))
-  }, [])
 
   // Kundeninfo (nur für Angebote ohne Event-Verknüpfung)
   const [clientName, setClientName] = useState('')

@@ -63,7 +63,6 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
   const pathname = usePathname()
   const [badges, setBadges] = useState<BadgeData>({ pendingAnfragen: 0 })
   const [moderationStatus, setModerationStatus] = useState<string | null>(null)
-  const [pageSubtitle, setPageSubtitle] = useState('')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [helpMenuOpen, setHelpMenuOpen] = useState(false)
   // null = noch nicht vom Server geladen — Quick-Tour erst rendern, wenn klar ist,
@@ -88,12 +87,6 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
       })
   }, [pathname])
 
-  useEffect(() => {
-    const handler = (e: Event) => setPageSubtitle((e as CustomEvent<string>).detail || '')
-    window.addEventListener('vendor-page-subtitle', handler)
-    return () => window.removeEventListener('vendor-page-subtitle', handler)
-  }, [])
-
   useEffect(() => { setMobileMenuOpen(false) }, [pathname])
 
   if (noShell) return <>{children}</>
@@ -114,13 +107,9 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
       const Icon = item.icon
       const badge = 'badgeKey' in item ? (badges[item.badgeKey] ?? 0) : 0
       const on = active === item.key
-      const subtitle = on && item.key === 'angebote' && pageSubtitle ? pageSubtitle : ''
-      const linkStyle: React.CSSProperties = subtitle
-        ? { ...navStyle(item.key), flexDirection: 'column', alignItems: 'flex-start', paddingBottom: 8, gap: 2 }
-        : navStyle(item.key)
       return (
         <Link key={item.key} href={item.href} className={forDrawer ? 'vdr-drawer-link' : 'vdr-nav-link'}
-          data-active={on ? 'true' : undefined} style={linkStyle}>
+          data-active={on ? 'true' : undefined} style={navStyle(item.key)}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
             <Icon size={16} style={{ flexShrink: 0, opacity: on ? 1 : 0.45 }} />
             <span style={{ flex: 1 }}>{item.label}</span>
@@ -134,15 +123,6 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
               </span>
             )}
           </div>
-          {subtitle && (
-            <span style={{
-              fontSize: 11, color: 'rgba(255,255,255,0.70)', fontWeight: 400,
-              paddingLeft: 26, overflow: 'hidden', textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap', maxWidth: '100%',
-            }}>
-              {subtitle}
-            </span>
-          )}
         </Link>
       )
     })
