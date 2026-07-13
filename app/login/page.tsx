@@ -6,8 +6,8 @@ import { useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import AuthLayout from '@/components/auth/AuthLayout'
 import { createClient } from '@/lib/supabase/client'
-import { ensureSoloEvent, isSoloSignup } from '@/lib/brautpaar-solo'
 import { setLoginPersistence, REMEMBER_DAYS } from '@/lib/auth-persistence'
+import { resolveDestination } from '@/lib/auth/resolve-destination'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
 import '@/app/brautpaar/brautpaar.css'
 
@@ -35,85 +35,25 @@ function LoginForm() {
       // „Angemeldet bleiben"-Präferenz festhalten (30 Tage vs. nur diese Sitzung).
       setLoginPersistence(rememberMe)
       const { data: { session } } = await supabase.auth.getSession()
-      let isOrganizer = session?.user?.app_metadata?.is_approved_organizer === true
-      if (!isOrganizer && session) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_approved_organizer')
-          .eq('id', session.user.id)
-          .single()
-        isOrganizer = profile?.is_approved_organizer === true
+
+      // Läuft für diesen Account gerade eine Löschfrist? Dann erst die
+      // Wiederherstellen-Seite zeigen, statt direkt ins Portal zu leiten.
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('deleted_at')
+        .eq('id', session!.user.id)
+        .maybeSingle()
+      if (profile?.deleted_at) {
+        window.location.assign(`/konto/wiederherstellen${nextUrl ? `?next=${encodeURIComponent(nextUrl)}` : ''}`)
+        return
       }
+
       // Zielpfad bestimmen, dann EINMAL hart navigieren. Harte Navigation
       // (window.location) statt router.push ist in Safari zuverlaessiger: sie
       // erzwingt einen vollen Reload, sodass die Middleware mit den frisch
       // gesetzten Auth-Cookies laeuft (router.push committet in Safari sonst
       // mitunter nicht).
-      let dest = '/signup'
-      if (nextUrl) {
-        dest = nextUrl
-      } else if (isOrganizer) {
-        dest = '/veranstalter/events'
-      } else if (session?.user?.app_metadata?.role === 'mitarbeiter') {
-        dest = '/mitarbeiter'
-      } else {
-        const { data: memberships } = await supabase
-          .from('event_members')
-          .select('event_id, role')
-          .eq('user_id', session!.user.id)
-
-        // Feste Rollen-Priorität (deterministisch, unabhängig von DB-Reihenfolge):
-        // Paar-Portal → Vendor-Portal → Veranstalter-Warteseite
-        const roles = (memberships ?? []).map(m => m.role)
-
-        if (roles.includes('brautpaar') || roles.includes('brautpaar_solo')) {
-          dest = '/brautpaar'
-        } else if (roles.includes('dienstleister')) {
-          dest = '/vendor/ubersicht'
-        } else if (roles.includes('veranstalter')) {
-          // Veranstalter-Mitgliedschaft ohne Freischaltung (isOrganizer war false)
-          dest = '/veranstalter/pending'
-        } else if (isSoloSignup(session?.user)) {
-          // Solo-Brautpaar ohne Event: Signup lief ohne Session (E-Mail-
-          // Bestätigung) — Event jetzt anhand der Signup-Metadaten erstellen.
-          try {
-            const eventId = await ensureSoloEvent(supabase, session!.user.user_metadata)
-            // Sync profile + partner data captured during signup (email-confirmation flow)
-            await fetch('/api/brautpaar/sync-profile', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ eventId, meta: session!.user.user_metadata }),
-            }).catch(() => {})
-            dest = `/brautpaar/${eventId}/uebersicht`
-          } catch {
-            dest = '/signup'
-          }
-        } else {
-          // Fallback: check organizer_staff table directly (covers cases where
-          // app_metadata.role was not yet set, e.g. after a password reset)
-          const { data: staffRow } = await supabase
-            .from('organizer_staff')
-            .select('id')
-            .eq('auth_user_id', session!.user.id)
-            .maybeSingle()
-          if (staffRow) {
-            dest = '/mitarbeiter'
-          } else {
-            const { data: vsc } = await supabase
-              .from('vendor_signup_codes')
-              .select('id')
-              .eq('used_by', session!.user.id)
-              .limit(1)
-            if (vsc && vsc.length > 0) {
-              dest = '/vendor/ubersicht'
-            } else if (session?.user?.user_metadata?.signup_role === 'dienstleister') {
-              dest = '/vendor/listing'
-            } else {
-              dest = '/signup'
-            }
-          }
-        }
-      }
+      const dest = await resolveDestination(supabase, session!.user, nextUrl)
       window.location.assign(dest)
       return
     } catch (err: unknown) {

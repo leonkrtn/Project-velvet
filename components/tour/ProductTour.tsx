@@ -42,7 +42,11 @@ export default function ProductTour({ eventId, available }: Props) {
     [available, areaFilter],
   )
 
-  const doneKey = `fv-solo-tour:${eventId}`
+  const doneKey = `solo_tour:${eventId}`
+  // null = noch nicht vom Server geladen — Auto-Start erst, wenn feststeht,
+  // dass die Tour für diesen Account noch nicht abgeschlossen wurde (verhindert
+  // Neustart bei jeder Anmeldung auf einem anderen Gerät/Browser).
+  const [remoteDone, setRemoteDone] = useState<boolean | null>(null)
   const [mounted, setMounted] = useState(false)
   const [active, setActive] = useState(false)
   const [index, setIndex] = useState(0)
@@ -82,24 +86,22 @@ export default function ProductTour({ eventId, available }: Props) {
     setActive(true)
   }, [])
 
-  // „Beenden" — Tour für JETZT schließen (nur diese Sitzung). Der sessionStorage-
-  // „seen"-Marker verhindert einen erneuten Auto-Start in dieser Sitzung; in einer
-  // neuen Browser-Sitzung kann die Tour wieder erscheinen.
-  const finish = useCallback(() => {
-    setActive(false)
-    setRect(null)
-    setAreaFilter(null)
-  }, [])
-
-  // „Nicht mehr anzeigen" bzw. vollständig durchlaufen — dauerhaft merken, dass
-  // die Tour erledigt ist (kein Auto-Start mehr). Manuell über die Hilfe bleibt
-  // sie jederzeit startbar.
+  // Tour vollständig durchlaufen oder abgebrochen — dauerhaft (serverseitig)
+  // merken, dass sie erledigt ist. Manuell über die Hilfe bleibt sie jederzeit
+  // erneut startbar, unabhängig vom gespeicherten Status.
   const dismissForever = useCallback(() => {
     setActive(false)
     setRect(null)
     setAreaFilter(null)
-    try { localStorage.setItem(doneKey, 'done') } catch { /* ignore */ }
+    setRemoteDone(true)
+    fetch('/api/tour', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: doneKey }),
+    }).catch(() => { /* best effort */ })
   }, [doneKey])
+
+  // „Beenden"/X zählt genau wie das vollständige Durchlaufen als „gesehen" —
+  // kein erneuter Auto-Start bei der nächsten Anmeldung.
+  const finish = dismissForever
 
   const advance = useCallback(() => {
     setIndex(i => {
@@ -119,18 +121,28 @@ export default function ProductTour({ eventId, available }: Props) {
     return () => window.removeEventListener(TOUR_START_EVENT, onStart)
   }, [start])
 
-  // Auto-Start für Erst-Nutzer — einmal pro Browser-Sitzung, bis die Tour
-  // abgeschlossen oder übersprungen wurde.
+  // Serverseitigen Abschluss-Status laden (ersetzt reines localStorage, das
+  // pro Browser/Gerät zurückgesetzt wird und die Tour bei jeder neuen
+  // Anmeldung erneut startete).
   useEffect(() => {
-    if (steps.length === 0) return
+    fetch(`/api/tour?key=${encodeURIComponent(doneKey)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setRemoteDone(prev => prev === null ? !!d?.done : prev))
+      .catch(() => setRemoteDone(prev => prev === null ? false : prev))
+  }, [doneKey])
+
+  // Auto-Start für Erst-Nutzer — nur, wenn der Server bestätigt hat, dass die
+  // Tour für diesen Account noch nicht abgeschlossen ist. sessionStorage
+  // verhindert zusätzlich einen erneuten Start bei jedem Tab/Reload.
+  useEffect(() => {
+    if (steps.length === 0 || remoteDone !== false) return
     try {
-      if (localStorage.getItem(doneKey) === 'done') return
       if (sessionStorage.getItem(`${doneKey}:seen`)) return
       sessionStorage.setItem(`${doneKey}:seen`, '1')
     } catch { /* ignore */ }
     const t = window.setTimeout(() => start(), 700)
     return () => window.clearTimeout(t)
-  }, [doneKey, start, steps.length])
+  }, [doneKey, start, steps.length, remoteDone])
 
   // Bei jedem Schrittwechsel die Position zurücksetzen, BEVOR der Browser zeichnet
   // (useLayoutEffect) — so wird die Karte nie kurz an der alten/zentrierten Stelle
@@ -495,63 +507,48 @@ export default function ProductTour({ eventId, available }: Props) {
           ))}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-          {/* Zwei getrennte Abschluss-Optionen:
-              • „Beenden" schließt die Tour nur für jetzt (kann später wieder starten).
-              • „Nicht mehr anzeigen" merkt dauerhaft, dass die Tour erledigt ist. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Steuerung — immer genau 2 Buttons hier (Zurück, Weiter/Fertig);
+            das X oben in der Kopfzeile ist der dritte (Abbrechen). */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button
+            type="button"
+            onClick={back}
+            disabled={index === 0}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 999,
+              border: '1px solid var(--bp-line, #e7e0d6)', background: '#fff',
+              cursor: index === 0 ? 'default' : 'pointer', opacity: index === 0 ? 0.4 : 1,
+              fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-2, #5d564d)', fontFamily: 'inherit',
+            }}
+          >
+            <ChevronLeft size={15} /> Zurück
+          </button>
+          {/* Bei rein DOM-getriebenen Schritten (advanceOnAppear/Disappear) treibt
+              die echte Aktion den Fortschritt — dann statt „Weiter" nur „Überspringen". */}
+          {selfDrives && !isAction ? (
             <button
               type="button"
-              onClick={finish}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-2, #5d564d)', fontFamily: 'inherit', padding: '6px 2px' }}
+              onClick={advance}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 999, border: '1px solid var(--bp-line, #e7e0d6)', background: '#fff', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-2, #5d564d)', fontFamily: 'inherit' }}
             >
-              Beenden
+              Überspringen <ChevronRight size={15} />
             </button>
+          ) : (
             <button
               type="button"
-              onClick={dismissForever}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-3, #9b9085)', fontFamily: 'inherit', padding: '6px 2px' }}
+              onClick={next}
+              disabled={isAction && !actionSatisfied}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 999, border: 'none',
+                background: isAction && !actionSatisfied ? 'var(--bp-line, #e7e0d6)' : 'var(--bp-gold, #9C7F4F)',
+                color: isAction && !actionSatisfied ? 'var(--bp-ink-3, #9b9085)' : '#fff',
+                cursor: isAction && !actionSatisfied ? 'default' : 'pointer',
+                fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit',
+              }}
             >
-              Nicht mehr anzeigen
+              {isLast ? (<><Check size={15} /> Fertig</>) : (<>Weiter <ChevronRight size={15} /></>)}
             </button>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {index > 0 && (
-              <button
-                type="button"
-                onClick={back}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 999, border: '1px solid var(--bp-line, #e7e0d6)', background: '#fff', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-2, #5d564d)', fontFamily: 'inherit' }}
-              >
-                <ChevronLeft size={15} /> Zurück
-              </button>
-            )}
-            {/* Bei rein DOM-getriebenen Schritten (advanceOnAppear/Disappear) treibt
-                die echte Aktion den Fortschritt — dann statt „Weiter" nur „Überspringen". */}
-            {selfDrives && !isAction ? (
-              <button
-                type="button"
-                onClick={advance}
-                style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 999, border: '1px solid var(--bp-line, #e7e0d6)', background: '#fff', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--bp-ink-2, #5d564d)', fontFamily: 'inherit' }}
-              >
-                Überspringen <ChevronRight size={15} />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={next}
-                disabled={isAction && !actionSatisfied}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 999, border: 'none',
-                  background: isAction && !actionSatisfied ? 'var(--bp-line, #e7e0d6)' : 'var(--bp-gold, #9C7F4F)',
-                  color: isAction && !actionSatisfied ? 'var(--bp-ink-3, #9b9085)' : '#fff',
-                  cursor: isAction && !actionSatisfied ? 'default' : 'pointer',
-                  fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit',
-                }}
-              >
-                {isLast ? (<><Check size={15} /> Fertig</>) : (<>Weiter <ChevronRight size={15} /></>)}
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
       )}

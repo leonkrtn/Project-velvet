@@ -453,50 +453,33 @@ export default function VendorTour({
             ))}
           </div>
 
-          {/* Steuerung */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            {/* „Beenden" schließt nur für jetzt; „Nicht mehr anzeigen" deaktiviert den
-                automatischen Start dauerhaft (nur bei Auto-Start-Touren sinnvoll). */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button
-                type="button"
-                onClick={finish}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit', padding: '6px 2px' }}
-              >
-                Beenden
-              </button>
-              {autoStartOnceKey && (
-                <button
-                  type="button"
-                  onClick={dismissForever}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-dim, var(--text-secondary))', fontFamily: 'inherit', padding: '6px 2px' }}
-                >
-                  Nicht mehr anzeigen
-                </button>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {index > 0 && (
-                <button
-                  type="button"
-                  onClick={back}
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit' }}
-                >
-                  <ChevronLeft size={15} /> Zurück
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={next}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 999, border: 'none',
-                  background: 'var(--gold, #B89968)', color: '#fff', cursor: 'pointer',
-                  fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit',
-                }}
-              >
-                {isLast ? (<><Check size={15} /> Fertig</>) : (<>Weiter <ChevronRight size={15} /></>)}
-              </button>
-            </div>
+          {/* Steuerung — immer genau 2 Buttons hier (Zurück, Weiter/Fertig);
+              das X oben in der Kopfzeile ist der dritte (Abbrechen). */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <button
+              type="button"
+              onClick={back}
+              disabled={index === 0}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 999,
+                border: '1px solid var(--border)', background: 'var(--surface)',
+                cursor: index === 0 ? 'default' : 'pointer', opacity: index === 0 ? 0.4 : 1,
+                fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'inherit',
+              }}
+            >
+              <ChevronLeft size={15} /> Zurück
+            </button>
+            <button
+              type="button"
+              onClick={next}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', borderRadius: 999, border: 'none',
+                background: 'var(--gold, #B89968)', color: '#fff', cursor: 'pointer',
+                fontSize: '0.8125rem', fontWeight: 700, fontFamily: 'inherit',
+              }}
+            >
+              {isLast ? (<><Check size={15} /> Fertig</>) : (<>Weiter <ChevronRight size={15} /></>)}
+            </button>
           </div>
         </div>
       )}
