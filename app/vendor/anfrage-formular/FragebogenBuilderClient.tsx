@@ -13,6 +13,7 @@ import {
 import { MARKETPLACE_CATEGORIES } from '@/lib/marketplace/types'
 import { templateForCategory } from '@/lib/vendor/questionnaire-templates'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
+import SegmentedToggle from '@/components/vendor/SegmentedToggle'
 
 const C = {
   bg: 'var(--bg)', surface: 'var(--surface)', border: 'var(--border)',
@@ -268,25 +269,16 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
         )}
 
         {/* ── Unter-Navigation: Fragen / Preise / Konditionen ── */}
-        <div style={{ display: 'inline-flex', background: C.border, borderRadius: 10, padding: 3, marginBottom: 18, gap: 2, flexWrap: 'wrap' }}>
-          {BUILDER_TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              data-tour={t.key === 'preise' ? 'vdr-fragebogen-pricing' : t.key === 'konditionen' ? 'vdr-fragebogen-tax' : 'vdr-fragebogen-fragen-tab'}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600,
-                background: tab === t.key ? C.surface : 'transparent',
-                color: tab === t.key ? C.text : C.dim,
-                boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
-              }}
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedToggle
+          style={{ display: 'inline-flex', marginBottom: 18, flexWrap: 'wrap' }}
+          value={tab}
+          onChange={setTab}
+          options={BUILDER_TABS.map(t => ({
+            key: t.key,
+            label: <>{t.icon} {t.label}</>,
+            'data-tour': t.key === 'preise' ? 'vdr-fragebogen-pricing' : t.key === 'konditionen' ? 'vdr-fragebogen-tax' : 'vdr-fragebogen-fragen-tab',
+          }))}
+        />
 
         {/* ════════ Tab: Fragen ════════ */}
         {tab === 'fragen' && (

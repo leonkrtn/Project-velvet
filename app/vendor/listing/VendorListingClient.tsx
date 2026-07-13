@@ -19,6 +19,7 @@ import VendorMarketplacePreview, {
   type PreviewVendor, type PreviewPackage, type PreviewFaq,
 } from '@/components/marketplace/VendorMarketplacePreview'
 import ExternalEmbed from '@/components/consent/ExternalEmbed'
+import SegmentedToggle from '@/components/vendor/SegmentedToggle'
 
 interface Vendor {
   id: string; name: string; company_name: string | null; category: string
@@ -506,7 +507,7 @@ export default function VendorListingClient() {
         {/* ── Header ── */}
         <div className="listing-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px', margin: 0 }}>Anbieter-Profil</h1>
+            <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.5px', margin: 0 }}>Marktplatz-Auftritt</h1>
             <p style={{ fontSize: 13.5, color: 'var(--text-dim)', marginTop: 6, marginBottom: 0 }}>
               So erscheinst du im Forevr-Marktplatz.
             </p>
@@ -527,26 +528,16 @@ export default function VendorListingClient() {
         </div>
 
         {/* ── Tab switcher ── */}
-        <div data-tour="vdr-listing-tabs" style={{ display: 'inline-flex', background: 'var(--border)', borderRadius: 10, padding: 3, marginBottom: 24, gap: 2 }}>
-          {(['anzeige', 'anfrageformular'] as ListingTab[]).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                padding: '7px 18px', borderRadius: 8, border: '1px solid transparent', cursor: 'pointer',
-                fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600,
-                background: activeTab === tab ? 'var(--surface)' : 'transparent',
-                color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
-                boxShadow: activeTab === tab ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
-                transition: 'box-shadow .15s, border-color .15s',
-              }}
-              onMouseEnter={e => { if (activeTab !== tab) { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' } }}
-              onMouseLeave={e => { if (activeTab !== tab) { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'transparent' } }}
-            >
-              {tab === 'anzeige' ? 'Anzeige' : 'Anfrageformular'}
-            </button>
-          ))}
-        </div>
+        <SegmentedToggle
+          data-tour="vdr-listing-tabs"
+          style={{ display: 'inline-flex', marginBottom: 24 }}
+          value={activeTab}
+          onChange={setActiveTab}
+          options={[
+            { key: 'anzeige', label: 'Anzeige' },
+            { key: 'anfrageformular', label: 'Anfrageformular' },
+          ]}
+        />
 
         {activeTab === 'anzeige' ? (
           <div className="listing-split">

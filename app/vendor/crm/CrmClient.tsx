@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import CrmImportDialog from '@/components/vendor/CrmImportDialog'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
+import SegmentedToggle from '@/components/vendor/SegmentedToggle'
 
 // ── Types ──────────────────────────────────────────────────────
 type LifecycleStage = 'lead' | 'anfrage' | 'gebucht' | 'ehemalig'
@@ -1348,13 +1349,14 @@ export default function CrmClient({ initialContacts }: { initialContacts: Contac
             <button onClick={() => setShowFilters(f => !f)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 12px', borderRadius: 9, border: `1px solid ${showFilters || activeFilters > 0 ? 'var(--accent)' : 'var(--border2)'}`, background: showFilters ? 'var(--accent-light)' : 'var(--bg)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit', color: showFilters ? 'var(--accent)' : 'var(--text-secondary)' }}>
               <Filter size={13} /> Filter {activeFilters > 0 && <span style={{ width: 16, height: 16, borderRadius: '50%', background: 'var(--accent)', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{activeFilters}</span>}
             </button>
-            <div style={{ display: 'flex', border: '1px solid var(--border2)', borderRadius: 9, overflow: 'hidden' }}>
-              {([['list', List], ['kanban', LayoutGrid]] as const).map(([v, Icon]) => (
-                <button key={v} onClick={() => setView(v)} style={{ padding: '8px 10px', border: 'none', background: view === v ? 'var(--accent)' : 'var(--bg)', color: view === v ? '#fff' : 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <Icon size={14} />
-                </button>
-              ))}
-            </div>
+            <SegmentedToggle
+              value={view}
+              onChange={setView}
+              options={[
+                { key: 'list', label: '', icon: List },
+                { key: 'kanban', label: '', icon: LayoutGrid },
+              ]}
+            />
           </div>
 
           {/* Extended filters */}
