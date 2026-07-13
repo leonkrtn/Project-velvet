@@ -7,6 +7,7 @@ import {
   Heart, Loader2, Users, Mail, Phone, Tag, ArrowRight, ReceiptText, Search, Trash2,
 } from 'lucide-react'
 import VendorOfferEditor from '@/components/vendor/VendorOfferEditor'
+import SegmentedToggle from '@/components/vendor/SegmentedToggle'
 
 interface Contact { name: string | null; email: string | null; phone: string | null }
 export interface Req {
@@ -126,24 +127,16 @@ export default function VendorAnfragenClient({ initialRequests, initialIsVendor 
         )}
 
         {isVendor && requests.length > 0 && (
-          <div data-tour="vdr-anfragen-filters" style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-            {tabs.map(t => {
-              const active = filter === t.key
-              return (
-                <button key={t.key} onClick={() => setFilter(t.key)} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 100, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
-                  border: `1px solid ${active ? 'var(--gold)' : 'var(--border)'}`, background: active ? 'var(--gold)' : 'var(--bg)', color: active ? '#fff' : 'var(--text)',
-                  transition: 'box-shadow .15s, border-color .15s',
-                }}
-                  onMouseEnter={e => { if (!active) { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; e.currentTarget.style.borderColor = 'var(--accent)' } }}
-                  onMouseLeave={e => { if (!active) { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--border)' } }}
-                >
-                  {t.label}
-                  <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 100, minWidth: 18, textAlign: 'center', padding: '0 5px', background: active ? 'rgba(255,255,255,0.25)' : 'var(--border)', color: active ? '#fff' : 'var(--text-dim)' }}>{t.count}</span>
-                </button>
-              )
-            })}
-          </div>
+          <SegmentedToggle
+            data-tour="vdr-anfragen-filters"
+            style={{ marginBottom: 18, flexWrap: 'wrap' }}
+            value={filter}
+            onChange={setFilter}
+            options={tabs.map(t => ({
+              key: t.key,
+              label: <>{t.label}<span style={{ fontSize: 11, fontWeight: 700, borderRadius: 100, minWidth: 18, textAlign: 'center', padding: '0 5px', background: 'rgba(127,127,127,0.18)', color: 'inherit' }}>{t.count}</span></>,
+            }))}
+          />
         )}
 
         {!isVendor ? (

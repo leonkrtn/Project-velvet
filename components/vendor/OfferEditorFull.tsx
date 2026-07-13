@@ -35,6 +35,7 @@ interface Offer {
   agb_text: string
   agb_required: boolean
   accepted_by_name: string | null
+  accepted_by_vendor: boolean
   request_id: string | null
   event_id: string | null
   standard_info: Record<string, string> | null
@@ -201,17 +202,30 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
     await load()
   }
 
-  async function acceptStandalone(fields: Record<string, string>) {
-    setBusy('accept'); setErr('')
+  async function createEventFromOffer(fields: Record<string, string>) {
+    setBusy('create_event'); setErr('')
     const res = await fetch(`/api/vendor/event-offers/${offerId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'accept', ...fields }),
+      body: JSON.stringify({ action: 'create_event', ...fields }),
     })
     const d = await res.json().catch(() => ({}))
     setBusy(null)
     if (!res.ok) { setErr(d.error ?? 'Fehler'); return }
     setAcceptOpen(false)
     if (d.eventId) router.push(`/vendor/dashboard/${d.eventId}/angebote/${offerId}`)
+  }
+
+  async function markAcceptedByVendor() {
+    if (!confirm('Als angenommen markieren, ohne dass der Kunde im System bestätigt hat? Das wird im Angebot als Eigenmarkierung durch dich vermerkt.')) return
+    setBusy('mark_accepted'); setErr('')
+    const res = await fetch(`/api/vendor/event-offers/${offerId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'mark_accepted_by_vendor' }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setBusy(null)
+    if (!res.ok) { setErr(d.error ?? 'Fehler'); return }
+    await load()
   }
 
   async function recompute() {
@@ -335,7 +349,8 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
       {!editable && (
         <div style={{ background: 'rgba(184,153,104,0.10)', border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', marginBottom: 18, fontSize: 13, color: C.text }}>
           {offer.status === 'released' && 'Dieses Angebot ist versendet und beim Brautpaar einsehbar. Für Änderungen erstelle eine neue Version.'}
-          {offer.status === 'accepted' && `Angenommen${offer.accepted_by_name ? ` von ${offer.accepted_by_name}` : ''} — der Auftrag gilt als bestätigt.`}
+          {offer.status === 'accepted' && offer.accepted_by_vendor && 'Von dir als angenommen markiert — keine Bestätigung durch den Kunden im System.'}
+          {offer.status === 'accepted' && !offer.accepted_by_vendor && `Angenommen${offer.accepted_by_name ? ` von ${offer.accepted_by_name}` : ''} — der Auftrag gilt als bestätigt.`}
           {offer.status === 'declined' && 'Dieses Angebot wurde vom Brautpaar abgelehnt.'}
           {offer.status === 'superseded' && 'Dieses Angebot wurde durch eine neuere Version ersetzt.'}
         </div>
@@ -498,8 +513,8 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
               {busy === 'save' ? <Loader2 size={15} className="ofe-spin" /> : <Save size={15} />} Entwurf speichern
             </button>
             {eventId === null && (
-              <button onClick={() => setAcceptOpen(true)} disabled={!!busy} style={btnGhost} title="Als angenommen markieren und ein Event daraus anlegen">
-                <CalendarPlus size={15} /> Annehmen & Event anlegen
+              <button onClick={() => setAcceptOpen(true)} disabled={!!busy} style={btnGhost} title="Event aus diesem Angebot anlegen — die Annahme bleibt dem Empfänger vorbehalten">
+                <CalendarPlus size={15} /> Event anlegen
               </button>
             )}
             <button onClick={() => patch('release')} disabled={!!busy} style={{ ...btn, background: '#1E7E34', color: '#fff' }}>
@@ -510,8 +525,13 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
           <>
             {eventId && <Link href={`/vendor/dashboard/${eventId}/kommunikation`} style={{ ...btnGhost, textDecoration: 'none' }}><MessageSquare size={15} /> Zur Kommunikation</Link>}
             {eventId === null && offer.status === 'released' && (
-              <button onClick={() => setAcceptOpen(true)} disabled={!!busy} style={{ ...btn, background: '#1E7E34', color: '#fff' }} title="Als angenommen markieren und ein Event daraus anlegen">
-                <CalendarPlus size={15} /> Annehmen & Event anlegen
+              <button onClick={() => setAcceptOpen(true)} disabled={!!busy} style={{ ...btn, background: '#1E7E34', color: '#fff' }} title="Event aus diesem Angebot anlegen — die Annahme bleibt dem Empfänger vorbehalten">
+                <CalendarPlus size={15} /> Event anlegen
+              </button>
+            )}
+            {offer.status === 'released' && (
+              <button onClick={markAcceptedByVendor} disabled={!!busy} style={btnGhost} title="Nur für Zusagen außerhalb des Systems — wird als Eigenmarkierung vermerkt, nicht als Kundenbestätigung">
+                {busy === 'mark_accepted' ? <Loader2 size={15} className="ofe-spin" /> : <Check size={15} />} Als angenommen markieren
               </button>
             )}
             {offer.status !== 'superseded' && (
@@ -524,11 +544,11 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
       </div>
 
       {acceptOpen && (
-        <AcceptDialog
+        <CreateEventDialog
           defaults={{ eventTitle: title, coupleName: clientName }}
-          busy={busy === 'accept'}
+          busy={busy === 'create_event'}
           onClose={() => setAcceptOpen(false)}
-          onConfirm={acceptStandalone}
+          onConfirm={createEventFromOffer}
         />
       )}
       </div>
@@ -632,9 +652,10 @@ function BlockRow({ label, type, sub, onClick }: { label: string; type: LineItem
   )
 }
 
-// Dialog: eigenständiges Angebot annehmen -> Event anlegen. Vorbefüllt aus dem
+// Dialog: aus einem eigenständigen Angebot ein Event anlegen (ohne das Angebot
+// anzunehmen — das bleibt dem Empfänger vorbehalten). Vorbefüllt aus dem
 // Angebot, restliche Felder optional.
-function AcceptDialog({ defaults, busy, onClose, onConfirm }: {
+function CreateEventDialog({ defaults, busy, onClose, onConfirm }: {
   defaults: { eventTitle: string; coupleName: string }
   busy: boolean
   onClose: () => void
@@ -655,12 +676,12 @@ function AcceptDialog({ defaults, busy, onClose, onConfirm }: {
       <div onClick={e => e.stopPropagation()} style={{ background: C.surface, borderRadius: 16, width: 520, maxWidth: '100%', maxHeight: '90dvh', overflow: 'auto', boxShadow: '0 24px 70px rgba(0,0,0,0.28)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '16px 20px', borderBottom: `1px solid ${C.border}` }}>
           <CalendarPlus size={18} style={{ color: C.gold }} />
-          <h3 style={{ flex: 1, margin: 0, fontSize: 16, fontWeight: 700, color: C.text }}>Angebot annehmen &amp; Event anlegen</h3>
+          <h3 style={{ flex: 1, margin: 0, fontSize: 16, fontWeight: 700, color: C.text }}>Event aus Angebot anlegen</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.dim, display: 'flex' }}><X size={18} /></button>
         </div>
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ fontSize: 12.5, color: C.dim, margin: 0, lineHeight: 1.5 }}>
-            Aus diesem Angebot wird ein Event erstellt. Die Daten sind aus dem Angebot vorausgefüllt — du kannst sie ergänzen. Alle Felder außer dem Titel sind optional und später im Event anpassbar.
+            Aus diesem Angebot wird ein Event erstellt und das Angebot damit verknüpft — angenommen wird es dadurch noch nicht, das bleibt allein dem Empfänger vorbehalten, sobald er ins Event eingeladen ist. Die Daten sind aus dem Angebot vorausgefüllt — du kannst sie ergänzen. Alle Felder außer dem Titel sind optional und später im Event anpassbar.
           </p>
           <div>
             <label style={lblS}>Event-Titel *</label>
