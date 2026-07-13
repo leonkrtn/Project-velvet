@@ -219,8 +219,9 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
           </div>
         )}
 
-        {/* Aktionen */}
-        <div data-tour="vdr-fragebogen-actions" style={{ ...card, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Aktionen — bewusst kein eigener Kasten, sondern eine schlichte Werkzeugleiste
+            oberhalb der Inhaltsboxen. */}
+        <div data-tour="vdr-fragebogen-actions" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
           <button onClick={save} disabled={saving} style={btnGold}>
             {saving ? <Loader2 size={15} className="bp-spin" /> : <Save size={15} />} Speichern
           </button>
@@ -241,14 +242,9 @@ export default function FragebogenBuilderClient({ category, embedded }: { catego
           <button onClick={() => setPreviewOpen(true)} style={btnGhost}>
             <ClipboardList size={14} /> Vorschau
           </button>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-            <LayoutTemplate size={15} style={{ color: C.dim }} />
-            <select style={{ ...inp, width: 'auto' }} value="" onChange={e => { if (e.target.value) requestTemplate(e.target.value) }}>
-              <option value="">Vorlage laden…</option>
-              <option value={category}>Meine Kategorie</option>
-              {MARKETPLACE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-            </select>
-          </div>
+          <button onClick={() => requestTemplate(category)} style={{ ...btnGhost, marginLeft: 'auto' }} title="Lädt die Standard-Vorlage für deine Kategorie">
+            <LayoutTemplate size={14} /> Vorlage laden
+          </button>
           {msg && <span style={{ fontSize: 13, fontWeight: 600, color: msg.kind === 'ok' ? '#15803D' : C.red, width: '100%' }}>{msg.text}</span>}
         </div>
 

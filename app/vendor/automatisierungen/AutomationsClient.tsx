@@ -266,10 +266,15 @@ function NewRequestEmailSection() {
           als Excel-Anhang — praktisch, um außerhalb von Forevr zu kalkulieren.
         </p>
       </div>
-      <span style={{ flexShrink: 0, paddingTop: 4 }}>
-        {loading
-          ? <Loader2 size={15} className="bp-spin" style={{ color: C.dim }} />
-          : <ToggleSwitch checked={enabled} onChange={toggle} size="sm" aria-label="Neue Anfragen per E-Mail" disabled={saving} />}
+      <span style={{ flexShrink: 0, paddingTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+        {loading ? (
+          <Loader2 size={15} className="bp-spin" style={{ color: C.dim }} />
+        ) : (
+          <>
+            <span style={{ fontSize: 12, fontWeight: 700, color: enabled ? C.gold : C.dim }}>{enabled ? 'An' : 'Aus'}</span>
+            <ToggleSwitch checked={enabled} onChange={toggle} size="sm" aria-label="Neue Anfragen per E-Mail" disabled={saving} />
+          </>
+        )}
       </span>
     </div>
   )

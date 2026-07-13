@@ -25,8 +25,6 @@ const inp: React.CSSProperties = { height: 32, padding: '0 9px', fontSize: 13, b
 const btn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', border: '1px solid transparent' }
 const btnGhost: React.CSSProperties = { ...btn, background: C.surface, color: C.text, border: `1px solid ${C.border}` }
 
-type View = 'antworten' | 'angebot'
-
 interface Props {
   requestId: string
   eventId: string
@@ -42,7 +40,6 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
   const [validUntil, setValidUntil] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState('')
-  const [view, setView] = useState<View>('antworten')
   const [pdfPreview, setPdfPreview] = useState(false)
 
   const load = useCallback(async () => {
@@ -127,36 +124,32 @@ export default function VendorOfferEditor({ requestId, eventId, requestStatus, o
     return null
   }
 
+  const hasAnswers = (offer.answers ?? []).length > 0
+
   return (
     <div data-tour="vdr-offer-editor">
-      {/* Segmented toggle (Design wie Aufgaben & Notizen) */}
-      <div data-tour="vdr-offer-tabs" style={{ display: 'inline-flex', gap: 4, padding: 4, marginBottom: 16, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
-        {([['antworten', 'Antworten', <ClipboardList key="a" size={15} />], ['angebot', 'Angebot', <ReceiptText key="o" size={15} />]] as [View, string, React.ReactNode][]).map(([key, label, icon]) => {
-          const active = view === key
-          return (
-            <button key={key} onClick={() => setView(key)} style={{
-              display: 'flex', alignItems: 'center', gap: 7, padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
-              background: active ? C.surface : 'transparent', boxShadow: active ? 'var(--shadow-sm)' : 'none',
-              color: active ? C.text : C.dim, fontSize: 13.5, fontWeight: active ? 600 : 450, fontFamily: 'inherit', transition: 'background 0.12s',
-            }}>
-              {icon}{label}
-            </button>
-          )
-        })}
-      </div>
-
       {err && <p style={{ color: C.red, fontSize: 12.5, margin: '0 0 8px' }}>{err}</p>}
 
-      {view === 'antworten' ? (
-        <AnswersView answers={offer.answers ?? []} info={offer.standard_info ?? {}} />
-      ) : (
-        <OfferBody
-          offer={offer} items={items} editable={!!editable} totals={totals}
-          notes={notes} setNotes={setNotes} validUntil={validUntil} setValidUntil={setValidUntil}
-          setItem={setItem} addItem={addItem} removeItem={removeItem}
-          busy={busy} onRecompute={recompute}
-        />
+      {/* Beantwortete Fragen des Anfrageformulars — immer direkt sichtbar,
+          nicht mehr hinter einem Tab versteckt. */}
+      {hasAnswers && (
+        <div data-tour="vdr-offer-answers" style={{ marginBottom: 20 }}>
+          <h4 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.dim, margin: '0 0 10px' }}>
+            <ClipboardList size={14} /> Antworten aus dem Anfrageformular
+          </h4>
+          <AnswersView answers={offer.answers ?? []} info={offer.standard_info ?? {}} />
+        </div>
       )}
+
+      <h4 style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.dim, margin: '0 0 10px' }}>
+        <ReceiptText size={14} /> Angebot
+      </h4>
+      <OfferBody
+        offer={offer} items={items} editable={!!editable} totals={totals}
+        notes={notes} setNotes={setNotes} validUntil={validUntil} setValidUntil={setValidUntil}
+        setItem={setItem} addItem={addItem} removeItem={removeItem}
+        busy={busy} onRecompute={recompute}
+      />
 
       {/* Aktionen (immer sichtbar) */}
       <div data-tour="vdr-offer-actions" style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16, flexWrap: 'wrap' }}>
@@ -302,8 +295,8 @@ function VariantsManager({ requestId, editable, currency }: { requestId: string;
               </div>
 
               {editable && (
-                <button onClick={() => saveVariant(v)} disabled={busy === v.id} style={{ ...btnGhost, marginTop: 8, padding: '6px 12px', fontSize: 12.5 }}>
-                  {busy === v.id ? <Loader2 size={13} className="anf-spin" /> : <Save size={13} />} Variante speichern
+                <button onClick={() => saveVariant(v)} disabled={busy === v.id} style={{ ...btnGhost, marginTop: 8 }}>
+                  {busy === v.id ? <Loader2 size={15} className="anf-spin" /> : <Save size={15} />} Variante speichern
                 </button>
               )}
             </div>

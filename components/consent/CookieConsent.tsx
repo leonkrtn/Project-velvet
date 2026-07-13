@@ -46,12 +46,19 @@ function Banner({ onAcceptAll, onRejectAll, onSettings }: { onAcceptAll: () => v
           <a href="/cookies" style={link}>Cookie-Richtlinie</a> und{' '}
           <a href="/datenschutz" style={link}>Datenschutzerklärung</a>. Deine Wahl kannst du jederzeit ändern.
         </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div className="ccn-banner-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <button onClick={onAcceptAll} style={btnPrimary}>Alle akzeptieren</button>
           <button onClick={onRejectAll} style={btnGhost}>Nur notwendige</button>
-          <button onClick={onSettings} style={{ ...btnGhost, marginLeft: 'auto' }}>Einstellungen</button>
+          <button onClick={onSettings} className="ccn-settings-btn" style={{ ...btnGhost, marginLeft: 'auto' }}>Einstellungen</button>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 560px) {
+          .ccn-banner-actions { flex-direction: column; align-items: stretch; }
+          .ccn-banner-actions button { width: 100%; justify-content: center; }
+          .ccn-banner-actions .ccn-settings-btn { margin-left: 0 !important; }
+        }
+      `}</style>
     </div>
   )
 }

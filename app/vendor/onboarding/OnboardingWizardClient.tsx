@@ -313,7 +313,7 @@ export default function OnboardingWizardClient() {
             </p>
           )}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingTop: 12, flexShrink: 0 }}>
-            <button onClick={() => setStep(v => Math.max(0, v - 1))} disabled={step === 0 || busy} style={{ ...btnGhost, opacity: step === 0 ? 0.4 : 1 }}>
+            <button onClick={() => setStep(v => Math.max(0, v - 1))} disabled={step === 0 || busy} style={{ ...btnGhost, background: '#ffffff', color: '#111111', opacity: step === 0 ? 0.4 : 1 }}>
               <ChevronLeft size={16} /> Zurück
             </button>
             <button onClick={next} disabled={busy} style={{ ...btnDark, opacity: busy ? 0.6 : 1 }}>

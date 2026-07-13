@@ -1,7 +1,7 @@
 'use client'
 import React from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { ChevronLeft, MessagesSquare, ReceiptText, Info } from 'lucide-react'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 
@@ -20,6 +20,15 @@ const TABS = [
 
 export default function VendorEventTabBar({ eventId, eventTitle, eventDate, children }: Props) {
   const pathname = usePathname()
+  const router = useRouter()
+
+  // Echte Browser-Historie zurück (statt fest verdrahtet auf "Meine Events"),
+  // damit man z.B. von einem einzelnen Angebot über die Event-Seite wieder
+  // zurück zur globalen Angebote-Liste kommt, statt zu den Events zu springen.
+  function goBack() {
+    if (typeof window !== 'undefined' && window.history.length > 1) router.back()
+    else router.push('/vendor/dashboard')
+  }
   const base = `/vendor/dashboard/${eventId}`
   const activeTab = TABS.find(t => pathname.startsWith(`${base}/${t.key}`))?.key ?? 'kommunikation'
   const isKommunikation = activeTab === 'kommunikation'
@@ -34,14 +43,16 @@ export default function VendorEventTabBar({ eventId, eventTitle, eventDate, chil
         flexShrink: 0,
         padding: '14px 24px 0',
       }} className="vet-header">
-        <Link href="/vendor/dashboard" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 3,
-          fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none',
+        <button onClick={goBack} className="vdr-back-btn" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+          color: '#111111', background: '#ffffff', border: '1px solid var(--border)',
+          borderRadius: 8, padding: '5px 10px', cursor: 'pointer',
           marginBottom: 6,
         }}>
           <ChevronLeft size={13} />
-          Meine Events
-        </Link>
+          Zurück
+        </button>
 
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 2px', letterSpacing: '-0.3px' }}>

@@ -25,6 +25,14 @@ interface BadgeData {
   pendingAnfragen: number
 }
 
+function markQuickTourDone() {
+  fetch('/api/vendor/tour', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tourKey: 'vendor_quick_tour' }),
+  }).catch(() => { /* best effort — localStorage-Flag greift als Fallback */ })
+}
+
 const NAV = [
   { key: 'ubersicht',   label: 'Übersicht',    href: '/vendor/ubersicht',   icon: LayoutDashboard },
   { key: 'anfragen',    label: 'Anfragen',     href: '/vendor/anfragen',    icon: Inbox,         badgeKey: 'pendingAnfragen' as const },
@@ -58,6 +66,10 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
   const [pageSubtitle, setPageSubtitle] = useState('')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [helpMenuOpen, setHelpMenuOpen] = useState(false)
+  // null = noch nicht vom Server geladen — Quick-Tour erst rendern, wenn klar ist,
+  // dass sie für diesen Account noch nicht abgeschlossen wurde (verhindert Re-Start
+  // bei jeder neuen Anmeldung auf einem anderen Gerät/Browser).
+  const [quickTourDone, setQuickTourDone] = useState<boolean | null>(null)
   const active = activeKey(pathname)
   const isKommunikation = pathname.includes('/kommunikation')
 
@@ -67,7 +79,13 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
     fetch('/api/vendor/shell-data')
       .then(r => r.ok ? r.json() : null)
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      .then(d => { if (d) { setBadges({ pendingAnfragen: d.pendingAnfragen ?? 0 }); setModerationStatus(d.moderationStatus ?? null) } })
+      .then(d => {
+        if (d) {
+          setBadges({ pendingAnfragen: d.pendingAnfragen ?? 0 })
+          setModerationStatus(d.moderationStatus ?? null)
+          setQuickTourDone(prev => prev === null ? !!d.quickTourDone : prev)
+        }
+      })
   }, [pathname])
 
   useEffect(() => {
@@ -224,6 +242,17 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
         boxShadow: '0 2px 8px rgba(35,82,200,0.06)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <button
+            onClick={() => setMobileMenuOpen(o => !o)}
+            aria-label={mobileMenuOpen ? 'Menü schließen' : 'Menü öffnen'}
+            style={{
+              flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 40, height: 40, marginLeft: -8, borderRadius: 8, border: 'none',
+              background: 'none', cursor: 'pointer', color: 'var(--text-primary)',
+            }}
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
           <div style={{
             width: 30, height: 30, borderRadius: 8, flexShrink: 0,
             background: logoUrl ? 'transparent' : 'var(--accent)', color: '#fff',
@@ -240,16 +269,6 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             {companyName || 'Mein Unternehmen'}
           </span>
         </div>
-        <button
-          onClick={() => setMobileMenuOpen(o => !o)}
-          style={{
-            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: 40, height: 40, borderRadius: 8, border: 'none',
-            background: 'none', cursor: 'pointer', color: 'var(--text-primary)',
-          }}
-        >
-          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
       </div>
 
       {/* ── Mobile drawer overlay ── */}
@@ -429,8 +448,17 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
       <VendorHelpMenu open={helpMenuOpen} onClose={() => setHelpMenuOpen(false)} />
       {/* Ausführliche Tour (über das Hilfe-Menü, optional bereichsgefiltert) */}
       <VendorTour />
-      {/* Kurze Onboarding-Tour: einmaliger Auto-Start nach dem Wizard */}
-      <VendorTour steps={VENDOR_QUICK_TOUR_STEPS} startEvent={VENDOR_QUICK_TOUR_START_EVENT} autoStartOnceKey={VENDOR_QUICK_TOUR_DONE_KEY} />
+      {/* Kurze Onboarding-Tour: einmaliger Auto-Start nach dem Wizard.
+          Wird erst gerendert, sobald der Server bestätigt hat, dass sie für
+          diesen Account noch nicht abgeschlossen ist. */}
+      {quickTourDone === false && (
+        <VendorTour
+          steps={VENDOR_QUICK_TOUR_STEPS}
+          startEvent={VENDOR_QUICK_TOUR_START_EVENT}
+          autoStartOnceKey={VENDOR_QUICK_TOUR_DONE_KEY}
+          onDismissForever={() => { setQuickTourDone(true); markQuickTourDone() }}
+        />
+      )}
     </div>
   )
 }

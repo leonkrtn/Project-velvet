@@ -15,7 +15,15 @@ export async function GET() {
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!link) return NextResponse.json({ companyName: '', pendingAnfragen: 0, unreadNachrichten: 0, moderationStatus: null })
+  const { data: tourState } = await admin
+    .from('user_tour_state')
+    .select('tour_key')
+    .eq('user_id', user.id)
+    .eq('tour_key', 'vendor_quick_tour')
+    .maybeSingle()
+  const quickTourDone = !!tourState
+
+  if (!link) return NextResponse.json({ companyName: '', pendingAnfragen: 0, unreadNachrichten: 0, moderationStatus: null, quickTourDone })
 
   const profile = Array.isArray(link.dienstleister_profiles) ? link.dienstleister_profiles[0] : link.dienstleister_profiles
 
@@ -48,5 +56,6 @@ export async function GET() {
     pendingAnfragen: pendingAnfragen ?? 0,
     unreadNachrichten,
     moderationStatus: profile?.moderation_status ?? null,
+    quickTourDone,
   })
 }
