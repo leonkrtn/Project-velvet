@@ -26,10 +26,10 @@ interface BadgeData {
 }
 
 function markQuickTourDone() {
-  fetch('/api/vendor/tour', {
+  fetch('/api/tour', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tourKey: 'vendor_quick_tour' }),
+    body: JSON.stringify({ key: 'vendor_quick_tour' }),
   }).catch(() => { /* best effort — localStorage-Flag greift als Fallback */ })
 }
 
