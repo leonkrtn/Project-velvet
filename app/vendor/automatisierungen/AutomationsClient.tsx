@@ -103,7 +103,6 @@ export default function AutomationsClient() {
 
   return (
     <div className="vnd-page-outer" style={{ background: C.bg, flex: 1, minHeight: '100dvh', padding: '28px 24px 48px', overflow: 'auto', boxSizing: 'border-box' }}>
-      <div className="vnd-page-card" style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16, padding: '24px 28px' }}>
 
       {/* Header (Muster wie Angebote/Anfragen/Report) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
@@ -217,8 +216,6 @@ export default function AutomationsClient() {
 
       <h3 style={sectionHead}>Manuelle Aktionen</h3>
       <ManualReviewSection />
-
-      </div>
 
       <style>{`
         @media (max-width: 480px) {
