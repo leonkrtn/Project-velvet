@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
   Music, Camera, Wallet, CheckSquare, Settings, Info,
   MessageSquare, ChevronRight, X, Menu, LogOut,
-  Briefcase, Lock, Sparkles, Globe, ReceiptText, HelpCircle,
+  Briefcase, Lock, Sparkles, Globe, ReceiptText, HelpCircle, User,
 } from 'lucide-react'
 import ForevrHeart from '@/components/ForevrHeart'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
@@ -326,8 +326,17 @@ export default function BrautpaarShell({ children, eventId, eventTitle, userId, 
         ))}
       </nav>
 
-      {/* Footer — Hilfe, Einstellungen (Zahnrad) und Abmelden. */}
+      {/* Footer — Profil, Hilfe, Einstellungen (Zahnrad) und Abmelden. */}
       <div className="bp-sidebar-footer">
+        <Link
+          href={`/brautpaar/${eventId}/profil`}
+          onClick={() => setMobileOpen(false)}
+          className="bp-sidebar-footer-link"
+          aria-current={pathname === `/brautpaar/${eventId}/profil` || pathname.startsWith(`/brautpaar/${eventId}/profil/`) ? 'page' : undefined}
+        >
+          <User size={16} className="bp-nav-item-icon" />
+          <span>Profil</span>
+        </Link>
         <Link
           href={`/brautpaar/${eventId}/hilfe`}
           onClick={() => setMobileOpen(false)}

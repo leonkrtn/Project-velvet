@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
   Calendar, BarChart2, User, LogOut, HelpCircle, Users, Menu, X, Zap,
-  Sparkles, ChevronRight, Mail,
+  Sparkles, ChevronRight, Mail, Settings,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
@@ -44,13 +44,14 @@ const NAV = [
   { key: 'emails',     label: 'E-Mails',      href: '/vendor/e-mails',     icon: Mail },
 ] as const
 
-type NavKey = (typeof NAV)[number]['key'] | 'listing'
+type NavKey = (typeof NAV)[number]['key'] | 'listing' | 'profil'
 
 function activeKey(pathname: string): NavKey {
   if (pathname.startsWith('/vendor/ubersicht'))  return 'ubersicht'
   if (pathname.startsWith('/vendor/anfragen'))   return 'anfragen'
   if (pathname.startsWith('/vendor/angebote'))   return 'angebote'
   if (pathname.startsWith('/vendor/listing'))    return 'listing'
+  if (pathname.startsWith('/vendor/profil'))     return 'profil'
   if (pathname.startsWith('/vendor/report'))     return 'report'
   if (pathname.startsWith('/vendor/crm'))        return 'crm'
   if (pathname.startsWith('/vendor/automatisierungen')) return 'automatik'
@@ -173,6 +174,10 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
 
         {/* Bottom */}
         <div className="vdr-sidebar-bottom" style={{ padding: '8px 8px 16px', borderTop: '1px solid var(--border)' }}>
+          <Link href="/vendor/profil" className="vdr-nav-link" data-active={active === 'profil' ? 'true' : undefined} style={navStyle('profil')}>
+            <Settings size={16} style={{ flexShrink: 0, opacity: active === 'profil' ? 1 : 0.45 }} />
+            <span className="vdr-nav-text">Profil</span>
+          </Link>
           <Link href="/vendor/listing" className="vdr-nav-link" data-active={active === 'listing' ? 'true' : undefined} style={navStyle('listing')}>
             <User size={16} style={{ flexShrink: 0, opacity: active === 'listing' ? 1 : 0.45 }} />
             <span className="vdr-nav-text">Anbieter-Profil</span>
@@ -321,6 +326,12 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
 
         {/* Drawer bottom */}
         <div style={{ padding: '8px 10px 24px', borderTop: '1px solid var(--border)' }}>
+          <Link href="/vendor/profil" className="vdr-drawer-link" data-active={active === 'profil' ? 'true' : undefined} style={navStyle('profil')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+              <Settings size={16} style={{ flexShrink: 0, opacity: active === 'profil' ? 1 : 0.45 }} />
+              <span>Profil</span>
+            </div>
+          </Link>
           <Link href="/vendor/listing" className="vdr-drawer-link" data-active={active === 'listing' ? 'true' : undefined} style={navStyle('listing')}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
               <User size={16} style={{ flexShrink: 0, opacity: active === 'listing' ? 1 : 0.45 }} />

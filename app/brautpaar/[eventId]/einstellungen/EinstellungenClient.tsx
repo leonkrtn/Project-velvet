@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Search, FileDown, CreditCard, GraduationCap, ChevronRight } from 'lucide-react'
+import { Search, FileDown, CreditCard, GraduationCap, ChevronRight, User } from 'lucide-react'
 import DisplaySettingsLauncher from '@/components/display-studio/DisplaySettingsLauncher'
 import SoloInviteSection from '../allgemein/SoloInviteSection'
 import { TOUR_START_EVENT } from '@/components/tour/ProductTour'
@@ -49,6 +49,22 @@ export default function EinstellungenClient({ eventId, currentUserId, isSolo, ha
 
   const sections = useMemo(() => {
     const list: { key: string; keywords: string; node: React.ReactNode }[] = [
+      {
+        key: 'profil',
+        keywords: 'profil account konto name email passwort löschen abmelden',
+        node: (
+          <LauncherCard
+            icon={<User size={20} />}
+            title="Profil"
+            desc="Name, E-Mail, Passwort, Abmelden und Account löschen — alles an einem Ort."
+            action={
+              <Link href={`/brautpaar/${eventId}/profil`} className="bp-btn bp-btn-primary">
+                Öffnen <ChevronRight size={16} />
+              </Link>
+            }
+          />
+        ),
+      },
       {
         key: 'anzeige',
         keywords: 'anzeige anzeigeeinstellungen design farben schriften bilder einladungsseite rsvp gestalten',

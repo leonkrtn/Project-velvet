@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runAutomationTick } from '@/lib/vendor/automation-tick'
 import { maybeSendMonthlyReport } from '@/lib/admin/notify'
+import { purgeExpiredAccounts } from '@/lib/account/purge'
 
 export const runtime = 'nodejs'
 // Kein Caching — wird vom Scheduler aufgerufen.
@@ -19,7 +20,9 @@ async function handle(req: NextRequest) {
   const result = await runAutomationTick(admin)
   // Monatlicher Admin-Report (nur am 1. des Monats, idempotent).
   const monthlyReportSent = await maybeSendMonthlyReport(admin)
-  return NextResponse.json({ ok: true, ...result, monthlyReportSent })
+  // Endgültige Löschung von Accounts, deren Lösch-Frist abgelaufen ist.
+  const accountPurge = await purgeExpiredAccounts(admin)
+  return NextResponse.json({ ok: true, ...result, monthlyReportSent, accountPurge })
 }
 
 export async function POST(req: NextRequest) { return handle(req) }
