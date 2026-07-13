@@ -258,6 +258,12 @@ button[style*="background: none"]:hover:not([data-sel]) {
 @media (max-width: 480px) { .ub-stat-grid   { grid-template-columns: 1fr !important; } }
 @media (max-width: 660px) { .ub-bottom-grid { grid-template-columns: 1fr !important; } }
 
+/* ── CRM — New Contact modal grids ─────────────────────────────────────── */
+@media (max-width: 420px) { .crm-2col { grid-template-columns: 1fr !important; } }
+
+/* ── Vendor-Angebotseditor — Notizen/Gültig-bis-Grid ───────────────────── */
+@media (max-width: 480px) { .vof-notes-grid { grid-template-columns: 1fr !important; } }
+
 /* ── Generic vendor page wrapper — alle übrigen Seiten ─────────────────── */
 @media (max-width: 767px) {
   .vnd-page-outer        { padding: 0 !important; background: var(--surface) !important; }

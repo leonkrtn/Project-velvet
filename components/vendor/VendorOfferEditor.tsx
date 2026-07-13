@@ -287,8 +287,8 @@ function VariantsManager({ requestId, editable, currency }: { requestId: string;
                     </>
                   ) : (
                     <>
-                      <span style={{ flex: 1, fontSize: 12.5 }}>{li.label}</span>
-                      <span style={{ width: 80, textAlign: 'right', fontSize: 12.5 }}>{formatMoney(li.total, currency)}</span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, wordBreak: 'break-word' }}>{li.label}</span>
+                      <span style={{ width: 80, flexShrink: 0, textAlign: 'right', fontSize: 12.5 }}>{formatMoney(li.total, currency)}</span>
                     </>
                   )}
                 </div>
@@ -398,29 +398,29 @@ function OfferBody({ offer, items, editable, totals, notes, setNotes, validUntil
       {/* Positionen */}
       <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
         <div style={{ display: 'flex', fontSize: 10.5, fontWeight: 700, color: C.dim, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '8px 10px', background: C.bg }}>
-          <span style={{ flex: 1 }}>Position</span>
-          <span style={{ width: 50, textAlign: 'right' }}>Menge</span>
-          <span style={{ width: 80, textAlign: 'right' }}>Einzel</span>
-          <span style={{ width: 84, textAlign: 'right' }}>Summe</span>
-          {editable && <span style={{ width: 28 }} />}
+          <span style={{ flex: 1, minWidth: 0 }}>Position</span>
+          <span style={{ width: 50, flexShrink: 0, textAlign: 'right' }}>Menge</span>
+          <span style={{ width: 80, flexShrink: 0, textAlign: 'right' }}>Einzel</span>
+          <span style={{ width: 84, flexShrink: 0, textAlign: 'right' }}>Summe</span>
+          {editable && <span style={{ width: 28, flexShrink: 0 }} />}
         </div>
         {items.length === 0 && <div style={{ padding: '10px', fontSize: 13, color: C.dim }}>Keine Positionen.</div>}
         {items.map((li, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderTop: `1px solid ${C.border}` }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderTop: `1px solid ${C.border}`, flexWrap: 'wrap' }}>
             {editable ? (
               <>
-                <input style={{ ...inp, flex: 1, minWidth: 0 }} value={li.label} onChange={e => setItem(i, { label: e.target.value })} placeholder="Bezeichnung" />
-                <input style={{ ...inp, width: 50, textAlign: 'right' }} type="number" value={li.qty} onChange={e => setItem(i, { qty: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
-                <input style={{ ...inp, width: 80, textAlign: 'right' }} type="number" value={li.unitPrice} onChange={e => setItem(i, { unitPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
-                <span style={{ width: 84, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.total, totals.cur)}</span>
-                <button onClick={() => removeItem(i)} style={{ width: 28, background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex', justifyContent: 'center' }}><Trash2 size={14} /></button>
+                <input style={{ ...inp, flex: 1, minWidth: 90 }} value={li.label} onChange={e => setItem(i, { label: e.target.value })} placeholder="Bezeichnung" />
+                <input style={{ ...inp, width: 50, flexShrink: 0, textAlign: 'right' }} type="number" value={li.qty} onChange={e => setItem(i, { qty: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
+                <input style={{ ...inp, width: 80, flexShrink: 0, textAlign: 'right' }} type="number" value={li.unitPrice} onChange={e => setItem(i, { unitPrice: e.target.value === '' ? 0 : parseFloat(e.target.value) })} />
+                <span style={{ width: 84, flexShrink: 0, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.total, totals.cur)}</span>
+                <button onClick={() => removeItem(i)} style={{ width: 28, flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: C.red, display: 'flex', justifyContent: 'center' }}><Trash2 size={14} /></button>
               </>
             ) : (
               <>
-                <span style={{ flex: 1, fontSize: 13 }}>{li.label}</span>
-                <span style={{ width: 50, textAlign: 'right', fontSize: 13 }}>{li.qty}</span>
-                <span style={{ width: 80, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.unitPrice, totals.cur)}</span>
-                <span style={{ width: 84, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.total, totals.cur)}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13, wordBreak: 'break-word' }}>{li.label}</span>
+                <span style={{ width: 50, flexShrink: 0, textAlign: 'right', fontSize: 13 }}>{li.qty}</span>
+                <span style={{ width: 80, flexShrink: 0, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.unitPrice, totals.cur)}</span>
+                <span style={{ width: 84, flexShrink: 0, textAlign: 'right', fontSize: 13 }}>{formatMoney(li.total, totals.cur)}</span>
               </>
             )}
           </div>
@@ -431,7 +431,7 @@ function OfferBody({ offer, items, editable, totals, notes, setNotes, validUntil
       </div>
 
       {/* Summen */}
-      <div style={{ marginLeft: 'auto', width: 240, marginTop: 10 }}>
+      <div style={{ marginLeft: 'auto', width: '100%', maxWidth: 240, marginTop: 10 }}>
         <Row label="Zwischensumme" value={formatMoney(totals.subtotal, totals.cur)} />
         {offer.tax_mode === 'regular' && <Row label={`zzgl. USt. (${totals.rate}%)`} value={formatMoney(totals.tax, totals.cur)} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px solid ${C.text}`, marginTop: 4, paddingTop: 6 }}>
@@ -442,7 +442,7 @@ function OfferBody({ offer, items, editable, totals, notes, setNotes, validUntil
       </div>
 
       {editable && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 10, marginTop: 14 }}>
+        <div className="vof-notes-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 10, marginTop: 14 }}>
           <div>
             <label style={{ fontSize: 11.5, fontWeight: 600, color: C.dim, display: 'block', marginBottom: 5 }}>Anmerkungen ans Brautpaar</label>
             <textarea style={{ ...inp, height: 'auto', padding: '7px 9px', width: '100%', minHeight: 54, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} />

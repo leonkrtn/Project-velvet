@@ -260,7 +260,7 @@ export function AllergyPicker({ label, tags, onTagsChange, custom, onCustomChang
 export function Toast({ message, onClose }: { message:string; onClose:()=>void }) {
   React.useEffect(()=>{ const t=setTimeout(onClose,3000); return ()=>clearTimeout(t) },[onClose])
   return (
-    <div style={{ position:'fixed', bottom:32, left:'50%', transform:'translateX(-50%)', background:'#1A1A1A', color:'#FFFFFF', border:'none', padding:'11px 20px', borderRadius:100, fontSize:13, fontWeight:500, zIndex:1000, boxShadow:'0 4px 24px rgba(0,0,0,0.15)', animation:'slideUp 0.3s ease', whiteSpace:'nowrap' }}>
+    <div style={{ position:'fixed', bottom:32, left:'50%', transform:'translateX(-50%)', maxWidth:'calc(100vw - 32px)', background:'#1A1A1A', color:'#FFFFFF', border:'none', padding:'11px 20px', borderRadius:100, fontSize:13, fontWeight:500, zIndex:1000, boxShadow:'0 4px 24px rgba(0,0,0,0.15)', animation:'slideUp 0.3s ease', textAlign:'center' }}>
       {message}
     </div>
   )

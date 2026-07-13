@@ -553,7 +553,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
 
       {/* Filter flyout */}
       <aside style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, width: 320,
+        position: 'fixed', top: 0, right: 0, bottom: 0, width: 320, maxWidth: '100%',
         background: '#fff', zIndex: 50,
         boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
         display: 'flex', flexDirection: 'column',

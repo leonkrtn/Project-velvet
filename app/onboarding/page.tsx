@@ -37,6 +37,7 @@ const BUDGET_CATS: BudgetCategory[] = ['Location','Catering','Musik','Fotografie
 const IS: React.CSSProperties = {
   padding:'10px 13px',background:'#FFFFFF',border:'1px solid var(--border)',
   borderRadius:10,fontSize:14,color:'var(--text)',outline:'none',fontFamily:'inherit',width:'100%',
+  minWidth:0,boxSizing:'border-box',
 }
 const focusGold = (e:React.FocusEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>) => { e.target.style.borderColor='var(--gold)' }
 const blurBorder = (e:React.FocusEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>) => { e.target.style.borderColor='var(--border)' }

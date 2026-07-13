@@ -708,7 +708,7 @@ function ContactPanel({
             editing ? (
               <div>
                 {SI('Name', 'name')}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {SI('E-Mail', 'email', 'email')}
                   {SI('Telefon', 'phone', 'tel')}
                 </div>
@@ -719,7 +719,7 @@ function ContactPanel({
                   {SI('Wohn-PLZ', 'home_postal_code')}
                   {SI('Wohnort', 'home_city')}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div style={{ marginBottom: 12 }}>
                     <FieldLabel>Status</FieldLabel>
                     <select value={form.lifecycle_stage} onChange={e => setForm(f => ({ ...f, lifecycle_stage: e.target.value as LifecycleStage }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 13, fontFamily: 'inherit' }}>
@@ -735,12 +735,12 @@ function ContactPanel({
                     </select>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {SI('Hochzeitsdatum', 'wedding_date', 'date')}
                   {SI('Umsatz (€)', 'deal_value', 'number')}
                 </div>
                 {SI('Geburtstag', 'birthday', 'date')}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div style={{ marginBottom: 12 }}>
                     <FieldLabel>Quelle</FieldLabel>
                     <select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value as Source }))} style={selStyle}>
@@ -756,7 +756,7 @@ function ContactPanel({
                 </div>
                 {SI('Veranstaltungsort', 'location')}
                 {SI('Event-Titel', 'event_title')}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   {SI('Gästeanzahl', 'guest_count', 'number')}
                   {SI('Paar-Budget (€)', 'couple_budget', 'number')}
                 </div>
@@ -1121,13 +1121,13 @@ function NewContactModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={18} /></button>
         </div>
         {F('Name *', 'name')}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {F('E-Mail', 'email', 'email')}
           {F('Telefon', 'phone', 'tel')}
         </div>
         {F('Straße & Nr.', 'address_line1')}
         {F('PLZ & Ort', 'address_line2')}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 4 }}>Status</label>
             <select value={form.lifecycle_stage} onChange={e => setForm(f => ({ ...f, lifecycle_stage: e.target.value as LifecycleStage }))} style={{ width: '100%', padding: '9px 12px', borderRadius: 9, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 14, fontFamily: 'inherit' }}>
@@ -1141,7 +1141,7 @@ function NewContactModal({ onClose, onCreated }: { onClose: () => void; onCreate
             </select>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div className="crm-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {F('Hochzeitsdatum', 'wedding_date', 'date')}
           {F('Budget / Umsatz (€)', 'deal_value', 'number')}
         </div>
@@ -1511,7 +1511,8 @@ export default function CrmClient() {
             )}
           </div>
         ) : view === 'list' ? (
-          <>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ minWidth: 620 }}>
             {/* List header */}
             {(() => {
               function SortHeader({ col, label, align }: { col: typeof sortCol; label: string; align?: string }) {
@@ -1542,7 +1543,8 @@ export default function CrmClient() {
                 await fetch(`/api/vendor/crm/contacts/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lifecycle_stage: stage }) })
               }} />
             ))}
-          </>
+          </div>
+          </div>
         ) : (
           /* Kanban */
           <div style={{ padding: '20px 20px' }}>

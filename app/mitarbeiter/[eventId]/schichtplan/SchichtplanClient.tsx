@@ -743,7 +743,7 @@ export default function SchichtplanClient({
       </div>
 
       {/* ── Bottom Nav ── */}
-      <div role="tablist" aria-label="Navigation" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #E5E7EB', display: 'flex', zIndex: 30, boxShadow: '0 -2px 10px rgba(0,0,0,0.06)' }}>
+      <div role="tablist" aria-label="Navigation" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #E5E7EB', display: 'flex', zIndex: 30, boxShadow: '0 -2px 10px rgba(0,0,0,0.06)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <button role="tab" aria-selected={activeTab === 'schicht'} onClick={() => setActiveTab('schicht')} style={tabBtnStyle(activeTab === 'schicht')}>
           <Clock size={18} />
           <span>Mein Plan</span>

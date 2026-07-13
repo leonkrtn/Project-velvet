@@ -1347,7 +1347,11 @@
 }
 
 /* ─── MARKTPLATZ (3er-Grid, eine Zeile) ─── */
-.lp-marktplatz-grid { grid-template-columns: repeat(3, 1fr); }
+/* min-width:1025px, damit diese Regel nicht mit der 2-spaltigen Tablet-Regel
+   von .lp-features-grid (media max-width:1024px) um dieselbe Spezifität konkurriert. */
+@media (min-width: 1025px) {
+  .lp-marktplatz-grid { grid-template-columns: repeat(3, 1fr); }
+}
 .lp-marktplatz-grid .lp-feature-card { border-radius: 0; }
 .lp-marktplatz-grid .lp-feature-card:first-child { border-radius: 20px 0 0 20px; }
 .lp-marktplatz-grid .lp-feature-card:last-child { border-radius: 0 20px 20px 0; }

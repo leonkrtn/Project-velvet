@@ -33,23 +33,23 @@ export default function OfferView({ offer }: { offer: OfferRow }) {
     <div>
       <div style={{ borderTop: '1px solid var(--border, #e2ddd4)', marginBottom: 4 }} />
       <div style={{ display: 'flex', fontSize: 11, fontWeight: 700, color: 'var(--text-dim, #6b6b6b)', textTransform: 'uppercase', letterSpacing: '0.05em', padding: '8px 0', borderBottom: '1px solid var(--text, #1c1c1c)' }}>
-        <span style={{ flex: 1 }}>Position</span>
-        <span style={{ width: 40, textAlign: 'right' }}>Mng</span>
-        <span style={{ width: 80, textAlign: 'right' }}>Einzel</span>
-        <span style={{ width: 84, textAlign: 'right' }}>Summe</span>
+        <span style={{ flex: 1, minWidth: 0 }}>Position</span>
+        <span style={{ width: 40, flexShrink: 0, textAlign: 'right' }}>Mng</span>
+        <span style={{ width: 80, flexShrink: 0, textAlign: 'right' }}>Einzel</span>
+        <span style={{ width: 84, flexShrink: 0, textAlign: 'right' }}>Summe</span>
       </div>
       {offer.line_items.length === 0 ? (
         <div style={{ ...cell, padding: '10px 0', color: 'var(--text-dim, #6b6b6b)' }}>Keine Positionen.</div>
       ) : offer.line_items.map((li, i) => (
         <div key={i} style={{ display: 'flex', padding: '8px 0', borderBottom: '1px solid var(--border, #e2ddd4)' }}>
-          <span style={{ ...cell, flex: 1, paddingRight: 8 }}>{li.label}</span>
-          <span style={{ ...cell, width: 40, textAlign: 'right' }}>{li.qty}</span>
-          <span style={{ ...cell, width: 80, textAlign: 'right' }}>{formatMoney(li.unitPrice, cur)}</span>
-          <span style={{ ...cell, width: 84, textAlign: 'right' }}>{formatMoney(li.total, cur)}</span>
+          <span style={{ ...cell, flex: 1, minWidth: 0, paddingRight: 8, wordBreak: 'break-word' }}>{li.label}</span>
+          <span style={{ ...cell, width: 40, flexShrink: 0, textAlign: 'right' }}>{li.qty}</span>
+          <span style={{ ...cell, width: 80, flexShrink: 0, textAlign: 'right' }}>{formatMoney(li.unitPrice, cur)}</span>
+          <span style={{ ...cell, width: 84, flexShrink: 0, textAlign: 'right' }}>{formatMoney(li.total, cur)}</span>
         </div>
       ))}
 
-      <div style={{ marginLeft: 'auto', width: 240, marginTop: 10 }}>
+      <div style={{ marginLeft: 'auto', width: '100%', maxWidth: 240, marginTop: 10 }}>
         <Row label="Zwischensumme" value={formatMoney(offer.subtotal, cur)} />
         {offer.tax_mode === 'regular' && <Row label={`zzgl. USt. (${offer.tax_rate}%)`} value={formatMoney(offer.tax_amount, cur)} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--text, #1c1c1c)', marginTop: 4, paddingTop: 6 }}>
