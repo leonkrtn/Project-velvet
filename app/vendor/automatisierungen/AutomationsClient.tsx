@@ -1,10 +1,16 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
-import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check, FileSpreadsheet, Mail, ChevronRight } from 'lucide-react'
+import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check, FileSpreadsheet, Mail, ListChecks } from 'lucide-react'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
 import { SaveStatus } from '@/components/ui/SaveStatus'
+import EmailsClient from '@/app/vendor/e-mails/EmailsClient'
+
+type PageTab = 'regeln' | 'emails'
+const PAGE_TABS: { key: PageTab; label: string; icon: React.ReactNode }[] = [
+  { key: 'regeln', label: 'Regeln', icon: <ListChecks size={15} /> },
+  { key: 'emails', label: 'E-Mail-Texte', icon: <Mail size={15} /> },
+]
 
 type Kind = 'reminder' | 'review_request' | 'followup_offer' | 'followup_lead'
 interface Rule { id?: string; kind: Kind; event_type: string; offset_days: number; label: string; enabled: boolean }
@@ -65,6 +71,7 @@ export default function AutomationsClient() {
   const [loading, setLoading] = useState(true)
   const [rules, setRules] = useState<Rule[]>([])
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [tab, setTab] = useState<PageTab>('regeln')
   const loadedRef = useRef(false)
 
   const load = useCallback(async () => {
@@ -105,23 +112,38 @@ export default function AutomationsClient() {
     <div className="vnd-page-outer" style={{ background: C.bg, flex: 1, minHeight: '100dvh', padding: '28px 24px 48px', overflow: 'auto', boxSizing: 'border-box' }}>
 
       {/* Header (Muster wie Angebote/Anfragen/Report) */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
         <div className="vnd-hdr-icon" style={{ width: 42, height: 42, borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Zap size={20} style={{ color: C.gold }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>Automatik</h1>
+          <h1 style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.4px', margin: 0 }}>Automatik &amp; E-Mails</h1>
           <p style={{ fontSize: 13.5, color: C.dim, marginTop: 2, marginBottom: 0 }}>
-            Regeln, die Forevr täglich automatisch für dich ausführt — Änderungen werden sofort gespeichert.
+            Regeln, die Forevr täglich automatisch für dich ausführt, und die Mails, die dabei verschickt werden — Änderungen werden sofort gespeichert.
           </p>
         </div>
         <span style={{ flexShrink: 0 }}><SaveStatus status={saveState} /></span>
       </div>
 
-      <Link href="/vendor/e-mails" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: C.gold, textDecoration: 'none', marginBottom: 18 }}>
-        <Mail size={14} /> Wie die versendeten E-Mails aussehen, bearbeitest du unter „E-Mails" <ChevronRight size={14} />
-      </Link>
+      {/* Tabs: Regeln / E-Mail-Texte */}
+      <div style={{ display: 'inline-flex', gap: 4, padding: 4, marginBottom: 20, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10 }}>
+        {PAGE_TABS.map(t => {
+          const on = tab === t.key
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{
+              display: 'flex', alignItems: 'center', gap: 7, padding: '7px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
+              background: on ? C.surface : 'transparent', boxShadow: on ? 'var(--shadow-sm)' : 'none',
+              color: on ? C.text : C.dim, fontSize: 13.5, fontWeight: on ? 600 : 450, fontFamily: 'inherit', transition: 'background 0.12s',
+            }}>
+              {t.icon}{t.label}
+            </button>
+          )
+        })}
+      </div>
 
+      {tab === 'emails' && <EmailsClient embedded />}
+
+      {tab === 'regeln' && (<>
       <h3 style={{ ...sectionHead, marginTop: 0 }}>Automatische Regeln</h3>
       {KINDS.map(group => {
         const groupRules = rules.map((r, i) => ({ r, i })).filter(x => x.r.kind === group.kind)
@@ -151,9 +173,9 @@ export default function AutomationsClient() {
                 </div>
                 <p style={{ fontSize: 12.5, color: C.dim, margin: '3px 0 0', lineHeight: 1.5 }}>{group.desc}</p>
                 {(group.kind === 'review_request' || group.kind === 'followup_offer') && (
-                  <Link href="/vendor/e-mails" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: C.gold, textDecoration: 'none', marginTop: 6 }}>
-                    <Mail size={13} /> E-Mail-Text bearbeiten <ChevronRight size={12} />
-                  </Link>
+                  <button onClick={() => setTab('emails')} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: C.gold, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', marginTop: 6 }}>
+                    <Mail size={13} /> E-Mail-Text bearbeiten
+                  </button>
                 )}
               </div>
             </div>
@@ -216,6 +238,7 @@ export default function AutomationsClient() {
 
       <h3 style={sectionHead}>Manuelle Aktionen</h3>
       <ManualReviewSection />
+      </>)}
 
       <style>{`
         @media (max-width: 480px) {

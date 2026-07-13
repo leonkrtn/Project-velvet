@@ -31,7 +31,7 @@ interface Loaded {
   brand: { color: string | null; name: string | null }
 }
 
-export default function EmailsClient() {
+export default function EmailsClient({ embedded }: { embedded?: boolean } = {}) {
   const [loading, setLoading] = useState(true)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [templates, setTemplates] = useState<Record<EmailTemplateKey, EmailTemplate>>(DEFAULT_TEMPLATES)
@@ -92,28 +92,37 @@ export default function EmailsClient() {
   const tpl = templates[active]
   const isDefault = JSON.stringify(tpl) === JSON.stringify(DEFAULT_TEMPLATES[active])
 
-  return (
-    <div style={{ background: C.bg, flex: 1, minHeight: '100dvh', padding: '28px 24px 48px', overflow: 'auto', boxSizing: 'border-box' }}>
-      <div style={{ maxWidth: 1120, margin: '0 auto' }}>
+  const content = (
+    <div style={embedded ? undefined : { maxWidth: 1120, margin: '0 auto' }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Mail size={20} style={{ color: C.accent }} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.4px', margin: 0, color: C.text }}>E-Mails</h1>
-            <p style={{ fontSize: 13.5, color: C.dim, marginTop: 2, marginBottom: 0 }}>
-              Passe die E-Mails an, die Forevr in deinem Namen an das Brautpaar schickt — Änderungen werden sofort gespeichert.
-            </p>
-          </div>
-          <span style={{ flexShrink: 0 }}><SaveStatus status={saveState} /></span>
-        </div>
+        {!embedded && (
+          <>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: C.surface, border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Mail size={20} style={{ color: C.accent }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h1 style={{ fontSize: 23, fontWeight: 700, letterSpacing: '-0.4px', margin: 0, color: C.text }}>E-Mails</h1>
+                <p style={{ fontSize: 13.5, color: C.dim, marginTop: 2, marginBottom: 0 }}>
+                  Passe die E-Mails an, die Forevr in deinem Namen an das Brautpaar schickt — Änderungen werden sofort gespeichert.
+                </p>
+              </div>
+              <span style={{ flexShrink: 0 }}><SaveStatus status={saveState} /></span>
+            </div>
 
-        {/* Verknüpfung zu Automatik */}
-        <Link href="/vendor/automatisierungen" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: C.accent, textDecoration: 'none', margin: '4px 0 18px' }}>
-          <Zap size={14} /> Wann diese Mails rausgehen, steuerst du unter „Automatik“ <ChevronRight size={14} />
-        </Link>
+            {/* Verknüpfung zu Automatik */}
+            <Link href="/vendor/automatisierungen" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: C.accent, textDecoration: 'none', margin: '4px 0 18px' }}>
+              <Zap size={14} /> Wann diese Mails rausgehen, steuerst du unter „Automatik“ <ChevronRight size={14} />
+            </Link>
+          </>
+        )}
+
+        {embedded && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+            <SaveStatus status={saveState} />
+          </div>
+        )}
 
         {/* Zentrale Anrede + Signatur */}
         <div style={card}>
@@ -213,14 +222,26 @@ export default function EmailsClient() {
             </p>
           </div>
         </div>
-      </div>
+    </div>
+  )
 
-      <style>{`
-        @media (max-width: 860px) {
-          .eml-grid { grid-template-columns: 1fr !important; }
-          .eml-preview { position: static !important; }
-        }
-      `}</style>
+  const styleTag = (
+    <style>{`
+      @media (max-width: 860px) {
+        .eml-grid { grid-template-columns: 1fr !important; }
+        .eml-preview { position: static !important; }
+      }
+    `}</style>
+  )
+
+  if (embedded) {
+    return <>{content}{styleTag}</>
+  }
+
+  return (
+    <div style={{ background: C.bg, flex: 1, minHeight: '100dvh', padding: '28px 24px 48px', overflow: 'auto', boxSizing: 'border-box' }}>
+      {content}
+      {styleTag}
     </div>
   )
 }

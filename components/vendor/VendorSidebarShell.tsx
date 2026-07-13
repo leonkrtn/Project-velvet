@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Inbox, ReceiptText,
   Calendar, BarChart2, User, LogOut, Users, Menu, X, Zap,
-  Sparkles, ChevronRight, Mail, Settings,
+  Sparkles, ChevronRight, Settings,
 } from 'lucide-react'
 
 import { performLogout } from '@/lib/logout'
@@ -33,6 +33,7 @@ function markQuickTourDone() {
 }
 
 const NAV = [
+  { key: 'listing',    label: 'Anbieter-Profil', href: '/vendor/listing',    icon: User },
   { key: 'ubersicht',   label: 'Übersicht',    href: '/vendor/ubersicht',   icon: LayoutDashboard },
   { key: 'anfragen',    label: 'Anfragen',     href: '/vendor/anfragen',    icon: Inbox,         badgeKey: 'pendingAnfragen' as const },
   { key: 'angebote',   label: 'Angebote',     href: '/vendor/angebote',    icon: ReceiptText },
@@ -40,21 +41,20 @@ const NAV = [
   { key: 'report',     label: 'Berichte',     href: '/vendor/report',      icon: BarChart2 },
   { key: 'crm',        label: 'CRM',          href: '/vendor/crm',         icon: Users },
   { key: 'automatik',  label: 'Automatik',    href: '/vendor/automatisierungen', icon: Zap },
-  { key: 'emails',     label: 'E-Mails',      href: '/vendor/e-mails',     icon: Mail },
 ] as const
 
-type NavKey = (typeof NAV)[number]['key'] | 'listing' | 'profil'
+type NavKey = (typeof NAV)[number]['key'] | 'profil'
 
 function activeKey(pathname: string): NavKey {
+  if (pathname.startsWith('/vendor/listing'))    return 'listing'
   if (pathname.startsWith('/vendor/ubersicht'))  return 'ubersicht'
   if (pathname.startsWith('/vendor/anfragen'))   return 'anfragen'
   if (pathname.startsWith('/vendor/angebote'))   return 'angebote'
-  if (pathname.startsWith('/vendor/listing'))    return 'listing'
   if (pathname.startsWith('/vendor/profil'))     return 'profil'
   if (pathname.startsWith('/vendor/report'))     return 'report'
   if (pathname.startsWith('/vendor/crm'))        return 'crm'
   if (pathname.startsWith('/vendor/automatisierungen')) return 'automatik'
-  if (pathname.startsWith('/vendor/e-mails'))    return 'emails'
+  if (pathname.startsWith('/vendor/e-mails'))    return 'automatik'
   if (pathname.startsWith('/vendor/dashboard'))  return 'events'
   return 'ubersicht'
 }
@@ -175,10 +175,6 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
           <Link href="/vendor/profil" className="vdr-nav-link" data-active={active === 'profil' ? 'true' : undefined} style={navStyle('profil')}>
             <Settings size={16} style={{ flexShrink: 0, opacity: active === 'profil' ? 1 : 0.45 }} />
             <span className="vdr-nav-text">Profil</span>
-          </Link>
-          <Link href="/vendor/listing" className="vdr-nav-link" data-active={active === 'listing' ? 'true' : undefined} style={navStyle('listing')}>
-            <User size={16} style={{ flexShrink: 0, opacity: active === 'listing' ? 1 : 0.45 }} />
-            <span className="vdr-nav-text">Anbieter-Profil</span>
           </Link>
           <button
             onClick={() => performLogout()}
@@ -313,12 +309,6 @@ export default function VendorSidebarShell({ companyName, companyInitials, categ
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
               <Settings size={16} style={{ flexShrink: 0, opacity: active === 'profil' ? 1 : 0.45 }} />
               <span>Profil</span>
-            </div>
-          </Link>
-          <Link href="/vendor/listing" className="vdr-drawer-link" data-active={active === 'listing' ? 'true' : undefined} style={navStyle('listing')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
-              <User size={16} style={{ flexShrink: 0, opacity: active === 'listing' ? 1 : 0.45 }} />
-              <span>Anbieter-Profil</span>
             </div>
           </Link>
           <button
