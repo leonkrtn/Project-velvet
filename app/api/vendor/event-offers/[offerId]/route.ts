@@ -68,14 +68,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ of
     return NextResponse.json({ success: true, id: dup.id })
   }
 
-  // Eigenständiges Angebot annehmen -> daraus ein Event erzeugen + verknüpfen.
+  // Ausnahme: Dienstleister markiert ein versendetes Angebot selbst als angenommen
+  // (z. B. mündliche Zusage außerhalb des Systems). Das bleibt klar als
+  // Eigenmarkierung erkennbar (accepted_by_vendor) — keine echte Kundenannahme.
+  if (action === 'mark_accepted_by_vendor') {
+    if (offer.status !== 'released') {
+      return NextResponse.json({ error: 'Nur versendete Angebote können so markiert werden' }, { status: 409 })
+    }
+    const { error } = await admin.from('vendor_offers').update({
+      status: 'accepted', accepted_at: new Date().toISOString(), accepted_by_vendor: true,
+      updated_at: new Date().toISOString(),
+    }).eq('id', offer.id)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ success: true })
+  }
+
+  // Aus einem eigenständigen Angebot ein Event erzeugen + verknüpfen. Nimmt das
+  // Angebot dabei NICHT an — die Annahme bleibt ausschließlich dem Empfänger
+  // vorbehalten (nach Einladung ins Event), außer der Dienstleister markiert es
+  // bewusst per 'mark_accepted_by_vendor' als Ausnahme selbst.
   // Infos werden aus dem Angebot gezogen; optionale Felder kommen aus dem Body.
-  if (action === 'accept') {
+  if (action === 'create_event') {
     if (offer.event_id) {
-      return NextResponse.json({ error: 'Nur eigenständige Angebote können hier angenommen werden' }, { status: 400 })
+      return NextResponse.json({ error: 'Nur eigenständige Angebote können hier verknüpft werden' }, { status: 400 })
     }
     if (!['draft', 'released'].includes(offer.status)) {
-      return NextResponse.json({ error: 'Angebot kann in diesem Status nicht angenommen werden' }, { status: 409 })
+      return NextResponse.json({ error: 'Für dieses Angebot kann in diesem Status kein Event angelegt werden' }, { status: 409 })
     }
 
     const si = (offer.standard_info ?? {}) as Record<string, unknown>
@@ -106,7 +124,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ of
       { onConflict: 'event_id,dienstleister_id' },
     )
 
-    // Angebot verknüpfen + annehmen; standard_info um Eventdaten anreichern (für PDF/Anzeige).
+    // Angebot verknüpfen (NICHT annehmen); standard_info um Eventdaten anreichern
+    // (für PDF/Anzeige). War es noch Entwurf, wird es jetzt freigegeben, damit der
+    // eingeladene Empfänger es im Event sehen und selbst annehmen/ablehnen kann.
     const enriched = {
       ...si,
       coupleName: clientName || (si.coupleName as string) || null,
@@ -114,10 +134,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ of
       location: [venue, venueAddress].filter(Boolean).join(', ') || (si.location as string) || null,
       guestCount: guestCount ?? (si.guestCount as number) ?? null,
     }
-    const { error: upErr } = await admin.from('vendor_offers').update({
-      event_id: newEventId, status: 'accepted', accepted_at: new Date().toISOString(),
-      standard_info: enriched, updated_at: new Date().toISOString(),
-    }).eq('id', offer.id)
+    const offerPatch: Record<string, unknown> = {
+      event_id: newEventId, standard_info: enriched, updated_at: new Date().toISOString(),
+    }
+    if (offer.status === 'draft') {
+      offerPatch.status = 'released'
+      offerPatch.released_at = new Date().toISOString()
+      offerPatch.conversation_id = await ensureVendorConversation(admin, newEventId, userId)
+    }
+    const { error: upErr } = await admin.from('vendor_offers').update(offerPatch).eq('id', offer.id)
     if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 })
 
     return NextResponse.json({ success: true, eventId: newEventId })

@@ -58,14 +58,6 @@ const KINDS: { kind: Kind; title: string; desc: string; before: string; after: s
   },
 ]
 
-const EVENT_TYPES = [
-  { v: 'all', l: 'alle Event-Typen' },
-  { v: 'hochzeit', l: 'Hochzeiten' },
-  { v: 'firmenevent', l: 'Firmenevents' },
-  { v: 'privat', l: 'private Events' },
-  { v: 'sonstige', l: 'sonstige Events' },
-]
-
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 export default function AutomationsClient() {
@@ -200,12 +192,6 @@ export default function AutomationsClient() {
 
                     {/* Zeile 2: Nebenbedingungen — visuell abgesetzt vom Kernsatz */}
                     <div className="auto-rule-meta" style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: C.dim }}>
-                        Gilt für
-                        <select className="auto-select" style={{ ...inp, width: 'auto', maxWidth: 180 }} value={r.event_type} onChange={e => setRule(i, { event_type: e.target.value })}>
-                          {EVENT_TYPES.map(t => <option key={t.v} value={t.v}>{t.l}</option>)}
-                        </select>
-                      </label>
                       <input
                         className="auto-label"
                         style={{ ...inp, flex: '1 1 180px', minWidth: 140, height: 34, maxHeight: 34, lineHeight: '32px', paddingTop: 0, paddingBottom: 0 }}
@@ -236,8 +222,6 @@ export default function AutomationsClient() {
       <style>{`
         @media (max-width: 480px) {
           .auto-rule-meta { flex-direction: column !important; align-items: stretch !important; }
-          .auto-rule-meta label { justify-content: space-between !important; }
-          .auto-rule-meta .auto-select { flex: 1 1 auto !important; max-width: none !important; }
         }
       `}</style>
     </div>
