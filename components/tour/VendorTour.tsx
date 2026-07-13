@@ -77,14 +77,6 @@ export default function VendorTour({
     setActive(true)
   }, [steps.length])
 
-  // „Beenden" — nur für jetzt schließen. Der einmalige Auto-Start (autoStartOnceKey)
-  // bleibt in dieser Sitzung durch den sessionStorage-„seen"-Marker unterdrückt.
-  const finish = useCallback(() => {
-    setActive(false)
-    setRect(null)
-    setAreaFilter(null)
-  }, [])
-
   // „Nicht mehr anzeigen" bzw. vollständig durchlaufen — Auto-Start dauerhaft
   // deaktivieren (nur relevant, wenn ein autoStartOnceKey gesetzt ist).
   const dismissForever = useCallback(() => {
@@ -94,6 +86,17 @@ export default function VendorTour({
     if (autoStartOnceKey) { try { localStorage.setItem(autoStartOnceKey, 'done') } catch { /* ignore */ } }
     onDismissForever?.()
   }, [autoStartOnceKey, onDismissForever])
+
+  // „Beenden"/X — bei der einmaligen Auto-Start-Tour (autoStartOnceKey gesetzt)
+  // zählt jedes Schließen als „gesehen": kein erneuter Auto-Start bei der nächsten
+  // Anmeldung. Bei der ausführlichen, manuell gestarteten Tour (kein
+  // autoStartOnceKey) bleibt es beim reinen „nur für jetzt schließen".
+  const finish = useCallback(() => {
+    if (autoStartOnceKey) { dismissForever(); return }
+    setActive(false)
+    setRect(null)
+    setAreaFilter(null)
+  }, [autoStartOnceKey, dismissForever])
 
   const advance = useCallback(() => {
     setIndex(i => {
