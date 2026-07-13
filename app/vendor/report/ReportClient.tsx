@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { BarChart2, Download, FileSpreadsheet, FileText, Loader2, TrendingDown, TrendingUp, Minus } from 'lucide-react'
 import type { ReportData } from '@/lib/vendor/monthly-report'
 import { brandAccentVars } from '@/lib/vendor/brand'
@@ -111,13 +111,13 @@ function Skeleton({ w, h }: { w?: string; h?: number }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function ReportClient({ brandColor }: { brandColor?: string | null } = {}) {
+export default function ReportClient({ brandColor, initialData }: { brandColor?: string | null; initialData?: ReportData | null } = {}) {
   const now = new Date()
   const [type, setType] = useState<'month' | 'quarter'>('month')
   const [year, setYear] = useState(now.getFullYear())
   const [value, setValue] = useState(now.getMonth() + 1)
   const [compareMode, setCompareMode] = useState<'prev' | 'lastyear'>('prev')
-  const [data, setData] = useState<ReportData | null>(null)
+  const [data, setData] = useState<ReportData | null>(initialData ?? null)
   const [loading, setLoading] = useState(false)
   const [exporting, setExporting] = useState<'excel' | 'pdf' | null>(null)
 
@@ -132,7 +132,13 @@ export default function ReportClient({ brandColor }: { brandColor?: string | nul
     setLoading(false)
   }, [type, year, value])
 
-  useEffect(() => { load() }, [load])
+  // Der Server hat den Bericht für die Standard-Periode (aktueller Monat) bereits
+  // geladen → den ersten (redundanten) Fetch überspringen; erst Perioden-Wechsel lädt neu.
+  const skipInitialLoad = useRef(initialData != null)
+  useEffect(() => {
+    if (skipInitialLoad.current) { skipInitialLoad.current = false; return }
+    load()
+  }, [load])
 
   async function exportFile(format: 'excel' | 'pdf') {
     setExporting(format)

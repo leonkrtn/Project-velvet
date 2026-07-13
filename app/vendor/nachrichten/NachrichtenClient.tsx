@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
-import { MessageSquare, Loader2, ArrowRight, CalendarDays } from 'lucide-react'
+import { MessageSquare, ArrowRight, CalendarDays } from 'lucide-react'
 
 interface LastMessage {
   content: string
@@ -38,18 +38,8 @@ function previewText(msg: LastMessage): string {
   return msg.content ?? ''
 }
 
-export default function NachrichtenClient() {
-  const [convs, setConvs] = useState<Conv[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(async () => {
-    const res = await fetch('/api/vendor/nachrichten')
-    const d = await res.json().catch(() => ({}))
-    setConvs(d.conversations ?? [])
-    setLoading(false)
-  }, [])
-
-  useEffect(() => { load() }, [load])
+export default function NachrichtenClient({ initialConvs }: { initialConvs: Conv[] }) {
+  const [convs] = useState<Conv[]>(initialConvs)
 
   return (
     <div className="vnd-page-outer" style={{ minHeight: '100dvh', background: 'var(--bg)', padding: '32px 24px 48px' }}>
@@ -64,11 +54,7 @@ export default function NachrichtenClient() {
           </div>
         </div>
 
-        {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-dim)', fontSize: 14, padding: '30px 0' }}>
-            <Loader2 size={16} className="nm-spin" /> Lädt…
-          </div>
-        ) : convs.length === 0 ? (
+        {convs.length === 0 ? (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '40px 24px', textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12, opacity: 0.4 }}><MessageSquare size={30} /></div>
             <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>Noch keine Nachrichten</p>
@@ -129,7 +115,6 @@ export default function NachrichtenClient() {
           </div>
         )}
       </div>
-      <style>{`.nm-spin{animation:nmspin 1s linear infinite}@keyframes nmspin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }

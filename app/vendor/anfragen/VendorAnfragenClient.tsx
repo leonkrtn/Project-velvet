@@ -9,7 +9,7 @@ import {
 import VendorOfferEditor from '@/components/vendor/VendorOfferEditor'
 
 interface Contact { name: string | null; email: string | null; phone: string | null }
-interface Req {
+export interface Req {
   id: string
   event_id: string
   message: string
@@ -44,11 +44,19 @@ function locationOf(e: Req['events']): string {
 }
 function titleOf(r: Req): string { return r.events?.couple_name || r.events?.title || 'Hochzeit' }
 
-export default function VendorAnfragenClient() {
-  const [requests, setRequests] = useState<Req[]>([])
-  const [loading, setLoading] = useState(true)
-  const [isVendor, setIsVendor] = useState(true)
-  const [filter, setFilter] = useState<Filter>('offen')
+function defaultFilter(reqs: Req[]): Filter {
+  const offen = reqs.filter(r => r.status === 'pending').length
+  const ang = reqs.filter(r => r.status === 'accepted').length
+  const erl = reqs.filter(r => r.status === 'declined' || r.status === 'cancelled').length
+  if (offen === 0 && ang > 0) return 'angenommen'
+  if (offen === 0 && ang === 0 && erl > 0) return 'erledigt'
+  return 'offen'
+}
+
+export default function VendorAnfragenClient({ initialRequests, initialIsVendor }: { initialRequests: Req[]; initialIsVendor: boolean }) {
+  const [requests, setRequests] = useState<Req[]>(initialRequests)
+  const [isVendor, setIsVendor] = useState(initialIsVendor)
+  const [filter, setFilter] = useState<Filter>(() => defaultFilter(initialRequests))
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
@@ -57,21 +65,13 @@ export default function VendorAnfragenClient() {
     const json = await res.json()
     setRequests(json.requests ?? [])
     setIsVendor(json.isVendor !== false)
-    setLoading(false)
   }, [])
-  useEffect(() => { load() }, [load])
 
   const counts = useMemo(() => ({
     offen:      requests.filter(r => r.status === 'pending').length,
     angenommen: requests.filter(r => r.status === 'accepted').length,
     erledigt:   requests.filter(r => r.status === 'declined' || r.status === 'cancelled').length,
   }), [requests])
-
-  useEffect(() => {
-    if (loading) return
-    if (counts.offen === 0 && counts.angenommen > 0) setFilter('angenommen')
-    else if (counts.offen === 0 && counts.angenommen === 0 && counts.erledigt > 0) setFilter('erledigt')
-  }, [loading]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const visible = useMemo(() => {
     const byFilter = requests.filter(r => {
@@ -111,7 +111,7 @@ export default function VendorAnfragenClient() {
           </div>
         </div>
 
-        {isVendor && !loading && requests.length > 0 && (
+        {isVendor && requests.length > 0 && (
           <div style={{ position: 'relative', margin: '22px 0 12px' }}>
             <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none' }} />
             <input
@@ -125,7 +125,7 @@ export default function VendorAnfragenClient() {
           </div>
         )}
 
-        {isVendor && !loading && requests.length > 0 && (
+        {isVendor && requests.length > 0 && (
           <div data-tour="vdr-anfragen-filters" style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
             {tabs.map(t => {
               const active = filter === t.key
@@ -146,11 +146,7 @@ export default function VendorAnfragenClient() {
           </div>
         )}
 
-        {loading ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-dim)', fontSize: 14, padding: '30px 0' }}>
-            <Loader2 size={16} className="anf-spin" /> Lädt…
-          </div>
-        ) : !isVendor ? (
+        {!isVendor ? (
           <EmptyState title="Nur für Marktplatz-Dienstleister" text="Dieser Bereich ist nur für Anbieter mit Marktplatz-Profil verfügbar." />
         ) : requests.length === 0 ? (
           <EmptyState title="Noch keine Anfragen" text="Sobald ein Brautpaar dich über den Marktplatz anfragt, erscheint die Anfrage hier." />

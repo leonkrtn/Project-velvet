@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
 import { Plus, Trash2, Square, CheckSquare, FileText, List, Tag, X } from 'lucide-react'
@@ -247,38 +247,22 @@ function NoteEditor({
 
 interface Props {
   eventId: string
+  initialNotes: Note[]
   /** Eingebettet im kombinierten „Aufgaben & Notizen"-Tab: ohne eigenen Seiten-Header */
   embedded?: boolean
 }
 
-export default function BrautpaarNotizen({ eventId, embedded = false }: Props) {
+export default function BrautpaarNotizen({ eventId, initialNotes, embedded = false }: Props) {
   const supabase = createClient()
-  const [notes,          setNotes]          = useState<Note[]>([])
-  const [loading,        setLoading]        = useState(true)
+  const [notes,          setNotes]          = useState<Note[]>(initialNotes)
   const [activeCategory, setActiveCategory] = useState('Alle')
-  const [categories,     setCategories]     = useState<string[]>(['Alle', ...DEFAULT_CATEGORIES])
+  const [categories,     setCategories]     = useState<string[]>(
+    ['Alle', ...Array.from(new Set([...DEFAULT_CATEGORIES, ...initialNotes.map(n => n.category)]))]
+  )
   const [adding,         setAdding]         = useState(false)
   const [newTitle,       setNewTitle]       = useState('')
   const [newType,        setNewType]        = useState<NoteType>('text')
   const [newCategory,    setNewCategory]    = useState('Allgemein')
-
-  useEffect(() => {
-    supabase
-      .from('brautpaar_notes')
-      .select('*')
-      .eq('event_id', eventId)
-      .order('category')
-      .order('sort_order')
-      .order('created_at')
-      .then(({ data }) => {
-        const loaded = (data ?? []) as Note[]
-        setNotes(loaded)
-        const cats = ['Alle', ...Array.from(new Set([...DEFAULT_CATEGORIES, ...loaded.map(n => n.category)]))]
-        setCategories(cats)
-        setLoading(false)
-      })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId])
 
   async function addNote() {
     setAdding(false)
@@ -356,21 +340,6 @@ export default function BrautpaarNotizen({ eventId, embedded = false }: Props) {
   const filtered = activeCategory === 'Alle'
     ? notes
     : notes.filter(n => n.category === activeCategory)
-
-  if (loading) {
-    return (
-      <div>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-          {[120, 90, 100].map((w, i) => (
-            <div key={i} className="bp-skeleton" style={{ height: 32, width: w }} />
-          ))}
-        </div>
-        {[1, 2].map(i => (
-          <div key={i} className="bp-skeleton" style={{ height: 160, borderRadius: 12, marginBottom: 12 }} />
-        ))}
-      </div>
-    )
-  }
 
   return (
     <div>

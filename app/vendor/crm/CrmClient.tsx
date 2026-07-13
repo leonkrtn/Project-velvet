@@ -25,7 +25,7 @@ interface ContactPerson { id: string; name: string; email: string; phone: string
 interface Task { id: string; contact_id: string | null; title: string; due_at: string | null; done: boolean; done_at: string | null }
 interface Activity { id: string; contact_id: string; activity_type: ActivityType; title: string; body: string; activity_at: string; auto_generated: boolean }
 
-interface Contact {
+export interface Contact {
   id: string
   name: string
   email: string
@@ -1098,9 +1098,8 @@ function NewContactModal({ onClose, onCreated }: { onClose: () => void; onCreate
 }
 
 // ── Main ───────────────────────────────────────────────────────
-export default function CrmClient() {
-  const [contacts, setContacts] = useState<Contact[]>([])
-  const [loading, setLoading] = useState(true)
+export default function CrmClient({ initialContacts }: { initialContacts: Contact[] }) {
+  const [contacts, setContacts] = useState<Contact[]>(initialContacts)
   const [view, setView] = useState<'list' | 'kanban'>('list')
   const [search, setSearch] = useState('')
   const [stageFilter, setStageFilter] = useState<LifecycleStage | ''>('')
@@ -1134,10 +1133,7 @@ export default function CrmClient() {
     const res = await fetch(`/api/vendor/crm/contacts?${params}`)
     const json = await res.json()
     setContacts(json.contacts ?? [])
-    setLoading(false)
   }, [])
-
-  useEffect(() => { fetchContacts() }, [fetchContacts])
 
   // Debounce search
   function handleSearch(val: string) {
@@ -1404,24 +1400,7 @@ export default function CrmClient() {
         </div>
 
         {/* ── Content ── */}
-        {loading ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ width: 36, flexShrink: 0 }} />
-              <div className="skeleton" style={{ height: 12, width: 120, borderRadius: 4 }} />
-            </div>
-            {[1,2,3,4,5,6].map(i => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-                <div className="skeleton" style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="skeleton" style={{ height: 14, width: 160, marginBottom: 7, borderRadius: 5 }} />
-                  <div className="skeleton" style={{ height: 12, width: 120, borderRadius: 4 }} />
-                </div>
-                <div className="skeleton" style={{ height: 20, width: 62, borderRadius: 100, flexShrink: 0 }} />
-              </div>
-            ))}
-          </>
-        ) : contacts.length === 0 ? (
+        {contacts.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '56px 24px' }}>
             <div style={{ opacity: 0.2, marginBottom: 14 }}><Users size={40} /></div>
             <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
