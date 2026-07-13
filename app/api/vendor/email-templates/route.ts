@@ -23,6 +23,7 @@ export async function GET() {
     greeting: cfg.greeting,
     signature: cfg.signature,
     brand: cfg.brand,
+    imprint: cfg.imprint,
     defaults: { templates: DEFAULT_TEMPLATES, greeting: DEFAULT_GREETING, signature: DEFAULT_SIGNATURE },
   })
 }

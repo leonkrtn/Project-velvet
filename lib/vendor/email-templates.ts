@@ -143,6 +143,8 @@ export interface RenderVendorEmailInput {
   values: Partial<Record<PlaceholderKey, string>>
   /** Ziel des CTA-Buttons. Fehlt es (z. B. Vorschau), zeigt der Button auf '#'. */
   ctaUrl?: string
+  /** Impressum-Zeilen (Firmendaten des Dienstleisters) fuer den Mail-Fuss. */
+  imprint?: string[]
 }
 
 export interface RenderedVendorEmail { subject: string; html: string }
@@ -178,6 +180,14 @@ export function renderVendorEmailHtml(input: RenderVendorEmailInput): RenderedVe
     : `font-family:Georgia,serif;font-size:22px;letter-spacing:0.16em;color:${accent};font-weight:500`
   const footer = isVendor ? `${escapeHtml(wordmark)} · gesendet über Forevr` : 'Forevr · Diese E-Mail wurde automatisch versendet.'
 
+  const imprintLines = (input.imprint || []).map(l => (l || '').trim()).filter(Boolean)
+  const imprintHtml = imprintLines.length
+    ? `<div style="margin:8px auto 0;max-width:520px;padding:0 12px;font-size:11px;line-height:1.7;color:#9a958c">
+<div style="font-weight:600;color:#8a857c;letter-spacing:0.04em;margin-bottom:2px">Impressum</div>
+${imprintLines.map(l => escapeHtml(l)).join('<br>')}
+</div>`
+    : ''
+
   const html = `<!DOCTYPE html><html><body style="margin:0;background:#f7f5f1;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c1c1c">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f5f1;padding:28px 0">
 <tr><td align="center">
@@ -191,6 +201,7 @@ export function renderVendorEmailHtml(input: RenderVendorEmailInput): RenderedVe
 </td></tr>
 </table>
 <p style="font-size:11px;color:#9a958c;margin:16px 0 0">${footer}</p>
+${imprintHtml}
 </td></tr></table></body></html>`
 
   return { subject, html }

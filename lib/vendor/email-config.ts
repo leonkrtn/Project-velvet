@@ -15,8 +15,21 @@ export interface VendorEmailConfig {
   greeting: string
   signature: string
   brand: { color: string | null; name: string | null }
+  /** Impressum-Zeilen (Firmenname, Adresse, Kontakt) fuer den Mail-Fuss. */
+  imprint: string[]
   /** Reply-To fuer Brautpaar-Mails = Vendor-E-Mail (best effort). */
   replyTo: string | null
+}
+
+/** Baut die Impressum-Zeilen aus den Firmenstammdaten des Dienstleisters. */
+function buildImprint(p: any): string[] {
+  const firm = (p.company_name || p.name || '').trim()
+  const street = (p.company_street || p.street || '').trim()
+  const zip = (p.company_zip || p.zip || '').trim()
+  const city = (p.company_city || p.city || '').trim()
+  const address = [street, [zip, city].filter(Boolean).join(' ').trim()].filter(Boolean).join(', ')
+  const contact = [p.email, p.phone, p.website].map((x: unknown) => (typeof x === 'string' ? x.trim() : '')).filter(Boolean).join(' · ')
+  return [firm, address, contact].filter(Boolean)
 }
 
 function mergeTemplate(key: EmailTemplateKey, row: any | undefined): EmailTemplate {
@@ -35,7 +48,7 @@ function mergeTemplate(key: EmailTemplateKey, row: any | undefined): EmailTempla
 export async function loadVendorEmailConfig(admin: SupabaseClient, vendorId: string): Promise<VendorEmailConfig> {
   const [{ data: profile }, { data: rows }] = await Promise.all([
     admin.from('dienstleister_profiles')
-      .select('name, company_name, email, brand_color, email_greeting, email_signature')
+      .select('name, company_name, email, phone, website, street, zip, city, company_street, company_zip, company_city, brand_color, email_greeting, email_signature')
       .eq('id', vendorId).maybeSingle(),
     admin.from('vendor_email_templates').select('*').eq('dienstleister_id', vendorId),
   ])
@@ -50,6 +63,7 @@ export async function loadVendorEmailConfig(admin: SupabaseClient, vendorId: str
     greeting: (p.email_greeting ?? '').trim() ? p.email_greeting : DEFAULT_GREETING,
     signature: (p.email_signature ?? '').trim() ? p.email_signature : DEFAULT_SIGNATURE,
     brand: { color: (p.brand_color as string) || null, name: (p.company_name || p.name || null) },
+    imprint: buildImprint(p),
     replyTo: (p.email as string) || null,
   }
 }
@@ -88,6 +102,7 @@ export async function buildVendorEmail(
     greeting: cfg.greeting,
     signature: cfg.signature,
     brand: cfg.brand,
+    imprint: cfg.imprint,
     values,
     ctaUrl: opts.ctaUrl,
   })
