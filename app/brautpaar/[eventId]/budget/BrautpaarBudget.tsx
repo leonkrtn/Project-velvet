@@ -6,6 +6,8 @@ import { Plus, Trash2, Pencil, Settings, ChevronDown, ChevronRight, X } from 'lu
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
+import { useBpToast } from '@/components/ui/BpToast'
+import { toUserMessage } from '@/lib/errors'
 
 type PaymentStatus = 'offen' | 'angezahlt' | 'bezahlt'
 
@@ -400,6 +402,7 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
   const [editingLimit, setEditingLimit] = useState(false)
   const [limitInput, setLimitInput] = useState(String(budgetLimit || ''))
   const [savingLimit, setSavingLimit] = useState(false)
+  const showToast = useBpToast()
 
   async function saveLimit() {
     const val = Math.max(0, Math.round(parseFloat(limitInput.replace(',', '.')) || 0))
@@ -412,13 +415,50 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
 
   async function deleteItem(id: string) {
     const snapshot = items // Rollback-Snapshot der Liste
+    const deleted = items.find(i => i.id === id)
     const supabase = createClient()
-    await runOptimistic({
+    const ok = await runOptimistic({
       apply: () => setItems(prev => prev.filter(i => i.id !== id)),
       rollback: () => setItems(snapshot),
       commit: () => supabase.from('budget_items').delete().eq('id', id),
-      onError: (e) => console.error('Budget-Position löschen fehlgeschlagen', e),
+      onError: (e) => {
+        console.error('Budget-Position löschen fehlgeschlagen', e)
+        showToast(toUserMessage(e, 'Position konnte nicht gelöscht werden.'), 'error')
+      },
     })
+    if (ok && deleted) {
+      showToast('Position gelöscht', {
+        actionLabel: 'Rückgängig',
+        onAction: async () => {
+          await runOptimisticInsert<BudgetItem>({
+            apply: () => setItems(prev => [...prev, deleted]),
+            commit: async () => {
+              const { data, error } = await supabase
+                .from('budget_items')
+                .insert({
+                  event_id: deleted.event_id,
+                  description: deleted.description,
+                  category: deleted.category,
+                  planned: deleted.planned,
+                  actual: deleted.actual,
+                  payment_status: deleted.payment_status,
+                  notes: deleted.notes,
+                })
+                .select()
+                .single()
+              if (error || !data) throw error ?? new Error('insert failed')
+              return data as BudgetItem
+            },
+            reconcile: (real) => setItems(prev => prev.map(i => i.id === deleted.id ? real : i)),
+            rollback: () => setItems(prev => prev.filter(i => i.id !== deleted.id)),
+            onError: (e) => {
+              console.error('Rückgängig machen fehlgeschlagen', e)
+              showToast(toUserMessage(e, 'Rückgängig machen fehlgeschlagen.'), 'error')
+            },
+          })
+        },
+      })
+    }
   }
 
   const visibleItems    = items.filter(i => i.category?.toLowerCase() !== 'catering')
