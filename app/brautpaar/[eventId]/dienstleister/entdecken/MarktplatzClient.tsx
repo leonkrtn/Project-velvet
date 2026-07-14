@@ -470,8 +470,17 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
         </div>
       ) : filtered.length === 0 ? (
         <div className="bp-card" style={{ padding: '2.5rem', textAlign: 'center' }}>
-          <p style={{ fontWeight: 600, margin: '0 0 4px' }}>Keine Dienstleister gefunden</p>
-          <p className="bp-caption" style={{ margin: 0 }}>Passe Radius, Kategorie oder Suchbegriff an.</p>
+          {applied.onlyFavorites ? (
+            <>
+              <p style={{ fontWeight: 600, margin: '0 0 4px' }}>Noch nichts gemerkt</p>
+              <p className="bp-caption" style={{ margin: 0 }}>Tippt auf das Herz bei Anbietern, die euch gefallen.</p>
+            </>
+          ) : (
+            <>
+              <p style={{ fontWeight: 600, margin: '0 0 4px' }}>Keine Dienstleister gefunden</p>
+              <p className="bp-caption" style={{ margin: 0 }}>Passe Radius, Kategorie oder Suchbegriff an.</p>
+            </>
+          )}
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>

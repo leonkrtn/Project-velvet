@@ -71,8 +71,9 @@ function LoginForm() {
 
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
-              <label className="bp-label-text">E-Mail-Adresse</label>
+              <label className="bp-label-text" htmlFor="login-email">E-Mail-Adresse</label>
               <input
+                id="login-email"
                 type="email" required autoComplete="email"
                 className="bp-input"
                 value={email} onChange={e => setEmail(e.target.value)}
@@ -81,9 +82,10 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className="bp-label-text">Passwort</label>
+              <label className="bp-label-text" htmlFor="login-password">Passwort</label>
               <div className="bp-input-wrap">
                 <input
+                  id="login-password"
                   type={showPassword ? 'text' : 'password'} required autoComplete="current-password"
                   className="bp-input"
                   value={password} onChange={e => setPassword(e.target.value)}
