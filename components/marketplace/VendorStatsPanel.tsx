@@ -43,6 +43,24 @@ export default function VendorStatsPanel({
   )
 }
 
+// Catmull-Rom → Bézier: dezente Glättung (nicht zu stark), gleiche Kurve wie im Admin-Dashboard.
+function smoothLine(pts: readonly (readonly [number, number])[]): string {
+  if (pts.length === 0) return ''
+  if (pts.length < 3) return pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ')
+  const t = 0.18
+  let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i]
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    const p3 = pts[i + 2] ?? pts[i + 1]
+    const c1x = p1[0] + (p2[0] - p0[0]) * t, c1y = p1[1] + (p2[1] - p0[1]) * t
+    const c2x = p2[0] - (p3[0] - p1[0]) * t, c2y = p2[1] - (p3[1] - p1[1]) * t
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`
+  }
+  return d
+}
+
 // Schlichtes 30-Tage-Liniendiagramm: Profilaufrufe + Kontaktklicks (E-Mail+Telefon).
 function MiniChart({ series, accent }: { series: DayPoint[]; accent: string }) {
   const W = 720, H = 140, padX = 6, padY = 12
@@ -51,7 +69,8 @@ function MiniChart({ series, accent }: { series: DayPoint[]; accent: string }) {
   const max = Math.max(1, ...views, ...contacts)
   const x = (i: number) => padX + (i * (W - 2 * padX)) / Math.max(1, series.length - 1)
   const y = (v: number) => H - padY - (v * (H - 2 * padY)) / max
-  const path = (arr: number[]) => arr.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ')
+  // Sanft gerundete Linie (Catmull-Rom → Bézier, dezente Spannung).
+  const path = (arr: number[]) => smoothLine(arr.map((v, i) => [x(i), y(v)] as const))
 
   const first = series[0]?.day
   const last = series[series.length - 1]?.day
