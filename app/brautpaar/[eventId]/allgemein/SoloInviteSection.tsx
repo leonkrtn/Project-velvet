@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Copy, Check, UserPlus, Briefcase, Trash2, Clock, ChevronDown } from 'lucide-react'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { track } from '@/lib/analytics'
 
 interface Props {
   eventId: string
@@ -101,6 +102,7 @@ export default function SoloInviteSection({
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error ?? 'Code konnte nicht erstellt werden')
       patch(target, { code: data.code, loading: false, emailSent: !!trimmedEmail })
+      if (target === 'brautpaar_solo' || target === 'brautpaar') track('Partner eingeladen')
     } catch (err) {
       patch(target, {
         loading: false,

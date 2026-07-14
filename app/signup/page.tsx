@@ -16,6 +16,7 @@ import { ensureSoloEvent } from '@/lib/brautpaar-solo'
 import { MARKETPLACE_CATEGORIES } from '@/lib/marketplace/types'
 import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
 import { toRedeemErrorMessage } from '@/lib/auth/redeem-errors'
+import { track } from '@/lib/analytics'
 import '@/app/brautpaar/brautpaar.css'
 
 const HEADINGS: Record<SignupMode, string> = {
@@ -179,9 +180,11 @@ function SignupForm() {
 
   // Nach bestätigter E-Mail: modusabhängige Weiterleitung
   const onVerified = async (supabase: SupabaseClient) => {
+    track('Signup abgeschlossen', { mode })
     if (mode === 'brautpaar') {
       const meta = buildBrautpaarMeta()
       const eventId = await ensureSoloEvent(supabase, meta)
+      track('Projekt erstellt', { mode })
       await fetch('/api/brautpaar/sync-profile', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventId, meta }),
@@ -219,6 +222,7 @@ function SignupForm() {
     setLoading(true); setError('')
     try {
       await startSignup({ email: email.trim(), password, metadata })
+      track('Signup gestartet', { mode })
       if (mode === 'code') setPendingCode(inviteCode.trim())
       setAwaitingCode(true)
     } catch (err: unknown) {

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
 import { Plus, Check, Trash2, ChevronDown, ChevronRight, X, ListChecks } from 'lucide-react'
 import { getActivePhase } from '@/lib/phases'
+import { track } from '@/lib/analytics'
 
 interface Task {
   id: string
@@ -224,6 +225,7 @@ export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddi
   }
 
   async function addTask(phaseKey: string | null, title: string, sortOrder: number) {
+    const isFirstTask = tasks.length === 0
     const placeholderId = tempId()
     const placeholder: Task = {
       id: placeholderId,
@@ -258,6 +260,7 @@ export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddi
       rollback: () => setTasks(prev => prev.filter(t => t.id !== placeholderId)),
       onError: e => console.error('addTask failed', e),
     })
+    if (isFirstTask) track('Erste Aufgabe erstellt')
   }
 
   async function deleteTask(id: string) {
