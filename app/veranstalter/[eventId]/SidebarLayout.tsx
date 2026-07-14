@@ -11,6 +11,7 @@ import {
   FileDown, CheckSquare,
 } from 'lucide-react'
 import { NavIconAllgemein, NavIconSitzplan, NavIconMusik } from '@/lib/nav-icons'
+import { formatDate } from '@/lib/format'
 
 interface Props {
   eventId: string
@@ -126,7 +127,7 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
         {eventTitle}
         {eventDate && (
           <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-secondary)', marginTop: 2 }}>
-            {new Date(eventDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}
+            {formatDate(eventDate, 'long')}
           </div>
         )}
       </div>

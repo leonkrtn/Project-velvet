@@ -5,6 +5,7 @@ import { recomputeTotals, type LineItem } from '@/lib/vendor/pricing'
 import { notifyOfferDecision } from '@/lib/vendor/offer-notify'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TaxMode } from '@/lib/vendor/questionnaire'
+import { toUserMessage } from '@/lib/errors'
 
 const COUPLE_ROLES = ['veranstalter', 'brautpaar', 'brautpaar_solo']
 
@@ -75,7 +76,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ of
       line_items: t.lineItems, subtotal: t.subtotal, tax_amount: t.taxAmount, total: t.total,
       updated_at: new Date().toISOString(),
     }).eq('id', offer.id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: toUserMessage(error, 'Die Auswahl konnte nicht gespeichert werden.') }, { status: 500 })
     return NextResponse.json({ success: true, total: t.total })
   }
 
@@ -94,7 +95,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ of
       line_items: t.lineItems, subtotal: t.subtotal, tax_amount: t.taxAmount, total: t.total,
       updated_at: now,
     }).eq('id', offer.id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: toUserMessage(error, 'Das Angebot konnte nicht angenommen werden.') }, { status: 500 })
 
     await notifyOfferDecision(admin, { ...offer, total: t.total } as never, 'accepted', user.id, name)
     return NextResponse.json({ success: true })
@@ -105,7 +106,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ of
     const { error } = await admin.from('vendor_offers')
       .update({ status: 'declined', declined_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('id', offer.id)
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (error) return NextResponse.json({ error: toUserMessage(error, 'Das Angebot konnte nicht abgelehnt werden.') }, { status: 500 })
     await notifyOfferDecision(admin, offer as never, 'declined', user.id)
     return NextResponse.json({ success: true })
   }

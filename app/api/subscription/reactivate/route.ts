@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isSoloMember } from '@/lib/subscription'
 import { BILLING_ENABLED } from '@/lib/billing'
+import { toUserMessage } from '@/lib/errors'
 
 export async function POST(req: Request) {
   // Gratis-Phase: kein Abo-System — Reaktivierung ist nicht verfügbar.
@@ -28,6 +29,6 @@ export async function POST(req: Request) {
     .eq('status', 'canceled')
     .gt('current_period_end', new Date().toISOString())
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: toUserMessage(error, 'Die Reaktivierung konnte nicht abgeschlossen werden.') }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

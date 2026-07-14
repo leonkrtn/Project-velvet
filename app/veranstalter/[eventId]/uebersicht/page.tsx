@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Users, Mail, Calendar, Phone } from 'lucide-react'
 import OrganizerTodoList from './OrganizerTodoList'
+import { formatDate } from '@/lib/format'
 
 interface BudgetLineItem {
   id: string
@@ -322,7 +323,7 @@ export default async function UebersichtPage({ params }: Props) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
         <KpiCard icon={<Users size={20} color="var(--text-primary)" />} label="Beteiligte" value={members.length.toString()} sub={`${members.filter(m => m.role === 'brautpaar').length} BP · ${members.filter(m => m.role === 'dienstleister').length} DL`} href={`/veranstalter/${eventId}/mitglieder`} />
         <KpiCard icon={<Mail size={20} color="var(--text-primary)" />} label="Offene Einladungen" value={openInvites.toString()} sub="Noch nicht eingelöst" href={`/veranstalter/${eventId}/mitglieder`} />
-        <KpiCard icon={<Calendar size={20} color="var(--text-primary)" />} label="Tage bis Event" value={daysLeft != null ? daysLeft.toString() : '—'} sub={event.date ? new Date(event.date).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : 'Kein Datum gesetzt'} href={`/veranstalter/${eventId}/allgemein`} />
+        <KpiCard icon={<Calendar size={20} color="var(--text-primary)" />} label="Tage bis Event" value={daysLeft != null ? daysLeft.toString() : '—'} sub={event.date ? formatDate(event.date, 'long') : 'Kein Datum gesetzt'} href={`/veranstalter/${eventId}/allgemein`} />
       </div>
 
       {/* Event Card + Kontakt-Schnellzugriff */}

@@ -5,6 +5,7 @@ import { Plus, Trash2, Search, X, Edit2, ChevronDown, ChevronRight, Star, Downlo
 import ImportModal from '@/components/gaesteliste/ImportModal'
 import { titleCaseName, capitalizeFirst, allergyLabel } from '@/lib/text'
 import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { formatCurrency } from '@/lib/format'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -290,7 +291,7 @@ function HotelTab({ eventId, initialHotels }: { eventId: string; initialHotels: 
                                 {room.booked_rooms}/{room.total_rooms} · {room.max_occupancy}P
                               </td>
                               <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>
-                                {room.price_per_night != null ? `€ ${Number(room.price_per_night).toFixed(2)}` : '—'}
+                                {room.price_per_night != null ? formatCurrency(Number(room.price_per_night)) : '—'}
                               </td>
                               <td style={{ padding: '10px 14px' }}>
                                 <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
