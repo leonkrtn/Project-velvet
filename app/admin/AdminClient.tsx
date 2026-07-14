@@ -14,6 +14,7 @@ import MarketplaceAdminPanel from './MarketplaceAdminPanel'
 import AdminReportsSection from './AdminReportsSection'
 import AdminNotificationsSection from './AdminNotificationsSection'
 import AdminTestMailSection from './AdminTestMailSection'
+import AdminStatsSection from './AdminStatsSection'
 
 // ── Typen ─────────────────────────────────────────────────────────────────────
 
@@ -147,6 +148,9 @@ function UbersichtSection({ onNav }: { onNav: (s: Section) => void }) {
                 <Reach label="Anfragen" value={d.reachRequests} />
               </div>
             </button>
+
+            {/* Statistiken (Nutzer, Events, Conversion, Orte, Modulnutzung, Anbieter) */}
+            <AdminStatsSection />
           </>
         )}
       </div>
