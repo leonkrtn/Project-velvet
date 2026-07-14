@@ -515,7 +515,7 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
                     <Heart size={16} fill={isFav ? 'currentColor' : 'none'} />
                   </button>
                   {v.fast_responder && !req && (
-                    <span style={{ position: 'absolute', left: 12, top: 12, fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '5px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.94)', color: 'var(--bp-ink,#2C2825)', boxShadow: '0 1px 6px rgba(0,0,0,0.12)' }}>
+                    <span title="Mindestens 3 beantwortete Anfragen, davon mindestens 80% innerhalb von 48 Stunden" style={{ position: 'absolute', left: 12, top: 12, fontSize: 11, fontWeight: 700, lineHeight: 1, padding: '5px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.94)', color: 'var(--bp-ink,#2C2825)', boxShadow: '0 1px 6px rgba(0,0,0,0.12)' }}>
                       <Zap size={12} style={{ color: 'var(--bp-gold-deep,#9C7F4F)' }} /> Antwortet schnell
                     </span>
                   )}
@@ -526,7 +526,11 @@ export default function MarktplatzClient({ eventId }: { eventId: string }) {
                   </div>
                   <h3 className="bp-font-heading" style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, color: 'var(--bp-ink)', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 6 }}>
                     {v.company_name || 'Anbieter'}
-                    {v.verified && <BadgeCheck size={16} style={{ color: '#15803D', flexShrink: 0 }} aria-label="Verifiziert" />}
+                    {v.verified && (
+                      <span title="Von Forevr geprüfter Anbieter" style={{ display: 'inline-flex', flexShrink: 0 }}>
+                        <BadgeCheck size={16} style={{ color: '#15803D' }} aria-label="Verifiziert" />
+                      </span>
+                    )}
                   </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--bp-gold,#b89968)' }}>
                     {[1, 2, 3, 4, 5].map(i => <Star key={i} size={13} fill={i <= Math.round(v.review_avg) ? 'currentColor' : 'none'} />)}
