@@ -994,7 +994,7 @@ export default function LandingPage() {
         <ul className="nav-links">
           <li><a href="#lp-features">Funktionen</a></li>
           {BILLING_ENABLED && <li><a href="#lp-pricing">Preise</a></li>}
-          <li><a href="#lp-funktionen">Funktionen</a></li>
+          <li><a href="#lp-funktionen">Dienstleister</a></li>
           <li><a href="#lp-faq">FAQ</a></li>
         </ul>
         <div className="lp-nav-right">
@@ -1015,7 +1015,7 @@ export default function LandingPage() {
           <div id="lp-mobile-menu" className="lp-nav-mobile-menu">
             <a href="#lp-features" onClick={() => setMenuOpen(false)}>Funktionen</a>
             {BILLING_ENABLED && <a href="#lp-pricing" onClick={() => setMenuOpen(false)}>Preise</a>}
-            <a href="#lp-funktionen" onClick={() => setMenuOpen(false)}>Funktionen</a>
+            <a href="#lp-funktionen" onClick={() => setMenuOpen(false)}>Dienstleister</a>
             <a href="#lp-faq" onClick={() => setMenuOpen(false)}>FAQ</a>
             <a href="/login" className="lp-nav-mobile-login" onClick={() => setMenuOpen(false)}>Anmelden</a>
             <a href={SIGNUP_URL} className="lp-nav-mobile-cta" onClick={() => setMenuOpen(false)}>{CTA_LABEL}</a>
@@ -1236,7 +1236,7 @@ export default function LandingPage() {
             <ul className="lp-footer-links">
               <li><a href="#lp-features">Funktionen</a></li>
               {BILLING_ENABLED && <li><a href="#lp-pricing">Preise</a></li>}
-              <li><a href="#lp-funktionen">Funktionen</a></li>
+              <li><a href="#lp-funktionen">Dienstleister</a></li>
               <li><a href="#lp-faq">FAQ</a></li>
               <li><a href="/signup">{CTA_LABEL}</a></li>
               <li><a href="/login">Anmelden</a></li>

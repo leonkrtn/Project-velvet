@@ -157,6 +157,16 @@ export default function OnboardingWizardClient() {
     router.push('/vendor/ubersicht')
   }
 
+  // Enter im Formular springt weiter — Buttons und Textarea (Zeilenumbruch) verhalten sich weiter nativ.
+  function onFormKeyDown(e: React.KeyboardEvent) {
+    if (e.key !== 'Enter') return
+    const target = e.target as HTMLElement
+    if (target.tagName === 'BUTTON' || target.tagName === 'TEXTAREA') return
+    if (busy) return
+    e.preventDefault()
+    next()
+  }
+
   // ── Live-Vorschau-Props ──
   const previewVendor: PreviewVendor = {
     company_name: f.company_name || null, name: null, category: f.category,
@@ -196,7 +206,7 @@ export default function OnboardingWizardClient() {
 
       <div className="ob-split" style={{ flex: 1, display: 'flex', gap: 24, padding: '0 24px 24px', minHeight: 0 }}>
         {/* Formular */}
-        <div className="ob-form" style={{ flex: '1 1 0', minWidth: 0, maxWidth: 560, display: 'flex', flexDirection: 'column' }}>
+        <div className="ob-form" onKeyDown={onFormKeyDown} style={{ flex: '1 1 0', minWidth: 0, maxWidth: 560, display: 'flex', flexDirection: 'column' }}>
           {/* Horizontaler Innenabstand: verhindert, dass der globale Fokus-Outline
               (:focus-visible, 2px + 2px Offset) vom Scroll-Container abgeschnitten wird. */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '3px 6px' }}>

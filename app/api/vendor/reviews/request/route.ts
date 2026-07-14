@@ -3,14 +3,17 @@ import { requireVendorOwner } from '@/lib/marketplace/owner'
 import { sendReviewInvite } from '@/lib/vendor/automation-tick'
 
 // GET — gebuchte Events des Vendors (accepted offer) inkl. Hinweis, ob schon eingeladen.
-export async function GET() {
+// Optional ?eventId= filtert auf ein einzelnes Event (z. B. für die Kontakt-Detailansicht im CRM).
+export async function GET(req: NextRequest) {
   const auth = await requireVendorOwner()
   if (!auth.ok) return auth.res
   const { admin, vendorId } = auth.ctx
+  const filterEventId = req.nextUrl.searchParams.get('eventId')
 
   const { data: offers } = await admin.from('vendor_offers')
     .select('event_id').eq('dienstleister_id', vendorId).eq('status', 'accepted')
-  const eventIds = Array.from(new Set((offers ?? []).map(o => o.event_id).filter(Boolean)))
+  let eventIds = Array.from(new Set((offers ?? []).map(o => o.event_id).filter(Boolean)))
+  if (filterEventId) eventIds = eventIds.filter(id => id === filterEventId)
   if (eventIds.length === 0) return NextResponse.json({ events: [] })
 
   const [{ data: events }, { data: invites }] = await Promise.all([

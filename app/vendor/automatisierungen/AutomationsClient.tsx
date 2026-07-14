@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, Calendar, Check, FileSpreadsheet, Mail, ListChecks } from 'lucide-react'
+import { Loader2, Plus, Trash2, Zap, Star, Bell, MailQuestion, UserCheck, FileSpreadsheet, Mail, ListChecks } from 'lucide-react'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
 import { SaveStatus } from '@/components/ui/SaveStatus'
 import EmailsClient from '@/app/vendor/e-mails/EmailsClient'
@@ -223,9 +223,6 @@ export default function AutomationsClient() {
 
       <h3 style={sectionHead}>Benachrichtigungen</h3>
       <NewRequestEmailSection />
-
-      <h3 style={sectionHead}>Manuelle Aktionen</h3>
-      <ManualReviewSection />
       </>)}
 
       <style>{`
@@ -290,67 +287,6 @@ function NewRequestEmailSection() {
           </>
         )}
       </span>
-    </div>
-  )
-}
-
-function ManualReviewSection() {
-  const [events, setEvents] = useState<{ id: string; name: string; date: string | null; invited: boolean }[]>([])
-  const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    const r = await fetch('/api/vendor/reviews/request')
-    const d = await r.json().catch(() => ({}))
-    setEvents(d.events ?? [])
-    setLoading(false)
-  }, [])
-  useEffect(() => { load() }, [load])
-
-  async function send(eventId: string) {
-    setBusy(eventId)
-    await fetch('/api/vendor/reviews/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId }) })
-    setBusy(null); load()
-  }
-
-  return (
-    <div style={card}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: events.length > 0 || loading ? 14 : 0 }}>
-        <span style={{
-          width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-          background: C.bg, border: `1px solid ${C.border}`,
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: C.dim,
-        }}>
-          <Star size={16} />
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Bewertung manuell anfragen</h2>
-          <p style={{ fontSize: 12.5, color: C.dim, margin: '3px 0 0', lineHeight: 1.5 }}>
-            Sende für ein abgeschlossenes Event jederzeit selbst eine Bewertungsanfrage ans Brautpaar.
-          </p>
-        </div>
-      </div>
-      {loading ? (
-        <div style={{ color: C.dim, fontSize: 13 }}><Loader2 size={15} className="bp-spin" /></div>
-      ) : events.length === 0 ? (
-        <p style={{ fontSize: 12.5, color: C.dim, margin: '10px 0 0' }}>Noch keine abgeschlossenen (angenommenen) Aufträge.</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {events.map(e => (
-            <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', border: `1px solid ${C.border}`, borderRadius: 9, background: C.bg }}>
-              <Calendar size={14} style={{ color: C.dim, flexShrink: 0 }} />
-              <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}{e.date ? ` · ${e.date}` : ''}</span>
-              {e.invited ? (
-                <span style={{ fontSize: 12, color: '#15803D', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><Check size={14} /> Angefragt</span>
-              ) : (
-                <button onClick={() => send(e.id)} disabled={busy === e.id} style={{ ...btnGhost, padding: '6px 11px', fontSize: 12 }}>
-                  {busy === e.id ? <Loader2 size={13} className="bp-spin" /> : <Star size={13} />} Anfragen
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
