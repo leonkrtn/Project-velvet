@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import VendorOfferEditor from '@/components/vendor/VendorOfferEditor'
 import SegmentedToggle from '@/components/vendor/SegmentedToggle'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 interface Contact { name: string | null; email: string | null; phone: string | null }
 export interface Req {
@@ -212,6 +213,7 @@ function RequestLightbox({ r, onClose, onReload }: { r: Req; onClose: () => void
   const loc = locationOf(r.events)
   const contacts = r.couple_contacts.length ? r.couple_contacts : (r.requester ? [r.requester] : [])
   const [deleting, setDeleting] = useState(false)
+  const confirm = useConfirm()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -220,7 +222,7 @@ function RequestLightbox({ r, onClose, onReload }: { r: Req; onClose: () => void
   }, [onClose])
 
   async function handleDelete() {
-    if (!confirm('Anfrage wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return
+    if (!(await confirm('Anfrage wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.'))) return
     setDeleting(true)
     const res = await fetch(`/api/marketplace/vendor-requests?id=${r.id}`, { method: 'DELETE' })
     setDeleting(false)

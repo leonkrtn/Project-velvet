@@ -5,6 +5,7 @@ import { Loader2, Plus, Trash2, RefreshCw, Save, Check, X, FileDown, MessageSqua
 import Link from 'next/link'
 import { formatMoney, type Answer } from '@/lib/vendor/questionnaire'
 import PdfPreviewModal from '@/components/pdf/PdfPreviewModal'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 interface LineItem { label: string; qty: number; unitPrice: number; total: number }
 interface StandardInfo { coupleName?: string | null; date?: string | null; guestCount?: number | null; location?: string | null; eventType?: string | null; budget?: number | null }
@@ -195,6 +196,7 @@ function VariantsManager({ requestId, editable, currency }: { requestId: string;
   const [busy, setBusy] = useState<string | null>(null)
   const [pdf, setPdf] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
+  const confirm = useConfirm()
 
   const load = useCallback(async () => {
     const r = await fetch(`/api/vendor/offers/${requestId}/variants`)
@@ -222,7 +224,7 @@ function VariantsManager({ requestId, editable, currency }: { requestId: string;
     setBusy(null); await load()
   }
   async function removeVariant(id: string) {
-    if (!confirm('Variante löschen?')) return
+    if (!(await confirm('Variante löschen?'))) return
     setBusy(id)
     await fetch(`/api/vendor/offers/${requestId}/variants/${id}`, { method: 'DELETE' })
     setBusy(null); await load()

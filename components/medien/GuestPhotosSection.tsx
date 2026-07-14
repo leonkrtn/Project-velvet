@@ -1,6 +1,7 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
 import { Images, Upload, Trash2, X, Loader, Globe, Lock, Download, BookImage } from 'lucide-react'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 interface Photo {
   id: string
@@ -24,6 +25,7 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
   const [isPublic, setIsPublic]   = useState(true)
   const [isBrautpaar, setIsBrautpaar] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const confirm = useConfirm()
   const fileRef = useRef<HTMLInputElement>(null)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,7 +90,7 @@ export default function GuestPhotosSection({ eventId, mode }: Props) {
   }
 
   async function deletePhoto(photo: Photo) {
-    if (!confirm(`Foto von „${photo.uploader_name ?? 'Unbekannt'}" löschen?`)) return
+    if (!(await confirm(`Foto von „${photo.uploader_name ?? 'Unbekannt'}" löschen?`))) return
     const res = await fetch(`/api/events/${eventId}/photos/${photo.id}`, { method: 'DELETE' })
     if (res.ok) setPhotos(p => p.filter(x => x.id !== photo.id))
   }

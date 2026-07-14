@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { Plus, Trash2, Eye, EyeOff, KeyRound, ImagePlus, X, Pencil, Check } from 'lucide-react'
 import { MARKETPLACE_CATEGORIES, PRICE_RANGES, categoryLabel } from '@/lib/marketplace/types'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 export interface Vendor {
   id: string
@@ -34,6 +35,7 @@ export default function MarketplaceVendorsSection() {
   const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
+  const confirm = useConfirm()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -60,7 +62,7 @@ export default function MarketplaceVendorsSection() {
   }
 
   async function remove(v: Vendor) {
-    if (!confirm(`Vendor "${v.name}" wirklich löschen? Login und Bilder werden entfernt.`)) return
+    if (!(await confirm(`Vendor "${v.name}" wirklich löschen? Login und Bilder werden entfernt.`))) return
     await fetch(`/api/admin/marketplace/vendors/${v.id}`, { method: 'DELETE' })
     load()
   }

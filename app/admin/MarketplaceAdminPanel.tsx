@@ -11,6 +11,7 @@ import MarketplaceReviewLightbox from './MarketplaceReviewLightbox'
 import { VendorForm, type Vendor as FormVendor } from './MarketplaceVendorsSection'
 import VendorStatsPanel from '@/components/marketplace/VendorStatsPanel'
 import { type Counts, type DayPoint } from '@/lib/marketplace/stats'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 type AdminVendor = FormVendor & {
   moderation_status: ModerationStatus
@@ -54,6 +55,7 @@ export default function MarketplaceAdminPanel() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const confirm = useConfirm()
   const [reviewing, setReviewing] = useState<string | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
 
@@ -101,7 +103,7 @@ export default function MarketplaceAdminPanel() {
     }).then(res => { if (!res.ok) load() }).catch(() => load())
   }
   async function remove(v: AdminVendor) {
-    if (!confirm(`Anbieter „${v.company_name || v.name}" endgültig löschen? Login, Bilder und Daten werden entfernt.`)) return
+    if (!(await confirm(`Anbieter „${v.company_name || v.name}" endgültig löschen? Login, Bilder und Daten werden entfernt.`))) return
     await fetch(`/api/admin/marketplace/vendors/${v.id}`, { method: 'DELETE' })
     load()
   }

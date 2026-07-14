@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Search, X, Edit2, ChevronDown, ChevronRight, Star, Download, Upload, FileSpreadsheet } from 'lucide-react'
 import ImportModal from '@/components/gaesteliste/ImportModal'
 import { titleCaseName, capitalizeFirst, allergyLabel } from '@/lib/text'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -183,7 +184,7 @@ function HotelTab({ eventId, initialHotels }: { eventId: string; initialHotels: 
   }
 
   async function deleteHotel(id: string) {
-    if (!confirm('Hotel und alle Zimmer löschen?')) return
+    if (!(await confirm('Hotel und alle Zimmer löschen?'))) return
     const { error } = await supabase.from('hotels').delete().eq('id', id)
     if (!error) setHotels(prev => prev.filter(h => h.id !== id))
   }
@@ -212,7 +213,7 @@ function HotelTab({ eventId, initialHotels }: { eventId: string; initialHotels: 
   }
 
   async function deleteRoom(hotelId: string, roomId: string) {
-    if (!confirm('Zimmer löschen?')) return
+    if (!(await confirm('Zimmer löschen?'))) return
     const { error } = await supabase.from('hotel_rooms').delete().eq('id', roomId)
     if (!error) setHotels(prev => prev.map(h => h.id === hotelId ? { ...h, hotel_rooms: h.hotel_rooms.filter(r => r.id !== roomId) } : h))
   }
@@ -407,6 +408,7 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
   const [showAdd, setShowAdd] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const confirm = useConfirm()
 
   const [form, setForm] = useState<Partial<Guest>>({})
 
