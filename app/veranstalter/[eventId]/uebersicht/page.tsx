@@ -32,6 +32,55 @@ const PHASE_COLORS: Record<Projektphase, { bg: string; color: string; border: st
   'Nachbereitung':  { bg: '#F5F3FF', color: '#7C3AED', border: '#DDD6FE' },
 }
 
+interface ReadinessStep {
+  key: string
+  label: string
+  todo: string
+  href: string
+  done: boolean
+}
+
+// Aggregierter Fortschritt + Next-Best-Action fürs Veranstalter-Dashboard
+// (UX-Audit B7) — server-gerendert, kein Client-State nötig.
+function ReadinessCard({ eventId, steps }: { eventId: string; steps: ReadinessStep[] }) {
+  const doneCount = steps.filter(s => s.done).length
+  const total = steps.length
+  const allDone = doneCount === total
+  const next = steps.find(s => !s.done)
+  const pct = Math.round((doneCount / total) * 100)
+
+  if (allDone) {
+    return (
+      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '14px 22px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: 'var(--text-secondary)' }}>
+        Grundplanung abgeschlossen — alle {total} Basisschritte sind erledigt.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', padding: '20px 22px', marginBottom: 24, boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Planungsfortschritt</span>
+        <span style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>{doneCount} / {total}</span>
+      </div>
+      <div style={{ height: 6, borderRadius: 3, background: 'var(--surface2)', overflow: 'hidden', marginBottom: 16 }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.2s' }} />
+      </div>
+      {next && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-tertiary)' }}>Als Nächstes</span>
+            <p style={{ margin: '2px 0 0', fontSize: 14, color: 'var(--text-primary)' }}>{next.todo}</p>
+          </div>
+          <Link href={`/veranstalter/${eventId}/${next.href}`} style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--accent)', color: '#fff', fontSize: 13.5, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+            {next.label}
+          </Link>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function fmtMoney(n: number | null | undefined) {
   if (n == null) return '—'
   return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -134,6 +183,8 @@ export default async function UebersichtPage({ params }: Props) {
     daysRes,
     getraenkeArtikelRes,
     getraenkeCocktailsRes,
+    timelineCountRes,
+    seatedCountRes,
   ] = await Promise.all([
     supabase.from('events').select('id, title, date, budget_total, projektphase, organizer_fee').eq('id', eventId).single(),
     supabase.from('event_members').select('id, role').eq('event_id', eventId),
@@ -151,6 +202,8 @@ export default async function UebersichtPage({ params }: Props) {
     supabase.from('personalplanung_days').select('id').eq('event_id', eventId),
     supabase.from('getraenke_artikel').select('total_planned, price_per_unit, kalkulationspreis').eq('event_id', eventId),
     supabase.from('getraenke_cocktails').select('planned_count, price_per_unit, kalkulationspreis').eq('event_id', eventId),
+    supabase.from('timeline_entries').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
+    supabase.from('seating_assignments').select('id', { count: 'exact', head: true }).eq('event_id', eventId),
   ])
 
   const event = eventRes.data
@@ -236,9 +289,21 @@ export default async function UebersichtPage({ params }: Props) {
   const totalSpent = budgetItems.reduce((s, b) => s + (b.actual ?? 0), 0)
   const budgetPercent = budgetTotal > 0 ? Math.min(100, (totalSpent / budgetTotal) * 100) : 0
   const confirmedVendors = vendors.filter(v => v.status === 'bestaetigt').length
+  const timelineCount = timelineCountRes.count ?? 0
+  const seatedCount = seatedCountRes.count ?? 0
 
   const phase = (event.projektphase as Projektphase | null) ?? 'Planung'
   const phaseStyle = PHASE_COLORS[phase]
+
+  // Event-Fortschritt — analog zum "Roten Faden" im Brautpaar-Portal:
+  // Schritte leiten sich direkt aus echten Daten ab, kein separates Flag.
+  const readinessSteps: ReadinessStep[] = [
+    { key: 'gaeste', label: 'Gästeliste angelegt', todo: 'Fügt eure ersten Gäste hinzu.', href: 'gaesteliste', done: guestsTotal > 0 },
+    { key: 'dienstleister', label: 'Dienstleister bestätigt', todo: 'Bestätigt mindestens einen Dienstleister.', href: 'mitglieder', done: confirmedVendors > 0 },
+    { key: 'budget', label: 'Budget hinterlegt', todo: 'Legt euer Budget fest.', href: 'allgemein', done: budgetTotal > 0 },
+    { key: 'ablaufplan', label: 'Ablaufplan gefüllt', todo: 'Plant den Ablauf des Tages.', href: 'ablaufplan', done: timelineCount > 0 },
+    { key: 'sitzplan', label: 'Sitzplan belegt', todo: 'Weist Gästen ihre Plätze zu.', href: 'sitzplan', done: seatedCount > 0 },
+  ]
 
   return (
     <div>
@@ -249,7 +314,9 @@ export default async function UebersichtPage({ params }: Props) {
           {phase}
         </Link>
       </div>
-      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 32 }}>Alle wichtigen Kennzahlen auf einen Blick</p>
+      <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>Alle wichtigen Kennzahlen auf einen Blick</p>
+
+      <ReadinessCard eventId={eventId} steps={readinessSteps} />
 
       {/* KPI Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
