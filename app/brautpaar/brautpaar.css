@@ -3083,7 +3083,7 @@
 
 /* Einspaltige Modi (Code / Dienstleister) in der breiten Karte zentrieren */
 .bp-authx-narrow {
-  max-width: 440px;
+  max-width: 560px;
   margin: 0 auto;
 }
 
@@ -3092,6 +3092,6 @@
    viel Leerraum links/rechts wirkt (muss nach der Basis-Regel stehen, da
    gleiche Spezifität). */
 @media (min-width: 900px) {
-  .bp-authx-narrow { max-width: 640px; }
+  .bp-authx-narrow { max-width: 100%; }
   .bp-authx-card { padding: 2.25rem; }
 }
