@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   Users, LayoutGrid, Calendar, UtensilsCrossed, Music,
-  ArrowRight, Check, Send, UserPlus, CalendarHeart, Wallet, MapPin,
+  ArrowRight, Check, Send, UserPlus, CalendarHeart, Wallet, MapPin, PartyPopper,
 } from 'lucide-react'
 
 interface NextTask {
@@ -358,8 +358,12 @@ interface SetupStep {
 // oder das Paar ihn manuell ausblendet (reine UI-Präferenz, pro Gerät).
 function RoterFaden({ eventId, steps }: { eventId: string; steps: SetupStep[] }) {
   const [hidden, setHidden] = useState(false)
+  const [celebrated, setCelebrated] = useState(false)
   useEffect(() => {
-    try { setHidden(localStorage.getItem(`forevr_setup_hidden_${eventId}`) === '1') } catch {}
+    try {
+      setHidden(localStorage.getItem(`forevr_setup_hidden_${eventId}`) === '1')
+      setCelebrated(localStorage.getItem(`forevr_setup_celebrated_${eventId}`) === '1')
+    } catch {}
   }, [eventId])
 
   const doneCount = steps.filter(s => s.done).length
@@ -367,11 +371,28 @@ function RoterFaden({ eventId, steps }: { eventId: string; steps: SetupStep[] })
   const allDone = doneCount === total
   const activeKey = steps.find(s => !s.done)?.key ?? null
 
-  if (hidden || allDone) return null
+  if (hidden) return null
+  if (allDone && celebrated) return null
 
   function dismiss() {
     try { localStorage.setItem(`forevr_setup_hidden_${eventId}`, '1') } catch {}
     setHidden(true)
+  }
+
+  function celebrateDismiss() {
+    try { localStorage.setItem(`forevr_setup_celebrated_${eventId}`, '1') } catch {}
+    setCelebrated(true)
+  }
+
+  if (allDone) {
+    return (
+      <section className="bp-card bp-faden bp-reveal bp-mb-8" aria-label="Erste Schritte abgeschlossen" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
+        <PartyPopper size={28} style={{ color: 'var(--bp-gold-deep)', marginBottom: 10 }} />
+        <h2 className="bp-faden-title" style={{ fontFamily: SERIF, marginBottom: 6 }}>Alle ersten Schritte geschafft!</h2>
+        <p className="bp-caption" style={{ marginBottom: 16 }}>Eure Grundplanung steht — weiter geht's mit den Details.</p>
+        <button type="button" onClick={celebrateDismiss} className="bp-btn bp-btn-primary bp-btn-sm">Weiter zur Planung</button>
+      </section>
+    )
   }
 
   const pct = Math.round(doneCount / total * 100)

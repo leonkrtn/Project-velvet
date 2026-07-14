@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
 import { Plus, Check, Trash2, ChevronDown, ChevronRight, X, ListChecks } from 'lucide-react'
+import { getActivePhase } from '@/lib/phases'
 
 interface Task {
   id: string
@@ -39,21 +40,6 @@ const SEED_TASKS: Record<string, string[]> = {
   '1w': ['Finale Gästezahl an Location/Catering melden', 'Notfallkontakte & Ablaufplan verteilen', 'Deko & Give-aways vorbereiten'],
   day: ['Ringe, Papiere & Dokumente dabei', 'Zeitplan mit Trauzeugen durchgehen'],
   after: ['Danksagungen verschicken', 'Namensänderung erledigen', 'Fotos vom Fotografen abholen'],
-}
-
-function getActivePhase(weddingDate: string | null): string | null {
-  if (!weddingDate) return null
-  const msLeft = new Date(weddingDate).getTime() - Date.now()
-  const daysLeft = msLeft / 86400000
-  if (daysLeft < 0) return 'after'
-  if (daysLeft < 1) return 'day'
-  if (daysLeft < 7) return '1w'
-  const monthsLeft = daysLeft / 30
-  if (monthsLeft < 1)  return '1m'
-  if (monthsLeft < 3)  return '1m'
-  if (monthsLeft < 6)  return '3m'
-  if (monthsLeft < 12) return '6m'
-  return '12m'
 }
 
 function TaskItem({ task, onToggle, onDelete }: {
