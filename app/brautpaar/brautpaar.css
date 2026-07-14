@@ -3083,6 +3083,11 @@
 
 /* Einspaltige Modi (Code / Dienstleister) in der breiten Karte zentrieren */
 .bp-authx-narrow {
+  /* width (statt nur max-width) ist hier bewusst explizit gesetzt: .bp-authx-narrow
+     ist ein Flex-Item einer Column (das <form>), und "margin: auto" zum Zentrieren
+     deaktiviert dort das Stretch-Verhalten, wodurch der Block sonst auf seine
+     Inhaltsbreite schrumpft statt die verfügbare Breite zu füllen. */
+  width: 100%;
   max-width: 560px;
   margin: 0 auto;
 }
