@@ -38,6 +38,11 @@ function dateLabel(iso: string | null) {
   return iso ? new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : null
 }
 
+function daysSince(iso: string | null): number | null {
+  if (!iso) return null
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+}
+
 // Angebotsvergleich: alle freigegebenen Angebote des Events, nach Gewerk
 // gruppiert — Preise nebeneinander, damit das Brautpaar entscheiden kann.
 export default function AngeboteVergleich({ eventId }: { eventId: string }) {
@@ -144,6 +149,7 @@ export default function AngeboteVergleich({ eventId }: { eventId: string }) {
                 const isBestPrice = priced.length >= 2 && o.status !== 'declined' && o.total != null
                   && Number(o.total) === Math.min(...priced.map(x => Number(x.total)))
                 const date = o.status === 'accepted' ? dateLabel(o.accepted_at) : dateLabel(o.released_at)
+                const ageDays = o.status === 'released' ? daysSince(o.released_at) : null
                 return (
                   <div key={o.id} className="bp-card" style={{ padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: 8, opacity: o.status === 'declined' ? 0.65 : 1, borderColor: isBestPrice ? 'var(--bp-rule-gold,#D4BC9A)' : undefined }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
@@ -152,11 +158,16 @@ export default function AngeboteVergleich({ eventId }: { eventId: string }) {
                         {meta.icon} {meta.label}
                       </span>
                     </div>
+                    {ageDays != null && ageDays >= 7 && (
+                      <p className="bp-caption" style={{ margin: 0, color: '#B26A00', fontWeight: 600 }}>
+                        Seit {ageDays} Tagen offen — noch nicht beantwortet
+                      </p>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
                       <p className="bp-font-heading" style={{ fontSize: '1.5rem', fontWeight: 600, margin: 0, color: 'var(--bp-ink)' }}>{euro(o.total)}</p>
                       {isBestPrice && (
                         <span style={{ fontSize: 10.5, fontWeight: 700, lineHeight: 1, padding: '4px 8px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--bp-gold-pale,#F5F0E8)', color: 'var(--bp-gold-deep,#9C7F4F)', border: '1px solid var(--bp-rule-gold,#D4BC9A)' }}>
-                          <Tag size={11} /> Bester Preis
+                          <Tag size={11} /> Günstigstes Angebot
                         </span>
                       )}
                     </div>
