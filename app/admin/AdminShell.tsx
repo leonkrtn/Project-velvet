@@ -2,11 +2,11 @@
 
 import React, { useEffect, useState } from 'react'
 import {
-  LayoutDashboard, Store, Flag, Users, Tag, LogOut, Bell, FlaskConical, Menu, X,
+  LayoutDashboard, Store, Flag, Users, Tag, LogOut, Bell, FlaskConical, Menu, X, BarChart3,
 } from 'lucide-react'
 import { performLogout } from '@/lib/logout'
 
-type Section = 'ubersicht' | 'anbieter' | 'meldungen' | 'veranstalter' | 'promo' | 'benachrichtigungen' | 'testen'
+type Section = 'ubersicht' | 'insights' | 'anbieter' | 'meldungen' | 'veranstalter' | 'promo' | 'benachrichtigungen' | 'testen'
 
 interface Props {
   adminName: string
@@ -19,6 +19,7 @@ interface Badges { anbieter: number; meldungen: number }
 
 const NAV: { key: Section; label: string; icon: React.ElementType; badgeKey?: keyof Badges }[] = [
   { key: 'ubersicht',    label: 'Übersicht',    icon: LayoutDashboard },
+  { key: 'insights',    label: 'Insights',     icon: BarChart3 },
   { key: 'anbieter',    label: 'Anbieter',     icon: Store,           badgeKey: 'anbieter' },
   { key: 'meldungen',   label: 'Meldungen',    icon: Flag,            badgeKey: 'meldungen' },
   { key: 'veranstalter', label: 'Veranstalter', icon: Users },
@@ -36,7 +37,7 @@ const SB = {
 }
 
 const ACTIVE_LABEL: Record<Section, string> = {
-  ubersicht: 'Übersicht', anbieter: 'Anbieter', meldungen: 'Meldungen',
+  ubersicht: 'Übersicht', insights: 'Insights', anbieter: 'Anbieter', meldungen: 'Meldungen',
   veranstalter: 'Veranstalter', promo: 'Promo-Codes', benachrichtigungen: 'Benachrichtigungen',
   testen: 'Kontrolle',
 }

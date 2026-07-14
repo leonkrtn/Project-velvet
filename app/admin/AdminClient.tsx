@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import {
   Check, X, UserPlus, Users, Inbox, Trash2, ShieldOff, Loader2,
   AlertCircle, Eye, EyeOff, RefreshCw, LayoutDashboard,
-  ShieldCheck, Tag, Store, Flag, ChevronRight,
+  ShieldCheck, Tag, Store, Flag, ChevronRight, BarChart3,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import AdminShell from './AdminShell'
@@ -27,7 +27,7 @@ interface Organizer {
   eventCount: number; isAdmin: boolean; createdAt: string | null
 }
 
-type Section = 'ubersicht' | 'anbieter' | 'meldungen' | 'veranstalter' | 'promo' | 'benachrichtigungen' | 'testen'
+type Section = 'ubersicht' | 'insights' | 'anbieter' | 'meldungen' | 'veranstalter' | 'promo' | 'benachrichtigungen' | 'testen'
 
 // ── Design ────────────────────────────────────────────────────────────────────
 
@@ -149,8 +149,12 @@ function UbersichtSection({ onNav }: { onNav: (s: Section) => void }) {
               </div>
             </button>
 
-            {/* Statistiken (Nutzer, Events, Conversion, Orte, Modulnutzung, Anbieter) */}
-            <AdminStatsSection />
+            {/* Verweis auf das ausführliche Insights-Dashboard */}
+            <button onClick={() => onNav('insights')} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left', ...card, padding: 16, cursor: 'pointer', fontFamily: 'inherit', marginTop: 12 }}>
+              <BarChart3 size={20} style={{ color: C.accent, flexShrink: 0 }} />
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: C.text }}>Insights — Nutzung, Aktivierung & Marktplatz-Potenzial</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.accent, display: 'inline-flex', alignItems: 'center', gap: 4 }}>Öffnen <ChevronRight size={15} /></span>
+            </button>
           </>
         )}
       </div>
@@ -482,6 +486,7 @@ export default function AdminClient({ adminName }: { adminName: string }) {
       <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
 
       {section === 'ubersicht'    && <UbersichtSection onNav={setSection} />}
+      {section === 'insights'    && <AdminStatsSection onNav={setSection} />}
       {section === 'anbieter'    && <AnbieterSection />}
       {section === 'meldungen'   && <AdminReportsSection card={card} cardHeader={cardHeader} />}
       {section === 'veranstalter' && <VeranstalterSection adminName={adminName} />}
