@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import GeschenkTab from './GeschenkTab'
 import { titleCaseName, capitalizeFirst, allergyLabel } from '@/lib/text'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -202,6 +203,7 @@ function HotelTab({ eventId, hotels: initialHotels }: { eventId: string; hotels:
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null)
   const [roomForm, setRoomForm] = useState<RoomFormData>(emptyRoomForm())
   const [roomSaving, setRoomSaving] = useState(false)
+  const confirm = useConfirm()
 
   function toggleExpand(id: string) {
     setExpandedIds(prev => {
@@ -405,7 +407,7 @@ function HotelTab({ eventId, hotels: initialHotels }: { eventId: string; hotels:
                     </button>
                     <button
                       className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon"
-                      onClick={() => { if (confirm(`Hotel "${hotel.name}" löschen? Alle Zimmer werden ebenfalls gelöscht.`)) deleteHotel(hotel.id) }}
+                      onClick={async () => { if (await confirm(`Hotel "${hotel.name}" löschen? Alle Zimmer und bestehenden Zimmerbuchungen der Gäste werden ebenfalls gelöscht.`)) deleteHotel(hotel.id) }}
                       title="Löschen"
                       style={{ color: '#B91C1C' }}
                     >
@@ -475,7 +477,7 @@ function HotelTab({ eventId, hotels: initialHotels }: { eventId: string; hotels:
                                       </button>
                                       <button
                                         className="bp-btn bp-btn-ghost bp-btn-sm bp-btn-icon"
-                                        onClick={() => { if (confirm('Zimmer löschen?')) deleteRoom(hotel.id, room.id) }}
+                                        onClick={async () => { if (await confirm('Zimmer löschen? Gäste mit einer Buchung in diesem Zimmer verlieren ihre Zimmerzuweisung.')) deleteRoom(hotel.id, room.id) }}
                                         title="Löschen"
                                         style={{ color: '#B91C1C' }}
                                       >
@@ -1174,7 +1176,9 @@ function GaestelisteTab({ guests, begleitpersonen, eventId, userId, hotels, onUp
         >
           <div className="bp-dialog-pad" style={{ background: 'var(--bp-paper)', borderRadius: 'var(--bp-r-lg)', width: '100%', maxWidth: 360, boxShadow: 'var(--bp-shadow-elevated)' }}>
             <h2 className="bp-h2" style={{ margin: '0 0 0.75rem' }}>Gast löschen?</h2>
-            <p className="bp-caption" style={{ margin: '0 0 1.5rem' }}>Diese Aktion kann nicht rückgängig gemacht werden.</p>
+            <p className="bp-caption" style={{ margin: '0 0 1.5rem' }}>
+              RSVP-Antwort, Sitzplatz- und Zimmerzuweisung sowie hochgeladene Fotos dieses Gasts gehen dabei verloren. Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button className="bp-btn bp-btn-ghost" onClick={() => setConfirmDeleteId(null)}>Abbrechen</button>
               <button

@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Plus, Trash2, Search, X, Edit2, ChevronDown, ChevronRight, Star, Download, Upload, FileSpreadsheet } from 'lucide-react'
 import ImportModal from '@/components/gaesteliste/ImportModal'
 import { titleCaseName, capitalizeFirst, allergyLabel } from '@/lib/text'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { formatCurrency } from '@/lib/format'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -183,7 +185,7 @@ function HotelTab({ eventId, initialHotels }: { eventId: string; initialHotels: 
   }
 
   async function deleteHotel(id: string) {
-    if (!confirm('Hotel und alle Zimmer löschen?')) return
+    if (!(await confirm('Hotel und alle Zimmer löschen?'))) return
     const { error } = await supabase.from('hotels').delete().eq('id', id)
     if (!error) setHotels(prev => prev.filter(h => h.id !== id))
   }
@@ -212,7 +214,7 @@ function HotelTab({ eventId, initialHotels }: { eventId: string; initialHotels: 
   }
 
   async function deleteRoom(hotelId: string, roomId: string) {
-    if (!confirm('Zimmer löschen?')) return
+    if (!(await confirm('Zimmer löschen?'))) return
     const { error } = await supabase.from('hotel_rooms').delete().eq('id', roomId)
     if (!error) setHotels(prev => prev.map(h => h.id === hotelId ? { ...h, hotel_rooms: h.hotel_rooms.filter(r => r.id !== roomId) } : h))
   }
@@ -289,7 +291,7 @@ function HotelTab({ eventId, initialHotels }: { eventId: string; initialHotels: 
                                 {room.booked_rooms}/{room.total_rooms} · {room.max_occupancy}P
                               </td>
                               <td style={{ padding: '10px 14px', color: 'var(--text-secondary)' }}>
-                                {room.price_per_night != null ? `€ ${Number(room.price_per_night).toFixed(2)}` : '—'}
+                                {room.price_per_night != null ? formatCurrency(Number(room.price_per_night)) : '—'}
                               </td>
                               <td style={{ padding: '10px 14px' }}>
                                 <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -407,6 +409,11 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
   const [showAdd, setShowAdd] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showImport, setShowImport] = useState(false)
+  const confirm = useConfirm()
+  // Progressive Disclosure: beim schnellen Erfassen neuer Gäste sind nur
+  // Name + Seite sichtbar; Status/Essenswahl/Allergien sind für die
+  // Masseneingabe eher hinderlich und meist erst nach dem RSVP relevant.
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const [form, setForm] = useState<Partial<Guest>>({})
 
@@ -417,12 +424,14 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
     setEditId(g.id)
     setForm({ name: g.name, status: g.status, side: g.side, allergy_tags: g.allergy_tags ?? [], allergy_custom: g.allergy_custom, meal_choice: g.meal_choice })
     setShowAdd(false)
+    setDetailsOpen(true)
   }, [])
 
   const openAdd = useCallback(() => {
     setEditId(null)
     setForm({ name: '', status: 'angelegt', side: null, allergy_tags: [], allergy_custom: null, meal_choice: null })
     setShowAdd(true)
+    setDetailsOpen(false)
   }, [])
 
   const closeForm = useCallback(() => {
@@ -494,19 +503,10 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div>
           <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Name</label>
-          <input value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+          <input autoFocus value={form.name ?? ''} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            onKeyDown={e => { if (e.key === 'Enter' && form.name?.trim()) saveGuest() }}
             style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const }} />
         </div>
-        <div>
-          <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Status</label>
-          <select value={form.status ?? 'angelegt'} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-            style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const, background: '#fff' }}>
-            {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div>
           <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Seite</label>
           <select value={form.side ?? ''} onChange={e => setForm(f => ({ ...f, side: e.target.value || null }))}
@@ -515,35 +515,53 @@ export default function GaestelisteClient({ eventId, initialGuests, mealOptions,
             {SIDE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-        <div>
-          <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Essenswahl</label>
-          <select value={form.meal_choice ?? ''} onChange={e => setForm(f => ({ ...f, meal_choice: e.target.value || null }))}
-            style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const, background: '#fff' }}>
-            <option value="">—</option>
-            {mealOptions.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
-        </div>
       </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>Allergien</label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {ALLERGY_TAGS.map(tag => {
-            const active = (form.allergy_tags ?? []).includes(tag)
-            return (
-              <button key={tag} type="button" onClick={() => toggleAllergyTag(tag)} style={{
-                padding: '4px 10px', borderRadius: 20, fontSize: 12, cursor: 'pointer', border: '1px solid',
-                background: active ? '#FEF2F2' : '#fff',
-                borderColor: active ? 'rgba(220,38,38,0.3)' : 'var(--border)',
-                color: active ? '#DC2626' : 'var(--text-secondary)',
-                fontWeight: active ? 600 : 400, fontFamily: 'inherit',
-              }}>{allergyLabel(tag)}</button>
-            )
-          })}
-        </div>
-        <input value={form.allergy_custom ?? ''} onChange={e => setForm(f => ({ ...f, allergy_custom: e.target.value || null }))}
-          placeholder="Sonstiges…" style={{ marginTop: 8, width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const }} />
-      </div>
+      {!detailsOpen ? (
+        <button type="button" onClick={() => setDetailsOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 16, fontSize: 12.5, color: 'var(--text-secondary)', textDecoration: 'underline' }}>
+          Weitere Details (Status, Essenswahl, Allergien)
+        </button>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Status</label>
+              <select value={form.status ?? 'angelegt'} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const, background: '#fff' }}>
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 4 }}>Essenswahl</label>
+              <select value={form.meal_choice ?? ''} onChange={e => setForm(f => ({ ...f, meal_choice: e.target.value || null }))}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const, background: '#fff' }}>
+                <option value="">—</option>
+                {mealOptions.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-tertiary)', display: 'block', marginBottom: 6 }}>Allergien</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {ALLERGY_TAGS.map(tag => {
+                const active = (form.allergy_tags ?? []).includes(tag)
+                return (
+                  <button key={tag} type="button" onClick={() => toggleAllergyTag(tag)} style={{
+                    padding: '4px 10px', borderRadius: 20, fontSize: 12, cursor: 'pointer', border: '1px solid',
+                    background: active ? '#FEF2F2' : '#fff',
+                    borderColor: active ? 'rgba(220,38,38,0.3)' : 'var(--border)',
+                    color: active ? '#DC2626' : 'var(--text-secondary)',
+                    fontWeight: active ? 600 : 400, fontFamily: 'inherit',
+                  }}>{allergyLabel(tag)}</button>
+                )
+              })}
+            </div>
+            <input value={form.allergy_custom ?? ''} onChange={e => setForm(f => ({ ...f, allergy_custom: e.target.value || null }))}
+              placeholder="Sonstiges…" style={{ marginTop: 8, width: '100%', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' as const }} />
+          </div>
+        </>
+      )}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         {editId && (

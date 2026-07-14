@@ -67,6 +67,9 @@ export default function VeranstalterPendingPage() {
             Dein Veranstalter-Konto wurde noch nicht aktiviert.
             Du wirst automatisch weitergeleitet sobald die Freischaltung erfolgt ist.
           </p>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, marginBottom: 24 }}>
+            Die Freischaltung erfolgt in der Regel innerhalb eines Werktags.
+          </p>
 
           <button
             onClick={checkApproval}

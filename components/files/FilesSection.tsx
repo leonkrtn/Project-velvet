@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import { createClient } from '@/lib/supabase/client'
 import {
   FileText, Image, Video, Music, FileSpreadsheet, Download,
@@ -103,6 +104,7 @@ function FileRow({
   const [deleting, setDeleting] = useState(false)
   const [dlError, setDlError] = useState<string | null>(null)
   const [savingVisibility, setSavingVisibility] = useState(false)
+  const confirm = useConfirm()
 
   const isBpVisible = visibleToRoles === null || visibleToRoles === undefined || visibleToRoles.includes('brautpaar')
   const isDlVisible = visibleToRoles === null || visibleToRoles === undefined || visibleToRoles.includes('dienstleister')
@@ -138,7 +140,7 @@ function FileRow({
 
   async function handleDelete() {
     if (!onDelete) return
-    if (!confirm(`"${name}" wirklich löschen?`)) return
+    if (!(await confirm(`"${name}" wirklich löschen?`))) return
     setDeleting(true)
     try {
       await onDelete()

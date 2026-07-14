@@ -3,6 +3,7 @@
 // Admin-Sektion: Influencer-/Promo-Codes anlegen, verwalten und Statistik sehen.
 import React, { useCallback, useEffect, useState } from 'react'
 import { Tag, Loader2, RefreshCw, AlertCircle, Plus, Trash2, TrendingUp } from 'lucide-react'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 interface CodeRow {
   id: string
@@ -66,6 +67,7 @@ export default function PromoCodesSection({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const confirm = useConfirm()
 
   // Anlegen-Formular
   const [showCreate, setShowCreate] = useState(false)
@@ -137,7 +139,7 @@ export default function PromoCodesSection({
   }
 
   async function remove(c: CodeRow) {
-    if (!confirm(`Code "${c.code}" wirklich löschen? Alle Einlösungen gehen mit verloren.`)) return
+    if (!(await confirm(`Code "${c.code}" wirklich löschen? Alle Einlösungen gehen mit verloren.`))) return
     setBusyId(c.id)
     try {
       await fetch(`/api/admin/promo-codes/${c.id}`, { method: 'DELETE' })

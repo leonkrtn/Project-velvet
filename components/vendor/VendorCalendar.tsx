@@ -7,6 +7,7 @@ import {
   Download, Link2, AlignLeft, LayoutGrid,
 } from 'lucide-react'
 import SegmentedToggle from './SegmentedToggle'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 export interface CalendarEntry {
   id: string
@@ -714,6 +715,7 @@ function EntryModal({ modal, onClose, onSaved, onDeleted }: {
   const [entryType, setEntryType] = useState<CalendarEntry['entry_type']>(initial?.entry_type ?? 'custom')
   const [busy, setBusy] = useState<'save' | 'delete' | null>(null)
   const [err, setErr] = useState('')
+  const confirm = useConfirm()
 
   async function save() {
     if (!title.trim()) { setErr('Bitte Titel eingeben.'); return }
@@ -736,7 +738,7 @@ function EntryModal({ modal, onClose, onSaved, onDeleted }: {
   }
 
   async function remove() {
-    if (!confirm('Termin löschen?')) return
+    if (!(await confirm('Termin löschen?'))) return
     setBusy('delete')
     await fetch(`/api/vendor/calendar/${initial!.id}`, { method: 'DELETE' })
     setBusy(null)

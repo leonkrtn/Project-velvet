@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import { Flag, Check, Ban, Loader2, Mail, StickyNote, ChevronDown, ChevronUp } from 'lucide-react'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 interface Report {
   id: string
@@ -49,6 +50,7 @@ export default function AdminReportsSection({ card: cardStyle, cardHeader: cardH
   const [noteId, setNoteId] = useState<string | null>(null)
   const [noteText, setNoteText] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const confirm = useConfirm()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -168,8 +170,8 @@ export default function AdminReportsSection({ card: cardStyle, cardHeader: cardH
                         )}
                         {report.status === 'open' && (
                           <>
-                            <button style={btnDanger} disabled={busy} title="Anbieter sperren und Meldung schließen" onClick={() => {
-                              if (confirm(`Anbieter "${vendorName}" wirklich sperren? Das Profil wird offline gesetzt.`)) {
+                            <button style={btnDanger} disabled={busy} title="Anbieter sperren und Meldung schließen" onClick={async () => {
+                              if (await confirm(`Anbieter "${vendorName}" wirklich sperren? Das Profil wird offline gesetzt.`)) {
                                 doAction(report.id, 'suspend_vendor')
                               }
                             }}>

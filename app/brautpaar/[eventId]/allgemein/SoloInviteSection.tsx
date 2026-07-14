@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Copy, Check, UserPlus, Briefcase, Trash2, Clock, ChevronDown } from 'lucide-react'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
+import { track } from '@/lib/analytics'
 
 interface Props {
   eventId: string
@@ -69,6 +71,7 @@ export default function SoloInviteSection({
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState<string | null>(null)
   const [orgHelpOpen, setOrgHelpOpen] = useState(false)
+  const confirm = useConfirm()
 
   const patch = useCallback((target: InviteTarget, p: Partial<InviteState>) =>
     setStates(prev => ({ ...prev, [target]: { ...prev[target], ...p } })), [])
@@ -99,6 +102,7 @@ export default function SoloInviteSection({
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error ?? 'Code konnte nicht erstellt werden')
       patch(target, { code: data.code, loading: false, emailSent: !!trimmedEmail })
+      if (target === 'brautpaar_solo' || target === 'brautpaar') track('Partner eingeladen')
     } catch (err) {
       patch(target, {
         loading: false,
@@ -119,7 +123,7 @@ export default function SoloInviteSection({
   }
 
   async function removeOrganizer(memberId: string) {
-    if (!window.confirm('Veranstalter wirklich aus eurem Event entfernen? Er verliert den Zugriff auf eure Planung.')) return
+    if (!(await confirm('Veranstalter wirklich aus eurem Event entfernen? Er verliert den Zugriff auf eure Planung.'))) return
     setRemovingId(memberId)
     setRemoveError(null)
     try {

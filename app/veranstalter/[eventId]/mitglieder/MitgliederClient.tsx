@@ -523,7 +523,7 @@ export default function MitgliederClient({ eventId, members: initialMembers, ven
                   onClick={e => e.stopPropagation()}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-primary)', background: 'var(--surface)', cursor: 'pointer', textDecoration: 'none' }}
                 >
-                  <Pencil size={13} /> Berechtigungen
+                  <Pencil size={13} /> Daten teilen
                 </Link>
               )}
               <button

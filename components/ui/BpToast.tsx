@@ -9,9 +9,17 @@ interface ToastEntry {
   id: number
   message: string
   variant: ToastVariant
+  actionLabel?: string
+  onAction?: () => void
 }
 
-type ShowToast = (message: string, variant?: ToastVariant) => void
+interface ToastOptions {
+  variant?: ToastVariant
+  actionLabel?: string
+  onAction?: () => void
+}
+
+type ShowToast = (message: string, options?: ToastVariant | ToastOptions) => void
 
 // Default ist ein No-op, damit Komponenten den Hook auch außerhalb des
 // Providers (z.B. im Veranstalter-Portal) gefahrlos aufrufen können.
@@ -21,16 +29,24 @@ export function useBpToast(): ShowToast {
   return useContext(ToastContext)
 }
 
+const AUTO_DISMISS_MS = 3200
+const AUTO_DISMISS_WITH_ACTION_MS = 6000
+
 export function BpToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastEntry[]>([])
   const idRef = useRef(0)
 
-  const show = useCallback<ShowToast>((message, variant = 'success') => {
+  const show = useCallback<ShowToast>((message, options) => {
+    const opts: ToastOptions = typeof options === 'string' ? { variant: options } : (options ?? {})
     const id = ++idRef.current
-    setToasts(prev => [...prev, { id, message, variant }])
+    setToasts(prev => [...prev, { id, message, variant: opts.variant ?? 'success', actionLabel: opts.actionLabel, onAction: opts.onAction }])
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id))
-    }, 3200)
+    }, opts.onAction ? AUTO_DISMISS_WITH_ACTION_MS : AUTO_DISMISS_MS)
+  }, [])
+
+  const dismiss = useCallback((id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id))
   }, [])
 
   return (
@@ -42,6 +58,15 @@ export function BpToastProvider({ children }: { children: React.ReactNode }) {
             <div key={t.id} className={`bp-toast${t.variant === 'error' ? ' bp-toast-error' : ''}`}>
               {t.variant === 'error' ? <AlertCircle size={15} /> : <Check size={15} />}
               <span>{t.message}</span>
+              {t.onAction && (
+                <button
+                  type="button"
+                  className="bp-toast-action"
+                  onClick={() => { t.onAction?.(); dismiss(t.id) }}
+                >
+                  {t.actionLabel ?? 'Rückgängig'}
+                </button>
+              )}
             </div>
           ))}
         </div>

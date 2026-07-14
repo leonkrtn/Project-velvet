@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import { Bell, Plus, Trash2, Loader2, AlertTriangle, Mail, Info } from 'lucide-react'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 interface TypeMeta { key: string; label: string; desc: string }
 interface Recipient {
@@ -37,6 +38,7 @@ export default function AdminNotificationsSection() {
   const [newEmail, setNewEmail] = useState('')
   const [newLabel, setNewLabel] = useState('')
   const [adding, setAdding] = useState(false)
+  const confirm = useConfirm()
 
   const load = useCallback(async () => {
     setError('')
@@ -82,7 +84,7 @@ export default function AdminNotificationsSection() {
   }
 
   async function remove(r: Recipient) {
-    if (!confirm(`Empfänger „${r.email}" entfernen?`)) return
+    if (!(await confirm(`Empfänger „${r.email}" entfernen?`))) return
     setRecipients(rs => rs.filter(x => x.id !== r.id))
     await fetch(`/api/admin/notifications/recipients/${r.id}`, { method: 'DELETE' }).catch(() => {})
   }

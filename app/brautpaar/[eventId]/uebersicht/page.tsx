@@ -2,24 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { requestDownloadUrl } from '@/lib/files/worker-client'
 import { coupleDisplayName } from '@/lib/couple-name'
+import { getActivePhase } from '@/lib/phases'
 import BrautpaarUebersicht from './BrautpaarUebersicht'
 
 interface Props {
   params: Promise<{ eventId: string }>
-}
-
-// Aktive Planungsphase — gleiche Logik wie in BrautpaarAufgaben
-function getActivePhase(weddingDate: string | null): string | null {
-  if (!weddingDate) return null
-  const daysLeft = (new Date(weddingDate).getTime() - Date.now()) / 86400000
-  if (daysLeft < 0) return 'after'
-  if (daysLeft < 1) return 'day'
-  if (daysLeft < 7) return '1w'
-  const monthsLeft = daysLeft / 30
-  if (monthsLeft < 3)  return '1m'
-  if (monthsLeft < 6)  return '3m'
-  if (monthsLeft < 12) return '6m'
-  return '12m'
 }
 
 export default async function UebersichtPage({ params }: Props) {

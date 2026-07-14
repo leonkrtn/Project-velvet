@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { toUserMessage } from '@/lib/errors'
 
 export async function DELETE(
   _request: Request,
@@ -89,7 +90,7 @@ export async function DELETE(
     .delete()
     .eq('id', memberId)
 
-  if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
+  if (delErr) return NextResponse.json({ error: toUserMessage(delErr, 'Das Mitglied konnte nicht entfernt werden.') }, { status: 500 })
 
   return NextResponse.json({ ok: true })
 }

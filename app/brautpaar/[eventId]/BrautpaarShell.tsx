@@ -4,11 +4,12 @@ import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Users, LayoutGrid, Calendar, UtensilsCrossed,
-  Music, Camera, Wallet, CheckSquare, Settings, Info,
+  LayoutDashboard, Users, Calendar, UtensilsCrossed,
+  Camera, Wallet, CheckSquare, Settings,
   MessageSquare, ChevronRight, X, Menu, LogOut,
   Briefcase, Lock, Sparkles, Globe, ReceiptText, HelpCircle, User,
 } from 'lucide-react'
+import { NavIconAllgemein, NavIconSitzplan, NavIconMusik } from '@/lib/nav-icons'
 import ForevrHeart from '@/components/ForevrHeart'
 import ChatUnreadBadge from '@/app/veranstalter/[eventId]/chats/ChatUnreadBadge'
 import ProductTour from '@/components/tour/ProductTour'
@@ -41,9 +42,9 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
     {
       label: 'PLANUNG',
       items: [
-        b('allgemein', 'Allgemein', <Info size={16} />),
+        b('allgemein', 'Allgemein', <NavIconAllgemein size={16} />),
         b('gaeste', 'Gäste', <Users size={16} />),
-        b('sitzplan', 'Sitzplan', <LayoutGrid size={16} />),
+        b('sitzplan', 'Sitzplan', <NavIconSitzplan size={16} />),
         b('ablaufplan', 'Ablaufplan', <Calendar size={16} />),
       ],
     },
@@ -51,7 +52,7 @@ function buildNav(eventId: string, isSolo: boolean, chatEnabled: boolean): NavGr
       label: 'DETAILS',
       items: [
         b('catering-getraenke', 'Catering & Getränke', <UtensilsCrossed size={16} />),
-        b('musik', 'Musik', <Music size={16} />),
+        b('musik', 'Musik', <NavIconMusik size={16} />),
         b('medien', 'Bilder', <Camera size={16} />),
       ],
     },

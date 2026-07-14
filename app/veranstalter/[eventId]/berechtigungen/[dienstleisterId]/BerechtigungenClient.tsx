@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import ShareBox from '@/components/vendor/ShareBox'
 import { SHARE_MODULES, SHARE_MODULE_LABELS, type ModuleSnapshot, type ShareModule, type ShareMode } from '@/lib/vendor/shares'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 export interface ShareRow {
   id: string
@@ -40,6 +41,7 @@ export default function BerechtigungenDLClient({
   const [pickModule, setPickModule] = useState<ShareModule | null>(null)
   const [sharing, setSharing] = useState(false)
   const [openShare, setOpenShare] = useState<{ id: string; label: string; snapshot: ModuleSnapshot | null; status: string; loading: boolean } | null>(null)
+  const confirm = useConfirm()
 
   const refresh = useCallback(async () => {
     if (!conversationId) return
@@ -49,6 +51,16 @@ export default function BerechtigungenDLClient({
 
   async function share(mode: ShareMode) {
     if (!conversationId || !pickModule || sharing) return
+    const moduleLabel = SHARE_MODULE_LABELS[pickModule] ?? pickModule
+    const ok = await confirm({
+      title: mode === 'live' ? 'Live-Zugriff freigeben?' : 'Auszug teilen?',
+      message: mode === 'live'
+        ? `Ihr teilt jetzt „${moduleLabel}" mit ${dienstleisterName} — dieser Zugriff aktualisiert sich laufend, bis ihr ihn einfriert oder zurückzieht.`
+        : `Ihr teilt jetzt einen eingefrorenen Auszug von „${moduleLabel}" mit ${dienstleisterName}.`,
+      confirmLabel: mode === 'live' ? 'Live teilen' : 'Auszug teilen',
+      danger: mode === 'live',
+    })
+    if (!ok) return
     setSharing(true)
     const res = await fetch('/api/vendor/shares', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -129,18 +141,18 @@ export default function BerechtigungenDLClient({
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => share('snapshot')} disabled={!pickModule || sharing} style={{
-                flex: 1, padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)',
-                cursor: pickModule && !sharing ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
-                color: pickModule ? 'var(--text-primary)' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-              }}>
-                <Snowflake size={15} /> Als Auszug
-              </button>
-              <button onClick={() => share('live')} disabled={!pickModule || sharing} style={{
                 flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: pickModule ? 'var(--accent)' : '#C7C7CC',
                 cursor: pickModule && !sharing ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
                 color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
               }}>
-                {sharing ? <Loader2 size={15} className="b-spin" /> : <Radio size={15} />} Live teilen
+                {sharing ? <Loader2 size={15} className="b-spin" /> : <Snowflake size={15} />} Als Auszug
+              </button>
+              <button onClick={() => share('live')} disabled={!pickModule || sharing} style={{
+                flex: 1, padding: '11px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)',
+                cursor: pickModule && !sharing ? 'pointer' : 'default', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+                color: pickModule ? 'var(--text-primary)' : 'var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              }}>
+                <Radio size={15} /> Live teilen
               </button>
             </div>
           </section>

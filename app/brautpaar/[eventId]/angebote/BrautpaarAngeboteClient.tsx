@@ -5,6 +5,7 @@ import { Loader2, FileDown, Check, X, ReceiptText, ChevronRight, Clock } from 'l
 import { recomputeTotals, effectiveLineTotal, computeDeposit, type LineItem, type DepositType } from '@/lib/vendor/pricing'
 import { formatMoney, type TaxMode } from '@/lib/vendor/questionnaire'
 import PdfPreviewModal from '@/components/pdf/PdfPreviewModal'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 
 interface OfferListRow {
   id: string
@@ -135,6 +136,7 @@ function OfferModal({ offerId, onClose, onChanged }: { offerId: string; onClose:
   const [agbChecked, setAgbChecked] = useState(false)
   const [selections, setSelections] = useState<Record<number, boolean>>({})
   const [pdfPreview, setPdfPreview] = useState(false)
+  const confirm = useConfirm()
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/couple/offers/${offerId}`)
@@ -172,6 +174,15 @@ function OfferModal({ offerId, onClose, onChanged }: { offerId: string; onClose:
     if (action === 'accept') {
       if (!name.trim()) { setErr('Bitte gebt euren Namen zur Bestätigung an.'); return }
       if (offer.agb_required && !agbChecked) { setErr('Bitte bestätigt die AGB / Stornobedingungen.'); return }
+    }
+    if (action === 'decline') {
+      const ok = await confirm({
+        title: 'Angebot ablehnen?',
+        message: `${offer.vendor_name} wird über die Ablehnung benachrichtigt. Das ist endgültig und kann nicht rückgängig gemacht werden.`,
+        confirmLabel: 'Angebot ablehnen',
+        danger: true,
+      })
+      if (!ok) return
     }
     setBusy(action)
     const body: Record<string, unknown> = { action }

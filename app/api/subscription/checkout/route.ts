@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isSoloMember, PLAN_PRICES } from '@/lib/subscription'
 import { BILLING_ENABLED } from '@/lib/billing'
+import { toUserMessage } from '@/lib/errors'
 
 export async function POST(req: Request) {
   // Gratis-Phase: kein Abo-System — Checkout ist nicht verfügbar.
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
   }
 
   const { error } = await admin.from('event_subscriptions').upsert(patch, { onConflict: 'event_id' })
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: toUserMessage(error, 'Die Zahlung konnte nicht abgeschlossen werden.') }, { status: 500 })
 
   // Statistik: Rabattwert + bezahlten Tarif auf der Einlöse-Zeile festhalten
   if (promoApplies && existing?.promo_code_id) {

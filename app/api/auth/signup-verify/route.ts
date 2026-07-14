@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
       await admin.auth.admin.updateUserById(user.id, {
         app_metadata: { ...meta, signup_otp_att: att + 1 },
       })
-      return NextResponse.json({ error: 'INVALID' }, { status: 400 })
+      const attemptsLeft = Math.max(0, SIGNUP_MAX_ATTEMPTS - (att + 1))
+      return NextResponse.json({ error: 'INVALID', attemptsLeft }, { status: 400 })
     }
 
     const { error } = await admin.auth.admin.updateUserById(user.id, {

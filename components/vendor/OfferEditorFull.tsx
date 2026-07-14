@@ -13,6 +13,7 @@ import {
 } from '@/lib/vendor/pricing'
 import { formatMoney, type TaxMode } from '@/lib/vendor/questionnaire'
 import { blocksForCategory, blockToLineItem } from '@/lib/vendor/offer-blocks'
+import { useConfirm } from '@/components/ui/ConfirmDialog'
 import ToggleSwitch from '@/components/ui/ToggleSwitch'
 
 interface Offer {
@@ -70,6 +71,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
   const [blockMenu, setBlockMenu] = useState(false)
   const [acceptOpen, setAcceptOpen] = useState(false)
   const [pdfKey, setPdfKey] = useState(0)
+  const confirm = useConfirm()
   // Split pane: leftPct is the % width of the form column (30–80)
   const [leftPct, setLeftPct] = useState(55)
   const splitRef = useRef<HTMLDivElement>(null)
@@ -216,7 +218,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
   }
 
   async function markAcceptedByVendor() {
-    if (!confirm('Als angenommen markieren, ohne dass der Kunde im System bestätigt hat? Das wird im Angebot als Eigenmarkierung durch dich vermerkt.')) return
+    if (!(await confirm('Als angenommen markieren, ohne dass der Kunde im System bestätigt hat? Das wird im Angebot als Eigenmarkierung durch dich vermerkt.'))) return
     setBusy('mark_accepted'); setErr('')
     const res = await fetch(`/api/vendor/event-offers/${offerId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -249,7 +251,7 @@ export default function OfferEditorFull({ eventId, offerId }: { eventId: string 
   }
 
   async function remove() {
-    if (!confirm('Diesen Entwurf löschen?')) return
+    if (!(await confirm('Diesen Entwurf löschen?'))) return
     setBusy('delete')
     await fetch(`/api/vendor/event-offers/${offerId}`, { method: 'DELETE' })
     router.push(eventId ? `/vendor/dashboard/${eventId}/angebote` : '/vendor/angebote')

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Check } from 'lucide-react'
 import ForevrHeart from '@/components/ForevrHeart'
 import { createClient } from '@/lib/supabase/client'
+import { toRedeemErrorMessage, ROLE_PERMISSION_HINTS } from '@/lib/auth/redeem-errors'
 import '@/app/brautpaar/brautpaar.css'
 
 // Einlösen von invite_codes für bereits registrierte Nutzer.
@@ -20,22 +21,19 @@ const ROLE_LABELS: Record<string, string> = {
   dienstleister:  'Dienstleister',
 }
 
-function portalForRole(role: string, eventId: string): string {
+function portalForRole(role: string, eventId: string): string | null {
   switch (role) {
     case 'veranstalter':   return `/veranstalter/${eventId}/allgemein`
     case 'dienstleister':  return `/vendor/dashboard/${eventId}/kommunikation`
-    default:               return `/brautpaar/${eventId}/uebersicht`
+    case 'brautpaar':
+    case 'brautpaar_solo': return `/brautpaar/${eventId}/uebersicht`
+    case 'trauzeuge':
+      // Es existiert (noch) kein Trauzeugen-Portal (siehe CLAUDE.md) — ein
+      // Redirect in das Brautpaar-Layout würde dort sofort auf /login
+      // zurückgeworfen, da die Rolle dort nicht akzeptiert wird.
+      return null
+    default:                return null
   }
-}
-
-// Fehler-Codes aus redeem_invite_code() → verständliche Meldungen
-const REDEEM_ERRORS: Record<string, string> = {
-  NOT_AUTHENTICATED:        'Bitte melde dich zuerst an.',
-  CODE_NOT_FOUND_OR_LOCKED: 'Code nicht gefunden — bitte prüfe den Link.',
-  CODE_ALREADY_USED:        'Dieser Code wurde bereits eingelöst.',
-  CODE_EXPIRED:             'Dieser Code ist abgelaufen. Bitte lass dir einen neuen Link schicken.',
-  EVENT_NOT_FOUND:          'Das zugehörige Event existiert nicht mehr.',
-  NOT_APPROVED_ORGANIZER:   'Nur freigeschaltete Veranstalter-Konten können diese Einladung annehmen. Bitte registriere dich zuerst als Veranstalter und warte auf die Freischaltung.',
 }
 
 function JoinForm() {
@@ -87,9 +85,15 @@ function JoinForm() {
       if (rpcErr) throw new Error(rpcErr.message)
       const result = data as { success: boolean; error?: string; event_id?: string; role?: string }
       if (!result.success) {
-        throw new Error(REDEEM_ERRORS[result.error ?? ''] ?? result.error ?? 'Code konnte nicht eingelöst werden.')
+        throw new Error(toRedeemErrorMessage(result.error))
       }
-      router.push(portalForRole(result.role ?? 'brautpaar', result.event_id!))
+      const target = portalForRole(result.role ?? 'brautpaar', result.event_id!)
+      if (!target) {
+        setError('Diese Rolle wird von der Plattform aktuell noch nicht unterstützt. Bitte wendet euch an den Support.')
+        setJoining(false)
+        return
+      }
+      router.push(target)
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Beitritt fehlgeschlagen.')
@@ -122,9 +126,14 @@ function JoinForm() {
             />
             {checking && <p className="bp-caption" style={{ marginTop: 5 }}>Prüfe Code …</p>}
             {role && (
-              <p className="bp-caption" style={{ marginTop: 5, fontWeight: 600, color: 'var(--bp-gold-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <Check size={13} /> Einladung gefunden · Rolle: {ROLE_LABELS[role] ?? role}
-              </p>
+              <>
+                <p className="bp-caption" style={{ marginTop: 5, fontWeight: 600, color: 'var(--bp-gold-deep)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Check size={13} /> Einladung gefunden · Rolle: {ROLE_LABELS[role] ?? role}
+                </p>
+                {ROLE_PERMISSION_HINTS[role] && (
+                  <p className="bp-caption" style={{ marginTop: 4 }}>{ROLE_PERMISSION_HINTS[role]}</p>
+                )}
+              </>
             )}
           </div>
 

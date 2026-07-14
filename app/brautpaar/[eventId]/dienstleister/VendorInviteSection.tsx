@@ -59,8 +59,8 @@ export default function VendorInviteSection({ eventId }: { eventId: string }) {
         <span style={{ fontWeight: 600, fontSize: 14 }}>Dienstleister einladen</span>
       </div>
       <p className="bp-caption" style={{ margin: '0 0 12px' }}>
-        Erstellt einen Einladungslink für euren Dienstleister. Nach der Registrierung legt ihr hier fest,
-        welche Bereiche eurer Planung er sehen und bearbeiten darf.
+        Erstellt einen Einladungslink für euren Dienstleister. Nach der Registrierung entscheidet ihr im
+        Chat, welche Daten ihr wann mit ihm teilt — jederzeit widerrufbar.
       </p>
 
       {code ? (

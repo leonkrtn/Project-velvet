@@ -528,7 +528,7 @@ export default function EventModal({
                     {a.role_category && <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{a.role_category}</div>}
                   </div>
                   {canWrite && (
-                    <button type="button" onClick={() => removeStaff(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--text-tertiary)', display: 'flex', opacity: 0.5 }}
+                    <button type="button" onClick={() => removeStaff(a.id)} aria-label={`${a.name} entfernen`} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--text-tertiary)', display: 'flex', opacity: 0.5 }}
                       onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
                       <X size={12} />
                     </button>
@@ -561,7 +561,7 @@ export default function EventModal({
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{a.role}</div>
                   </div>
                   {canWrite && (
-                    <button type="button" onClick={() => removeMember(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--text-tertiary)', display: 'flex', opacity: 0.5 }}
+                    <button type="button" onClick={() => removeMember(a.id)} aria-label={`${a.name} entfernen`} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--text-tertiary)', display: 'flex', opacity: 0.5 }}
                       onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
                       <X size={12} />
                     </button>
@@ -594,7 +594,7 @@ export default function EventModal({
                     {a.category && <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{a.category}</div>}
                   </div>
                   {canWrite && (
-                    <button type="button" onClick={() => removeVendor(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--text-tertiary)', display: 'flex', opacity: 0.5 }}
+                    <button type="button" onClick={() => removeVendor(a.id)} aria-label={`${a.name} entfernen`} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 3, color: 'var(--text-tertiary)', display: 'flex', opacity: 0.5 }}
                       onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
                       <X size={12} />
                     </button>

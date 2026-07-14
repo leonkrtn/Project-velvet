@@ -1426,6 +1426,18 @@
   color: #FCA5A5;
 }
 
+.bp-toast-action {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 0.25rem;
+  pointer-events: auto;
+}
+
 @keyframes bp-toast-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -2715,9 +2727,10 @@
 .bp-authx-main {
   flex: 1 1 auto;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  align-items: safe center;
   justify-content: center;
-  padding: 4rem 1.5rem 2rem;
+  padding: 2rem 1.5rem;
   overflow-y: auto;
 }
 
@@ -3072,4 +3085,13 @@
 .bp-authx-narrow {
   max-width: 440px;
   margin: 0 auto;
+}
+
+/* Ab Desktop-Breite die schmale Spalte + Karte sichtbar größer machen, damit
+   Code-/Dienstleister-Signup nicht wie eine hochskalierte Mobile-Ansicht mit
+   viel Leerraum links/rechts wirkt (muss nach der Basis-Regel stehen, da
+   gleiche Spezifität). */
+@media (min-width: 900px) {
+  .bp-authx-narrow { max-width: 640px; }
+  .bp-authx-card { padding: 2.25rem; }
 }

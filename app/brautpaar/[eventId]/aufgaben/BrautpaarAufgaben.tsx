@@ -3,7 +3,9 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { runOptimistic, runOptimisticInsert, tempId } from '@/lib/optimistic'
-import { Plus, Check, Trash2, ChevronDown, ChevronRight, X } from 'lucide-react'
+import { Plus, Check, Trash2, ChevronDown, ChevronRight, X, ListChecks } from 'lucide-react'
+import { getActivePhase } from '@/lib/phases'
+import { track } from '@/lib/analytics'
 
 interface Task {
   id: string
@@ -28,19 +30,17 @@ const PHASES = [
   { key: null,  label: 'Allgemein',           months: 999 },
 ]
 
-function getActivePhase(weddingDate: string | null): string | null {
-  if (!weddingDate) return null
-  const msLeft = new Date(weddingDate).getTime() - Date.now()
-  const daysLeft = msLeft / 86400000
-  if (daysLeft < 0) return 'after'
-  if (daysLeft < 1) return 'day'
-  if (daysLeft < 7) return '1w'
-  const monthsLeft = daysLeft / 30
-  if (monthsLeft < 1)  return '1m'
-  if (monthsLeft < 3)  return '1m'
-  if (monthsLeft < 6)  return '3m'
-  if (monthsLeft < 12) return '6m'
-  return '12m'
+// Klassische Hochzeits-Checkliste je Phase — wird per Button einmalig als
+// Vorschlag geladen (analog zum "Standard-Sortiment laden"-Muster in der
+// Getränkeplanung), nicht automatisch, damit Nutzer bewusst entscheiden.
+const SEED_TASKS: Record<string, string[]> = {
+  '12m': ['Budget grob festlegen', 'Gästeliste-Entwurf erstellen', 'Location besichtigen & buchen', 'Hochzeitsdatum fixieren'],
+  '6m': ['Standesamt/Trauredner:in organisieren', 'Fotograf:in & Video buchen', 'Brautkleid/Anzug aussuchen', 'Catering anfragen'],
+  '3m': ['Einladungen verschicken', 'Musik/DJ oder Band buchen', 'Ringe aussuchen', 'Hotelzimmer für Gäste reservieren'],
+  '1m': ['Trauzeugenreden abstimmen', 'Sitzplan erstellen', 'Ablaufplan mit Dienstleistern abstimmen', 'Letzte Anprobe'],
+  '1w': ['Finale Gästezahl an Location/Catering melden', 'Notfallkontakte & Ablaufplan verteilen', 'Deko & Give-aways vorbereiten'],
+  day: ['Ringe, Papiere & Dokumente dabei', 'Zeitplan mit Trauzeugen durchgehen'],
+  after: ['Danksagungen verschicken', 'Namensänderung erledigen', 'Fotos vom Fotografen abholen'],
 }
 
 function TaskItem({ task, onToggle, onDelete }: {
@@ -225,6 +225,7 @@ export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddi
   }
 
   async function addTask(phaseKey: string | null, title: string, sortOrder: number) {
+    const isFirstTask = tasks.length === 0
     const placeholderId = tempId()
     const placeholder: Task = {
       id: placeholderId,
@@ -259,6 +260,7 @@ export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddi
       rollback: () => setTasks(prev => prev.filter(t => t.id !== placeholderId)),
       onError: e => console.error('addTask failed', e),
     })
+    if (isFirstTask) track('Erste Aufgabe erstellt')
   }
 
   async function deleteTask(id: string) {
@@ -269,6 +271,42 @@ export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddi
       commit: () => supabase.from('brautpaar_tasks').delete().eq('id', id),
       onError: e => console.error('deleteTask failed', e),
     })
+  }
+
+  const [loadingSeed, setLoadingSeed] = useState(false)
+
+  async function loadSeedTasks() {
+    if (loadingSeed) return
+    setLoadingSeed(true)
+    const inserts: Array<{ event_id: string; title: string; phase: string | null; done: boolean; sort_order: number; created_by: string }> = []
+    Object.entries(SEED_TASKS).forEach(([phaseKey, titles]) => {
+      titles.forEach((title, i) => {
+        inserts.push({ event_id: eventId, title, phase: phaseKey, done: false, sort_order: i, created_by: userId })
+      })
+    })
+    const tmpIds = inserts.map(() => tempId())
+    const placeholders: Task[] = inserts.map((row, i) => ({
+      id: tmpIds[i], event_id: row.event_id, title: row.title, done: false, phase: row.phase,
+      sort_order: row.sort_order, created_by: row.created_by, created_at: new Date().toISOString(), done_at: null,
+    }))
+    await runOptimisticInsert<Task[]>({
+      apply: () => setTasks(prev => [...prev, ...placeholders]),
+      commit: async () => {
+        const { data, error } = await supabase.from('brautpaar_tasks').insert(inserts).select()
+        if (error || !data) throw error ?? new Error('Insert failed')
+        return data as Task[]
+      },
+      reconcile: real => setTasks(prev => {
+        const tmpSet = new Set(tmpIds)
+        return [...prev.filter(t => !tmpSet.has(t.id)), ...real]
+      }),
+      rollback: () => setTasks(prev => {
+        const tmpSet = new Set(tmpIds)
+        return prev.filter(t => !tmpSet.has(t.id))
+      }),
+      onError: e => console.error('Standard-Checkliste laden fehlgeschlagen', e),
+    })
+    setLoadingSeed(false)
   }
 
   const totalDone = tasks.filter(t => t.done).length
@@ -294,12 +332,28 @@ export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddi
     </>
   )
 
+  const seedBanner = tasks.length === 0 && (
+    <div className="bp-card" style={{ padding: '1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+      <ListChecks size={20} style={{ color: 'var(--bp-gold-deep)', flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 200 }}>
+        <p style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600 }}>Noch keine Aufgaben angelegt</p>
+        <p className="bp-caption" style={{ margin: '2px 0 0' }}>
+          Ladet die klassische Hochzeits-Checkliste als Vorschlag — ihr könnt jeden Punkt später anpassen oder löschen.
+        </p>
+      </div>
+      <button className="bp-btn bp-btn-primary bp-btn-sm" onClick={loadSeedTasks} disabled={loadingSeed}>
+        {loadingSeed ? 'Lädt…' : 'Standard-Checkliste laden'}
+      </button>
+    </div>
+  )
+
   if (embedded) {
     return (
       <div>
         <p className="bp-page-subtitle" style={{ marginBottom: '1.25rem' }}>
           {totalDone} von {tasks.length} erledigt
         </p>
+        {seedBanner}
         {phases}
       </div>
     )
@@ -316,6 +370,7 @@ export default function BrautpaarAufgaben({ eventId, userId, initialTasks, weddi
         </div>
       </div>
 
+      {seedBanner}
       {phases}
     </div>
   )

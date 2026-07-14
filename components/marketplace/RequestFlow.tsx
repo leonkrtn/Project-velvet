@@ -39,6 +39,20 @@ export default function RequestFlow({ eventId, vendorId, onSent }: Props) {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // Vorhandenes Event-Budget als Platzhalter vorschlagen, statt es erneut
+  // eintippen zu lassen (Event-Eckdaten werden ohnehin automatisch mitgesendet).
+  const [eventBudget, setEventBudget] = useState<number | null>(null)
+  const [eventDate, setEventDate] = useState<string | null>(null)
+  useEffect(() => {
+    fetch(`/api/events/${eventId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (typeof d?.budget_total === 'number' && d.budget_total > 0) setEventBudget(d.budget_total)
+        if (typeof d?.date === 'string') setEventDate(d.date)
+      })
+      .catch(() => {})
+  }, [eventId])
+
   useEffect(() => {
     let active = true
     fetch(`/api/marketplace/questionnaire/${vendorId}`)
@@ -156,7 +170,7 @@ export default function RequestFlow({ eventId, vendorId, onSent }: Props) {
                   <h2 className="bp-font-heading" style={{ fontSize: '1.35rem', margin: '0 0 4px' }}>Eure Nachricht</h2>
                   <p style={{ fontSize: 13, color: 'var(--bp-ink-3)', margin: '0 0 16px' }}>Optional — weitere Wünsche, offene Fragen oder euer Budget.</p>
                   <textarea className="bp-textarea" placeholder="Weitere Wünsche oder Fragen…" value={message} onChange={e => setMessage(e.target.value)} style={{ minHeight: 90, marginBottom: 10 }} />
-                  <input className="bp-input" type="number" placeholder="Budget (optional, €)" value={budget} onChange={e => setBudget(e.target.value)} />
+                  <input className="bp-input" type="number" placeholder={eventBudget ? `Budget (optional, € — z.B. ${eventBudget})` : 'Budget (optional, €)'} value={budget} onChange={e => setBudget(e.target.value)} />
                 </>
               )}
 
@@ -164,6 +178,11 @@ export default function RequestFlow({ eventId, vendorId, onSent }: Props) {
                 <>
                   <h2 className="bp-font-heading" style={{ fontSize: '1.35rem', margin: '0 0 4px' }}>Zusammenfassung</h2>
                   <p style={{ fontSize: 13, color: 'var(--bp-ink-3)', margin: '0 0 16px' }}>Bitte prüft eure Angaben, bevor ihr die Anfrage absendet.</p>
+                  {eventDate && (
+                    <div style={{ fontSize: 12.5, color: 'var(--bp-ink-3)', marginBottom: 14, padding: '8px 12px', background: 'var(--bp-surface-2,#F7F4EF)', borderRadius: 8 }}>
+                      Wird automatisch mitgesendet: Hochzeitsdatum {new Date(eventDate).toLocaleDateString('de-DE')}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {sections.map((s, i) => {
                       const answered = s.questions.filter(qq => !isEmpty(answers[qq.id]))
