@@ -2727,9 +2727,10 @@
 .bp-authx-main {
   flex: 1 1 auto;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  align-items: safe center;
   justify-content: center;
-  padding: 4rem 1.5rem 2rem;
+  padding: 2rem 1.5rem;
   overflow-y: auto;
 }
 
@@ -3091,6 +3092,6 @@
    viel Leerraum links/rechts wirkt (muss nach der Basis-Regel stehen, da
    gleiche Spezifität). */
 @media (min-width: 900px) {
-  .bp-authx-narrow { max-width: 560px; }
+  .bp-authx-narrow { max-width: 640px; }
   .bp-authx-card { padding: 2.25rem; }
 }
