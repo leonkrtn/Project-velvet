@@ -217,6 +217,29 @@ export async function runAutomationTick(admin: SupabaseClient): Promise<TickResu
   return res
 }
 
+/** Manuelles Nachfassen zu einem freigegebenen, noch offenen Angebot (vendor-branded Mail ans Brautpaar). */
+export async function sendOfferReminder(admin: SupabaseClient, dlId: string, offerId: string): Promise<{ ok: boolean; reason?: string }> {
+  const { data: o } = await admin.from('vendor_offers')
+    .select('id, event_id, dienstleister_id, status, total, currency')
+    .eq('id', offerId).eq('dienstleister_id', dlId).maybeSingle()
+  if (!o) return { ok: false, reason: 'not_found' }
+  if (o.status !== 'released') return { ok: false, reason: 'not_released' }
+  if (!o.event_id) return { ok: false, reason: 'no_event' }
+
+  const emails = await coupleEmails(admin, o.event_id)
+  if (!emails.length) return { ok: false, reason: 'no_email' }
+
+  const meta = await vendorMeta(admin, dlId, new Map())
+  const mail = await buildVendorEmail(admin, dlId, 'followup_offer', {
+    eventId: o.event_id,
+    values: { firma: meta.name, betrag: o.total ? formatMoney(Number(o.total), o.currency || 'EUR') : undefined },
+    ctaUrl: `${APP_URL}/brautpaar/${o.event_id}/angebote`,
+  })
+  if (!mail) return { ok: false, reason: 'no_template' }
+  await sendEmail(admin, { to: emails, replyTo: mail.replyTo ?? undefined, subject: mail.subject, html: mail.html })
+  return { ok: true }
+}
+
 /** Erstellt eine Token-Bewertungseinladung + verschickt die Mail (vendor-branded). */
 export async function sendReviewInvite(admin: SupabaseClient, dlId: string, eventId: string, metaCache?: Map<string, any>): Promise<boolean> {
   const meta = await vendorMeta(admin, dlId, metaCache ?? new Map())

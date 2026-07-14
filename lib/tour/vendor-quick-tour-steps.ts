@@ -61,6 +61,6 @@ export const VENDOR_QUICK_TOUR_STEPS: VendorTourStep[] = [
   {
     module: 'listing', area: 'listing',
     title: 'Fertig! Brauchst du Hilfe?',
-    body: 'Das war der Schnellstart. Für eine ausführliche Erklärung jedes Bereichs klicke jederzeit auf „Hilfe" in der Seitenleiste.',
+    body: 'Das war der Schnellstart. Für eine ausführliche Erklärung jedes Bereichs klicke jederzeit auf „Hilfe & Erklärungen" in deinem Profil.',
   },
 ]

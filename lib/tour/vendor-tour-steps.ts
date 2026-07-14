@@ -163,11 +163,11 @@ export const VENDOR_TOUR_STEPS: VendorTourStep[] = [
     title: 'CRM — deine Kontakte',
     body: 'Alle Brautpaare und Leads an einem Ort — als Liste oder Kanban-Board. Ziehe Karten zwischen den Phasen Lead → Anfrage → Gebucht → Ehemalig.' },
   { module: 'crm', area: 'crm',
-    title: 'Aktivitäten & Aufgaben',
-    body: 'Pro Kontakt hältst du Notizen, Anrufe und Termine fest und legst Aufgaben mit Fälligkeit an. Der „Aufgaben"-Bereich bündelt alle offenen To-dos nach Überfällig/Heute/Diese Woche.' },
+    title: 'Aktivitäten, Aufgaben & Aktionen',
+    body: 'Pro Kontakt hältst du Notizen, Anrufe und Termine fest und legst Aufgaben mit Fälligkeit an. Der „Aufgaben"-Bereich bündelt alle offenen To-dos nach Überfällig/Heute/Diese Woche. Im Reiter „Aktionen" fragst du eine Bewertung an oder erinnerst manuell an ein offenes Angebot.' },
   { module: 'crm', area: 'crm',
     title: 'Import, Export & Auto-Import',
-    body: '„Auto-Import" zieht Kontakte automatisch aus Anfragen/Angeboten/Events. Zusätzlich gibt es CSV-Import (mit Vorlage) und CSV-Export deiner Kontakte. Erinnerungen für Geburtstage und Jahrestage warnen dich rechtzeitig.' },
+    body: '„Auto-Import" zieht Kontakte automatisch aus Anfragen/Angeboten/Events. Zusätzlich gibt es CSV-Import (mit Vorlage) und einen Export deiner Kontakte als Excel oder CSV. Erinnerungen für Geburtstage und Jahrestage warnen dich rechtzeitig.' },
 
   // ── Automatik ────────────────────────────────────────────────────────────────
   { module: 'automatik', area: 'automatik',
@@ -177,8 +177,8 @@ export const VENDOR_TOUR_STEPS: VendorTourStep[] = [
     title: 'Die vier Regeln',
     body: 'Erinnerung vor dem Event · Bewertung anfragen (Mail nach dem Event) · Offenes Angebot nachfassen · Inaktiven Lead wiedervorlegen (CRM-Aufgabe). Pro Kind kannst du mehrere Regeln anlegen.' },
   { module: 'automatik', area: 'automatik',
-    title: 'E-Mail bei neuer Anfrage & manuelle Bewertung',
-    body: 'Unter „Benachrichtigungen" aktivierst du eine E-Mail (mit Excel-Anhang) bei jeder neuen Anfrage — für neue Konten schon voreingestellt. Unter „Manuelle Aktionen" fragst du pro Event eine Bewertung direkt an.' },
+    title: 'E-Mail bei neuer Anfrage',
+    body: 'Unter „Benachrichtigungen" aktivierst du eine E-Mail (mit Excel-Anhang) bei jeder neuen Anfrage — für neue Konten schon voreingestellt. Bewertung anfragen oder ans Angebot erinnern geht manuell im CRM, im Reiter „Aktionen" eines Kontakts.' },
 
   // ── Anbieter-Profil ──────────────────────────────────────────────────────────
   { module: 'listing', area: 'listing',
@@ -215,5 +215,5 @@ export const VENDOR_TOUR_STEPS: VendorTourStep[] = [
     body: 'Umsatzsteuerregelung (regulär, Kleinunternehmer, netto), Währung, Angebots-Gültigkeit und eine Fußnote (z. B. Zahlungsbedingungen).' },
   { module: 'anfrage-formular', area: 'anfrage-formular',
     title: 'Alles eingerichtet!',
-    body: 'Dein Portal ist startklar. Über den Hilfe-Button in der Seitenleiste kannst du diese Erklärung jederzeit erneut starten — komplett oder für einen einzelnen Bereich.' },
+    body: 'Dein Portal ist startklar. Über „Hilfe & Erklärungen" in deinem Profil kannst du diese Erklärung jederzeit erneut starten — komplett oder für einen einzelnen Bereich.' },
 ]

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   Users, Plus, Search, Filter, Download, Upload, RefreshCw,
   Phone, Mail, Calendar, Euro, X, Check,
-  Star, Building2,
+  Star, Building2, MailQuestion, Loader2,
   Pencil, Trash2, CheckSquare, Square, Clock,
   Heart, Briefcase, PartyPopper, HelpCircle,
   MapPin, MessageSquare, User, Circle, ChevronDown, ChevronUp, ArrowUpDown,
@@ -361,7 +361,7 @@ function ContactPanel({
   onDeleted: (id: string) => void
   onOpenById?: (id: string) => void
 }) {
-  const [tab, setTab] = useState<'info' | 'aktivitaeten' | 'aufgaben'>('info')
+  const [tab, setTab] = useState<'info' | 'aktivitaeten' | 'aufgaben' | 'aktionen'>('info')
   const [activities, setActivities] = useState<Activity[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [loadingActs, setLoadingActs] = useState(false)
@@ -622,10 +622,10 @@ function ContactPanel({
 
           {/* Tabs */}
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', gap: 4, marginTop: 2 }}>
-            {(['info', 'aktivitaeten', 'aufgaben'] as const).map(t => {
+            {(['info', 'aktivitaeten', 'aufgaben', 'aktionen'] as const).map(t => {
               const openTasks = tasks.filter(x => !x.done).length
               const count = t === 'aktivitaeten' ? activities.length : t === 'aufgaben' ? openTasks : 0
-              const label = t === 'info' ? 'Info' : t === 'aktivitaeten' ? 'Aktivitäten' : 'Aufgaben'
+              const label = t === 'info' ? 'Info' : t === 'aktivitaeten' ? 'Aktivitäten' : t === 'aufgaben' ? 'Aufgaben' : 'Aktionen'
               return (
                 <button key={t} onClick={() => setTab(t)} style={{
                   flex: '0 0 auto', padding: '9px 18px', border: 'none', background: 'none', cursor: 'pointer',
@@ -1011,6 +1011,9 @@ function ContactPanel({
               ))}
             </div>
           )}
+
+          {/* ── AKTIONEN TAB ── */}
+          {tab === 'aktionen' && <ContactActionsTab contact={contact} />}
         </div>
         <style>{`
           .crm-lb-overlay { animation: crm-lb-fade 140ms ease; }
@@ -1022,6 +1025,118 @@ function ContactPanel({
           }
         `}</style>
       </div>
+    </div>
+  )
+}
+
+// ── Aktionen-Tab: Bewertung anfragen / Angebot nachfassen ───────
+function ContactActionsTab({ contact }: { contact: Contact }) {
+  const [reviewLoading, setReviewLoading] = useState(true)
+  const [reviewEligible, setReviewEligible] = useState(false)
+  const [reviewInvited, setReviewInvited] = useState(false)
+  const [reviewBusy, setReviewBusy] = useState(false)
+
+  const [offerLoading, setOfferLoading] = useState(true)
+  const [offerStatus, setOfferStatus] = useState<string | null>(null)
+  const [offerBusy, setOfferBusy] = useState(false)
+  const [offerSent, setOfferSent] = useState(false)
+
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  const flash = (kind: 'ok' | 'err', text: string) => { setMsg({ kind, text }); setTimeout(() => setMsg(null), 3500) }
+
+  useEffect(() => {
+    if (!contact.event_id) { setReviewLoading(false); return }
+    fetch(`/api/vendor/reviews/request?eventId=${contact.event_id}`)
+      .then(r => r.json())
+      .then(d => {
+        const ev = (d.events ?? [])[0]
+        setReviewEligible(!!ev)
+        setReviewInvited(!!ev?.invited)
+        setReviewLoading(false)
+      })
+      .catch(() => setReviewLoading(false))
+  }, [contact.event_id])
+
+  useEffect(() => {
+    if (!contact.offer_id) { setOfferLoading(false); return }
+    fetch(`/api/vendor/offers/remind?offerId=${contact.offer_id}`)
+      .then(r => r.json())
+      .then(d => { setOfferStatus(d.status ?? null); setOfferLoading(false) })
+      .catch(() => setOfferLoading(false))
+  }, [contact.offer_id])
+
+  async function requestReview() {
+    if (!contact.event_id) return
+    setReviewBusy(true)
+    const r = await fetch('/api/vendor/reviews/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventId: contact.event_id }) })
+    setReviewBusy(false)
+    if (r.ok) { setReviewInvited(true); flash('ok', 'Bewertungsanfrage gesendet') }
+    else flash('err', 'Konnte nicht gesendet werden')
+  }
+
+  async function remindOffer() {
+    if (!contact.offer_id) return
+    setOfferBusy(true)
+    const r = await fetch('/api/vendor/offers/remind', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ offerId: contact.offer_id }) })
+    const d = await r.json().catch(() => ({}))
+    setOfferBusy(false)
+    if (r.ok) { setOfferSent(true); flash('ok', 'Erinnerung gesendet') }
+    else flash('err', d.error || 'Konnte nicht gesendet werden')
+  }
+
+  const rowStyle: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--bg)' }
+  const iconWrap: React.CSSProperties = { width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }
+  const btn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 8, border: '1px solid var(--border2)', background: '#fff', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-primary)', flexShrink: 0 }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={rowStyle}>
+        <span style={iconWrap}><Star size={16} /></span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Bewertung anfragen</h3>
+          <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', margin: '3px 0 0', lineHeight: 1.5 }}>
+            Sende dem Brautpaar eine E-Mail mit deinem Bewertungslink.
+          </p>
+        </div>
+        {reviewLoading ? (
+          <Loader2 size={15} className="bp-spin" style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+        ) : !reviewEligible ? (
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>Keine abgeschlossene Zusammenarbeit</span>
+        ) : reviewInvited ? (
+          <span style={{ fontSize: 12, color: '#15803D', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0 }}><Check size={14} /> Angefragt</span>
+        ) : (
+          <button onClick={requestReview} disabled={reviewBusy} style={btn}>
+            {reviewBusy ? <Loader2 size={13} className="bp-spin" /> : <Star size={13} />} Anfragen
+          </button>
+        )}
+      </div>
+
+      <div style={rowStyle}>
+        <span style={iconWrap}><MailQuestion size={16} /></span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>An das Angebot erinnern</h3>
+          <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', margin: '3px 0 0', lineHeight: 1.5 }}>
+            Schickt dem Brautpaar eine Erinnerungs-Mail zum noch offenen, freigegebenen Angebot.
+          </p>
+        </div>
+        {offerLoading ? (
+          <Loader2 size={15} className="bp-spin" style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+        ) : offerStatus !== 'released' ? (
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>Kein offenes Angebot</span>
+        ) : offerSent ? (
+          <span style={{ fontSize: 12, color: '#15803D', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0 }}><Check size={14} /> Gesendet</span>
+        ) : (
+          <button onClick={remindOffer} disabled={offerBusy} style={btn}>
+            {offerBusy ? <Loader2 size={13} className="bp-spin" /> : <MailQuestion size={13} />} Erinnern
+          </button>
+        )}
+      </div>
+
+      {msg && (
+        <div style={{ padding: '9px 13px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, background: msg.kind === 'ok' ? 'rgba(21,128,61,0.08)' : 'rgba(185,28,28,0.08)', color: msg.kind === 'ok' ? '#15803D' : '#B91C1C' }}>
+          {msg.text}
+        </div>
+      )}
     </div>
   )
 }
@@ -1120,8 +1235,19 @@ export default function CrmClient({ initialContacts }: { initialContacts: Contac
   const [globalTasks, setGlobalTasks] = useState<(Task & { crm_contacts?: { id: string; name: string } | null })[]>([])
   const [loadingGlobalTasks, setLoadingGlobalTasks] = useState(false)
   const [dragOverStage, setDragOverStage] = useState<LifecycleStage | null>(null)
+  const [showExportMenu, setShowExportMenu] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const exportMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showExportMenu) return
+    const onClick = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) setShowExportMenu(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [showExportMenu])
 
   const fetchContacts = useCallback(async (q?: string, stage?: string, source?: string, priority?: string, homeCity?: string, eventCity?: string) => {
     const params = new URLSearchParams()
@@ -1318,9 +1444,21 @@ export default function CrmClient({ initialContacts }: { initialContacts: Contac
               <a href="/api/vendor/crm/import-template" title="Leer-Vorlage für den CSV-Import herunterladen" className="crm-mob-hide" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
                 <Download size={13} /><span className="crm-btn-text">Vorlage</span>
               </a>
-              <a href="/api/vendor/crm/export" className="crm-mob-hide" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, color: 'var(--text-secondary)', textDecoration: 'none' }}>
-                <Download size={13} /><span className="crm-btn-text">Export</span>
-              </a>
+              <div ref={exportMenuRef} style={{ position: 'relative' }}>
+                <button onClick={() => setShowExportMenu(v => !v)} className="crm-mob-hide" style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg)', fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <Download size={13} /><span className="crm-btn-text">Export</span><ChevronDown size={11} />
+                </button>
+                {showExportMenu && (
+                  <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--bg)', border: '1px solid var(--border2)', borderRadius: 9, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 40, minWidth: 160, overflow: 'hidden' }}>
+                    <a href="/api/vendor/crm/export?format=excel" onClick={() => setShowExportMenu(false)} style={{ display: 'block', padding: '9px 13px', fontSize: 12.5, color: 'var(--text-primary)', textDecoration: 'none' }}>
+                      Excel (.xlsx)
+                    </a>
+                    <a href="/api/vendor/crm/export?format=csv" onClick={() => setShowExportMenu(false)} style={{ display: 'block', padding: '9px 13px', fontSize: 12.5, color: 'var(--text-primary)', textDecoration: 'none', borderTop: '1px solid var(--border2)' }}>
+                      CSV (kommagetrennt)
+                    </a>
+                  </div>
+                )}
+              </div>
               <button onClick={() => setShowNew(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                 <Plus size={14} /> Neu
               </button>
