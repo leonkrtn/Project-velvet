@@ -49,7 +49,11 @@ export async function verifySignupCode(email: string, code: string): Promise<voi
   switch (data.error) {
     case 'EXPIRED': throw new Error('Der Code ist abgelaufen. Fordere einen neuen an.')
     case 'TOO_MANY': throw new Error('Zu viele Versuche. Fordere einen neuen Code an.')
-    default: throw new Error('Der Code ist ungültig. Bitte prüfe deine Eingabe.')
+    default: {
+      const attemptsLeft = typeof data.attemptsLeft === 'number' ? data.attemptsLeft : null
+      const suffix = attemptsLeft != null ? ` Noch ${attemptsLeft} Versuch${attemptsLeft === 1 ? '' : 'e'}.` : ''
+      throw new Error(`Der Code ist ungültig. Bitte prüfe deine Eingabe.${suffix}`)
+    }
   }
 }
 
