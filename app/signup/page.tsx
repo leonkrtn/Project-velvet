@@ -14,6 +14,8 @@ import { createClient } from '@/lib/supabase/client'
 import { startSignup, EmailTakenError, EMAIL_TAKEN_MESSAGE } from '@/lib/auth-otp'
 import { ensureSoloEvent } from '@/lib/brautpaar-solo'
 import { MARKETPLACE_CATEGORIES } from '@/lib/marketplace/types'
+import { useUnsavedChangesWarning } from '@/hooks/useUnsavedChangesWarning'
+import { toRedeemErrorMessage } from '@/lib/auth/redeem-errors'
 import '@/app/brautpaar/brautpaar.css'
 
 const HEADINGS: Record<SignupMode, string> = {
@@ -40,6 +42,12 @@ function SignupForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [awaitingCode, setAwaitingCode] = useState(false)
+
+  // ── Brautpaar: 2-Schritt-Formular (erst Account, dann optionale Details) ──
+  // Schritt 1 = nur E-Mail + Passwort, um die Einstiegshürde zu senken.
+  const [brautpaarStep, setBrautpaarStep] = useState<1 | 2>(1)
+  const [emailTaken, setEmailTaken] = useState(false)
+  const [checkingEmail, setCheckingEmail] = useState(false)
 
   // ── Brautpaar (Solo) ──
   const [firstName, setFirstName] = useState('')
@@ -69,7 +77,7 @@ function SignupForm() {
   const [company, setCompany]   = useState('')
   const [category, setCategory] = useState('fotograf')
 
-  const switchMode = (m: SignupMode) => { setMode(m); setError('') }
+  const switchMode = (m: SignupMode) => { setMode(m); setError(''); setBrautpaarStep(1) }
 
   // Code-Vorschau (nur Event-/Paar-Einladung)
   const checkCode = async (code: string) => {
@@ -87,6 +95,36 @@ function SignupForm() {
 
   // Prefill-Code beim Laden prüfen
   useEffect(() => { if (initialCode) checkCode(initialCode) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // E-Mail-Verfügbarkeit früh prüfen (onBlur), statt erst nach vollständigem
+  // Ausfüllen des Formulars beim Submit (EMAIL_TAKEN kommt sonst zu spät).
+  const checkEmailAvailability = async (value: string): Promise<boolean> => {
+    const e = value.trim()
+    if (!e || !e.includes('@')) { setEmailTaken(false); return false }
+    setCheckingEmail(true)
+    try {
+      const res = await fetch('/api/auth/check-email', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: e }),
+      })
+      const d = await res.json().catch(() => ({}))
+      const taken = !!d.taken
+      setEmailTaken(taken)
+      return taken
+    } catch { setEmailTaken(false); return false }
+    finally { setCheckingEmail(false) }
+  }
+
+  const goToBrautpaarStep2 = async () => {
+    setError('')
+    if (!email.trim()) { setError('E-Mail-Adresse ist erforderlich.'); return }
+    if (password.length < 8) { setError('Passwort muss mindestens 8 Zeichen haben.'); return }
+    const taken = await checkEmailAvailability(email)
+    if (taken) { setError(EMAIL_TAKEN_MESSAGE); return }
+    setBrautpaarStep(2)
+  }
+
+  const isDirty = mode === 'brautpaar' && (brautpaarStep === 2 || email.length > 0 || password.length > 0)
+  useUnsavedChangesWarning(isDirty && !awaitingCode)
 
   const buildBrautpaarMeta = () => ({
     name: `${firstName.trim()} ${lastName.trim()}`,
@@ -108,9 +146,9 @@ function SignupForm() {
   const doRedeem = async (code: string): Promise<string> => {
     const supabase = createClient()
     const result = await supabase.rpc('redeem_invite_code', { p_code: code })
-    if (result.error) throw new Error(result.error.message)
+    if (result.error) throw new Error(toRedeemErrorMessage(undefined, result.error.message))
     const data = result.data as { success: boolean; error?: string; event_id?: string }
-    if (!data.success) throw new Error(data.error ?? 'Code konnte nicht eingelöst werden')
+    if (!data.success) throw new Error(toRedeemErrorMessage(data.error))
     return data.event_id!
   }
 
@@ -165,8 +203,8 @@ function SignupForm() {
 
     let metadata: Record<string, unknown>
     if (mode === 'brautpaar') {
-      if (!firstName.trim() || !lastName.trim()) { setError('Vor- und Nachname sind erforderlich.'); return }
-      if (!p2FirstName.trim() || !p2LastName.trim()) { setError('Name der zweiten Person ist erforderlich.'); return }
+      if (brautpaarStep !== 2) { await goToBrautpaarStep2(); return }
+      // Partnername ist bewusst optional (Solo-Brautpaar kann ihn später ergänzen).
       metadata = buildBrautpaarMeta()
     } else if (mode === 'dienstleister') {
       if (!name.trim()) { setError('Bitte gib deinen Namen ein.'); return }
@@ -248,37 +286,65 @@ function SignupForm() {
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* ══ BRAUTPAAR (zweispaltig) ══ */}
-          {mode === 'brautpaar' && (
+          {/* ══ BRAUTPAAR — Schritt 1: nur Account (E-Mail + Passwort) ══ */}
+          {mode === 'brautpaar' && brautpaarStep === 1 && (
+            <div className="bp-authx-narrow" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <p className="bp-caption" style={{ margin: 0 }}>Schritt 1 von 2 — euer Konto</p>
+              <div>
+                <label className="bp-label-text">E-Mail-Adresse <span className="bp-text-gold-deep">*</span></label>
+                <input
+                  type="email" required autoComplete="email" className="bp-input"
+                  value={email} onChange={e => { setEmail(e.target.value); setEmailTaken(false) }}
+                  onBlur={() => checkEmailAvailability(email)}
+                  placeholder="deine@email.de"
+                />
+                {checkingEmail && <p className="bp-caption" style={{ marginTop: 5 }}>Prüfe E-Mail …</p>}
+                {emailTaken && !checkingEmail && (
+                  <p className="bp-caption" style={{ marginTop: 5 }}>{EMAIL_TAKEN_MESSAGE}</p>
+                )}
+              </div>
+              {passwordField}
+              <button type="button" className="bp-btn bp-btn-primary bp-btn-lg" style={{ width: '100%' }} onClick={goToBrautpaarStep2}>
+                Weiter
+              </button>
+            </div>
+          )}
+
+          {/* ══ BRAUTPAAR — Schritt 2: optionale Details (zweispaltig) ══ */}
+          {mode === 'brautpaar' && brautpaarStep === 2 && (
             <div className="bp-authx-2col">
+              <p className="bp-caption" style={{ margin: '0 0 4px', gridColumn: '1 / -1' }}>
+                Schritt 2 von 2 — diese Angaben könnt ihr auch später ergänzen.
+              </p>
               <div className="bp-authx-col">
                 <p className="bp-authx-section-title">Deine Angaben</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  {field('Vorname', firstName, setFirstName, { placeholder: 'Anna', autoComplete: 'given-name' })}
-                  {field('Nachname', lastName, setLastName, { placeholder: 'Beispiel', autoComplete: 'family-name' })}
+                  {field('Vorname', firstName, setFirstName, { required: false, placeholder: 'Anna', autoComplete: 'given-name' })}
+                  {field('Nachname', lastName, setLastName, { required: false, placeholder: 'Beispiel', autoComplete: 'family-name' })}
                 </div>
-                {field('E-Mail-Adresse', email, setEmail, { type: 'email', placeholder: 'deine@email.de', autoComplete: 'email' })}
-                {passwordField}
-                {field('Telefonnummer', phone, setPhone, { placeholder: '+49 151 00000000', autoComplete: 'tel' })}
-                {field('Straße und Hausnummer', street, setStreet, { placeholder: 'Musterstraße 1', autoComplete: 'street-address' })}
+                {field('Telefonnummer', phone, setPhone, { required: false, placeholder: '+49 151 00000000', autoComplete: 'tel' })}
+                {field('Straße und Hausnummer', street, setStreet, { required: false, placeholder: 'Musterstraße 1', autoComplete: 'street-address' })}
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12 }}>
-                  {field('PLZ', postalCode, setPostalCode, { placeholder: '10115', autoComplete: 'postal-code' })}
-                  {field('Stadt', city, setCity, { placeholder: 'Berlin', autoComplete: 'address-level2' })}
+                  {field('PLZ', postalCode, setPostalCode, { required: false, placeholder: '10115', autoComplete: 'postal-code' })}
+                  {field('Stadt', city, setCity, { required: false, placeholder: 'Berlin', autoComplete: 'address-level2' })}
                 </div>
               </div>
               <div className="bp-authx-col">
-                <p className="bp-authx-section-title">Partnerin / Partner</p>
+                <p className="bp-authx-section-title">Partnerin / Partner (optional)</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  {field('Vorname', p2FirstName, setP2FirstName, { placeholder: 'Max' })}
-                  {field('Nachname', p2LastName, setP2LastName, { placeholder: 'Beispiel' })}
+                  {field('Vorname', p2FirstName, setP2FirstName, { required: false, placeholder: 'Max' })}
+                  {field('Nachname', p2LastName, setP2LastName, { required: false, placeholder: 'Beispiel' })}
                 </div>
                 {field('E-Mail (optional)', p2Email, setP2Email, { required: false, type: 'email', placeholder: 'partner@email.de' })}
                 {field('Telefon (optional)', p2Phone, setP2Phone, { required: false, placeholder: '+49 151 00000000' })}
                 <div>
-                  <label className="bp-label-text">Hochzeitsdatum (falls schon bekannt)</label>
+                  <label className="bp-label-text">Hochzeitsdatum (spart euch später einen Klick)</label>
                   <input type="date" className="bp-input" value={weddingDate} onChange={e => setWeddingDate(e.target.value)} />
                 </div>
               </div>
+              <button type="button" className="bp-btn bp-btn-ghost bp-btn-sm" style={{ gridColumn: '1 / -1', justifySelf: 'start' }} onClick={() => setBrautpaarStep(1)}>
+                Zurück
+              </button>
             </div>
           )}
 
@@ -337,7 +403,7 @@ function SignupForm() {
             </div>
           )}
 
-          {!pendingRedeem && (
+          {!pendingRedeem && !(mode === 'brautpaar' && brautpaarStep === 1) && (
             <button type="submit" disabled={loading} className="bp-btn bp-btn-primary bp-btn-lg" style={{ width: '100%' }}>
               {loading ? 'Wird erstellt …' : mode === 'brautpaar' ? 'Kostenlos starten' : 'Konto erstellen'}
             </button>
