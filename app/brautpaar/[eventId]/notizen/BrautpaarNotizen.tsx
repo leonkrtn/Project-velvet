@@ -323,6 +323,43 @@ export default function BrautpaarNotizen({ eventId, initialNotes, embedded = fal
     })
   }
 
+  const [loadingWelcome, setLoadingWelcome] = useState(false)
+
+  async function loadWelcomeChecklist() {
+    if (loadingWelcome) return
+    setLoadingWelcome(true)
+    const now = new Date().toISOString()
+    const items: ChecklistItem[] = ['Traurede', 'Ringe', 'Musikwahl'].map(text => ({ id: uuid(), text, done: false }))
+    const placeholderId = tempId()
+    await runOptimisticInsert<Note>({
+      apply: () => {
+        const placeholder: Note = {
+          id: placeholderId, event_id: eventId, category: 'Zeremonie', title: 'Willkommens-Checkliste',
+          content: '', note_type: 'checklist', checklist_items: items, sort_order: notes.length,
+          created_at: now, updated_at: now,
+        }
+        setNotes(prev => [...prev, placeholder])
+        setActiveCategory('Zeremonie')
+      },
+      commit: async () => {
+        const { data, error } = await supabase
+          .from('brautpaar_notes')
+          .insert({
+            event_id: eventId, title: 'Willkommens-Checkliste', category: 'Zeremonie',
+            note_type: 'checklist', content: '', checklist_items: items, sort_order: notes.length,
+          })
+          .select()
+          .single()
+        if (error || !data) throw error ?? new Error('Insert fehlgeschlagen')
+        return data as Note
+      },
+      reconcile: (saved) => setNotes(prev => prev.map(n => n.id === placeholderId ? saved : n)),
+      rollback: () => setNotes(prev => prev.filter(n => n.id !== placeholderId)),
+      onError: (e) => console.error('Willkommens-Checkliste anlegen fehlgeschlagen', e),
+    })
+    setLoadingWelcome(false)
+  }
+
   function updateNote(id: string, patch: Partial<Note>) {
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch } : n))
   }
@@ -460,6 +497,11 @@ export default function BrautpaarNotizen({ eventId, initialNotes, embedded = fal
           <p style={{ fontSize: 12, color: 'var(--bp-ink-3)' }}>
             Klicke auf &quot;Neue Notiz&quot;, um loszulegen.
           </p>
+          {notes.length === 0 && (
+            <button className="bp-btn bp-btn-secondary bp-btn-sm" style={{ marginTop: 10 }} onClick={loadWelcomeChecklist} disabled={loadingWelcome}>
+              {loadingWelcome ? 'Lädt…' : 'Willkommens-Checkliste anlegen'}
+            </button>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

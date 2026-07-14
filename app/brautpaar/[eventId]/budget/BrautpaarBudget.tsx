@@ -461,6 +461,42 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
     }
   }
 
+  const [loadingPresets, setLoadingPresets] = useState(false)
+  async function loadPresetCategories() {
+    if (loadingPresets) return
+    setLoadingPresets(true)
+    const supabase = createClient()
+    const inserts = CATEGORIES.map(category => ({
+      event_id: eventId, description: category, category, planned: 0, actual: 0, payment_status: 'offen' as PaymentStatus,
+    }))
+    const tmpIds = inserts.map(() => tempId())
+    const placeholders: BudgetItem[] = inserts.map((row, i) => ({
+      id: tmpIds[i], event_id: row.event_id, category: row.category, description: row.description,
+      planned: row.planned, actual: row.actual, payment_status: row.payment_status, notes: null, created_at: new Date().toISOString(),
+    }))
+    await runOptimisticInsert<BudgetItem[]>({
+      apply: () => setItems(prev => [...prev, ...placeholders]),
+      commit: async () => {
+        const { data, error } = await supabase.from('budget_items').insert(inserts).select()
+        if (error || !data) throw error ?? new Error('Insert failed')
+        return data as BudgetItem[]
+      },
+      reconcile: real => setItems(prev => {
+        const tmpSet = new Set(tmpIds)
+        return [...prev.filter(i => !tmpSet.has(i.id)), ...real]
+      }),
+      rollback: () => setItems(prev => {
+        const tmpSet = new Set(tmpIds)
+        return prev.filter(i => !tmpSet.has(i.id))
+      }),
+      onError: (e) => {
+        console.error('Startpositionen laden fehlgeschlagen', e)
+        showToast(toUserMessage(e, 'Startpositionen konnten nicht angelegt werden.'), 'error')
+      },
+    })
+    setLoadingPresets(false)
+  }
+
   const visibleItems    = items.filter(i => i.category?.toLowerCase() !== 'catering')
   const cateringTotal   = cateringCosts.reduce((s, c) => s + (Number(c.price_per_person) || 0), 0) * effectiveGuestCount
   const plannedTotal    = visibleItems.reduce((s, i) => s + (Number(i.planned) || 0), 0)
@@ -580,7 +616,10 @@ export default function BrautpaarBudget({ eventId, organizerFee, budgetLimit, in
                 <td colSpan={6}>
                   <div className="bp-empty">
                     <div className="bp-empty-title">Noch keine Positionen</div>
-                    <div className="bp-empty-body">Fügt eure ersten Budgetpositionen hinzu.</div>
+                    <div className="bp-empty-body">Fügt eure ersten Budgetpositionen hinzu oder startet mit {CATEGORIES.length} typischen Kategorien.</div>
+                    <button className="bp-btn bp-btn-secondary bp-btn-sm" style={{ marginTop: '0.75rem' }} onClick={loadPresetCategories} disabled={loadingPresets}>
+                      {loadingPresets ? 'Lädt…' : 'Startpositionen anlegen'}
+                    </button>
                   </div>
                 </td>
               </tr>
