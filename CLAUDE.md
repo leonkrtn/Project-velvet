@@ -41,6 +41,12 @@ In den AGB des Dienstleisters (und ggf. der Forevr-Plattform-AGB) muss explizit 
 - **No emojis** — use Lucide React icons everywhere instead (already a dependency)
 - Icons are the only decorative elements in UI; never use emoji as icons, bullets, or decorations
 
+### Terminologie-Glossar (UX-Audit B15)
+
+- **Chat-Funktion:** einheitlich **„Nachrichten"** (nicht „Chats" oder „Kommunikation") in Veranstalter- und Brautpaar-Sidebar. Ausnahme: der Vendor-Dashboard-Hauptnavpunkt „Kommunikation" bündelt mehr als reinen Chat (auch Datenfreigaben, Dateien) und bleibt bewusst so benannt.
+- **Rolle „Brautpaar":** in kundenzugewandten Texten (Angebote, Anfragen, Marktplatz) immer „Brautpaar", nie „Kunde" — außer im expliziten CRM-Kontext (`vendor_crm`, `dienstleister_notes`) sowie bei eigenständigen, nicht event-gebundenen Vendor-Angeboten (`vendor_offers.event_id IS NULL`), wo der Empfänger kein Hochzeitspaar sein muss.
+- **Modul-Icons** (Allgemein/Sitzplan/Musik) sind zwischen Veranstalter- und Brautpaar-Sidebar über `lib/nav-icons.ts` synchronisiert — neue geteilte Module dort ergänzen statt lokal neu zu wählen.
+
 ---
 
 ## Stack

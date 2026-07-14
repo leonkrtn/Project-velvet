@@ -5,11 +5,12 @@ import { usePathname } from 'next/navigation'
 import ChatUnreadBadge from './chats/ChatUnreadBadge'
 import { performLogout } from '@/lib/logout'
 import {
-  LayoutDashboard, Settings, Users, MessageSquare,
-  Calendar, Grid2X2, UserCog, ChevronLeft, Menu, UtensilsCrossed,
-  Music2, Camera, FolderOpen, LogOut, UserCircle, SlidersHorizontal,
+  LayoutDashboard, Users, MessageSquare,
+  Calendar, UserCog, ChevronLeft, Menu, UtensilsCrossed,
+  Camera, FolderOpen, LogOut, UserCircle, SlidersHorizontal,
   FileDown, CheckSquare,
 } from 'lucide-react'
+import { NavIconAllgemein, NavIconSitzplan, NavIconMusik } from '@/lib/nav-icons'
 
 interface Props {
   eventId: string
@@ -21,21 +22,53 @@ interface Props {
   children: React.ReactNode
 }
 
-const NAV_ITEMS = [
-  { key: 'uebersicht',      label: 'Übersicht',        icon: LayoutDashboard },
-  { key: 'aufgaben-notizen', label: 'Aufgaben & Notizen', icon: CheckSquare },
-  { key: 'allgemein',       label: 'Allgemein',         icon: Settings },
-  { key: 'catering-getraenke', label: 'Catering & Getränke', icon: UtensilsCrossed },
-  { key: 'mitglieder',      label: 'Beteiligte',        icon: Users },
-  { key: 'chats',           label: 'Chats',             icon: MessageSquare },
-  { key: 'ablaufplan',      label: 'Ablaufplan',        icon: Calendar },
-  { key: 'gaesteliste',     label: 'Gästeliste',        icon: Users },
-  { key: 'musik',           label: 'Musik',             icon: Music2 },
-  { key: 'medien',          label: 'Bilder',            icon: Camera },
-  { key: 'sitzplan',        label: 'Sitzplan',          icon: Grid2X2 },
-  { key: 'personalplanung', label: 'Personalplanung',   icon: UserCog },
-  { key: 'dateien',         label: 'Dateien',           icon: FolderOpen },
-  { key: 'pdf-export',     label: 'PDF-Export',        icon: FileDown },
+interface NavItem {
+  key: string
+  label: string
+  icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>
+}
+interface NavGroup {
+  label?: string
+  items: NavItem[]
+}
+
+// Gruppiert analog zum Brautpaar-Portal (BrautpaarShell.tsx), damit beide
+// Sidebars dieselbe Informationsarchitektur nutzen (siehe UX-Audit B14/B15).
+const NAV_GROUPS: NavGroup[] = [
+  {
+    items: [{ key: 'uebersicht', label: 'Übersicht', icon: LayoutDashboard }],
+  },
+  {
+    label: 'PLANUNG',
+    items: [
+      { key: 'gaesteliste', label: 'Gästeliste', icon: Users },
+      { key: 'sitzplan', label: 'Sitzplan', icon: NavIconSitzplan },
+      { key: 'ablaufplan', label: 'Ablaufplan', icon: Calendar },
+    ],
+  },
+  {
+    label: 'DETAILS',
+    items: [
+      { key: 'catering-getraenke', label: 'Catering & Getränke', icon: UtensilsCrossed },
+      { key: 'musik', label: 'Musik', icon: NavIconMusik },
+      { key: 'medien', label: 'Bilder', icon: Camera },
+    ],
+  },
+  {
+    label: 'VERWALTUNG',
+    items: [
+      { key: 'allgemein', label: 'Allgemein', icon: NavIconAllgemein },
+      { key: 'aufgaben-notizen', label: 'Aufgaben & Notizen', icon: CheckSquare },
+      { key: 'mitglieder', label: 'Beteiligte', icon: Users },
+      { key: 'personalplanung', label: 'Personalplanung', icon: UserCog },
+      { key: 'dateien', label: 'Dateien', icon: FolderOpen },
+      { key: 'pdf-export', label: 'PDF-Export', icon: FileDown },
+    ],
+  },
+  {
+    label: 'KOMMUNIKATION',
+    items: [{ key: 'chats', label: 'Nachrichten', icon: MessageSquare }],
+  },
 ]
 
 function initials(name: string) {
@@ -100,50 +133,44 @@ export default function SidebarLayout({ eventId, eventTitle, eventDate, eventCod
 
       <div style={{ padding: '4px 8px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1 }}>
-          {NAV_ITEMS.map(({ key, label, icon: Icon, ...rest }) => {
-            const active = isActive(key)
-            const disabled = 'disabled' in rest ? (rest as { disabled?: boolean }).disabled : false
-            if (disabled) {
-              return (
-                <div key={key} style={{
-                  display: 'flex', alignItems: 'center', gap: 9,
-                  padding: '8px 10px', borderRadius: 8,
-                  fontSize: 14, color: 'var(--text-tertiary)',
-                  cursor: 'not-allowed', marginBottom: 1,
+          {NAV_GROUPS.map((group, gi) => (
+            <React.Fragment key={group.label ?? `group-${gi}`}>
+              {gi > 0 && <div style={{ borderTop: '1px solid var(--border)', margin: '8px 4px' }} />}
+              {group.label && (
+                <div style={{
+                  fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', color: 'var(--text-tertiary)',
+                  padding: '6px 10px 4px',
                 }}>
-                  <Icon size={16} style={{ opacity: 0.4, flexShrink: 0 }} />
-                  <span>{label}</span>
-                  <span style={{
-                    marginLeft: 'auto', fontSize: 9, fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.08em',
-                    background: 'rgba(0,0,0,0.06)', color: 'var(--text-tertiary)',
-                    padding: '2px 6px', borderRadius: 4,
-                  }}>Bald</span>
+                  {group.label}
                 </div>
-              )
-            }
-            return (
-              <Link
-                key={key}
-                href={`${base}/${key}`}
-                onClick={() => setMobileOpen(false)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 9,
-                  padding: '8px 10px', borderRadius: 8,
-                  fontSize: 14, fontWeight: active ? 500 : 450,
-                  color: 'var(--text-primary)',
-                  textDecoration: 'none', marginBottom: 1,
-                  background: active ? 'var(--surface)' : 'transparent',
-                  boxShadow: active ? 'var(--shadow-sm)' : 'none',
-                  transition: 'background 0.12s',
-                }}
-              >
-                <Icon size={16} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
-                <span style={{ flex: 1 }}>{label}</span>
-                {key === 'chats' && <ChatUnreadBadge eventId={eventId} />}
-              </Link>
-            )
-          })}
+              )}
+              {group.items.map(({ key, label, icon: Icon }) => {
+                const active = isActive(key)
+                return (
+                  <Link
+                    key={key}
+                    href={`${base}/${key}`}
+                    onClick={() => setMobileOpen(false)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 9,
+                      padding: '8px 10px', borderRadius: 8,
+                      fontSize: 14, fontWeight: active ? 500 : 450,
+                      color: 'var(--text-primary)',
+                      textDecoration: 'none', marginBottom: 1,
+                      background: active ? 'var(--surface)' : 'transparent',
+                      boxShadow: active ? 'var(--shadow-sm)' : 'none',
+                      transition: 'background 0.12s',
+                    }}
+                  >
+                    <Icon size={16} style={{ opacity: active ? 1 : 0.5, flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>{label}</span>
+                    {key === 'chats' && <ChatUnreadBadge eventId={eventId} />}
+                  </Link>
+                )
+              })}
+            </React.Fragment>
+          ))}
         </div>
 
         {eventCode && (
