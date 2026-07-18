@@ -27,10 +27,21 @@ export default function DatenschutzPage() {
           (Art. 26 DSGVO):
         </p>
         <p style={p}>
-          Leon Kirsten, Malte Haas, Nico Schöbel<br />
+          Leon Kirsten<br />
           Gustav-Heinemann-Straße 10<br />
-          63110 Rodgau<br />
-          Deutschland<br />
+          63110 Rodgau, Deutschland
+        </p>
+        <p style={p}>
+          Malte Haas<br />
+          Musterstraße 12 {/* TODO: echte Anschrift eintragen */}<br />
+          12345 Musterstadt, Deutschland
+        </p>
+        <p style={p}>
+          Nico Schöbel<br />
+          Beispielweg 3 {/* TODO: echte Anschrift eintragen */}<br />
+          54321 Beispielstadt, Deutschland
+        </p>
+        <p style={p}>
           E-Mail: <a href="mailto:datenschutz@forevrweddings.de" style={link}>datenschutz@forevrweddings.de</a>
         </p>
         <p style={p}>

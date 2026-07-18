@@ -14,9 +14,21 @@ export default function ImpressumPage() {
 
         <h2 style={h2}>Angaben gemäß § 5 DDG</h2>
         <p style={p}>
-          Leon Kirsten, Malte Haas, Nico Schöbel<br />
+          Leon Kirsten<br />
           Gustav-Heinemann-Straße 10<br />
           63110 Rodgau<br />
+          Deutschland
+        </p>
+        <p style={p}>
+          Malte Haas<br />
+          Musterstraße 12 {/* TODO: echte Anschrift eintragen */}<br />
+          12345 Musterstadt<br />
+          Deutschland
+        </p>
+        <p style={p}>
+          Nico Schöbel<br />
+          Beispielweg 3 {/* TODO: echte Anschrift eintragen */}<br />
+          54321 Beispielstadt<br />
           Deutschland
         </p>
 
@@ -27,8 +39,7 @@ export default function ImpressumPage() {
 
         <h2 style={h2}>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
         <p style={p}>
-          Leon Kirsten, Malte Haas, Nico Schöbel<br />
-          Gustav-Heinemann-Straße 10, 63110 Rodgau
+          Leon Kirsten, Malte Haas, Nico Schöbel (Anschriften siehe oben)
         </p>
 
         <h2 style={h2}>Verbraucherstreitbeilegung</h2>
