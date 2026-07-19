@@ -1,5 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sanitizeSearchTerm } from '@/lib/text'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -45,7 +46,8 @@ export async function loadCrmContacts(userId: string, filters: CrmContactFilters
   if (homeCity)  q = q.ilike('home_city', `%${homeCity}%`)
   if (eventCity) q = q.ilike('location', `%${eventCity}%`)
   if (search) {
-    q = q.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`)
+    const s = sanitizeSearchTerm(search)
+    if (s) q = q.or(`name.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%`)
   }
 
   const { data, error } = await q

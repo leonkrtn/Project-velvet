@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { rateLimit, clientIp } from '@/lib/rate-limit'
 
 // In-memory cache: city string → {lat, lng} | null
 const cache = new Map<string, { lat: number; lng: number } | null>()
@@ -6,6 +7,22 @@ const cache = new Map<string, { lat: number; lng: number } | null>()
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim()
   if (!q) return NextResponse.json({ error: 'Missing q' }, { status: 400 })
+
+  // Der Endpoint proxyt Anfragen an Nominatim (OSM). Ohne Limit ließe er sich
+  // als offener Geocoding-Proxy missbrauchen und würde die OSM-Nutzungsrichtlinie
+  // verletzen (IP-Sperre droht). Cache-Treffer werden vorher bedient und zählen
+  // nicht gegen das Limit.
+  if (!cache.has(q)) {
+    const rl = rateLimit(clientIp(req), {
+      name: 'geo-geocode', limit: 30, windowMs: 60_000, blockMs: 5 * 60_000,
+    })
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Zu viele Anfragen.' },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } },
+      )
+    }
+  }
 
   if (cache.has(q)) {
     const hit = cache.get(q)!

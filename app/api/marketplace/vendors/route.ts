@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requestDownloadUrl } from '@/lib/files/worker-client'
+import { sanitizeSearchTerm } from '@/lib/text'
 
 // Max. Anzahl Galerie-Bilder, die pro Vendor in der Listing-Karte mitgeliefert werden.
 const CARD_GALLERY_LIMIT = 5
@@ -59,7 +60,8 @@ export async function GET(req: NextRequest) {
   const category = sp.get('category')
   const q = sp.get('q')
   if (category) query = query.eq('category', category)
-  if (q) query = query.or(`company_name.ilike.%${q}%,description.ilike.%${q}%`)
+  const qSafe = q ? sanitizeSearchTerm(q) : ''
+  if (qSafe) query = query.or(`company_name.ilike.%${qSafe}%,description.ilike.%${qSafe}%`)
 
   const { data, error } = await query.order('company_name', { nullsFirst: false })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

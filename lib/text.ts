@@ -16,6 +16,23 @@ export function titleCaseName(input: string): string {
     .join(' ')
 }
 
+// Neutralisiert Nutzereingaben, bevor sie in einen PostgREST-Filter-String
+// (z. B. `.or('col.ilike.%TERM%')` oder `.ilike('col', '%TERM%')`) interpoliert
+// werden. Ohne dies könnten Zeichen wie `,`, `(`, `)`, `:` oder `*` die
+// Filter-Syntax verlassen und zusätzliche Bedingungen einschleusen bzw. die
+// Query mit einem Syntaxfehler abbrechen (Filter-Injection / DoS).
+// - `,` `(` `)` `:` strukturieren PostgREST-Filter → entfernen
+// - `*` ist das ilike-Wildcard, `%` `_` `\` sind SQL-LIKE-Sonderzeichen
+//   → entfernen, damit der Begriff literal bleibt
+// - `"` könnte einen quoted value beenden → entfernen
+export function sanitizeSearchTerm(input: string, maxLen = 100): string {
+  return input
+    .replace(/[,()*:%_\\"]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLen)
+}
+
 // Erste Stelle groß — für Anzeige von Werten wie "fisch" → "Fisch"
 export function capitalizeFirst(input: string): string {
   if (!input) return input

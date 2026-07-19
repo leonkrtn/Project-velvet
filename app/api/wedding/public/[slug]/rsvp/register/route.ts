@@ -6,6 +6,8 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { titleCaseName } from '@/lib/text'
 import { sendEmail, emailLayout } from '@/lib/email/notify'
+import { escapeHtml } from '@/lib/vendor/email-templates'
+import { rateLimit, clientIp } from '@/lib/rate-limit'
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://project-velvet.vercel.app').replace(/\/$/, '')
 
@@ -18,6 +20,21 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params
+
+  // Missbrauchsschutz: Der Endpoint legt Gast-Zeilen an und verschickt eine
+  // Mail an eine beliebige Adresse. Ohne Limit ließe er sich als Spam-Relay
+  // missbrauchen (Mails an fremde Adressen) bzw. zur Enumeration bestehender
+  // Gäste. Eng pro IP+Slug begrenzen.
+  const rl = rateLimit(`${clientIp(request)}:${slug}`, {
+    name: 'wedding-rsvp-register', limit: 8, windowMs: 10 * 60_000, blockMs: 30 * 60_000,
+  })
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Zu viele Anmeldungen. Bitte versuche es später erneut.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } },
+    )
+  }
+
   let body: { vorname?: string; nachname?: string; email?: string }
   try { body = await request.json() } catch { return NextResponse.json({ error: 'Ungültiger Payload' }, { status: 400 }) }
 
@@ -81,9 +98,9 @@ export async function POST(
     html: emailLayout({
       heading: 'Schön, dass du dabei bist!',
       bodyHtml: `
-        <tr><td style="padding:4px 0">Hallo ${vornameClean},</td></tr>
-        <tr><td style="padding:8px 0 4px">deine Anmeldung zur Hochzeit von <strong>${coupleName}</strong> ist eingegangen. Über den Button unten kommst du jederzeit zu deiner persönlichen RSVP-Seite.</td></tr>
-        <tr><td style="padding:8px 0 4px;color:#666">Dein persönlicher Code: <strong>${created.short_code}</strong></td></tr>`,
+        <tr><td style="padding:4px 0">Hallo ${escapeHtml(vornameClean)},</td></tr>
+        <tr><td style="padding:8px 0 4px">deine Anmeldung zur Hochzeit von <strong>${escapeHtml(coupleName)}</strong> ist eingegangen. Über den Button unten kommst du jederzeit zu deiner persönlichen RSVP-Seite.</td></tr>
+        <tr><td style="padding:8px 0 4px;color:#666">Dein persönlicher Code: <strong>${escapeHtml(created.short_code)}</strong></td></tr>`,
       ctaLabel: 'Zu meiner RSVP-Seite',
       ctaUrl: `${APP_URL}/rsvp/${created.token}`,
     }),
